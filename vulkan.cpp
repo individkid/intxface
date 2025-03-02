@@ -1273,7 +1273,7 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
-struct ArraysState {
+struct EnumState {
     Bind key;
     StackState *val;
 };
@@ -1296,9 +1296,9 @@ struct Req {
 };
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread; StackState *stack[Binds];
-    CopyState(ThreadState *thread, ArraysState *stack) :
+    CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
-        for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
+        for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
     void push(Req *req, int num, SmartState log) {
@@ -1520,7 +1520,7 @@ struct MainState {
     ArrayState<PresentState,PresentBnd,StackState::frames> presentState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
-    ArraysState arrayState[Binds+1];
+    EnumState enumState[Binds+1];
     ThreadState threadState;
     CopyState copyState;
     TestState testState;
@@ -1556,7 +1556,7 @@ struct MainState {
         presentState("PresentBnd"),
         drawState("DrawBnd"),
         bindState("BindBnd"),
-        arrayState{
+        enumState{
             {SwapBnd,&swapState},
             {PipelineBnd,&pipelineState},
             {IndexBnd,&indexState},
@@ -1576,7 +1576,7 @@ struct MainState {
             {BindBnd,&bindState},
             {Binds,0}},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,arrayState),
+        copyState(&threadState,enumState),
         testState(&copyState,&sizeState) {
         std::cout << "MainState" << std::endl;}
     ~MainState() {std::cout << "~MainState" << std::endl;}
