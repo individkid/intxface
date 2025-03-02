@@ -22,7 +22,7 @@ SmartState::SmartState(std::string str) {
 #define NUM(N) std::setw(slog.num) << std::setfill('0') << N << ":"
 #define STR(S) S << ":"
 std::ostream &SmartState::set() {
-    if (!vld) {slog.dflt.str(""); return slog.dflt;} // TODO make dflt thread safe
+    if (!vld) return slog;
     slog.wait(num);
     std::stringstream &ret = *slog.sstr[num];
     switch (slog.ord) {

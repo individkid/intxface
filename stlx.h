@@ -61,13 +61,12 @@ struct SmartState {
     void clr();
 };
 
-struct SlogState {
+struct SlogState : public std::ostream {
     SafeState safe;
     std::map<int, std::stringstream*> sstr;
     std::map<int, std::string> name;
     std::map<int, int> smart;
     int minnum, limnum, min, lim, ord, num;
-    std::stringstream dflt;
     SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0), ord(0), num(0) {}
     void onof(int m, int l, int o, int n) {
         min = m;
@@ -102,6 +101,9 @@ struct SlogState {
         for (auto i = sstr.begin(); i != sstr.end(); i++) {
         if (check((*i).first,min,lim)) {std::cout << (*i).second->str(); (*i).second->str("");}}
         safe.post();
+    }
+    template <class Type> std::ostream &operator<<(Type typ) {
+        return *this;
     }
 };
 extern SlogState slog; // TODO qualify with NDEBUG
