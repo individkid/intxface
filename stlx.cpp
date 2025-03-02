@@ -1,6 +1,8 @@
 #include "stlx.h"
+#include <iomanip>
 
 SlogState slog; // TODO qualify with NDEBUG
+int SmartState::seqnum = 0;
 SmartState::SmartState(const SmartState &oth) {
     num = oth.num; vld = oth.vld;
     if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
@@ -17,11 +19,20 @@ SmartState::SmartState(std::string str) {
     slog.name[num] = str; slog.smart[num] = 1;
     slog.safe.post();
 }
+#define NUM(N) std::setw(slog.num) << std::setfill('0') << N << ":"
+#define STR(S) S << ":"
 std::stringstream &SmartState::set() {
     if (!vld) {dflt.str(""); return dflt;}
     slog.wait(num);
     std::stringstream &ret = *slog.sstr[num];
-    ret << slog.name[num] << "#" << num << ":";
+    switch (slog.ord) {
+    default: case (123): ret << NUM(seqnum) << NUM(num) << STR(slog.name[num]);
+    break; case (132): ret << NUM(seqnum) << STR(slog.name[num]) << NUM(num);
+    break; case (312): ret << STR(slog.name[num]) << NUM(seqnum) << NUM(num);
+    break; case (213): ret << NUM(num) << NUM(seqnum) << STR(slog.name[num]);
+    break; case (231): ret << NUM(num) << STR(slog.name[num]) << NUM(seqnum);
+    break; case (321): ret << STR(slog.name[num]) << NUM(num) << NUM(seqnum);}
+    seqnum++;
     slog.safe.post();
     return ret;
 }

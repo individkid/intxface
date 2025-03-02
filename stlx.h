@@ -43,6 +43,7 @@ struct SafeState {
 };
 
 struct SmartState {
+    static int seqnum;
     int num;
     bool vld;
     std::stringstream dflt;
@@ -62,11 +63,13 @@ struct SlogState {
     std::map<int, std::stringstream*> sstr;
     std::map<int, std::string> name;
     std::map<int, int> smart;
-    int minnum, limnum, min, lim;
-    SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0) {}
-    void onof(int m, int l) {
+    int minnum, limnum, min, lim, ord, num;
+    SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0), ord(0), num(0) {}
+    void onof(int m, int l, int o, int n) {
         min = m;
         lim = l;
+        ord = o;
+        num = n;
     }
     bool check(int num, int min, int lim) {
         if (min == lim) return false;
@@ -191,7 +194,8 @@ struct CallState {
         bool temp = fall.front(); fall.pop_front();
         safe.post(); if (!temp) ptr->done();
         if (pthread_join(ptr->thread,0) != 0)
-        {std::cerr << "failed to join!" << std::endl; exit(-1);} ptr->heap();}
+        {std::cerr << "failed to join!" << std::endl; exit(-1);}
+        ptr->heap();}
     }
     void stop(DoneState *ptr) {
         safe.wait();

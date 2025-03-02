@@ -371,18 +371,25 @@ MicroBind = {
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
 }
-MicroBindTyp = {
-	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","BindTyp","PipelineTyp"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","BindTyp","UniformTyp"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","BindTyp","TextureTyp"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","BindTyp","PipelineTyp"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","BindTyp","SwapTyp"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","BindTyp","IndexTyp"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","BindTyp","FetchTyp"},
+BindType = {
+	{"Bind","MatrixBnd","BindTyp","UniformTyp"},
+	{"Bind","TextureBnd","BindTyp","TextureTyp"},
+	{"Bind","PipelineBnd","BindTyp","PipelineTyp"},
+	{"Bind","SwapBnd","BindTyp","SwapTyp"},
+	{"Bind","IndexBnd","BindTyp","IndexTyp"},
+	{"Bind","BringupBnd","BindTyp","FetchTyp"},
 }
-MemoryBinding = {
-    {"Micro","MicroTest","Int","0","Memory","Matrixz"},
-    {"Micro","MicroTest","Int","1","Memory","Texturez"},
+MemoryBind = {
+	{"Memory","Indexz","Bind","IndexBnd"},
+	{"Memory","Bringupz","Bind","BringupBnd"},
+	{"Memory","Texturez","Bind","TextureBnd"},
+	{"Memory","Uniformz","Bind","UniformBnd"},
+	{"Memory","Matrixz","Bind","MatrixBnd"},
+	{"Memory","Trianglez","Bind","TriangleBnd"},
+	{"Memory","Numericz","Bind","NumericBnd"},
+	{"Memory","Vertexz","Bind","VertexBnd"},
+	{"Memory","Basisz","Bind","BasisBnd"},
+	{"Memory","Piercez","Bind","PierceBnd"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:2"..

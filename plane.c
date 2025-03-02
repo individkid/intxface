@@ -324,8 +324,8 @@ void centerPlace(struct Center *ptr, int idx)
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (sem_post(&copySem) != 0) ERROR();
 }
-void centerFree(struct Response resp) {
-    if (resp.ptr) {freeCenter(resp.ptr); allocCenter(&resp.ptr,0);}
+void centerFree(struct Center *ptr) {
+    if (ptr) {freeCenter(ptr); allocCenter(&ptr,0);}
 }
 void kernelClear(struct Kernel *ker)
 {
@@ -486,25 +486,23 @@ void machineBopy(int sig, int *arg)
     machinePlace(srcPtr,sig,arg,BopyArgs,BopySrc,BopySrcSub);
     machinePlace(dstPtr,sig,arg,BopyArgs,BopyDst,BopyDstSub);
 }
-void machineResp(struct Response resp)
+void machineResp(struct Center *ptr, int idx)
 {
-    centerPlace(resp.ptr,resp.idx);
+    centerPlace(ptr,idx);
 }
 void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
-    int src = arg[CopySrc];
+    int src = arg[CopySrc]; // TODO add arg to vulkanCopy
     struct Center *ptr = centerPull(src);
-    struct Response resp = {0,1,src,ptr,machineResp};
-    callCopy(resp);
+    callCopy(ptr);
 }
 void machineDopy(int sig, int *arg)
 {
     if (sig != DopyArgs) ERROR();
-    int src = arg[DopySrc];
+    int src = arg[DopySrc]; // TODO add arg to vulkanCopy
     struct Center *ptr = centerPull(src);
-    struct Response resp = {0,0,src,ptr,machineResp};
-    callCopy(resp);
+    callCopy(ptr);
 }
 void machinePopy(int sig, int *arg)
 {
