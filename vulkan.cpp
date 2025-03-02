@@ -1291,7 +1291,7 @@ enum ReqEnum {
     GoonReq, // retry if fail
     NoopReq, // do nothing
 };
-struct Request {
+struct Req {
     ReqEnum tag; Bind bnd; int idx; Arg arg; Center *ptr; void (*fnc)(Center*);
 };
 struct CopyState : public ChangeState<Configure,Configures> {
@@ -1301,7 +1301,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (ArraysState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         std::cout << "CopyState" << std::endl;}
     ~CopyState() {std::cout << "~CopyState" << std::endl;}
-    void push(Request *req, int num, SmartState log) {
+    void push(Req *req, int num, SmartState log) {
         bool goon = true; while (goon) {goon = false;
         BaseState *buf[num] = {}; bool need = false; BindState *bind = 0;
         for (int i = 0; i < num; i++) switch (req[i].tag) {default:
@@ -1339,23 +1339,23 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(PEnqReq): ptr = req[i].ptr; fnc = req[i].fnc;}
         if (lim == num && bind) stack[BindBnd]->advance();}
     }
-    void push(Request req, SmartState log) {
+    void push(Req req, SmartState log) {
         push(&req,1,log);
     }
-    void push(HeapState<Request> req, SmartState log) {
+    void push(HeapState<Req> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
     void push(Micro micro, BindLoc loc, int siz, Center *ptr, void (*pass)(Center*), void (*fail)(Center*), bool goon, SmartState log) {
-        HeapState<Request> req;
+        HeapState<Req> req;
         for (int i = 0; true; i++) {
         Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(micro)(loc)(i);
         BindTyp typ = BindType__Bind__BindTyp(bnd);
         if (bnd == Binds) break;
-        if (typ == PipelineTyp) req<<Request{IRDeeReq,bnd,micro}; else req<<Request{RDeeReq,bnd};}
-        if (pass) req<<Request{PNowReq,Binds,0,{},ptr,pass};
-        if (fail) req<<Request{FNowReq,Binds,0,{},ptr,fail};
-        if (goon) req<<Request{GoonReq,Binds};
-        req<<Request{DerReq,DrawBnd,0,{BothArg,0,0,siz,SizeState(MicroTest)}};
+        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,micro}; else req<<Req{RDeeReq,bnd};}
+        if (pass) req<<Req{PNowReq,Binds,0,{},ptr,pass};
+        if (fail) req<<Req{FNowReq,Binds,0,{},ptr,fail};
+        if (goon) req<<Req{GoonReq,Binds};
+        req<<Req{DerReq,DrawBnd,0,{BothArg,0,0,siz,SizeState(MicroTest)}};
         push(req,log);
     }
     void push(Center *center, void (*pass)(Center*), void (*fail)(Center*), SmartState log) {
@@ -1388,10 +1388,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else {idx = idx-base;}
         if (idx+siz>size) {siz = size-idx;}*/ // TODO
         Arg arg = {BothArg,ptr,idx,siz,max};
-        HeapState<Request> req;
-        if (pass) req<<Request{PEnqReq,Binds,0,{},center,pass};
-        if (fail) req<<Request{FEnqReq,Binds,0,{},center,fail};
-        req<<Request{PDerReq,bnd,0,arg};
+        HeapState<Req> req;
+        if (pass) req<<Req{PEnqReq,Binds,0,{},center,pass};
+        if (fail) req<<Req{FEnqReq,Binds,0,{},center,fail};
+        req<<Req{PDerReq,bnd,0,arg};
         push(req,log);
     }
 };
@@ -1444,13 +1444,13 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(HeapState<Request>()<<
-    Request{FNowReq,Binds,0,{},0,vulkanForce}<<
-    Request{PDerReq,SwapBnd,0,{SizeArg,0,0,0,*size}},SmartState());
+    copy->push(HeapState<Req>()<<
+    Req{FNowReq,Binds,0,{},0,vulkanForce}<<
+    Req{PDerReq,SwapBnd,0,{SizeArg,0,0,0,*size}},SmartState());
     //
-    copy->push(HeapState<Request>()<<
-    Request{FNowReq,Binds,0,{},0,vulkanForce}<<
-    Request{IDerReq,PipelineBnd,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
+    copy->push(HeapState<Req>()<<
+    Req{FNowReq,Binds,0,{},0,vulkanForce}<<
+    Req{IDerReq,PipelineBnd,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(MicroTest,ResizeLoc,0,0,0,vulkanWait,true,SmartState());
