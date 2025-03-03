@@ -41,6 +41,7 @@ Memory = {
 	"Vertexz", -- intersection of backlinked planes
 	"Basisz", -- base for each dimension
 	"Piercez", -- per fragment info
+	"Drawz", -- draw range info
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
 	"Kernelz", -- inflight transformations
@@ -124,9 +125,6 @@ Configure = {
 	"RegisterPoll", -- poll microseconds
 	"RegisterMask", -- interrupt mask
 	"RegisterSelf", -- outstanding selfs
-	"DrawMicro", -- argument to draw
-	"DrawType",
-	"DrawSize",
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -639,6 +637,12 @@ Pierce = {
 	{"vec","Old",{},{3}},
 	{"idx","Int32",{},{}},
 }
+Draw = {
+	{"idx","Int",{},""},
+	{"siz","Int",{},""},
+	{"mic","Micro",{},""},
+	{"loc","BindLoc",{},""},
+}
 Center = {
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},
@@ -654,6 +658,7 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
+	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},

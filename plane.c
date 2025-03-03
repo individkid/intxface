@@ -493,16 +493,16 @@ void machineResp(struct Center *ptr, int idx)
 void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
-    int src = arg[CopySrc]; // TODO add arg to vulkanCopy
+    int src = arg[CopySrc];
     struct Center *ptr = centerPull(src);
-    callCopy(ptr);
+    callCopy(ptr,src);
 }
 void machineDopy(int sig, int *arg)
-{
+{ // TODO how is this different from Copy
     if (sig != DopyArgs) ERROR();
-    int src = arg[DopySrc]; // TODO add arg to vulkanCopy
+    int src = arg[DopySrc];
     struct Center *ptr = centerPull(src);
-    callCopy(ptr);
+    callCopy(ptr,src);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -734,12 +734,12 @@ void initSafe()
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterMask,registerMask);
 }
-void planePass(struct Center *ptr) {
-    // TODO centerPlace with idx from shadow queue, or add idx to callback
+void planePass(struct Center *ptr, int sub) {
+    // TODO centerPlace ptr to sub
     // TODO wake up machine with RegisterPass
 }
-void planeFail(struct Center *ptr) {
-    // TODO centerPlace with idx from shadow queue, or add idx to callback
+void planeFail(struct Center *ptr, int sub) {
+    // TODO centerPlace ptr to sub
     // TODO wake up machine with RegisterFail
 }
 void planeDone()

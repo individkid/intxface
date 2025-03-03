@@ -1205,7 +1205,8 @@ struct PushState {
     BaseState *base;
     VkFence fence;
     Center *ptr;
-    void (*fnc)(Center*);
+    int sub;
+    void (*fnc)(Center*,int);
     SmartState log;
 };
 struct ThreadState : public DoneState {
@@ -1221,8 +1222,8 @@ struct ThreadState : public DoneState {
         strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
     }
     ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
-    void push(BaseState *base, Center *ptr, void (*fnc)(Center*), SmartState log) {
-        PushState push = {base,VK_NULL_HANDLE,ptr,fnc,log};
+    void push(BaseState *base, Center *ptr, int sub, void (*fnc)(Center*,int), SmartState log) {
+        PushState push = {base,VK_NULL_HANDLE,ptr,sub,fnc,log};
         safe.wait();
         before.push_back(push);
         safe.post();
@@ -1255,7 +1256,7 @@ struct ThreadState : public DoneState {
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
-        if (push.fnc) {push.fnc(push.ptr);}
+        if (push.fnc) {push.fnc(push.ptr,push.sub);}
         copy->wots(RegisterMask,1<<FenceAsync);
         if (push.base) push.base->baseups(push.log);}
         vkDeviceWaitIdle(device);
@@ -1292,7 +1293,7 @@ enum ReqEnum {
     NoopReq, // do nothing
 };
 struct Req {
-    ReqEnum tag; Bind bnd; int idx; Arg arg; Center *ptr; void (*fnc)(Center*);
+    ReqEnum tag; Bind bnd; int idx; Arg arg; Center *ptr; int sub; void (*fnc)(Center*,int);
 };
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread; StackState *stack[Binds];
@@ -1321,22 +1322,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerReq): case(PDerReq): case(IDerReq): buf[i]->push(log);
             break; case(RDeeReq): case(IRDeeReq): bind->rdec(req[i].bnd,log);
             break; case(WDeeReq): bind->wdec(req[i].bnd,log);
-            break; case(FNowReq): req[i].fnc(req[i].ptr);
-            break; case(FEnqReq): thread->push(0,req[i].ptr,req[i].fnc,log);
+            break; case(FNowReq): req[i].fnc(req[i].ptr,req[i].sub);
+            break; case(FEnqReq): thread->push(0,req[i].ptr,req[i].sub,req[i].fnc,log);
             break; case(GoonReq): goon = true;}
-        Center *ptr = 0; void (*fnc)(Center*) = 0; BaseState *last = 0;
+        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
         if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
             break; case(DerReq): stack[req[i].bnd]->advance();
             if (last) buf[i]->setSemaphore(last->getSemaphore()); last = buf[i];
-            if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,fnc,log); ptr = 0; fnc = 0;
+            if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PDerReq): 
             if (last) buf[i]->setSemaphore(last->getSemaphore()); last = buf[i];
-            if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,fnc,log); ptr = 0; fnc = 0;
+            if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(IDerReq): stack[req[i].bnd]->advance(req[i].idx);
             if (last) buf[i]->setSemaphore(last->getSemaphore()); last = buf[i];
-            if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,fnc,log); ptr = 0; fnc = 0;
-            break; case(PNowReq): req[i].fnc(req[i].ptr);
-            break; case(PEnqReq): ptr = req[i].ptr; fnc = req[i].fnc;}
+            if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
+            break; case(PNowReq): req[i].fnc(req[i].ptr,req[i].sub);
+            break; case(PEnqReq): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
         if (lim == num && bind) stack[BindBnd]->advance();}
     }
     void push(Req req, SmartState log) {
@@ -1345,20 +1346,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(HeapState<Req> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
-    void push(Micro micro, BindLoc loc, int siz, Center *ptr, void (*pass)(Center*), void (*fail)(Center*), bool goon, SmartState log) {
+    void push(Micro mic, BindLoc loc, int idx, int siz, Center *ptr, int sub,
+        void (*pass)(Center*,int), void (*fail)(Center*,int), bool goon, SmartState log) {
         HeapState<Req> req;
         for (int i = 0; true; i++) {
-        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(micro)(loc)(i);
+        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(mic)(loc)(i);
         BindTyp typ = BindType__Bind__BindTyp(bnd);
         if (bnd == Binds) break;
-        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,micro}; else req<<Req{RDeeReq,bnd};}
-        if (pass) req<<Req{PNowReq,Binds,0,{},ptr,pass};
-        if (fail) req<<Req{FNowReq,Binds,0,{},ptr,fail};
+        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,mic}; else req<<Req{RDeeReq,bnd};}
+        if (pass) req<<Req{PNowReq,Binds,0,{},ptr,sub,pass};
+        if (fail) req<<Req{FNowReq,Binds,0,{},ptr,sub,fail};
         if (goon) req<<Req{GoonReq,Binds};
-        req<<Req{DerReq,DrawBnd,0,{(loc == ResizeLoc ? SizeArg : BothArg),0,0,siz,SizeState(micro)}};
+        req<<Req{DerReq,DrawBnd,0,{(loc == ResizeLoc ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};
         push(req,log);
     }
-    void push(Center *center, void (*pass)(Center*), void (*fail)(Center*), SmartState log) {
+    void push(Center *center, int sub, void (*pass)(Center*,int), void (*fail)(Center*,int), SmartState log) {
         Bind bnd = MemoryBind__Memory__Bind(center->mem);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         int mod = stack[bnd]->bufsiz();
@@ -1378,9 +1380,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Vertexz): ptr = (void*)center->vtx;
         break; case (Basisz): ptr = (void*)center->bas;
         break; case (Piercez): ptr = (void*)center->pie;
+        break; case (Drawz): for (int i = center->idx; i < center->siz; i++)
+        push(center->drw[i].mic,center->drw[i].loc,center->drw[i].idx,center->drw[i].siz,
+        center,sub,planePass,planeFail,false,log);
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
-        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (pass) thread->push(0,center,pass,log);
+        for (int i = 0; i < center->siz; i++)
+        write(center->cfg[i],center->val[i]);
+        if (pass) thread->push(0,center,0,pass,log);
         return;}
         /*if (base>idx) {
         ptr = (void*)((char*)ptr+base-idx);
@@ -1389,8 +1395,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (idx+siz>size) {siz = size-idx;}*/ // TODO
         Arg arg = {BothArg,ptr,idx,siz,max};
         HeapState<Req> req;
-        if (pass) req<<Req{PEnqReq,Binds,0,{},center,pass};
-        if (fail) req<<Req{FEnqReq,Binds,0,{},center,fail};
+        if (pass) req<<Req{PEnqReq,Binds,0,{},center,sub,pass};
+        if (fail) req<<Req{FEnqReq,Binds,0,{},center,sub,fail};
         req<<Req{PDerReq,bnd,0,arg};
         push(req,log);
     }
@@ -1417,10 +1423,10 @@ struct TestState : public DoneState {
     void heap() override {}
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
 };
-void vulkanWake(Center *ptr);
-void vulkanWait(Center *ptr);
-void vulkanPass(Center *ptr);
-void vulkanForce(Center *ptr);
+void vulkanWake(Center *ptr, int sub);
+void vulkanWait(Center *ptr, int sub);
+void vulkanPass(Center *ptr, int sub);
+void vulkanForce(Center *ptr, int sub);
 void TestState::call() {
     slog.onof(0,10000,123,5);
     const std::vector<Vertex> vertices = {
@@ -1445,31 +1451,31 @@ void TestState::call() {
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
     copy->push(HeapState<Req>()<<
-    Req{FNowReq,Binds,0,{},0,vulkanForce}<<
+    Req{FNowReq,Binds,0,{},0,0,vulkanForce}<<
     Req{PDerReq,SwapBnd,0,{SizeArg,0,0,0,*size}},SmartState());
     //
     copy->push(HeapState<Req>()<<
-    Req{FNowReq,Binds,0,{},0,vulkanForce}<<
+    Req{FNowReq,Binds,0,{},0,0,vulkanForce}<<
     Req{IDerReq,PipelineBnd,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(MicroTest,ResizeLoc,0,0,0,vulkanWait,true,SmartState());
+    copy->push(MicroTest,ResizeLoc,0,0,0,0,0,vulkanWait,true,SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    copy->push(vtx,vulkanPass,vulkanForce,SmartState());
+    copy->push(vtx,0,vulkanPass,vulkanForce,SmartState());
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    copy->push(ind,vulkanPass,vulkanForce,SmartState());
+    copy->push(ind,0,vulkanPass,vulkanForce,SmartState());
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy->push(tex,vulkanPass,vulkanForce,SmartState());
+    copy->push(tex,0,vulkanPass,vulkanForce,SmartState());
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
@@ -1481,9 +1487,10 @@ void TestState::call() {
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    copy->push(mat,vulkanPass,vulkanPass,SmartState());
+    copy->push(mat,0,vulkanPass,vulkanPass,SmartState());
     //
-    copy->push(MicroTest,MiddleLoc,static_cast<uint32_t>(indices.size()),0,vulkanWake,vulkanWake,false,SmartState());}
+    copy->push(MicroTest,MiddleLoc,0,static_cast<uint32_t>(indices.size()),0,0,
+    vulkanWake,vulkanWake,false,SmartState());}
 }
 
 struct ForkState : public DoneState {
@@ -1588,25 +1595,25 @@ MainState *mptr = 0;
 
 // TODO define glfw callbacks
 
-void vulkanWake(Center *ptr) {
+void vulkanWake(Center *ptr, int sub) {
     mptr->testState.wake.wait();
 }
-void vulkanWait(Center *ptr) {
+void vulkanWait(Center *ptr, int sub) {
     glfwWaitEventsTimeout(0.001);
 }
-void vulkanPass(Center *ptr) {
+void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
-void vulkanForce(Center *ptr) {
+void vulkanForce(Center *ptr, int sub) {
     std::cerr << "unexpected copy fail!" << std::endl; exit(-1);
 }
-void vulkanCopy(Center *ptr) {
-    mptr->copyState.push(ptr,planePass,planeFail,SmartState());
+void vulkanCopy(Center *ptr, int sub) {
+    mptr->copyState.push(ptr,sub,planePass,planeFail,SmartState());
 }
-void vulkanNote(Center *ptr) {
+void vulkanNote(Center *ptr, int sub) {
     // TODO wots bit in RegisterNote
 }
-void vulkanWarn(Center *ptr) {
+void vulkanWarn(Center *ptr, int sub) {
     // TODO wots bit in RegisterWarn
 }
 void vulkanCall(Configure cfg, xftype back) {
@@ -1633,12 +1640,6 @@ void vulkanBack(Configure cfg, int sav, int val) {
     if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
     mptr->callState.stop(&mptr->threadState);
 }
-void vulkanDraw(Configure cfg, int sav, int val) {
-    mptr->copyState.push(
-    (Micro)mptr->copyState.read(DrawMicro),
-    (BindLoc)mptr->copyState.read(DrawType),
-    val,0,vulkanNote,vulkanWarn,false,SmartState());
-}
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
     mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
@@ -1653,7 +1654,6 @@ int main(int argc, const char **argv) {
     MainState main;
     mptr = &main;
     main.copyState.call(RegisterOpen,vulkanBack);
-    main.copyState.call(DrawSize,vulkanDraw);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     while (!glfwWindowShouldClose(main.windowState.window) && main.copyState.read(RegisterOpen) != 0) {
     glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
