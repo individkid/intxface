@@ -112,7 +112,7 @@ template <class Conf, int Size> struct ChangeState {
     typedef void (*xftype)(Conf cfg, int sav, int val);
     typedef int (*yftype)(int *ref, int val);
     int config[Size];
-    std::map<int,std::set<xftype>> back;
+    std::map<Conf,std::set<xftype>> back;
     SafeState safe; // prior protected
     int depth; pthread_t self; SafeState nest;
     ChangeState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
@@ -124,12 +124,12 @@ template <class Conf, int Size> struct ChangeState {
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
-    int info(Conf cfg, int val, yftype fnc) {
+    int info(Conf cfg, int val, yftype fnc) { // no callback
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid info!" << std::endl; exit(-1);}
         safe.wait(); int ret = fnc(&config[cfg],val);
         safe.post(); return ret;
     }
-    int jnfo(Conf cfg, int val, yftype fnc) {
+    int jnfo(Conf cfg, int val, yftype fnc) { // call callbacks
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
         safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
@@ -138,7 +138,7 @@ template <class Conf, int Size> struct ChangeState {
         nest.wait(); depth--; nest.post();
         safe.post(); return ret;
     }
-    int knfo(Conf cfg, int val, yftype fnc) {
+    int knfo(Conf cfg, int val, yftype fnc) { // called from callback
         nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
         {std::cerr << "invalid knfo! " << depth << std::endl; exit(-1);} nest.post();
         int sav = config[cfg]; int ret = fnc(&config[cfg],val);

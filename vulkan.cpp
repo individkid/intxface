@@ -1241,12 +1241,13 @@ struct ThreadState : public DoneState {
         break; case(LockBase): push.fence = push.base->basesup(push.log);
         break; case(BothBase): push.fence = push.base->sizeup(push.log);}
         after.push_back(push);}
+        if (!after.empty()) break;
         safe.wait();
-        if (!after.empty()) {safe.post(); break;}
-        if (before.empty()) {
-        if (!goon) {safe.post(); return false;}
-        else {safe.post(); wake.wait();}}
-        safe.post();}
+        bool empty = before.empty();
+        bool done = (empty && !goon);
+        safe.post();
+        if (done) return false;
+        if (empty) wake.wait();}
         return true;
     }
     void call() override {
@@ -1590,7 +1591,6 @@ struct MainState {
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
 };
-
 MainState *mptr = 0;
 
 // TODO define glfw callbacks
@@ -1610,14 +1610,11 @@ void vulkanForce(Center *ptr, int sub) {
 void vulkanCopy(Center *ptr, int sub) {
     mptr->copyState.push(ptr,sub,planePass,planeFail,SmartState());
 }
-void vulkanNote(Center *ptr, int sub) {
-    // TODO wots bit in RegisterNote
-}
-void vulkanWarn(Center *ptr, int sub) {
-    // TODO wots bit in RegisterWarn
-}
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
+}
+void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
+    mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.info(cfg,val,fnc);
@@ -1627,6 +1624,11 @@ int vulkanJnfo(Configure cfg, int val, yftype fnc) {
 }
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.knfo(cfg,val,fnc);
+}
+std::vector<const char *> cmdl;
+const char *vulkanCmnd(int arg) {
+    if (arg < 0 || arg >= cmdl.size()) return 0;
+    return cmdl[arg];
 }
 void vulkanBack(Configure cfg, int sav, int val) {
     if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
@@ -1639,14 +1641,6 @@ void vulkanBack(Configure cfg, int sav, int val) {
     mptr->callState.push(&mptr->threadState);
     if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
     mptr->callState.stop(&mptr->threadState);
-}
-void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
-    mptr->callState.push(new ForkState(thd,idx,fnc,done));
-}
-std::vector<const char *> cmdl;
-const char *vulkanCmnd(int arg) {
-    if (arg < 0 || arg >= cmdl.size()) return 0;
-    return cmdl[arg];
 }
 
 int main(int argc, const char **argv) {

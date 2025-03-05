@@ -117,14 +117,19 @@ Configure = {
 	"CenterSiz",
 	"CenterIdx",
 	"CenterSlf",
-	"CenterIndex", -- running machine
-	"MachineIndex", -- reset vector
+	"ArgumentInp", -- staged field
+	"ArgumentOut",
+	"MachineIndex", -- running machine
+	"MachineLast", -- reset vector
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
 	"RegisterCount", -- test progress
 	"RegisterPoll", -- poll microseconds
 	"RegisterMask", -- interrupt mask
-	"RegisterSelf", -- outstanding selfs
+	"RegisterNote",
+	"RegisterWarn",
+	"RegisterPass",
+	"RegisterFail",
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -213,6 +218,7 @@ CopyArg = {
 }
 DopyArg = {
 	"DopySrc",
+	"DopyDst",
 }
 PopyArg = {
 	"PopyDst",
@@ -254,6 +260,14 @@ Thread = {
 	"CopyThd",
 	"FenceThd",
 	"TestThd",
+}
+Mask = {
+	"NoteMsk",
+	"WarnMsk",
+	"PassMsk",
+	"FailMsk",
+	"SlctMsk",
+	"CnslMsk",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary

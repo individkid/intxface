@@ -16,19 +16,22 @@
 struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 int external = 0; // safe pipe descriptor
-int wakeup = 0; // safe pipe descriptor
+int selwake = 0; // safe pipe descriptor
+int console = 0; // safe pipe descriptor
+int conwake = 0; // safe pipe descriptor
 struct Argument argument = {0}; // constant from commandline
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
-void *strout = 0; // queue of string; protect with stdioSem
 void *strin = 0; // queue of string; protect with stdioSem
+void *strout = 0; // queue of string; protect with stdioSem
+void *chrq = 0; // temporary queue to convert chars to str
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t waitSem = {0};
 sem_t copySem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
-sem_t dataSem = {0};
 sem_t testSem = {0};
+sem_t dataSem = {0};
 wftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
@@ -39,6 +42,7 @@ oftype callCmnd = 0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(char *,Strq)
+DECLARE_DEQUE(char, Chrq)
 
 int planeWots(int *ref, int val)
 {
@@ -150,6 +154,48 @@ unsigned char *sculptCursor(int e)
     return pixels;
 }
 
+float *vectorThree(float *vec, enum Configure left, enum Configure base, enum Configure deep)
+{
+    vec[0] = callInfo(left,0,planeRcfg);
+    vec[1] = callInfo(base,0,planeRcfg);
+    vec[2] = callInfo(deep,0,planeRcfg);
+    return vec;
+}
+float *vectorTwo(float *vec, enum Configure left, enum Configure base)
+{
+    vec[0] = callInfo(left,0,planeRcfg);
+    vec[1] = callInfo(base,0,planeRcfg);
+    return vec;
+}
+void physicalToScreen(float *xptr, float *yptr)
+{
+    int width, height, xphys, yphys;
+    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
+    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
+    *xptr *= width/xphys; *yptr *= height/yphys;
+}
+void physicalFromScreen(float *xptr, float *yptr)
+{
+    int width, height, xphys, yphys;
+    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
+    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
+    *xptr *= xphys/width; *yptr *= yphys/height;
+}
+void screenToWindow(float *xptr, float *yptr)
+{
+    int width, height, left, base;
+    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
+    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
+    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
+}
+void screenFromWindow(float *xptr, float *yptr)
+{
+    int width, height, left, base;
+    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
+    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
+    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
+}
+
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
     float *src2, float *dst2, float *src3, float *dst3)
@@ -207,19 +253,6 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
     float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
     return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
 }
-float *vectorThree(float *vec, enum Configure left, enum Configure base, enum Configure deep)
-{
-    vec[0] = callInfo(left,0,planeRcfg);
-    vec[1] = callInfo(base,0,planeRcfg);
-    vec[2] = callInfo(deep,0,planeRcfg);
-    return vec;
-}
-float *vectorTwo(float *vec, enum Configure left, enum Configure base)
-{
-    vec[0] = callInfo(left,0,planeRcfg);
-    vec[1] = callInfo(base,0,planeRcfg);
-    return vec;
-}
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 float *planeMatrix(float *mat)
 {
@@ -244,34 +277,6 @@ float *planeSolve(float *mat, float *domain, float *range, int dim)
     for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(range,r,c,dim)); fprintf(stderr,"\n");}
     exit(-1);}
     return timesmat(copymat(mat,range,dim),inv,dim);
-}
-void physicalToScreen(float *xptr, float *yptr)
-{
-    int width, height, xphys, yphys;
-    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
-    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
-    *xptr *= width/xphys; *yptr *= height/yphys;
-}
-void physicalFromScreen(float *xptr, float *yptr)
-{
-    int width, height, xphys, yphys;
-    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
-    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
-    *xptr *= xphys/width; *yptr *= yphys/height;
-}
-void screenToWindow(float *xptr, float *yptr)
-{
-    int width, height, left, base;
-    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
-    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
-    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
-}
-void screenFromWindow(float *xptr, float *yptr)
-{
-    int width, height, left, base;
-    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
-    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
-    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
 }
 float *planeWindow(float *mat)
 {
@@ -336,6 +341,7 @@ void kernelClear(struct Kernel *ker)
     identmat(ker->manip.mat,4); identmat(ker->pulse.mat,4);
     identmat(ker->self.mat,4); identmat(ker->other.mat,4);
 }
+
 struct Center *machineCenter(int sig, int *arg, int lim, int idx, int sub)
 {
     if (sig != lim) ERROR();
@@ -480,15 +486,12 @@ void machineBopy(int sig, int *arg)
     case (Matrixz): copyMatrix(&dstPtr->mat[dstSub+i],&srcPtr->mat[srcSub+i]); break;
     case (Texturez): copyTexture(&dstPtr->tex[dstSub+i],&srcPtr->tex[srcSub+i]); break;
     case (Piercez): copyPierce(&dstPtr->pie[dstSub+i],&srcPtr->pie[srcSub+i]); break;
+    case (Drawz): copyDraw(&dstPtr->drw[dstSub+i],&srcPtr->drw[srcSub+i]); break;
     case (Stringz): assignStr(&dstPtr->str[dstSub+i],srcPtr->str[srcSub+i]); break;
     case (Machinez): copyMachine(&dstPtr->mch[dstSub+i],&srcPtr->mch[srcSub+i]); break;
     case (Kernelz): copyKernel(&dstPtr->ker[dstSub+i],&srcPtr->ker[srcSub+i]); break;}
     machinePlace(srcPtr,sig,arg,BopyArgs,BopySrc,BopySrcSub);
     machinePlace(dstPtr,sig,arg,BopyArgs,BopyDst,BopyDstSub);
-}
-void machineResp(struct Center *ptr, int idx)
-{
-    centerPlace(ptr,idx);
 }
 void machineCopy(int sig, int *arg)
 {
@@ -498,11 +501,11 @@ void machineCopy(int sig, int *arg)
     callCopy(ptr,src);
 }
 void machineDopy(int sig, int *arg)
-{ // TODO how is this different from Copy
+{
     if (sig != DopyArgs) ERROR();
     int src = arg[DopySrc];
-    struct Center *ptr = centerPull(src);
-    callCopy(ptr,src);
+    int dst = arg[DopyDst];
+    centerPlace(centerPull(src),dst);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -522,31 +525,6 @@ void machineQopy(int sig, int *arg)
     pushCenterq(ptr,response);    
     if (sem_post(&pipeSem) != 0) ERROR();
 }
-char *planeGetstr()
-{
-    char *str = malloc(strlen(frontStrq(strin))+1);
-    strcpy(str,frontStrq(strin));
-    if (sem_wait(&stdioSem) != 0) ERROR();
-    popStrq(strin);
-    if (sem_post(&stdioSem) != 0) ERROR();
-    return str;
-}
-void planePutstr(const char *src)
-{
-    char *str = malloc(strlen(src)+1);
-    strcpy(str,src);
-    if (sem_wait(&stdioSem) != 0) ERROR();
-    pushStrq(str,strout);
-    if (sem_post(&stdioSem) != 0) ERROR();
-}
-void planeSetcfg(int val, int sub)
-{
-    callJnfo((enum Configure)sub,val,planeWcfg);
-}
-int planeRetcfg(int sub)
-{
-    return callInfo((enum Configure)sub,0,planeRcfg);
-}
 void machineStage(enum Configure cfg, int idx)
 {
     struct Center *ptr = centerPull(idx);
@@ -554,7 +532,9 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterMem): callJnfo(cfg,ptr->mem,planeWcfg); break;
     case (CenterSiz): callJnfo(cfg,ptr->siz,planeWcfg); break;
     case (CenterIdx): callJnfo(cfg,ptr->idx,planeWcfg); break;
-    case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;}
+    case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;
+    case (ArgumentInp): callJnfo(cfg,argument.inp,planeWcfg); break;
+    case (ArgumentOut): callJnfo(cfg,argument.out,planeWcfg); break;}
     centerPlace(ptr,idx);
 }
 void machineTsage(enum Configure cfg, int idx)
@@ -564,7 +544,9 @@ void machineTsage(enum Configure cfg, int idx)
     case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break;
     case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break;
     case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
+    case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;
+    case (ArgumentInp): argument.inp = callInfo(cfg,0,planeRcfg); break;
+    case (ArgumentOut): argument.out = callInfo(cfg,0,planeRcfg); break;}
     centerPlace(ptr,idx);
 }
 void machineEval(struct Express *exp, int idx)
@@ -617,13 +599,14 @@ void machineSwitch(struct Machine *mptr)
     case (Popy): machinePopy(mptr->sig,mptr->arg); break;
     case (Qopy): machineQopy(mptr->sig,mptr->arg); break;}
 }
+
 void planeMachine(enum Thread tag, int idx)
 {
     while (1) {
-    int index = callInfo(CenterIndex,0,planeRcfg);
+    int index = callInfo(MachineIndex,0,planeRcfg);
     if (index < 0) break;
     struct Center *current = centerPull(index);
-    int last = callInfo(MachineIndex,0,planeRcfg)-1;
+    int last = callInfo(MachineLast,0,planeRcfg)-1;
     for (int next = last+1; next != last; last = ++next) {
     struct Machine *mptr = machineNext(current,next);
     // {char *opr = 0; showTransfer(mptr->xfr,&opr);
@@ -635,130 +618,137 @@ void planeMachine(enum Thread tag, int idx)
     centerPlace(current,index);
     if (sem_wait(&waitSem) != 0) ERROR();}
 }
-
 void planeSelect(enum Thread tag, int idx)
 {
-    if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
     while (1) {
-    int sub = waitRead(0,(1<<external)|(1<<wakeup));
-    if (sub == wakeup) {
-    struct Center *center = 0;
-    if (!checkRead(wakeup)) break;
-    readInt(wakeup);
+    int sub = waitRead(0,(1<<external)|(1<<selwake));
+    if (sub == selwake) {
+    if (!checkRead(selwake)) break;
+    readInt(selwake);
     if (sem_wait(&pipeSem) != 0) ERROR();
-    center = maybeCenterq(0,response);
+    struct Center *center = maybeCenterq(0,response);
     if (sem_post(&pipeSem) != 0) ERROR();
-    writeCenter(center,external);
-    freeCenter(center);
-    allocCenter(&center,0);}
+    if (center) {writeCenter(center,external);
+    freeCenter(center); allocCenter(&center,0);}}
     else if (sub == external) {
-    struct Center *center = 0;
     if (!checkRead(external)) break;
+    struct Center *center = 0;
     allocCenter(&center,1);
     readCenter(center,external);
     if (sem_wait(&pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
-    if (sem_post(&pipeSem) != 0) ERROR();}
+    if (sem_post(&pipeSem) != 0) ERROR();
+    callJnfo(RegisterMask,(1<<SlctMsk),planeWots);}
     else break;}
 }
-
 void planeConsole(enum Thread tag, int idx)
 {
-    char chr[2] = {0};
-    int val = 0;
-    int nfd = 0;
-    char *str = 0;
-    fd_set fds, ers;
     while (1) {
-    FD_ZERO(&fds); FD_ZERO(&ers); nfd = 0;
-    if (nfd <= STDIN_FILENO) nfd = STDIN_FILENO+1;
-    FD_SET(STDIN_FILENO,&fds); FD_SET(STDIN_FILENO,&ers);
-    val = pselect(nfd,&fds,0,&ers,0,0);
-    if (val < 0 && errno == EINTR) continue;
-    if (val < 0 && errno == EBADF) break;
-    if (val == 0) break;
-    if (val < 0) ERROR();
-    val = read(STDIN_FILENO,chr,1);
-    if (val == 0) break;
-    if (val < 0) ERROR();
-    // TODO hide string push to string queue and wakeup machine thread
-    }
+    int sub = waitRead(0,(1<<console)|(1<<selwake));
+    if (sub == conwake) {
+    if (!checkRead(conwake)) break;
+    readInt(conwake);
+    if (sem_wait(&stdioSem) != 0) ERROR();
+    char *str = maybeStrq(0,strout);
+    if (sem_post(&stdioSem) != 0) ERROR();
+    if (str) {writeStr(str,console); free(str);}}
+    else if (sub == console) {
+    if (!checkRead(console)) break;
+    char chr = readChr(console);
+    pushChrq(chr,chrq);
+    if (chr == '\n') {char *str = malloc(sizeChrq(chrq)+1); char *ptr = str;
+    while (sizeChrq(chrq)) {*(ptr++) = frontChrq(chrq); popChrq(chrq);} *(ptr++) = 0;
+    if (sem_wait(&stdioSem) != 0) ERROR();
+    pushStrq(str,strin);
+    if (sem_post(&stdioSem) != 0) ERROR();
+    callJnfo(RegisterMask,(1<<CnslMsk),planeWots);}}
+    else break;}
 }
-
-void registerClose(enum Thread tag, int idx)
+void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
+
 void registerOpen(enum Configure cfg, int sav, int val)
 {
     if (cfg != RegisterOpen) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
-        callFork(PipeThd,0,planeSelect,registerClose);}
+        if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
+        if ((selwake = openPipe()) < 0) ERROR();
+        callFork(PipeThd,0,planeSelect,planeClose);}
     if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-        closeIdent(external); closeIdent(wakeup);}
+        closeIdent(external); closeIdent(selwake);}
     if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-        writeInt(wakeup,0);}
+        writeInt(selwake,0);}
     if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
-        callFork(StdioThd,0,planeConsole,registerClose);}
+        if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
+        if ((conwake = openPipe()) < 0) ERROR();
+        callFork(StdioThd,0,planeConsole,planeClose);}
     if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-        close(STDIN_FILENO); close(STDOUT_FILENO);}
+        closeIdent(console); closeIdent(conwake);}
     if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-        /*TODO no wakeup for console thread*/}
+        writeInt(conwake,0);}
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-        callFork(CopyThd,0,planeMachine,registerClose);}
+        callFork(CopyThd,0,planeMachine,planeClose);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
-        callKnfo(CenterIndex,-1,planeWcfg);
+        callKnfo(MachineIndex,-1,planeWcfg);
         if (sem_post(&waitSem) != 0) ERROR();}
     if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         if (sem_post(&waitSem) != 0) ERROR();}
 }
-// TODO add callback for RegisterNote RegisterWarn RegisterPass RegisterFail to wots CopyThd to RegisterOpen
 void registerMask(enum Configure cfg, int sav, int val)
 {
-    if (cfg != RegisterMask) ERROR();
-    if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd)) {
+    switch (cfg) {default: ERROR();
+    break; case (RegisterNote): callKnfo(RegisterMask,(1<<NoteMsk),planeWots);
+    break; case (RegisterWarn): callKnfo(RegisterMask,(1<<WarnMsk),planeWots);
+    break; case (RegisterPass): callKnfo(RegisterMask,(1<<PassMsk),planeWots);
+    break; case (RegisterFail): callKnfo(RegisterMask,(1<<FailMsk),planeWots);
+    break; case (RegisterMask): if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd))
         callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
 }
 
+char *planeGetstr()
+{
+    if (sem_wait(&stdioSem) != 0) ERROR();
+    char *str = frontStrq(strin); popStrq(strin);
+    if (sem_post(&stdioSem) != 0) ERROR();
+    return str;
+}
+void planePutstr(const char *src)
+{
+    if (sem_wait(&stdioSem) != 0) ERROR();
+    char *str = malloc(strlen(src)+1);
+    strcpy(str,src); pushStrq(str,strout);
+    if (sem_post(&stdioSem) != 0) ERROR();
+}
+void planeSetcfg(int val, int sub)
+{
+    callJnfo((enum Configure)sub,val,planeWcfg);
+}
+int planeRetcfg(int sub)
+{
+    return callInfo((enum Configure)sub,0,planeRcfg);
+}
+void wrapPlane();
+
 void initSafe()
 {
-    if (sem_init(&waitSem, 0, 0) != 0) ERROR();
-    if (sem_init(&copySem, 0, 1) != 0) ERROR();
-    if (sem_init(&pipeSem, 0, 1) != 0) ERROR();
-    if (sem_init(&stdioSem, 0, 1) != 0) ERROR();
-    if (sem_init(&testSem, 0, 1) != 0) ERROR();
-    if (sem_init(&dataSem, 0, 1) != 0) ERROR();
+    if (sem_init(&waitSem, 0, 0) != 0) ERROR(); // wakeup planeMachine thread
+    if (sem_init(&copySem, 0, 1) != 0) ERROR(); // protect array of Center
+    if (sem_init(&pipeSem, 0, 1) != 0) ERROR(); // protect planeSelect queues
+    if (sem_init(&stdioSem, 0, 1) != 0) ERROR(); // protect planeConsole queues
+    if (sem_init(&testSem, 0, 1) != 0) ERROR(); // TODO
+    if (sem_init(&dataSem, 0, 1) != 0) ERROR(); // protect data conversion
     sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
     internal = allocCenterq(); response = allocCenterq();
-    strout = allocStrq(); strin = allocStrq();
+    strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterMask,registerMask);
 }
-void planePass(struct Center *ptr, int sub) {
-    // TODO centerPlace ptr to sub
-    // TODO wake up machine with RegisterPass
-}
-void planeFail(struct Center *ptr, int sub) {
-    // TODO centerPlace ptr to sub
-    // TODO wake up machine with RegisterFail
-}
-void planeDone()
-{
-    callBack(RegisterMask,0);
-    callBack(RegisterOpen,0);
-    freeStrq(strin); freeStrq(strout);
-    freeCenterq(response); freeCenterq(internal);
-    closeIdent(idx0); datxNon();
-    if (sem_destroy(&dataSem) != 0) ERROR();
-    if (sem_destroy(&testSem) != 0) ERROR();
-    if (sem_destroy(&stdioSem) != 0) ERROR();
-    if (sem_destroy(&pipeSem) != 0) ERROR();
-    if (sem_destroy(&copySem) != 0) ERROR();
-    if (sem_destroy(&waitSem) != 0) ERROR();
-}
 void initBoot()
 {
-    int size = 0; for (int i = 0; callCmnd(i); i++) size++;
+    int size = 0;
+    for (int i = 0; callCmnd(i); i++) size++;
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
     const char **boot = malloc(size*sizeof(const char *)); size = 0;
     for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
@@ -781,16 +771,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     }
 }
-void planeLoop()
-{
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
-    break; case (Bringup): {
-    if (callJnfo(RegisterCount,1,planeRmw) < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
-    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
-    }
-}
-void wrapPlane();
+
 void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
 {
     callCopy = copy;
@@ -800,8 +781,41 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
+    wrapPlane();
     initSafe();
     initBoot();
-    wrapPlane();
     initPlan();
+}
+void planeLoop()
+{
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
+    break; case (Bringup): {
+    if (callJnfo(RegisterCount,1,planeRmw) < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
+    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
+    }
+}
+void planeDone()
+{
+    callBack(RegisterMask,0);
+    callBack(RegisterOpen,0);
+    freeStrq(strin); freeStrq(strout);
+    freeCenterq(response); freeCenterq(internal);
+    closeIdent(idx0); datxNon();
+    if (sem_destroy(&dataSem) != 0) ERROR();
+    if (sem_destroy(&testSem) != 0) ERROR();
+    if (sem_destroy(&stdioSem) != 0) ERROR();
+    if (sem_destroy(&pipeSem) != 0) ERROR();
+    if (sem_destroy(&copySem) != 0) ERROR();
+    if (sem_destroy(&waitSem) != 0) ERROR();
+}
+void planePass(struct Center *ptr, int sub)
+{
+    centerPlace(ptr,sub);
+    callKnfo(RegisterPass,sub,planeWcfg);
+}
+void planeFail(struct Center *ptr, int sub)
+{
+    centerPlace(ptr,sub);
+    callKnfo(RegisterFail,sub,planeWcfg);
 }
