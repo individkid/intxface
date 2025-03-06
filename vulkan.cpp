@@ -1148,7 +1148,7 @@ struct DrawState : public BaseState {
             BaseState *fetchPtr = 0;
             BaseState *indexPtr = 0;
             for (int i = 0; true; i++) {
-            Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i);
+            Bind bnd = Dependee__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i);
             BindTyp typ = BindType__Bind__BindTyp(bnd);
             if (bnd == Binds) break;
             switch (typ) {
@@ -1177,10 +1177,10 @@ struct DrawState : public BaseState {
     }
     void upset(SmartState log) override {
         if (type == SizeBase) for (int i = 0; true; i++) {
-        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(size.micro)(ResizeLoc)(i);
+        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(size.micro)(ResizeLoc)(i);
         if (bnd == Binds) break; log << "ResizeLoc" << std::endl; BaseState::get()->rdec(bnd,log);}
         else for (int i = 0; true; i++) {
-        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i);
+        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i);
         if (bnd == Binds) break; log << "MiddleLoc " << i << " " << bnd << std::endl; BaseState::get()->rdec(bnd,log);}
     }
     static VkDescriptorSet createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
@@ -1355,11 +1355,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (goon) req<<Req{GoonReq,Binds};
         for (int j = 0; j < num; j++) {
         for (int i = 0; true; i++) {
-        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(mic)(loc[j])(i);
+        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc[j])(i);
         BindTyp typ = BindType__Bind__BindTyp(bnd);
         if (bnd == Binds) break;
         if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,mic}; else req<<Req{RDeeReq,bnd};}
-        req<<Req{DerReq,DrawBnd,0,{(loc[j] == ResizeLoc ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
+        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc[j]),0,
+        {(loc[j] == ResizeLoc ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
         push(req,log);
     }
     void push(Center *center, int sub, void (*pass)(Center*,int), void (*fail)(Center*,int), SmartState log) {

@@ -377,7 +377,13 @@ VertexFile = {
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 }
-MicroBind = {
+Depender = {
+	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
+	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
+	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
+}
+Dependee = {
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
