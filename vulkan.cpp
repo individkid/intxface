@@ -1347,18 +1347,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(HeapState<Req> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
-    void push(Micro mic, BindLoc loc, int idx, int siz, Center *ptr, int sub,
+    void push(Micro mic, BindLoc *loc, int num, int idx, int siz, Center *ptr, int sub,
         void (*pass)(Center*,int), void (*fail)(Center*,int), bool goon, SmartState log) {
         HeapState<Req> req;
-        for (int i = 0; true; i++) {
-        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(mic)(loc)(i);
-        BindTyp typ = BindType__Bind__BindTyp(bnd);
-        if (bnd == Binds) break;
-        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,mic}; else req<<Req{RDeeReq,bnd};}
         if (pass) req<<Req{PNowReq,Binds,0,{},ptr,sub,pass};
         if (fail) req<<Req{FNowReq,Binds,0,{},ptr,sub,fail};
         if (goon) req<<Req{GoonReq,Binds};
-        req<<Req{DerReq,DrawBnd,0,{(loc == ResizeLoc ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};
+        for (int j = 0; j < num; j++) {
+        for (int i = 0; true; i++) {
+        Bind bnd = MicroBind__Micro__BindLoc__Int__Bind(mic)(loc[j])(i);
+        BindTyp typ = BindType__Bind__BindTyp(bnd);
+        if (bnd == Binds) break;
+        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,mic}; else req<<Req{RDeeReq,bnd};}
+        req<<Req{DerReq,DrawBnd,0,{(loc[j] == ResizeLoc ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
         push(req,log);
     }
     void push(Center *center, int sub, void (*pass)(Center*,int), void (*fail)(Center*,int), SmartState log) {
@@ -1381,8 +1382,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Vertexz): ptr = (void*)center->vtx;
         break; case (Basisz): ptr = (void*)center->bas;
         break; case (Piercez): ptr = (void*)center->pie;
-        break; case (Drawz): for (int i = center->idx; i < center->siz; i++)
-        push(center->drw[i].mic,center->drw[i].loc,center->drw[i].idx,center->drw[i].siz,
+        break; case (Drawz): for (int i = 0; i < center->siz; i++)
+        push(center->drw[i].mic,center->drw[i].loc,center->drw[i].num,
+        center->drw[i].idx,center->drw[i].siz,
         center,sub,planePass,planeFail,false,log);
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++)
@@ -1459,8 +1461,9 @@ void TestState::call() {
     Req{FNowReq,Binds,0,{},0,0,vulkanForce}<<
     Req{IDerReq,PipelineBnd,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
     //
+    BindLoc res[] = {ResizeLoc};
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(MicroTest,ResizeLoc,0,0,0,0,0,vulkanWait,true,SmartState());
+    copy->push(MicroTest,res,sizeof(res)/sizeof(res[0]),0,0,0,0,0,vulkanWait,true,SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1490,7 +1493,9 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,vulkanPass,vulkanPass,SmartState());
     //
-    copy->push(MicroTest,MiddleLoc,0,static_cast<uint32_t>(indices.size()),0,0,
+    // BindLoc loc[] = {BeforeLoc,MiddleLoc,AfterLoc};
+    BindLoc loc[] = {MiddleLoc};
+    copy->push(MicroTest,loc,sizeof(loc)/sizeof(loc[0]),0,static_cast<uint32_t>(indices.size()),0,0,
     vulkanWake,vulkanWake,false,SmartState());}
 }
 

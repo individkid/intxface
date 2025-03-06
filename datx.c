@@ -628,7 +628,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		BINARY_DONE() break;
-	case (CndOp): {
+	case (CndOp): { // TODO allow switch on typ of exp
 		void *dats[exp->cnd->len]; int typs[exp->cnd->len]; int typ0 = 0; int val = 0; int idx = 0;
 		for (int i = 0; i < exp->cnd->len; i++) {
 			int typ0 = identType(exp->cnd->typ[i]);
@@ -667,7 +667,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		for (int i = 0; i < exp->cnd->len; i++) free(dats[i]);
 		typ0 = datxEval(dat,&exp->cnd->rng[idx],typ);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (TotOp): {
+	case (TotOp): { // TODO allow convert from and to Str with 
 		int typ0 = 0;
 		typ0 = datxEval(dat,exp->tot,-1);
 		if (typ == -1) typ = identType(exp->typ); if (typ != identType(exp->typ)) ERROR();

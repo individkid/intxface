@@ -379,12 +379,16 @@ FragmentFile = {
 }
 MicroBind = {
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
+	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
+	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
+	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","AfterLoc","Int","2","Bind","DrawBnd"},
 }
 BindType = {
 	{"Bind","MatrixBnd","BindTyp","UniformTyp"},
@@ -652,10 +656,11 @@ Pierce = {
 	{"idx","Int32",{},{}},
 }
 Draw = {
-	{"idx","Int",{},""},
-	{"siz","Int",{},""},
-	{"mic","Micro",{},""},
-	{"loc","BindLoc",{},""},
+	{"idx","Int",{},{}},
+	{"siz","Int",{},{}},
+	{"mic","Micro",{},{}},
+	{"num","Int",{},{}},
+	{"loc","BindLoc",{},"num"},
 }
 Center = {
 	{"mem","Memory",{},""},
