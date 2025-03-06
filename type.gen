@@ -74,6 +74,7 @@ BindTyp = {
 	"FetchTyp",
 	"PipelineTyp",
 	"SwapTyp",
+	"AcquireTyp",
 }
 BindLoc = {
 	"ResizeLoc",
@@ -403,6 +404,7 @@ BindType = {
 	{"Bind","SwapBnd","BindTyp","SwapTyp"},
 	{"Bind","IndexBnd","BindTyp","IndexTyp"},
 	{"Bind","BringupBnd","BindTyp","FetchTyp"},
+	{"Bind","AcquireBnd","BindTyp","AcquireTyp"},
 }
 MemoryBind = {
 	{"Memory","Indexz","Bind","IndexBnd"},
