@@ -488,8 +488,8 @@ struct BaseState {
     }
     VkFence sizeup(SmartState log) {
         safe.wait();
-        if (state != BothBase) {std::cerr << "sizeup invalid state! " << state << std::endl; exit(-1);}
-        if (rlock || wlock) {std::cerr << "sizeup invalid lock!" << std::endl; exit(-1);}
+        if (state != BothBase) {std::cerr << "sizeup invalid state! " <<
+            state << std::endl; exit(-1);}
         if (size == todo); else {
         if (size == SizeState(0,0)); else {safe.post(); unsize(log); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {
@@ -500,8 +500,8 @@ struct BaseState {
     }
     void baseres(SmartState log) {
         safe.wait();
-        if (state != SizeBase) {std::cerr << "baseres invalid state! " << state << "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
-        if (rlock || wlock) {std::cerr << "baseres invalid lock!" << std::endl; exit(-1);}
+        if (state != SizeBase) {std::cerr << "baseres invalid state! " << state <<
+            "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
         if (size == todo); else {
         if (size == SizeState(0,0)); else {safe.post(); unsize(log); safe.wait();}
         if ((size = todo) == SizeState(0,0)); else {
@@ -511,17 +511,16 @@ struct BaseState {
     }
     VkFence basesup(SmartState log) {
         safe.wait();
-        if (state != LockBase)
-        {std::cerr << "setup invalid state! " << debug << " " << state << std::endl; exit(-1);}
-        if (rlock || wlock) {std::cerr << "setup invalid lock!" << std::endl; exit(-1);}
+        if (state != LockBase) {std::cerr << "basesup invalid state! " <<
+            debug << " " << state << std::endl; exit(-1);}
         state = NextBase;
         safe.post();
         return setup(ptr,loc,siz,log);
     }
     void baseups(SmartState log) {
         safe.wait();
-        if (state != NextBase) {std::cerr << "upset invalid state!" << std::endl; exit(-1);}
-        if (rlock || wlock) {std::cerr << "upset invalid lock!" << std::endl; exit(-1);}
+        if (state != NextBase) {std::cerr << "upset invalid state!" <<
+            std::endl; exit(-1);}
         if (item) log << "baseups " << debug << " " << item->name << std::endl;
         else log << "baseups " << debug << std::endl;
         if (item) item->advance();
@@ -667,7 +666,6 @@ struct BindState : public BaseState {
         bind[i]->safe.wait();
         if (bind[i]->rlock <= 0) {log << "invalid decr lock! " << debug << " " << bind[i]->debug << std::endl; slog.clr(); exit(-1);}
         (elock ? bind[i]->wlock : bind[i]->rlock) -= 1;
-        log << "decr " << debug << " " << bind[i]->debug << std::endl;
         bind[i]->safe.post();
         if ((elock ? wsav[i] : rsav[i]) <= 0) {std::cerr << "invalid rdec sav!" << std::endl; exit(-1);}
         (elock ? wsav[i] : rsav[i]) -= 1;
@@ -1167,8 +1165,8 @@ struct DrawState : public BaseState {
     }
     void resize(SmartState log) override {
         type = check();
-        descriptorPool = /*get()->*/get(PipelineBnd)->getDescriptorPool();
-        descriptorLayout = /*get()->*/get(PipelineBnd)->getDescriptorSetLayout();
+        descriptorPool = get(PipelineBnd)->getDescriptorPool();
+        descriptorLayout = get(PipelineBnd)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
         acquire = createSemaphore(device);
@@ -1184,6 +1182,7 @@ struct DrawState : public BaseState {
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         type = check();
         if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
         if (size == SizeState(MicroTest) && siz > 0) {
@@ -1220,9 +1219,8 @@ struct DrawState : public BaseState {
             if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
             else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}}
-            log << "imageIndex " << debug << imageIndex << std::endl;
             if (swapPtr && pipelinePtr && fetchPtr && indexPtr) {
-                recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 swapPtr->getFramebuffer(imageIndex),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
             if (!drawFrame(commandBuffer,graphics,present,swapPtr->getSwapChain(),imageIndex,ptr,loc,siz,size.micro,acquire,after,fence,before))
@@ -1378,7 +1376,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeReq): if (!bind->rinc(req[i].bnd,buf[i],log)) lim = i;
             break; case(IRDeeReq): if (!bind->rinc(req[i].bnd,buf[i],log)) lim = i;
             break; case(WDeeReq): if (!bind->winc(req[i].bnd,buf[i],log)) lim = i;}
-        log << "lim " << lim << " " << num << std::endl;
         if (lim < num) for (int i = 0; i < lim; i++) switch (req[i].tag) {default:
             break; case(DerReq): case(PDerReq): case(IDerReq): if (need)
             bind->push(req[i].bnd,log); else buf[i]->push(log);
