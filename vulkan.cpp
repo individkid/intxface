@@ -97,8 +97,11 @@ struct PhysicalState {
         surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device))
-        {std::cout << "PhysicalState" << std::endl;}
-    ~PhysicalState() {std::cout << "~PhysicalState" << std::endl;}
+        {std::cout << "PhysicalState" << std::endl;
+    }
+    ~PhysicalState() {
+        std::cout << "~PhysicalState" << std::endl;
+    }
     static bool foundIndices(VkSurfaceKHR surface, VkPhysicalDevice device);
     static bool foundDetails(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDevice createDevice(VkInstance instance, VkSurfaceKHR surface, const char **deviceExtensions);
@@ -130,8 +133,10 @@ struct LogicalState {
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
             VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
         renderPass(createRenderPass(device,imageFormat,depthFormat))
-        {std::cout << "LogicalState" << std::endl;}
-    ~LogicalState() {std::cout << "~LogicalState" << std::endl;
+        {std::cout << "LogicalState" << std::endl;
+    }
+    ~LogicalState() {
+        std::cout << "~LogicalState" << std::endl;
         vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -436,7 +441,7 @@ struct BaseState {
         if (rlock-rdec || wlock-wdec) {
         log << "both lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
-        log << "both pass" << std::endl;
+        log << "both pass " << debug << std::endl;
         this->ptr = ptr; this->loc = loc; this->siz = siz; todo = max;
         state = BothBase;
         safe.post();
@@ -453,7 +458,7 @@ struct BaseState {
         if (rlock-rdec || wlock-wdec) {
         log << "size lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
-        log << "size pass" << std::endl;
+        log << "size pass " << debug << std::endl;
         todo = max;
         state = SizeBase;
         safe.post();
@@ -470,7 +475,7 @@ struct BaseState {
         if (rlock-rdec || wlock-wdec) {
         log << "lock lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
-        log << "lock pass" << std::endl;
+        log << "lock pass " << debug << std::endl;
         this->ptr = ptr; this->loc = loc; this->siz = siz;
         state = LockBase;
         safe.post();
@@ -595,9 +600,11 @@ struct BindState : public BaseState {
     BindState() : BaseState("BindState"), lock(0), excl(false) {
         std::cout << "BindState " << debug << std::endl;
         for (int i = 0; i < Binds; i++) {
-        bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}}
-    ~BindState()
-        {std::cout << "~BindState " << debug << std::endl;}
+        bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
+    }
+    ~BindState() {
+        std::cout << "~BindState " << debug << std::endl;
+    }
     BindState *get() override {
         safe.wait();
         if (excl) {safe.post(); return 0;}
@@ -721,8 +728,12 @@ struct SwapState : public BaseState {
         depthFormat(StackState::depthFormat),
         renderPass(StackState::renderPass),
         memProperties(StackState::memProperties)
-        {std::cout << "SwapState " << debug << std::endl;}
-    ~SwapState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~SwapState " << debug << std::endl;}
+        {std::cout << "SwapState " << debug << std::endl;
+    }
+    ~SwapState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~SwapState " << debug << std::endl;
+    }
     VkSwapchainKHR getSwapChain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
     VkExtent2D getSwapChainExtent() override {return size.capabilities.currentExtent;}
@@ -756,6 +767,7 @@ struct SwapState : public BaseState {
         vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
@@ -786,9 +798,11 @@ struct PipeState : public BaseState {
         descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
-        pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro))
-        {std::cout << "PipeState " << debug << std::endl;}
-    ~PipeState() {std::cout << "~PipeState " << debug << std::endl;
+        pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
+        std::cout << "PipeState " << debug << std::endl;
+    }
+    ~PipeState() {
+        std::cout << "~PipeState " << debug << std::endl;
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -803,6 +817,7 @@ struct PipeState : public BaseState {
     void unsize(SmartState log) override {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         return VK_NULL_HANDLE; // return null fence for no wait
     }
     void upset(SmartState log) override {
@@ -829,11 +844,19 @@ struct UniformState : public BaseState {
     UniformState() :
         BaseState("UniformState",StackState::self),
         device(StackState::device), physical(StackState::physical),
-        memProperties(StackState::memProperties)
-        {std::cout << "UniformState " << debug << std::endl;}
-    ~UniformState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~UniformState " << debug << std::endl;}
-    VkBuffer getBuffer() override {return buffer;}
-    int getRange() override {return size.size;}
+        memProperties(StackState::memProperties) {
+        std::cout << "UniformState " << debug << std::endl;
+    }
+    ~UniformState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~UniformState " << debug << std::endl;
+    }
+    VkBuffer getBuffer() override {
+        return buffer;
+    }
+    int getRange() override {
+        return size.size;
+    }
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -846,6 +869,7 @@ struct UniformState : public BaseState {
         vkDestroyBuffer(device, buffer, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid uniform size!" << std::endl; exit(-1);}
@@ -869,7 +893,7 @@ struct BufferState : public BaseState {
     VkDeviceMemory bufferMemory;
     VkCommandBuffer commandBuffer;
     VkFence fence;
-    VkSemaphore after; bool atomic;
+    VkSemaphore after; // TODO figure out way to enable
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -877,7 +901,7 @@ struct BufferState : public BaseState {
         BaseState("BufferState",StackState::self),
         device(StackState::device), physical(StackState::physical),
         graphics(StackState::graphics), commandPool(StackState::commandPool),
-        memProperties(StackState::memProperties), flags(StackState::flags), atomic(false) {
+        memProperties(StackState::memProperties), flags(StackState::flags) {
         std::cout << "BufferState " << debug << std::endl;
     }
     ~BufferState() {
@@ -891,7 +915,7 @@ struct BufferState : public BaseState {
         return size.size;
     }
     VkSemaphore getSemaphore() override {
-        atomic = true; return after;
+        return after;
     }
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
@@ -910,6 +934,7 @@ struct BufferState : public BaseState {
         vkDestroyBuffer(device, buffer, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         loc = loc - size.base;
         if (loc < 0 || siz < 0 || loc+siz > size.size)
         {std::cerr << "invalid buffer size! " << debug << " " << loc << " " << siz << " " << size.size << std::endl; exit(-1);}
@@ -922,8 +947,7 @@ struct BufferState : public BaseState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence,
-        VK_NULL_HANDLE, (atomic?after:VK_NULL_HANDLE));
-        if (atomic) {atomic = false; return VK_NULL_HANDLE;}
+        VK_NULL_HANDLE, VK_NULL_HANDLE);
         return fence;
     }
     void upset(SmartState log) override {
@@ -959,9 +983,13 @@ struct TextureState : public BaseState {
         BaseState("TextureState",StackState::self),
         device(StackState::device), physical(StackState::physical),
         properties(StackState::properties), graphics(StackState::graphics), commandPool(StackState::commandPool),
-        memProperties(StackState::memProperties)
-        {std::cout << "TextureState " << debug << std::endl;}
-    ~TextureState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~TextureState " << debug << std::endl;}
+        memProperties(StackState::memProperties) {
+        std::cout << "TextureState " << debug << std::endl;
+    }
+    ~TextureState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~TextureState " << debug << std::endl;
+    }
     VkImageView getTextureImageView() override {return textureImageView;}
     VkSampler getTextureSampler() override {return textureSampler;}
     void resize(SmartState log) override {
@@ -1033,14 +1061,19 @@ struct TextureState : public BaseState {
 
 struct ResultState : public BaseState {
     ResultState() :
-        BaseState("ResultState")
-        {std::cout << "ResultState " << debug << std::endl;}
-    ~ResultState() {std::cout << "~ResultState " << debug << std::endl;}
+        BaseState("ResultState") {
+        std::cout << "ResultState " << debug << std::endl;
+    }
+    ~ResultState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~ResultState " << debug << std::endl;
+    }
     void unsize(SmartState log) override {
     }
     void resize(SmartState log) override {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         // TODO copy buffer to mapped buffer
         return VK_NULL_HANDLE;
     }
@@ -1052,34 +1085,40 @@ struct ResultState : public BaseState {
 struct AcquireState : public BaseState {
     const VkDevice device;
     ChangeState<Configure,Configures> *copy;
-    bool atomic; VkSemaphore after;
+    VkSemaphore after;
     uint32_t imageIndex;
     BaseEnum type;
     AcquireState() :
         BaseState("AcquireState"),
         device(StackState::device),
         copy(StackState::copy),
-        atomic(false) {
-        after = createSemaphore(device);
+        after(VK_NULL_HANDLE) {
         std::cout << "AcquireState " << debug << std::endl;}
     ~AcquireState() {
-        vkDestroySemaphore(device, after, nullptr);
+        SmartState log; push(SizeState(0,0),log); baseres(log);
         std::cout << "~AcquireState " << debug << std::endl;}
-    VkSemaphore getSemaphore() override {atomic = true; return after;}
-    uint32_t getImageIndex() override {return imageIndex;}
+    VkSemaphore getSemaphore() override {
+        return after;
+    }
+    uint32_t getImageIndex() override {
+        return imageIndex;
+    }
     void resize(SmartState log) override {
         type = check();
+        after = createSemaphore(device);
         log << "resize " << debug << std::endl;
     }
     void unsize(SmartState log) override {
+        vkDestroySemaphore(device, after, nullptr);
         log << "usize " << debug << std::endl;
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         type = check();
         BindState *bind = get();
         VkExtent2D frameExtent = bind->get(SwapBnd)->getSwapChainExtent();
         VkResult result = vkAcquireNextImageKHR(device,
-        bind->get(SwapBnd)->getSwapChain(), UINT64_MAX, (atomic?after:VK_NULL_HANDLE), VK_NULL_HANDLE, &imageIndex);
+        bind->get(SwapBnd)->getSwapChain(), UINT64_MAX, after, VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
@@ -1089,7 +1128,6 @@ struct AcquireState : public BaseState {
         if (type != SizeBase) {
         get()->rdec(SwapBnd,log);
         get()->push(AcquireBnd,log);}
-        atomic = false;
     }
 };
 
@@ -1100,10 +1138,13 @@ struct PresentState : public BaseState {
     PresentState() :
         BaseState("PresentState"),
         present(StackState::present),
-        copy(StackState::copy)
-        {std::cout << "PresentState " << debug << std::endl;}
-    ~PresentState() {SmartState log; push(SizeState(0,0),log); baseres(log); log.clr();
-        std::cout << "~PresentState " << debug << std::endl;}
+        copy(StackState::copy) {
+        std::cout << "PresentState " << debug << std::endl;
+    }
+    ~PresentState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~PresentState " << debug << std::endl;
+    }
     void resize(SmartState log) override {
         type = check();
         log << "resize " << debug << std::endl;
@@ -1112,6 +1153,7 @@ struct PresentState : public BaseState {
         log << "usize " << debug << std::endl;
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         BindState *bind = get();
         if (!presentFrame(present,bind->get(SwapBnd)->getSwapChain(),
         bind->get(AcquireBnd)->getImageIndex(),bind->get(DrawBnd)->getSemaphore()))
@@ -1156,10 +1198,13 @@ struct DrawState : public BaseState {
         frames(StackState::frames),
         copy(StackState::copy),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
-        bufidx(ConstState<int>(0)), bufsiz(0), type(FreeBase)
-        {std::cout << "DrawState " << debug << std::endl;}
-    ~DrawState() {SmartState log; push(SizeState(0,0),log); baseres(log);
-        std::cout << "~DrawState " << debug << std::endl;}
+        bufidx(ConstState<int>(0)), bufsiz(0), type(FreeBase) {
+        std::cout << "DrawState " << debug << std::endl;
+    }
+    ~DrawState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~DrawState " << debug << std::endl;
+    }
     VkSemaphore getSemaphore() override {
         return after;
     }
@@ -1231,11 +1276,13 @@ struct DrawState : public BaseState {
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 swapPtr->getFramebuffer(imageIndex),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
+            log << "before drawFrame " << debug << " " << acquire << " " << (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE) << std::endl; slog.clr();
             if (!drawFrame(commandBuffer,graphics,present,swapPtr->getSwapChain(),imageIndex,ptr,loc,siz,size.micro,
-                acquire,after,fence,(acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE)))
+                (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE),after,fence,VK_NULL_HANDLE))
                 copy->wots(RegisterMask,1<<ResizeAsync);}
             else {std::cerr << "invalid bind set! " <<
                 swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
+            log << "after drawFrame" << std::endl; slog.clr();
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1287,7 +1334,9 @@ struct ThreadState : public DoneState {
         safe(1), wake(0), goon(true) {
         strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
     }
-    ~ThreadState() {std::cout << "~ThreadState" << std::endl;}
+    ~ThreadState() {
+        std::cout << "~ThreadState" << std::endl;
+    }
     void push(BaseState *base, Center *ptr, int sub, void (*fnc)(Center*,int), SmartState log) {
         PushState push = {base,VK_NULL_HANDLE,ptr,sub,fnc,log};
         safe.wait();
@@ -1367,8 +1416,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
         for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
-        std::cout << "CopyState" << std::endl;}
-    ~CopyState() {std::cout << "~CopyState" << std::endl;}
+        std::cout << "CopyState" << std::endl;
+    }
+    ~CopyState() {
+        std::cout << "~CopyState" << std::endl;
+    }
     void push(Req *req, int num, SmartState log) {
         bool goon = true; while (goon) {goon = false;
         BaseState *buf[num] = {}; bool need = false; BindState *bind = 0;
@@ -1482,7 +1534,9 @@ struct TestState : public DoneState {
         safe(1), wake(0), goon(true), copy(copy), size(size) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
-    ~TestState() {std::cout << "~TestState" << std::endl;}
+    ~TestState() {
+        std::cout << "~TestState" << std::endl;
+    }
     void call() override;
     void done() override {
         safe.wait();
@@ -1567,8 +1621,8 @@ void TestState::call() {
     copy->push(mat,0,vulkanPass,vulkanPass,SmartState());
     //
     // BindLoc loc[] = {BeforeLoc,MiddleLoc,AfterLoc};
-    // BindLoc loc[] = {BeforeLoc,MiddleLoc};
-    BindLoc loc[] = {MiddleLoc};
+    BindLoc loc[] = {BeforeLoc,MiddleLoc};
+    // BindLoc loc[] = {MiddleLoc};
     copy->push(MicroTest,loc,sizeof(loc)/sizeof(loc[0]),0,static_cast<uint32_t>(indices.size()),0,0,
     vulkanWake,vulkanWake,false,SmartState());}
 }
@@ -1665,8 +1719,11 @@ struct MainState {
         threadState(logicalState.device,&copyState),
         copyState(&threadState,enumState),
         testState(&copyState,&sizeState) {
-        std::cout << "MainState" << std::endl;}
-    ~MainState() {std::cout << "~MainState" << std::endl;}
+        std::cout << "MainState" << std::endl;
+    }
+    ~MainState() {
+        std::cout << "~MainState" << std::endl;
+    }
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
 };

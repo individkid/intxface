@@ -393,7 +393,7 @@ Dependee = {
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
-	-- {"Micro","MicroTest","BindLoc",MiddleLoc","Int","6","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","2","Bind","DrawBnd"},
