@@ -559,7 +559,6 @@ struct BaseState {
         return lock;
     }
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
-    virtual void setSemaphore(VkSemaphore s) {std::cerr << "BaseState::setSemaphore" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer(int i) {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
@@ -869,7 +868,8 @@ struct BufferState : public BaseState {
     VkBuffer buffer;
     VkDeviceMemory bufferMemory;
     VkCommandBuffer commandBuffer;
-    VkFence fence; VkSemaphore before, after; bool atomic;
+    VkFence fence;
+    VkSemaphore after; bool atomic;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -877,14 +877,22 @@ struct BufferState : public BaseState {
         BaseState("BufferState",StackState::self),
         device(StackState::device), physical(StackState::physical),
         graphics(StackState::graphics), commandPool(StackState::commandPool),
-        memProperties(StackState::memProperties), flags(StackState::flags),
-        before(VK_NULL_HANDLE), atomic(false)
-        {std::cout << "BufferState " << debug << std::endl;}
-    ~BufferState() {SmartState log; push(SizeState(0,0),log); baseres(log); std::cout << "~BufferState " << debug << std::endl;}
-    VkBuffer getBuffer() override {return buffer;}
-    int getRange() override {return size.size;}
-    VkSemaphore getSemaphore() override {atomic = true; return after;}
-    void setSemaphore(VkSemaphore sem) {before = sem;}
+        memProperties(StackState::memProperties), flags(StackState::flags), atomic(false) {
+        std::cout << "BufferState " << debug << std::endl;
+    }
+    ~BufferState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~BufferState " << debug << std::endl;
+    }
+    VkBuffer getBuffer() override {
+        return buffer;
+    }
+    int getRange() override {
+        return size.size;
+    }
+    VkSemaphore getSemaphore() override {
+        atomic = true; return after;
+    }
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
@@ -914,7 +922,7 @@ struct BufferState : public BaseState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence,
-        before, (atomic?after:VK_NULL_HANDLE)); before = VK_NULL_HANDLE;
+        VK_NULL_HANDLE, (atomic?after:VK_NULL_HANDLE));
         if (atomic) {atomic = false; return VK_NULL_HANDLE;}
         return fence;
     }
@@ -1129,7 +1137,6 @@ struct DrawState : public BaseState {
     const int frames;
     ChangeState<Configure,Configures> *copy;
     VkSemaphore acquire;
-    VkSemaphore before;
     VkSemaphore after;
     VkFence fence;
     VkDescriptorPool descriptorPool;
@@ -1148,7 +1155,6 @@ struct DrawState : public BaseState {
         commandPool(StackState::commandPool),
         frames(StackState::frames),
         copy(StackState::copy),
-        before(VK_NULL_HANDLE),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0), type(FreeBase)
         {std::cout << "DrawState " << debug << std::endl;}
@@ -1156,9 +1162,6 @@ struct DrawState : public BaseState {
         std::cout << "~DrawState " << debug << std::endl;}
     VkSemaphore getSemaphore() override {
         return after;
-    }
-    void setSemaphore(VkSemaphore sem) {
-        before = sem;
     }
     BaseState *get(Bind typ) {
         return BaseState::get()->get(typ);
@@ -1184,7 +1187,8 @@ struct DrawState : public BaseState {
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         type = check();
-        if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
+        if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" <<
+            std::endl; exit(-1);}
         if (size == SizeState(MicroTest) && siz > 0) {
             VkExtent2D swapChainExtent = get(SwapBnd)->getSwapChainExtent();
             vkResetFences(device, 1, &fence);
@@ -1199,18 +1203,22 @@ struct DrawState : public BaseState {
             BindTyp typ = BindType__Bind__BindTyp(bnd);
             if (bnd == Binds) break;
             switch (typ) {
-            default: {std::cerr << "invalid bind type!" << std::endl; exit(-1);}
+            default: {std::cerr << "invalid bind type!" <<
+                std::endl; exit(-1);}
             break; case (SwapTyp): swapPtr = get(bnd);
             break; case (PipelineTyp): pipelinePtr = get(bnd);
             break; case (FetchTyp): fetchPtr = get(bnd);
             break; case (IndexTyp): indexPtr = get(bnd);
             break; case (AcquireTyp): acquirePtr = get(bnd);
             break; case (UniformTyp):
-                if (get(bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " << get(bnd)->debug << std::endl; exit(-1);}
+                if (get(bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " <<
+                    get(bnd)->debug << std::endl; exit(-1);}
                 updateUniformDescriptor(device,get(bnd)->getBuffer(),i,get(bnd)->getRange(),descriptorSet);
             break; case (TextureTyp):
-                if (get(bnd)->getTextureImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " << get(bnd)->debug << std::endl; exit(-1);}
-                if (get(bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" << std::endl; exit(-1);}
+                if (get(bnd)->getTextureImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " <<
+                    get(bnd)->debug << std::endl; exit(-1);}
+                if (get(bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
+                    std::endl; exit(-1);}
                 updateTextureDescriptor(device,get(bnd)->getTextureImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
             uint32_t imageIndex;
             if (acquirePtr) imageIndex = acquirePtr->getImageIndex(); else {
@@ -1223,9 +1231,11 @@ struct DrawState : public BaseState {
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
                 swapPtr->getFramebuffer(imageIndex),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
-            if (!drawFrame(commandBuffer,graphics,present,swapPtr->getSwapChain(),imageIndex,ptr,loc,siz,size.micro,acquire,after,fence,before))
-                copy->wots(RegisterMask,1<<ResizeAsync); before = VK_NULL_HANDLE;}
-            else {std::cerr << "invalid bind set! " << swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
+            if (!drawFrame(commandBuffer,graphics,present,swapPtr->getSwapChain(),imageIndex,ptr,loc,siz,size.micro,
+                acquire,after,fence,(acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE)))
+                copy->wots(RegisterMask,1<<ResizeAsync);}
+            else {std::cerr << "invalid bind set! " <<
+                swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1384,16 +1394,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(FNowReq): req[i].fnc(req[i].ptr,req[i].sub);
             break; case(FEnqReq): thread->push(0,req[i].ptr,req[i].sub,req[i].fnc,log);
             break; case(GoonReq): goon = true;}
-        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
+        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
         if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
             break; case(DerReq): stack[req[i].bnd]->advance();
-            if (last) buf[i]->setSemaphore(last->getSemaphore()); last = buf[i];
             if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PDerReq): 
-            if (last) buf[i]->setSemaphore(last->getSemaphore()); last = buf[i];
             if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(IDerReq): stack[req[i].bnd]->advance(req[i].idx);
-            if (last) buf[i]->setSemaphore(last->getSemaphore()); last = buf[i];
             if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PNowReq): req[i].fnc(req[i].ptr,req[i].sub);
             break; case(PEnqReq): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
