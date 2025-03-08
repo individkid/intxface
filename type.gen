@@ -378,6 +378,11 @@ VertexFile = {
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 }
+Location = {
+	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
+	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
+	-- {"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
+}
 Depender = {
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
@@ -668,8 +673,6 @@ Draw = {
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 	{"mic","Micro",{},{}},
-	{"num","Int",{},{}},
-	{"loc","BindLoc",{},"num"},
 }
 Center = {
 	{"mem","Memory",{},""},

@@ -408,19 +408,25 @@ struct BaseState {
     int rlock, wlock;
     BindState *lock;
     StackState *item;
+    BaseState *last; BaseState *next;
     // following indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
     SizeState size, todo;
     void *ptr; int loc; int siz;
     char debug[64];
     BaseState() : safe(1), state(InitBase),
-        rlock(0), wlock(0), lock(0), item(0), size(0,0), todo(0,0), debug{0} {debugChar="none";}
+        rlock(0), wlock(0), lock(0), item(0), next(0), last(0),
+        size(0,0), todo(0,0), debug{0} {
+        debugChar="none";
+    }
     BaseState(const char *name) : safe(1), state(InitBase),
-        rlock(0), wlock(0), lock(0), item(0), size(0,0), todo(0,0), debug{0} {debugChar="none";
+        rlock(0), wlock(0), lock(0), item(0), next(0), last(0),
+        size(0,0), todo(0,0), debug{0} {debugChar="none";
         sprintf(debug,"%s%d",name,StackState::debug++);
     }
     BaseState(const char *name, StackState *ptr) : safe(1), state(InitBase),
-        rlock(0), wlock(0), lock(0), item(ptr), size(0,0), todo(0,0), debug{0} {
+        rlock(0), wlock(0), lock(0), item(ptr), next(0), last(0),
+        size(0,0), todo(0,0), debug{0} {
         sprintf(debug,"%s%s%d",item->name,name,StackState::debug++);
     }
     bool push(int rdec, int wdec, Arg arg, SmartState log) {
@@ -597,7 +603,8 @@ struct BindState : public BaseState {
     int rsav[Binds];
     int wsav[Binds];
     int lock; bool excl;
-    BindState() : BaseState("BindState"), lock(0), excl(false) {
+    BaseState *last;
+    BindState() : BaseState("BindState"), lock(0), excl(false), last(0) {
         std::cout << "BindState " << debug << std::endl;
         for (int i = 0; i < Binds; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
@@ -893,7 +900,7 @@ struct BufferState : public BaseState {
     VkDeviceMemory bufferMemory;
     VkCommandBuffer commandBuffer;
     VkFence fence;
-    VkSemaphore after; // TODO figure out way to enable
+    VkSemaphore after;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -947,7 +954,8 @@ struct BufferState : public BaseState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence,
-        VK_NULL_HANDLE, VK_NULL_HANDLE);
+        (last ? last->getSemaphore() : VK_NULL_HANDLE),
+        (next ? after : VK_NULL_HANDLE));
         return fence;
     }
     void upset(SmartState log) override {
@@ -1446,7 +1454,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(FNowReq): req[i].fnc(req[i].ptr,req[i].sub);
             break; case(FEnqReq): thread->push(0,req[i].ptr,req[i].sub,req[i].fnc,log);
             break; case(GoonReq): goon = true;}
-        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
+        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
+        if (lim == num) for (int i = 0; i < num; i++) switch(req[i].tag) {default:
+            break; case(DerReq): case (PDerReq): case (IDerReq):
+            if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
         if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
             break; case(DerReq): stack[req[i].bnd]->advance();
             if (bind) buf[i]->set(bind); thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
@@ -1464,21 +1475,27 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(HeapState<Req> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
-    void push(Micro mic, BindLoc *loc, int num, int idx, int siz, Center *ptr, int sub,
+    void push(Micro mic, int idx, int siz, Center *ptr, int sub,
         void (*pass)(Center*,int), void (*fail)(Center*,int), bool goon, SmartState log) {
         HeapState<Req> req;
         if (pass) req<<Req{PNowReq,Binds,0,{},ptr,sub,pass};
         if (fail) req<<Req{FNowReq,Binds,0,{},ptr,sub,fail};
         if (goon) req<<Req{GoonReq,Binds};
-        for (int j = 0; j < num; j++) {
+        for (int j = 0; true; j++) {
+        BindLoc loc = Location__Micro__Int__BindLoc(mic)(j);
+        if (siz == 0) {if (j > 0) loc = BindLocs; else loc = ResizeLoc;}
+        if (loc == BindLocs) break;
         for (int i = 0; true; i++) {
-        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc[j])(i);
+        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
         BindTyp typ = BindType__Bind__BindTyp(bnd);
         if (bnd == Binds) break;
         if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,mic}; else req<<Req{RDeeReq,bnd};}}
-        for (int j = 0; j < num; j++) {
-        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc[j]),0,
-        {(loc[j] == ResizeLoc ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
+        for (int j = 0; true; j++) {
+        BindLoc loc = Location__Micro__Int__BindLoc(mic)(j);
+        if (siz == 0) {if (j > 0) loc = BindLocs; else loc = ResizeLoc;}
+        if (loc == BindLocs) break;
+        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc),0,
+        {(siz == 0 ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
         push(req,log);
     }
     void push(Center *center, int sub, void (*pass)(Center*,int), void (*fail)(Center*,int), SmartState log) {
@@ -1502,8 +1519,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): ptr = (void*)center->bas;
         break; case (Piercez): ptr = (void*)center->pie;
         break; case (Drawz): for (int i = 0; i < center->siz; i++)
-        push(center->drw[i].mic,center->drw[i].loc,center->drw[i].num,
-        center->drw[i].idx,center->drw[i].siz,
+        push(center->drw[i].mic,center->drw[i].idx,center->drw[i].siz,
         center,sub,planePass,planeFail,false,log);
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++)
@@ -1582,9 +1598,8 @@ void TestState::call() {
     Req{FNowReq,Binds,0,{},0,0,vulkanForce}<<
     Req{IDerReq,PipelineBnd,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
     //
-    BindLoc res[] = {ResizeLoc};
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(MicroTest,res,sizeof(res)/sizeof(res[0]),0,0,0,0,0,vulkanWait,true,SmartState());
+    copy->push(MicroTest,0,0,0,0,0,vulkanWait,true,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Req>()<<
     Req{DerReq,AcquireBnd,0,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
@@ -1620,10 +1635,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,vulkanPass,vulkanPass,SmartState());
     //
-    // BindLoc loc[] = {BeforeLoc,MiddleLoc,AfterLoc};
-    BindLoc loc[] = {BeforeLoc,MiddleLoc};
-    // BindLoc loc[] = {MiddleLoc};
-    copy->push(MicroTest,loc,sizeof(loc)/sizeof(loc[0]),0,static_cast<uint32_t>(indices.size()),0,0,
+    copy->push(MicroTest,0,static_cast<uint32_t>(indices.size()),0,0,
     vulkanWake,vulkanWake,false,SmartState());}
 }
 
