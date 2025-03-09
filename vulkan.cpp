@@ -654,33 +654,35 @@ struct BindState : public BaseState {
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
         safe.wait(); buf->safe.wait();
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
-        if (bind[i] != 0 && bind[i] != buf) {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
+        if (bind[i] != 0 && bind[i] != buf)
+            {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
         switch (buf->state) {
         default: goto fail;
         break; case (FreeBase):
         break; case (FillBase): if (!buf->check(buf->state)) goto fail;
         break; case (BothBase): case (SizeBase): case (LockBase): if (psav[i] == 0) goto fail;}
         if (buf->wlock || (elock && buf->rlock)) goto fail;
-        log << "incr pass " << debug << " " << buf->debug << std::endl;
         if (bind[i] == 0) lock += 1;
         bind[i] = buf;
         (elock ? buf->wlock : buf->rlock) += 1;
         (elock ? wsav[i] : rsav[i]) += 1;
         buf->safe.post(); safe.post(); return true;
         fail:
-        log << "incr fail " << buf->debug << " " << buf->debug << std::endl;
         if (lock == 0) excl = false;
         buf->safe.post(); safe.post(); return false;
     }
     void decr(Bind i, bool elock, SmartState log) {
         safe.wait();
         if (!excl) {std::cerr << "invalid decr excl!" << std::endl; exit(-1);}
-        if (lock <= 0 || bind[i] == 0) {std::cerr << "invalid decr bind! " << i << std::endl; exit(-1);}
+        if (lock <= 0 || bind[i] == 0)
+            {std::cerr << "invalid decr bind! " << i << std::endl; exit(-1);}
         bind[i]->safe.wait();
-        if (bind[i]->rlock <= 0) {log << "invalid decr lock! " << debug << " " << bind[i]->debug << std::endl; slog.clr(); exit(-1);}
+        if (bind[i]->rlock <= 0) {log << "invalid decr lock! " <<
+            debug << " " << bind[i]->debug << std::endl; exit(-1);}
         (elock ? bind[i]->wlock : bind[i]->rlock) -= 1;
         bind[i]->safe.post();
-        if ((elock ? wsav[i] : rsav[i]) <= 0) {std::cerr << "invalid rdec sav!" << std::endl; exit(-1);}
+        if ((elock ? wsav[i] : rsav[i]) <= 0)
+            {std::cerr << "invalid rdec sav!" << std::endl; exit(-1);}
         (elock ? wsav[i] : rsav[i]) -= 1;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) excl = false;
@@ -1121,7 +1123,6 @@ struct AcquireState : public BaseState {
         log << "usize " << debug << std::endl;
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
         type = check();
         BindState *bind = get();
         VkExtent2D frameExtent = bind->get(SwapBnd)->getSwapChainExtent();
@@ -1129,7 +1130,7 @@ struct AcquireState : public BaseState {
         bind->get(SwapBnd)->getSwapChain(), UINT64_MAX, after, VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-        {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
+            {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
@@ -1161,10 +1162,10 @@ struct PresentState : public BaseState {
         log << "usize " << debug << std::endl;
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
+        type = check();
         BindState *bind = get();
         if (!presentFrame(present,bind->get(SwapBnd)->getSwapChain(),
-        bind->get(AcquireBnd)->getImageIndex(),bind->get(DrawBnd)->getSemaphore()))
+        bind->get(AcquireBnd)->getImageIndex(),last->getSemaphore()))
         copy->wots(RegisterMask,1<<ResizeAsync);
         return VK_NULL_HANDLE;
     }
@@ -1172,7 +1173,6 @@ struct PresentState : public BaseState {
         if (type != SizeBase) {
         get()->rdec(SwapBnd,log);
         get()->rdec(AcquireBnd,log);
-        get()->rdec(DrawBnd,log);
         get()->push(PresentBnd,log);}
     }
     static bool presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before);
@@ -1238,7 +1238,6 @@ struct DrawState : public BaseState {
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
         type = check();
         if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" <<
             std::endl; exit(-1);}
@@ -1251,18 +1250,20 @@ struct DrawState : public BaseState {
             BaseState *fetchPtr = 0;
             BaseState *indexPtr = 0;
             BaseState *acquirePtr = 0;
+            BaseState *presentPtr = 0;
             for (int i = 0; true; i++) {
             Bind bnd = Dependee__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i);
             BindTyp typ = BindType__Bind__BindTyp(bnd);
             if (bnd == Binds) break;
             switch (typ) {
-            default: {std::cerr << "invalid bind type!" <<
-                std::endl; exit(-1);}
+            default: {std::cerr << "invalid bind type! " <<
+                debug << " " << typ << std::endl; exit(-1);}
             break; case (SwapTyp): swapPtr = get(bnd);
             break; case (PipelineTyp): pipelinePtr = get(bnd);
             break; case (FetchTyp): fetchPtr = get(bnd);
             break; case (IndexTyp): indexPtr = get(bnd);
             break; case (AcquireTyp): acquirePtr = get(bnd);
+            break; case (PresentTyp): presentPtr = get(bnd);
             break; case (UniformTyp):
                 if (get(bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " <<
                     get(bnd)->debug << std::endl; exit(-1);}
@@ -1273,24 +1274,24 @@ struct DrawState : public BaseState {
                 if (get(bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
                     std::endl; exit(-1);}
                 updateTextureDescriptor(device,get(bnd)->getTextureImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
-            uint32_t imageIndex;
-            if (acquirePtr) imageIndex = acquirePtr->getImageIndex(); else {
-            VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
-                UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
-            if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
-            else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-            {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}}
+            uint32_t imageIndex; if (acquirePtr) imageIndex = acquirePtr->getImageIndex();
+                else {VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
+                    UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
+                if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
+                else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+                    {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}}
+            // TODO eliminate imageIndex and call getFramebuffer or whatever in acquirePtr
             if (swapPtr && pipelinePtr && fetchPtr && indexPtr) {
-            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
-                swapPtr->getFramebuffer(imageIndex),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
-                fetchPtr->getBuffer(),indexPtr->getBuffer());
-            log << "before drawFrame " << debug << " " << acquire << " " << (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE) << std::endl; slog.clr();
-            if (!drawFrame(commandBuffer,graphics,present,swapPtr->getSwapChain(),imageIndex,ptr,loc,siz,size.micro,
-                (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE),after,fence,VK_NULL_HANDLE))
-                copy->wots(RegisterMask,1<<ResizeAsync);}
+                recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
+                    swapPtr->getFramebuffer(imageIndex),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
+                    fetchPtr->getBuffer(),indexPtr->getBuffer());
+                drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
+                    (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE),after,fence,VK_NULL_HANDLE);}
             else {std::cerr << "invalid bind set! " <<
                 swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
-            log << "after drawFrame" << std::endl; slog.clr();
+            if (presentPtr == 0 && swapPtr) {
+                if (!PresentState::presentFrame(present, swapPtr->getSwapChain(), imageIndex, after))
+                    copy->wots(RegisterMask,1<<ResizeAsync);}
             return fence;
         }
         return VK_NULL_HANDLE;
@@ -1317,8 +1318,7 @@ struct DrawState : public BaseState {
         VkDescriptorSet descriptorSet, VkExtent2D renderArea, Micro micro, uint32_t indices,
         VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
         VkBuffer vertexBuffer, VkBuffer indexBuffer);
-    static bool drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkQueue present,
-        VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
+    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro,
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
 
@@ -1438,7 +1438,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(IDerReq): buf[i] = stack[req[i].bnd]->prebuf(req[i].idx);
             break; case(RDeeReq): case(IRDeeReq): case(WDeeReq): buf[i] = stack[req[i].bnd]->buffer(); need = true;}
         if (need) bind = stack[BindBnd]->buffer()->get();
-        int lim = num; if (need && bind == 0) lim = 0;
+        int lim = num; if (need && bind == 0) lim = -1;
         for (int i = 0; i < num && i < lim; i++) switch (req[i].tag) {default:
             break; case(DerReq): case(PDerReq): case(IDerReq): if (need) {
             if (!bind->push(req[i].bnd,buf[i],req[i].arg,log)) lim = i;} else {
@@ -1482,8 +1482,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (fail) req<<Req{FNowReq,Binds,0,{},ptr,sub,fail};
         if (goon) req<<Req{GoonReq,Binds};
         for (int j = 0; true; j++) {
-        BindLoc loc = Location__Micro__Int__BindLoc(mic)(j);
-        if (siz == 0) {if (j > 0) loc = BindLocs; else loc = ResizeLoc;}
+        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
         for (int i = 0; true; i++) {
         Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
@@ -1491,8 +1490,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (bnd == Binds) break;
         if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,mic}; else req<<Req{RDeeReq,bnd};}}
         for (int j = 0; true; j++) {
-        BindLoc loc = Location__Micro__Int__BindLoc(mic)(j);
-        if (siz == 0) {if (j > 0) loc = BindLocs; else loc = ResizeLoc;}
+        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
         req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc),0,
         {(siz == 0 ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
@@ -2689,10 +2687,8 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     {std::cerr << "failed to record command buffer!" << std::endl; exit(-1);}
 }
-bool DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkQueue present,
-    VkSwapchainKHR swapChain, uint32_t imageIndex, void *ptr, int loc, int siz, Micro micro,
+void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro,
     VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before) {
-    // TODO depending on micro, disable acquire and present
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     VkSemaphore waitSemaphores[] = {acquire,before};
@@ -2710,19 +2706,6 @@ bool DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkQue
     submitInfo.pSignalSemaphores = signalSemaphores;
     if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
     {std::cerr << "failed to submit draw command buffer!" << std::endl; exit(-1);}
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
-    VkSwapchainKHR swapChains[] = {swapChain};
-    uint32_t imageIndices[] = {imageIndex};
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = imageIndices;
-    VkResult result = vkQueuePresentKHR(present, &presentInfo);
-    if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR && result != VK_SUCCESS)
-    {std::cerr << "failed to present swap chain image!" << std::endl; exit(-1);}
-    return (result == VK_SUCCESS);
 }
 
 void TestState::testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug) {

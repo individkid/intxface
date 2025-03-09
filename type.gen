@@ -75,6 +75,7 @@ BindTyp = {
 	"PipelineTyp",
 	"SwapTyp",
 	"AcquireTyp",
+	"PresentTyp",
 }
 BindLoc = {
 	"ResizeLoc",
@@ -381,7 +382,7 @@ FragmentFile = {
 Location = {
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
-	-- {"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
+	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
 }
 Depender = {
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
@@ -399,9 +400,9 @@ Dependee = {
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","7","Bind","PresentBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Int","2","Bind","DrawBnd"},
 }
 BindType = {
 	{"Bind","MatrixBnd","BindTyp","UniformTyp"},
@@ -411,6 +412,7 @@ BindType = {
 	{"Bind","IndexBnd","BindTyp","IndexTyp"},
 	{"Bind","BringupBnd","BindTyp","FetchTyp"},
 	{"Bind","AcquireBnd","BindTyp","AcquireTyp"},
+	{"Bind","PresentBnd","BindTyp","PresentTyp"},
 }
 MemoryBind = {
 	{"Memory","Indexz","Bind","IndexBnd"},
