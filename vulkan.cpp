@@ -572,6 +572,7 @@ struct BaseState {
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
+    virtual VkFramebuffer getFramebuffer() {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer(int i) {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
     virtual VkPipeline getPipeline() {std::cerr << "BaseState::pipeline" << std::endl; exit(-1);}
     virtual VkPipelineLayout getPipelineLayout() {std::cerr << "BaseState::pipelineLayout" << std::endl; exit(-1);}
@@ -956,8 +957,7 @@ struct BufferState : public BaseState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence,
-        (last ? last->getSemaphore() : VK_NULL_HANDLE),
-        (next ? after : VK_NULL_HANDLE));
+        (last ? last->getSemaphore() : VK_NULL_HANDLE), (next ? after : VK_NULL_HANDLE));
         return fence;
     }
     void upset(SmartState log) override {
@@ -1113,6 +1113,10 @@ struct AcquireState : public BaseState {
     uint32_t getImageIndex() override {
         return imageIndex;
     }
+    VkFramebuffer getFramebuffer() override {
+        BindState *bind = get();
+        return bind->get(SwapBnd)->getFramebuffer(imageIndex);
+    }
     void resize(SmartState log) override {
         type = check();
         after = createSemaphore(device);
@@ -1123,6 +1127,7 @@ struct AcquireState : public BaseState {
         log << "usize " << debug << std::endl;
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         type = check();
         BindState *bind = get();
         VkExtent2D frameExtent = bind->get(SwapBnd)->getSwapChainExtent();
@@ -1162,6 +1167,7 @@ struct PresentState : public BaseState {
         log << "usize " << debug << std::endl;
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         type = check();
         BindState *bind = get();
         if (!presentFrame(present,bind->get(SwapBnd)->getSwapChain(),
@@ -1238,6 +1244,7 @@ struct DrawState : public BaseState {
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
         type = check();
         if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" <<
             std::endl; exit(-1);}
@@ -1262,8 +1269,8 @@ struct DrawState : public BaseState {
             break; case (PipelineTyp): pipelinePtr = get(bnd);
             break; case (FetchTyp): fetchPtr = get(bnd);
             break; case (IndexTyp): indexPtr = get(bnd);
-            break; case (AcquireTyp): acquirePtr = get(bnd);
-            break; case (PresentTyp): presentPtr = get(bnd);
+            break; case (BeforeTyp): acquirePtr = get(bnd);
+            break; case (AfterTyp): presentPtr = get(bnd);
             break; case (UniformTyp):
                 if (get(bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " <<
                     get(bnd)->debug << std::endl; exit(-1);}
@@ -1274,16 +1281,16 @@ struct DrawState : public BaseState {
                 if (get(bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
                     std::endl; exit(-1);}
                 updateTextureDescriptor(device,get(bnd)->getTextureImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
-            uint32_t imageIndex; if (acquirePtr) imageIndex = acquirePtr->getImageIndex();
-                else {VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
+            uint32_t imageIndex; if (acquirePtr == 0) {
+                VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
                     UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
                 if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
                 else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
                     {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}}
-            // TODO eliminate imageIndex and call getFramebuffer or whatever in acquirePtr
-            if (swapPtr && pipelinePtr && fetchPtr && indexPtr) {
+            if ((swapPtr || acquirePtr) && pipelinePtr && fetchPtr && indexPtr) {
                 recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
-                    swapPtr->getFramebuffer(imageIndex),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
+                    (acquirePtr ? acquirePtr->getFramebuffer() : swapPtr->getFramebuffer(imageIndex)),
+                    pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
                     fetchPtr->getBuffer(),indexPtr->getBuffer());
                 drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
                     (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE),after,fence,VK_NULL_HANDLE);}

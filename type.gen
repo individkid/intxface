@@ -74,8 +74,8 @@ BindTyp = {
 	"FetchTyp",
 	"PipelineTyp",
 	"SwapTyp",
-	"AcquireTyp",
-	"PresentTyp",
+	"BeforeTyp",
+	"AfterTyp",
 }
 BindLoc = {
 	"ResizeLoc",
@@ -396,11 +396,10 @@ Dependee = {
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","PipelineBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","SwapBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","AcquireBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","7","Bind","PresentBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","IndexBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","BringupBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","PresentBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 }
@@ -411,8 +410,8 @@ BindType = {
 	{"Bind","SwapBnd","BindTyp","SwapTyp"},
 	{"Bind","IndexBnd","BindTyp","IndexTyp"},
 	{"Bind","BringupBnd","BindTyp","FetchTyp"},
-	{"Bind","AcquireBnd","BindTyp","AcquireTyp"},
-	{"Bind","PresentBnd","BindTyp","PresentTyp"},
+	{"Bind","AcquireBnd","BindTyp","BeforeTyp"},
+	{"Bind","PresentBnd","BindTyp","AfterTyp"},
 }
 MemoryBind = {
 	{"Memory","Indexz","Bind","IndexBnd"},
