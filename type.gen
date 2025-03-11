@@ -52,7 +52,6 @@ Bind = {
     "PipelineBnd",
     "AcquireBnd",
     "PresentBnd",
-    "ResultBnd",
     "DrawBnd",
     "BindBnd",
 	"IndexBnd",
