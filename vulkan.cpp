@@ -389,6 +389,10 @@ enum ArgEnum {
 struct Arg {
     ArgEnum tag; void *ptr; int loc; int siz; SizeState max;
 };
+struct BindState;
+struct Rsp {
+    Micro mic; BindLoc loc; Bind der; BindState *ptr;
+};
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
     FillBase, // ready for update
@@ -399,7 +403,6 @@ enum BaseEnum {
     NextBase, // waiting for fence done
     BaseEnums
 };
-struct BindState;
 struct BaseState {
     int debugCount;
     const char *debugChar;
@@ -553,8 +556,7 @@ struct BaseState {
         safe.post();
         return setup(ptr,loc,siz,log);
     }
-    void unlock(SmartState log);
-    void baseups(SmartState log) {
+    Rsp baseups(SmartState log) {
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" <<
             std::endl; exit(-1);}
@@ -565,7 +567,10 @@ struct BaseState {
         upset(log);
         if (lock && size.tag != MicroSize) {std::cerr << "upset invalid tag!" <<
             std::endl; exit(-1);}
-        if (lock) unlock(log);
+        Rsp rsp{size.micro,bloc,bder,lock};
+        return rsp;
+    }
+    void free(SmartState log) {
         lock = 0;
         bloc = BindLocs;
         bder = Binds;
@@ -681,6 +686,13 @@ struct BindState : public BaseState {
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
+    void push(Micro mic, BindLoc loc, Bind der, SmartState log) {
+        for (int i = 0; true; i++) {
+        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
+        if (bnd == Binds) break;
+        rdec(bnd,log);}
+        push(der,log);
+    }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
         if (bind[i] != 0 && bind[i] != buf)
@@ -719,13 +731,235 @@ struct BindState : public BaseState {
     }
 };
 
-void BaseState::unlock(SmartState log) {
-    for (int i = 0; true; i++) {
-    Bind bnd = Dependee__Micro__BindLoc__Int__Bind(size.micro)(bloc)(i);
-    if (bnd == Binds) break;
-    lock->rdec(bnd,log);}
-    lock->push(bder,log);
-}
+struct PushState {
+    BaseState *base;
+    VkFence fence;
+    Center *ptr;
+    int sub;
+    void (*fnc)(Center*,int);
+    SmartState log;
+};
+struct ThreadState : public DoneState {
+    const VkDevice device;
+    ChangeState<Configure,Configures> *copy;
+    SafeState safe; SafeState wake;
+    std::deque<PushState> before;
+    std::deque<PushState> after;
+    bool goon;
+    ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
+        device(device), copy(copy),
+        safe(1), wake(0), goon(true) {
+        strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
+    }
+    ~ThreadState() {
+        std::cout << "~ThreadState" << std::endl;
+    }
+    void push(BaseState *base, Center *ptr, int sub, void (*fnc)(Center*,int), SmartState log) {
+        PushState push = {base,VK_NULL_HANDLE,ptr,sub,fnc,log};
+        safe.wait();
+        before.push_back(push);
+        safe.post();
+        wake.wake();
+    }
+    bool stage() {
+        while (1) {while (1) {
+        safe.wait();
+        if (before.empty()) {safe.post(); break;}
+        PushState push = before.front(); before.pop_front();
+        safe.post();
+        if (push.base) switch (push.base->get()) {
+        default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
+        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
+        break; case(LockBase): push.fence = push.base->basesup(push.log);
+        break; case(BothBase): push.fence = push.base->sizeup(push.log);}
+        after.push_back(push);}
+        if (!after.empty()) break;
+        safe.wait();
+        bool empty = before.empty();
+        bool done = (empty && !goon);
+        safe.post();
+        if (done) return false;
+        if (empty) wake.wait();}
+        return true;
+    }
+    void call() override {
+        while (stage()) {
+        if (after.empty()) {std::cerr << "separate empty after!" << std::endl; exit(-1);}
+        PushState push = after.front(); after.pop_front();
+        if (push.fence != VK_NULL_HANDLE) {
+        VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
+        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
+        if (push.fnc) {push.fnc(push.ptr,push.sub);}
+        copy->wots(RegisterMask,1<<FenceAsync);
+        if (push.base) {Rsp rsp = push.base->baseups(push.log);
+        if (rsp.ptr) rsp.ptr->push(rsp.mic,rsp.loc,rsp.der,push.log);
+        push.base->free(push.log);}}
+        vkDeviceWaitIdle(device);
+    }
+    void done() override {
+        safe.wait();
+        goon = false;
+        safe.post();
+        wake.wake();
+    }
+    void heap() override {}
+};
+
+extern "C" {
+int datxVoids(void *dat);
+void *datxVoidz(int num, void *dat);
+};
+struct EnumState {
+    Bind key;
+    StackState *val;
+};
+enum ReqEnum {
+    DerReq, // push arg to current, set bind, push to thread, and advance
+    PDerReq, // push arg to next, set bind, and push to thread
+    IDerReq, // push arg to indexed, set bind, push to thread, and advance to index
+    RDeeReq, // increment read lock in current, and add to bind
+    IRDeeReq, // increment read lock in indexed, and add to bind
+    WDeeReq, // increment write lock in current, and add to bind
+    PNowReq, // call function now if pass
+    FNowReq, // call function now if fail
+    PEnqReq, // call function when free if pass
+    FEnqReq, // call function when free if fail
+    GoonReq, // retry if fail
+    NoopReq, // do nothing
+};
+struct Req {
+    ReqEnum tag; Bind bnd; BindLoc loc; int idx; Arg arg; Center *ptr; int sub; void (*fnc)(Center*,int);
+};
+struct CopyState : public ChangeState<Configure,Configures> {
+    ThreadState *thread; StackState *stack[Binds];
+    CopyState(ThreadState *thread, EnumState *stack) :
+        thread(thread), stack{0} {
+        for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
+        std::cout << "CopyState" << std::endl;
+    }
+    ~CopyState() {
+        std::cout << "~CopyState" << std::endl;
+    }
+    void push(Req *req, int num, SmartState log) {
+        bool goon = true; while (goon) {goon = false;
+        BaseState *buf[num] = {}; BindState *bind = 0; int count = 0;
+        for (int i = 0; i < num; i++) switch (req[i].tag) {default:
+            break; case(DerReq): buf[i] = stack[req[i].bnd]->buffer(); count += 1;
+            break; case(PDerReq): buf[i] = stack[req[i].bnd]->prebuf(); count += 1;
+            break; case(IDerReq): buf[i] = stack[req[i].bnd]->prebuf(req[i].idx); count += 1;
+            break; case(RDeeReq): case(IRDeeReq): case(WDeeReq):
+            buf[i] = stack[req[i].bnd]->buffer(); count += 1;}
+        if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
+        int lim = num; if (count > 1 && bind == 0) lim = -1;
+        for (int i = 0; i < num && i < lim; i++) switch (req[i].tag) {default:
+            break; case(DerReq): case(PDerReq): case(IDerReq): if (bind) {
+            if (!bind->push(req[i].bnd,buf[i],req[i].arg,log)) lim = i;} else {
+            if (!buf[i]->push(req[i].arg,log)) lim = i;}
+            break; case(RDeeReq): if (!bind->rinc(req[i].bnd,buf[i],log)) lim = i;
+            break; case(IRDeeReq): if (!bind->rinc(req[i].bnd,buf[i],log)) lim = i;
+            break; case(WDeeReq): if (!bind->winc(req[i].bnd,buf[i],log)) lim = i;}
+        if (lim < num) for (int i = 0; i < lim; i++) switch (req[i].tag) {default:
+            break; case(DerReq): case(PDerReq): case(IDerReq):
+            if (bind) bind->push(req[i].bnd,log); buf[i]->push(log);
+            break; case(RDeeReq): case(IRDeeReq): bind->rdec(req[i].bnd,log);
+            break; case(WDeeReq): bind->wdec(req[i].bnd,log);
+            break; case(FNowReq): req[i].fnc(req[i].ptr,req[i].sub);
+            break; case(FEnqReq): thread->push(0,req[i].ptr,req[i].sub,req[i].fnc,log);
+            break; case(GoonReq): goon = true;}
+        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
+        if (lim == num) for (int i = 0; i < num; i++) switch(req[i].tag) {default:
+            break; case(DerReq): case (PDerReq): case (IDerReq):
+            if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
+        if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
+            break; case(DerReq): stack[req[i].bnd]->advance();
+            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
+            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
+            break; case(PDerReq):
+            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
+            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
+            break; case(IDerReq): stack[req[i].bnd]->advance(req[i].idx);
+            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
+            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
+            break; case(PNowReq): req[i].fnc(req[i].ptr,req[i].sub);
+            break; case(PEnqReq): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
+        if (lim == num && bind) stack[BindBnd]->advance();}
+    }
+    void push(Req req, SmartState log) {
+        push(&req,1,log);
+    }
+    void push(HeapState<Req> req, SmartState log) {
+        push(req.data(), req.size(), log);
+    }
+    void push(Micro mic, int idx, int siz,
+        Center *ptr, int sub,
+        bool pnow, void (*pass)(Center*,int),
+        bool fnow, void (*fail)(Center*,int),
+        bool goon, SmartState log) {
+        HeapState<Req> req;
+        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,BindLocs,0,{},ptr,sub,pass};
+        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,BindLocs,0,{},ptr,sub,fail};
+        if (goon) req<<Req{GoonReq,Binds,BindLocs};
+        for (int j = 0; true; j++) {
+        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
+        if (loc == BindLocs) break;
+        for (int i = 0; true; i++) {
+        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
+        BindTyp typ = BindType__Bind__BindTyp(bnd);
+        if (bnd == Binds) break;
+        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,BindLocs,mic}; else req<<Req{RDeeReq,bnd,BindLocs};}}
+        for (int j = 0; true; j++) {
+        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
+        if (loc == BindLocs) break;
+        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc),loc,0,
+        {(siz == 0 ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
+        push(req,log);
+    }
+    void push(Center *center, int sub,
+        bool pnow, void (*pass)(Center*,int),
+        bool fnow, void (*fail)(Center*,int),
+        bool goon, SmartState log) {
+        Bind bnd = MemoryBind__Memory__Bind(center->mem);
+        if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
+        int mod = stack[bnd]->bufsiz();
+        int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
+        void *ptr = 0; switch (center->mem) {
+        default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+        break; case (Indexz): ptr = (void*)center->ind;
+        break; case (Bringupz): ptr = (void*)center->ver;
+        break; case (Texturez):
+        ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
+        idx = center->idx*mod; siz = center->siz*mod;
+        max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
+        break; case (Uniformz): ptr = (void*)center->uni;
+        break; case (Matrixz): ptr = (void*)center->mat;
+        break; case (Trianglez): ptr = (void*)center->tri;
+        break; case (Numericz): ptr = (void*)center->num;
+        break; case (Vertexz): ptr = (void*)center->vtx;
+        break; case (Basisz): ptr = (void*)center->bas;
+        break; case (Piercez): ptr = (void*)center->pie;
+        break; case (Drawz): for (int i = 0; i < center->siz; i++)
+        push(center->drw[i].mic,center->drw[i].idx,center->drw[i].siz,
+        // TODO add fields to decide upon bools and functions
+        center,sub,true,planePass,true,planeFail,false,log);
+        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
+        for (int i = 0; i < center->siz; i++)
+        write(center->cfg[i],center->val[i]);
+        if (pass) thread->push(0,center,0,pass,log);
+        return;}
+        /*if (base>idx) {
+        ptr = (void*)((char*)ptr+base-idx);
+        siz -= base-idx; idx = 0;}
+        else {idx = idx-base;}
+        if (idx+siz>size) {siz = size-idx;}*/ // TODO
+        Arg arg = {BothArg,ptr,idx,siz,max};
+        HeapState<Req> req;
+        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,BindLocs,0,{},center,sub,pass};
+        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,BindLocs,0,{},center,sub,fail};
+        if (goon) req<<Req{GoonReq,Binds,BindLocs};
+        req<<Req{PDerReq,bnd,BindLocs,0,arg};
+        push(req,log);
+    }
+};
 
 struct SwapState : public BaseState {
     GLFWwindow* window;
@@ -1309,234 +1543,6 @@ struct DrawState : public BaseState {
         VkBuffer vertexBuffer, VkBuffer indexBuffer);
     static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro,
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
-};
-
-struct PushState {
-    BaseState *base;
-    VkFence fence;
-    Center *ptr;
-    int sub;
-    void (*fnc)(Center*,int);
-    SmartState log;
-};
-struct ThreadState : public DoneState {
-    const VkDevice device;
-    ChangeState<Configure,Configures> *copy;
-    SafeState safe; SafeState wake;
-    std::deque<PushState> before;
-    std::deque<PushState> after;
-    bool goon;
-    ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
-        device(device), copy(copy),
-        safe(1), wake(0), goon(true) {
-        strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
-    }
-    ~ThreadState() {
-        std::cout << "~ThreadState" << std::endl;
-    }
-    void push(BaseState *base, Center *ptr, int sub, void (*fnc)(Center*,int), SmartState log) {
-        PushState push = {base,VK_NULL_HANDLE,ptr,sub,fnc,log};
-        safe.wait();
-        before.push_back(push);
-        safe.post();
-        wake.wake();
-    }
-    bool stage() {
-        while (1) {while (1) {
-        safe.wait();
-        if (before.empty()) {safe.post(); break;}
-        PushState push = before.front(); before.pop_front();
-        safe.post();
-        if (push.base) switch (push.base->get()) {
-        default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
-        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
-        break; case(LockBase): push.fence = push.base->basesup(push.log);
-        break; case(BothBase): push.fence = push.base->sizeup(push.log);}
-        after.push_back(push);}
-        if (!after.empty()) break;
-        safe.wait();
-        bool empty = before.empty();
-        bool done = (empty && !goon);
-        safe.post();
-        if (done) return false;
-        if (empty) wake.wait();}
-        return true;
-    }
-    void call() override {
-        while (stage()) {
-        if (after.empty()) {std::cerr << "separate empty after!" << std::endl; exit(-1);}
-        PushState push = after.front(); after.pop_front();
-        if (push.fence != VK_NULL_HANDLE) {
-        VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
-        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
-        if (push.fnc) {push.fnc(push.ptr,push.sub);}
-        copy->wots(RegisterMask,1<<FenceAsync);
-        if (push.base) push.base->baseups(push.log);}
-        vkDeviceWaitIdle(device);
-    }
-    void done() override {
-        safe.wait();
-        goon = false;
-        safe.post();
-        wake.wake();
-    }
-    void heap() override {}
-};
-
-extern "C" {
-int datxVoids(void *dat);
-void *datxVoidz(int num, void *dat);
-};
-struct EnumState {
-    Bind key;
-    StackState *val;
-};
-enum ReqEnum {
-    DerReq, // push arg to current, set bind, push to thread, and advance
-    PDerReq, // push arg to next, set bind, and push to thread
-    IDerReq, // push arg to indexed, set bind, push to thread, and advance to index
-    RDeeReq, // increment read lock in current, and add to bind
-    IRDeeReq, // increment read lock in indexed, and add to bind
-    WDeeReq, // increment write lock in current, and add to bind
-    PNowReq, // call function now if pass
-    FNowReq, // call function now if fail
-    PEnqReq, // call function when free if pass
-    FEnqReq, // call function when free if fail
-    GoonReq, // retry if fail
-    NoopReq, // do nothing
-};
-struct Req {
-    ReqEnum tag; Bind bnd; BindLoc loc; int idx; Arg arg; Center *ptr; int sub; void (*fnc)(Center*,int);
-};
-struct CopyState : public ChangeState<Configure,Configures> {
-    ThreadState *thread; StackState *stack[Binds];
-    CopyState(ThreadState *thread, EnumState *stack) :
-        thread(thread), stack{0} {
-        for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
-        std::cout << "CopyState" << std::endl;
-    }
-    ~CopyState() {
-        std::cout << "~CopyState" << std::endl;
-    }
-    void push(Req *req, int num, SmartState log) {
-        bool goon = true; while (goon) {goon = false;
-        BaseState *buf[num] = {}; BindState *bind = 0; int count = 0;
-        for (int i = 0; i < num; i++) switch (req[i].tag) {default:
-            break; case(DerReq): buf[i] = stack[req[i].bnd]->buffer(); count += 1;
-            break; case(PDerReq): buf[i] = stack[req[i].bnd]->prebuf(); count += 1;
-            break; case(IDerReq): buf[i] = stack[req[i].bnd]->prebuf(req[i].idx); count += 1;
-            break; case(RDeeReq): case(IRDeeReq): case(WDeeReq):
-            buf[i] = stack[req[i].bnd]->buffer(); count += 1;}
-        if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
-        int lim = num; if (count > 1 && bind == 0) lim = -1;
-        for (int i = 0; i < num && i < lim; i++) switch (req[i].tag) {default:
-            break; case(DerReq): case(PDerReq): case(IDerReq): if (bind) {
-            if (!bind->push(req[i].bnd,buf[i],req[i].arg,log)) lim = i;} else {
-            if (!buf[i]->push(req[i].arg,log)) lim = i;}
-            break; case(RDeeReq): if (!bind->rinc(req[i].bnd,buf[i],log)) lim = i;
-            break; case(IRDeeReq): if (!bind->rinc(req[i].bnd,buf[i],log)) lim = i;
-            break; case(WDeeReq): if (!bind->winc(req[i].bnd,buf[i],log)) lim = i;}
-        if (lim < num) for (int i = 0; i < lim; i++) switch (req[i].tag) {default:
-            break; case(DerReq): case(PDerReq): case(IDerReq):
-            if (bind) bind->push(req[i].bnd,log); buf[i]->push(log);
-            break; case(RDeeReq): case(IRDeeReq): bind->rdec(req[i].bnd,log);
-            break; case(WDeeReq): bind->wdec(req[i].bnd,log);
-            break; case(FNowReq): req[i].fnc(req[i].ptr,req[i].sub);
-            break; case(FEnqReq): thread->push(0,req[i].ptr,req[i].sub,req[i].fnc,log);
-            break; case(GoonReq): goon = true;}
-        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
-        if (lim == num) for (int i = 0; i < num; i++) switch(req[i].tag) {default:
-            break; case(DerReq): case (PDerReq): case (IDerReq):
-            if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
-        if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
-            break; case(DerReq): stack[req[i].bnd]->advance();
-            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
-            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(PDerReq): 
-            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
-            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(IDerReq): stack[req[i].bnd]->advance(req[i].idx);
-            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
-            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(PNowReq): req[i].fnc(req[i].ptr,req[i].sub);
-            break; case(PEnqReq): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
-        if (lim == num && bind) stack[BindBnd]->advance();}
-    }
-    void push(Req req, SmartState log) {
-        push(&req,1,log);
-    }
-    void push(HeapState<Req> req, SmartState log) {
-        push(req.data(), req.size(), log);
-    }
-    void push(Micro mic, int idx, int siz,
-        Center *ptr, int sub,
-        bool pnow, void (*pass)(Center*,int),
-        bool fnow, void (*fail)(Center*,int),
-        bool goon, SmartState log) {
-        HeapState<Req> req;
-        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,BindLocs,0,{},ptr,sub,pass};
-        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,BindLocs,0,{},ptr,sub,fail};
-        if (goon) req<<Req{GoonReq,Binds,BindLocs};
-        for (int j = 0; true; j++) {
-        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
-        if (loc == BindLocs) break;
-        for (int i = 0; true; i++) {
-        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
-        BindTyp typ = BindType__Bind__BindTyp(bnd);
-        if (bnd == Binds) break;
-        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,BindLocs,mic}; else req<<Req{RDeeReq,bnd,BindLocs};}}
-        for (int j = 0; true; j++) {
-        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
-        if (loc == BindLocs) break;
-        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc),loc,0,
-        {(siz == 0 ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
-        push(req,log);
-    }
-    void push(Center *center, int sub,
-        bool pnow, void (*pass)(Center*,int),
-        bool fnow, void (*fail)(Center*,int),
-        bool goon, SmartState log) {
-        Bind bnd = MemoryBind__Memory__Bind(center->mem);
-        if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
-        int mod = stack[bnd]->bufsiz();
-        int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
-        void *ptr = 0; switch (center->mem) {
-        default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-        break; case (Indexz): ptr = (void*)center->ind;
-        break; case (Bringupz): ptr = (void*)center->ver;
-        break; case (Texturez):
-        ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
-        idx = center->idx*mod; siz = center->siz*mod;
-        max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
-        break; case (Uniformz): ptr = (void*)center->uni;
-        break; case (Matrixz): ptr = (void*)center->mat;
-        break; case (Trianglez): ptr = (void*)center->tri;
-        break; case (Numericz): ptr = (void*)center->num;
-        break; case (Vertexz): ptr = (void*)center->vtx;
-        break; case (Basisz): ptr = (void*)center->bas;
-        break; case (Piercez): ptr = (void*)center->pie;
-        break; case (Drawz): for (int i = 0; i < center->siz; i++)
-        push(center->drw[i].mic,center->drw[i].idx,center->drw[i].siz,
-        // TODO add fields to decide upon bools and functions
-        center,sub,true,planePass,true,planeFail,false,log);
-        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
-        for (int i = 0; i < center->siz; i++)
-        write(center->cfg[i],center->val[i]);
-        if (pass) thread->push(0,center,0,pass,log);
-        return;}
-        /*if (base>idx) {
-        ptr = (void*)((char*)ptr+base-idx);
-        siz -= base-idx; idx = 0;}
-        else {idx = idx-base;}
-        if (idx+siz>size) {siz = size-idx;}*/ // TODO
-        Arg arg = {BothArg,ptr,idx,siz,max};
-        HeapState<Req> req;
-        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,BindLocs,0,{},center,sub,pass};
-        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,BindLocs,0,{},center,sub,fail};
-        if (goon) req<<Req{GoonReq,Binds,BindLocs};
-        req<<Req{PDerReq,bnd,BindLocs,0,arg};
-        push(req,log);
-    }
 };
 
 extern "C" {
