@@ -501,6 +501,17 @@ struct BaseState {
         state = FreeBase;
         safe.post();
     }
+    void push(BindState *ptr, BindLoc loc, Bind bnd, SmartState log) {
+        safe.wait();
+        if (state != BothBase && state != SizeBase && state != LockBase)
+            {std::cerr << "invalid set state!" << std::endl; exit(-1);}
+        safe.post();
+        if (lock != 0) {std::cerr << "invalid set lock! " <<
+            debug << std::endl; exit(-1);}
+        lock = ptr;
+        bloc = loc;
+        bder = bnd;
+    }
     VkFence sizeup(SmartState log) {
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " <<
@@ -562,16 +573,29 @@ struct BaseState {
         state = FreeBase;
         safe.post();
     }
-    virtual void unsize(SmartState log) {
-        std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual void resize(SmartState log) {
-        std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual VkFence setup(void *ptr, int loc, int siz, SmartState log) {
-        std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual void upset(SmartState log) {
-        std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual bool get(BaseEnum state) {
-        return false;
+    void incr(bool elock) {
+        safe.wait();
+        (elock ? wlock : rlock) += 1;
+        safe.post();
+    }
+    void decr(bool elock) {
+        safe.wait();
+        if ((elock ? wlock : rlock) <= 0)
+            {std::cerr << "invalid decr lock! " << std::endl; exit(-1);}
+        (elock ? wlock : rlock) -= 1;
+        safe.post();
+    }
+    bool get(bool elock, int psav) {
+        safe.wait();
+        switch (state) {
+        default: {safe.post(); return false;}
+        break; case (FreeBase):
+        break; case (FillBase): if (!get(state)) {safe.post(); return false;}
+        break; case (BothBase): case (SizeBase): case (LockBase):
+        if (psav == 0) {safe.post(); return false;}}
+        if (wlock || (elock && rlock)) {safe.post(); return false;}
+        safe.post();
+        return true;
     }
     BaseEnum get() {
         safe.wait();
@@ -579,15 +603,11 @@ struct BaseState {
         safe.post();
         return ret;
     }
-    void set(BindState *ptr) {
-        safe.wait();
-        if (state != BothBase && state != SizeBase && state != LockBase)
-            {std::cerr << "invalid set state!" << std::endl; exit(-1);}
-        safe.post();
-        if (lock != 0) {std::cerr << "invalid set lock! " <<
-            debug << std::endl; exit(-1);}
-        lock = ptr;
-    }
+    virtual void unsize(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
+    virtual void resize(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
+    virtual VkFence setup(void *ptr, int loc, int siz, SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
+    virtual void upset(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
+    virtual bool get(BaseEnum state) {return false;}
     virtual BindState *getBind() {std::cerr << "BaseState::getBind" << std::endl; exit(-1);}
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
@@ -665,35 +685,20 @@ struct BindState : public BaseState {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
         if (bind[i] != 0 && bind[i] != buf)
             {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
-        buf->safe.wait();
-        switch (buf->state) {
-        default: goto fail;
-        break; case (FreeBase):
-        break; case (FillBase): if (!buf->get(buf->state)) goto fail;
-        break; case (BothBase): case (SizeBase): case (LockBase): if (psav[i] == 0) goto fail;}
-        if (buf->wlock || (elock && buf->rlock)) goto fail;
-        buf->safe.post();
+        if (!buf->get(elock,psav[i])) {
+        if (lock == 0) {safe.wait(); excl = false; safe.post();}
+        return false;}
         if (bind[i] == 0) lock += 1;
         bind[i] = buf;
-        buf->safe.wait();
-        (elock ? buf->wlock : buf->rlock) += 1;
-        buf->safe.post();
+        buf->incr(elock);
         (elock ? wsav[i] : rsav[i]) += 1;
         return true;
-        fail:
-        buf->safe.post();
-        if (lock == 0) {safe.wait(); excl = false; safe.post();}
-        return false;
     }
     void decr(Bind i, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid decr excl!" << std::endl; exit(-1);}
         if (lock <= 0 || bind[i] == 0)
             {std::cerr << "invalid decr bind! " << i << std::endl; exit(-1);}
-        bind[i]->safe.wait();
-        if (bind[i]->rlock <= 0) {log << "invalid decr lock! " <<
-            debug << " " << bind[i]->debug << std::endl; exit(-1);}
-        (elock ? bind[i]->wlock : bind[i]->rlock) -= 1;
-        bind[i]->safe.post();
+        bind[i]->decr(elock);
         if ((elock ? wsav[i] : rsav[i]) <= 0)
             {std::cerr << "invalid rdec sav!" << std::endl; exit(-1);}
         (elock ? wsav[i] : rsav[i]) -= 1;
@@ -1445,13 +1450,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
             if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
         if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
             break; case(DerReq): stack[req[i].bnd]->advance();
-            if (bind) buf[i]->set(bind); buf[i]->bloc = req[i].loc; buf[i]->bder = req[i].bnd;
+            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PDerReq): 
-            if (bind) buf[i]->set(bind); buf[i]->bloc = req[i].loc; buf[i]->bder = req[i].bnd;
+            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(IDerReq): stack[req[i].bnd]->advance(req[i].idx);
-            if (bind) buf[i]->set(bind); buf[i]->bloc = req[i].loc; buf[i]->bder = req[i].bnd;
+            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PNowReq): req[i].fnc(req[i].ptr,req[i].sub);
             break; case(PEnqReq): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
