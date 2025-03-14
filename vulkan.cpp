@@ -615,6 +615,7 @@ struct BaseState {
     virtual bool get(BaseEnum state) {return false;}
     virtual BindState *getBind() {std::cerr << "BaseState::getBind" << std::endl; exit(-1);}
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
+    virtual VkImage getImage() {std::cerr << "BaseState::getImage" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer() {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
@@ -1229,6 +1230,57 @@ struct BufferState : public BaseState {
         VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
+struct LayoutState : public BaseState {
+    const VkDevice device;
+    const VkQueue graphics;
+    const VkCommandPool commandPool;
+    VkCommandBuffer buffer;
+    VkSemaphore after;
+    VkFence fence;
+    LayoutState() :
+        BaseState("LayoutState",StackState::self),
+        device(StackState::device),
+        graphics(StackState::graphics),
+        commandPool(StackState::commandPool) {
+        std::cout << "LayoutState " << debug << std::endl;
+    }
+    ~LayoutState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log);
+        std::cout << "~LayoutState " << debug << std::endl;
+    }
+    VkSemaphore getSemaphore() override {
+        return after;
+    }
+    void resize(SmartState log) override {
+        log << "resize " << debug << std::endl;
+        buffer = createCommandBuffer(device,commandPool);
+        after = createSemaphore(device);
+        fence = createFence(device);
+    }
+    void unsize(SmartState log) override {
+        log << "unsize " << debug << std::endl;
+        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
+        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, commandPool, 1, &buffer);
+    }
+    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
+        BaseState *mid = lock->get(TextureBnd);
+        transitionImageLayout(device, graphics, buffer, mid->getImage(),
+            (bloc==AfterLoc?mid->getSemaphore():VK_NULL_HANDLE), (bloc!=AfterLoc?after:VK_NULL_HANDLE),
+            (bloc==AfterLoc?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
+            (bloc==AfterLoc?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
+            (bloc==AfterLoc?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+        return (bloc==AfterLoc?fence:VK_NULL_HANDLE);
+    }
+    void upset(SmartState log) override {
+        log << "upset " << debug << std::endl;
+    }
+    static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
+        VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
+        VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+};
+
 struct TextureState : public BaseState {
     const VkDevice device;
     const VkPhysicalDevice physical;
@@ -1251,8 +1303,11 @@ struct TextureState : public BaseState {
     VkDeviceMemory stagingBufferMemory;
     TextureState() :
         BaseState("TextureState",StackState::self),
-        device(StackState::device), physical(StackState::physical),
-        properties(StackState::properties), graphics(StackState::graphics), commandPool(StackState::commandPool),
+        device(StackState::device),
+        physical(StackState::physical),
+        properties(StackState::properties),
+        graphics(StackState::graphics),
+        commandPool(StackState::commandPool),
         memProperties(StackState::memProperties) {
         std::cout << "TextureState " << debug << std::endl;
     }
@@ -1262,6 +1317,7 @@ struct TextureState : public BaseState {
     }
     VkImageView getTextureImageView() override {return textureImageView;}
     VkSampler getTextureSampler() override {return textureSampler;}
+    VkImage getImage() override {return textureImage;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
         int texWidth = size.extent.width;
@@ -1308,9 +1364,14 @@ struct TextureState : public BaseState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetCommandBuffer(afterBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
+        LayoutState::transitionImageLayout(device, graphics, beforeBuffer, textureImage,
+            VK_NULL_HANDLE, beforeSemaphore, VK_NULL_HANDLE,
+            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyTextureImage(device, graphics, memProperties, textureImage, texWidth, texHeight,
-            beforeSemaphore, afterSemaphore, fence,
-            stagingBuffer, beforeBuffer, commandBuffer, afterBuffer);
+            beforeSemaphore, afterSemaphore, fence, stagingBuffer, commandBuffer);
+        LayoutState::transitionImageLayout(device, graphics, afterBuffer, textureImage,
+            afterSemaphore, VK_NULL_HANDLE, fence,
+            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         return fence;
     }
     void upset(SmartState log) override {
@@ -1320,13 +1381,10 @@ struct TextureState : public BaseState {
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
-    static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
-        VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
-        VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     static void copyTextureImage(VkDevice device, VkQueue graphics,
         VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
-        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence, VkBuffer stagingBuffer,
-        VkCommandBuffer beforeBuffer, VkCommandBuffer commandBuffer, VkCommandBuffer afterBuffer);
+        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
+        VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
 };
 
 struct AcquireState : public BaseState {
@@ -1366,10 +1424,10 @@ struct AcquireState : public BaseState {
         VkExtent2D frameExtent = lock->get(SwapBnd)->getSwapChainExtent();
         VkResult result = vkAcquireNextImageKHR(device,
         lock->get(SwapBnd)->getSwapChain(), UINT64_MAX, after, VK_NULL_HANDLE, &imageIndex);
-        framebuffer = lock->get(SwapBnd)->getFramebuffer(imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
+        framebuffer = lock->get(SwapBnd)->getFramebuffer(imageIndex);
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
@@ -2472,7 +2530,7 @@ VkSampler TextureState::createTextureSampler(VkDevice device, VkPhysicalDevicePr
     {std::cerr << "failed to create texture sampler!" << std::endl; exit(-1);}
     return textureSampler;
 }
-void TextureState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
+void LayoutState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
     VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
     VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBufferBeginInfo beginInfo{};
@@ -2526,11 +2584,8 @@ void TextureState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCo
 }
 void TextureState::copyTextureImage(VkDevice device, VkQueue graphics,
     VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
-    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence, VkBuffer stagingBuffer,
-    VkCommandBuffer beforeBuffer, VkCommandBuffer commandBuffer, VkCommandBuffer afterBuffer) {
-    transitionImageLayout(device, graphics, beforeBuffer, textureImage,
-        VK_NULL_HANDLE, beforeSemaphore, VK_NULL_HANDLE,
-        VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
+    VkBuffer stagingBuffer, VkCommandBuffer commandBuffer) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -2562,8 +2617,6 @@ void TextureState::copyTextureImage(VkDevice device, VkQueue graphics,
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;}
     vkQueueSubmit(graphics, 1, &submitInfo, VK_NULL_HANDLE);
-    transitionImageLayout(device, graphics, afterBuffer, textureImage, afterSemaphore, VK_NULL_HANDLE, fence,
-    VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 bool PresentState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before) {
