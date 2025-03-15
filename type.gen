@@ -48,17 +48,16 @@ Memory = {
 	"Configurez", -- configure to value
 }
 Bind = { -- per variation of BaseState
-    "BindBnd",
-    "SwapBnd",
-    "PipelineBnd",
-    "AcquireBnd",
-    "PresentBnd",
-    "DrawBnd",
+	"BindBnd",
+	"SwapBnd",
+	"PipelineBnd",
+	"AcquireBnd",
+	"PresentBnd",
+	"DrawBnd",
 	"IndexBnd",
 	"BringupBnd",
-    "ImageBnd",
-    "LayinBnd",
-    "LayoutBnd",
+	"ImageBnd",
+	"LayoutBnd",
 	"TextureBnd",
 	"UniformBnd",
 	"MatrixBnd",
@@ -256,7 +255,8 @@ Fixed = { -- how motion interpreted
 	"Normal",
 }
 Micro = {
-	"MicroTest", -- for flatten.cpp
+	"MicroTest", -- for Bringup Plan
+	"MicroTexture", -- for Texturez copy
 }
 Thread = {
 	"PipeThd",
@@ -385,12 +385,18 @@ Location = {
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
+	{"Micro","MicroTexture","Int","0","BindLoc","BeforeLoc"},
+	{"Micro","MicroTexture","Int","1","BindLoc","MiddleLoc"},
+	{"Micro","MicroTexture","Int","2","BindLoc","AfterLoc"},
 }
 Depender = {
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
+	{"Micro","MicroTexture","BindLoc","BeforeLoc","Bind","LayoutBnd"},
+	{"Micro","MicroTexture","BindLoc","MiddleLoc","Bind","TextureBnd"},
+	{"Micro","MicroTexture","BindLoc","AfterLoc","Bind","LayoutBnd"},
 }
 Dependee = {
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
@@ -404,6 +410,9 @@ Dependee = {
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","PresentBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
+	{"Micro","MicroTexture","BindLoc","BeforeLoc","Int","0","Bind","ImageBnd"}, -- TODO these need to be winc instead of rinc
+	{"Micro","MicroTexture","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
+	{"Micro","MicroTexture","BindLoc","AfterLoc","Int","0","Bind","ImageBnd"},
 }
 BindType = {
 	{"Bind","MatrixBnd","BindTyp","UniformTyp"},

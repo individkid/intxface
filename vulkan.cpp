@@ -1236,6 +1236,8 @@ struct ImageState : public BaseState {
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    VkImageView getTextureImageView() override {return textureImageView;}
     VkImage getImage() override {return textureImage;}
     ImageState() :
         BaseState("ImageState",StackState::self),
@@ -1253,11 +1255,13 @@ struct ImageState : public BaseState {
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        memProperties, /*output*/ textureImage, textureImageMemory);
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties, /*output*/ textureImage, textureImageMemory);
+        textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
+        vkDestroyImageView(device, textureImageView, nullptr);
         vkDestroyImage(device, textureImage, nullptr);
         vkFreeMemory(device, textureImageMemory, nullptr);
     }
@@ -1305,7 +1309,7 @@ struct LayoutState : public BaseState {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        BaseState *dee = lock->get(ImageBnd); // TODO add TextureMicro that has no shaders for this
+        BaseState *dee = lock->get(ImageBnd);
         transitionImageLayout(device, graphics, buffer, dee->getImage(),
             (last?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
             (bloc==AfterLoc?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
@@ -1330,7 +1334,7 @@ struct TextureState : public BaseState {
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView; // TODO move to ImageState and bind
+    VkImageView textureImageView;
     VkSampler textureSampler;
     VkCommandBuffer beforeBuffer;
     VkCommandBuffer commandBuffer;
@@ -1355,16 +1359,15 @@ struct TextureState : public BaseState {
         SmartState log; push(SizeState(0,0),log); baseres(log);
         std::cout << "~TextureState " << debug << std::endl;
     }
-    VkImageView getTextureImageView() override {return textureImageView;}
+    VkImageView getTextureImageView() override {return textureImageView;} // TODO keep, but forward from ImageState
     VkSampler getTextureSampler() override {return textureSampler;}
-    VkImage getImage() override {return textureImage;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        memProperties, /*output*/ textureImage, textureImageMemory);
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties, /*output*/ textureImage, textureImageMemory);
         textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureSampler = createTextureSampler(device,properties);
         beforeBuffer = createCommandBuffer(device,commandPool);
@@ -1396,7 +1399,7 @@ struct TextureState : public BaseState {
         VkDeviceSize imageSize = texWidth * texHeight * 4;
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
-            stagingBuffer, stagingBufferMemory);
+            stagingBuffer, stagingBufferMemory); // TODO move this to ImageState by splitting up copyTexture
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr, static_cast<size_t>(imageSize));
@@ -1760,7 +1763,7 @@ struct MainState {
     LogicalState logicalState;
     SizeState sizeState;
     ArrayState<SwapState,SwapBnd,1> swapState;
-    ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
+    ArrayState<PipeState,PipelineBnd,1> pipelineState; // TODO accommodate Micro without shader
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
