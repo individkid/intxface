@@ -1230,6 +1230,46 @@ struct BufferState : public BaseState {
         VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
+struct ImageState : public BaseState {
+    const VkDevice device;
+    const VkPhysicalDevice physical;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    VkImage textureImage;
+    VkDeviceMemory textureImageMemory;
+    VkImage getImage() override {return textureImage;}
+    ImageState() :
+        BaseState("ImageState",StackState::self),
+        device(StackState::device),
+        physical(StackState::physical),
+        memProperties(StackState::memProperties) {
+        std::cout << "ImageState " << debug << std::endl;
+    }
+    ~ImageState() {
+        SmartState log; push(SizeState(0,0),log); baseres(log); // TODO create SizeEnum tag for no size
+        std::cout << "~ImageState " << debug << std::endl;
+    }
+    void resize(SmartState log) override {
+        log << "resize " << debug << std::endl;
+        int texWidth = size.extent.width;
+        int texHeight = size.extent.height;
+        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        memProperties, /*output*/ textureImage, textureImageMemory);
+    }
+    void unsize(SmartState log) override {
+        log << "unsize " << debug << std::endl;
+        vkDestroyImage(device, textureImage, nullptr);
+        vkFreeMemory(device, textureImageMemory, nullptr);
+    }
+    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
+        return VK_NULL_HANDLE;
+    }
+    void upset(SmartState log) override {
+        log << "upset " << debug << std::endl;
+    }
+};
+
 struct LayoutState : public BaseState {
     const VkDevice device;
     const VkQueue graphics;
@@ -1265,9 +1305,9 @@ struct LayoutState : public BaseState {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        BaseState *mid = lock->get(TextureBnd);
-        transitionImageLayout(device, graphics, buffer, mid->getImage(),
-            (bloc==AfterLoc?mid->getSemaphore():VK_NULL_HANDLE), (bloc!=AfterLoc?after:VK_NULL_HANDLE),
+        BaseState *dee = lock->get(ImageBnd); // TODO add TextureMicro that has no shaders for this
+        transitionImageLayout(device, graphics, buffer, dee->getImage(),
+            (last?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
             (bloc==AfterLoc?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
             (bloc==AfterLoc?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bloc==AfterLoc?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
@@ -1290,7 +1330,7 @@ struct TextureState : public BaseState {
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
+    VkImageView textureImageView; // TODO move to ImageState and bind
     VkSampler textureSampler;
     VkCommandBuffer beforeBuffer;
     VkCommandBuffer commandBuffer;
@@ -1807,7 +1847,7 @@ void vulkanWake(Center *ptr, int sub) {
     mptr->testState.wake.wait();
 }
 void vulkanWait(Center *ptr, int sub) {
-    glfwWaitEventsTimeout(0.001);
+    glfwWaitEventsTimeout(0.001); // TODO move to WindowState; add GlfwState and WaylandState for WindowState to wrap
 }
 void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);

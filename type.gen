@@ -47,15 +47,18 @@ Memory = {
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
-Bind = {
+Bind = { -- per variation of BaseState
+    "BindBnd",
     "SwapBnd",
     "PipelineBnd",
     "AcquireBnd",
     "PresentBnd",
     "DrawBnd",
-    "BindBnd",
 	"IndexBnd",
 	"BringupBnd",
+    "ImageBnd",
+    "LayinBnd",
+    "LayoutBnd",
 	"TextureBnd",
 	"UniformBnd",
 	"MatrixBnd",
