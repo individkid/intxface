@@ -624,7 +624,7 @@ struct BaseState {
     virtual VkPipelineLayout getPipelineLayout() {std::cerr << "BaseState::pipelineLayout" << std::endl; exit(-1);}
     virtual VkBuffer getBuffer() {std::cerr << "BaseState::buffer" << std::endl; exit(-1);}
     virtual int getRange() {std::cerr << "BaseState::size" << std::endl; exit(-1);}
-    virtual VkImageView getTextureImageView() {std::cerr << "BaseState::textureImageView" << std::endl; exit(-1);}
+    virtual VkImageView getImageView() {std::cerr << "BaseState::iageView" << std::endl; exit(-1);}
     virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
     virtual VkDescriptorSetLayout getDescriptorSetLayout() {std::cerr << "BaseState::getDescriptorSetLayout" << std::endl; exit(-1);}
@@ -904,10 +904,15 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
         for (int i = 0; true; i++) {
-        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
+        auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
+        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
         BindTyp typ = BindType__Bind__BindTyp(bnd);
-        if (bnd == Binds) break;
-        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,BindLocs,mic}; else req<<Req{RDeeReq,bnd,BindLocs};}}
+        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,BindLocs,mic}; else req<<Req{RDeeReq,bnd,BindLocs};}
+        for (int i = 0; true; i++) {
+        auto bnd0 = Depended__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
+        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
+        BindTyp typ = BindType__Bind__BindTyp(bnd);
+        req<<Req{WDeeReq,bnd,BindLocs};}}
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
@@ -1236,8 +1241,8 @@ struct ImageState : public BaseState {
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    VkImageView getTextureImageView() override {return textureImageView;}
+    VkImageView imageView;
+    VkImageView getImageView() override {return imageView;}
     VkImage getImage() override {return textureImage;}
     ImageState() :
         BaseState("ImageState",StackState::self),
@@ -1257,11 +1262,11 @@ struct ImageState : public BaseState {
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ textureImage, textureImageMemory);
-        textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        imageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
-        vkDestroyImageView(device, textureImageView, nullptr);
+        vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, textureImage, nullptr);
         vkFreeMemory(device, textureImageMemory, nullptr);
     }
@@ -1359,7 +1364,7 @@ struct TextureState : public BaseState {
         SmartState log; push(SizeState(0,0),log); baseres(log);
         std::cout << "~TextureState " << debug << std::endl;
     }
-    VkImageView getTextureImageView() override {return textureImageView;} // TODO keep, but forward from ImageState
+    VkImageView getImageView() override {return textureImageView;} // TODO keep, but forward from ImageState
     VkSampler getTextureSampler() override {return textureSampler;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
@@ -1599,11 +1604,11 @@ struct DrawState : public BaseState {
                     get(bnd)->debug << std::endl; exit(-1);}
                 updateUniformDescriptor(device,get(bnd)->getBuffer(),i,get(bnd)->getRange(),descriptorSet);
             break; case (TextureTyp):
-                if (get(bnd)->getTextureImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " <<
+                if (get(bnd)->getImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " <<
                     get(bnd)->debug << std::endl; exit(-1);}
                 if (get(bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
                     std::endl; exit(-1);}
-                updateTextureDescriptor(device,get(bnd)->getTextureImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
+                updateTextureDescriptor(device,get(bnd)->getImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
             uint32_t imageIndex; if (acquirePtr == 0) {
                 VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
                     UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);

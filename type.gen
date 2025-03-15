@@ -389,7 +389,7 @@ Location = {
 	{"Micro","MicroTexture","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTexture","Int","2","BindLoc","AfterLoc"},
 }
-Depender = {
+Depender = { -- push
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
@@ -398,7 +398,7 @@ Depender = {
 	{"Micro","MicroTexture","BindLoc","MiddleLoc","Bind","TextureBnd"},
 	{"Micro","MicroTexture","BindLoc","AfterLoc","Bind","LayoutBnd"},
 }
-Dependee = {
+Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
@@ -410,7 +410,9 @@ Dependee = {
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","PresentBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
-	{"Micro","MicroTexture","BindLoc","BeforeLoc","Int","0","Bind","ImageBnd"}, -- TODO these need to be winc instead of rinc
+}
+Depended = { -- winc
+	{"Micro","MicroTexture","BindLoc","BeforeLoc","Int","0","Bind","ImageBnd"},
 	{"Micro","MicroTexture","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
 	{"Micro","MicroTexture","BindLoc","AfterLoc","Int","0","Bind","ImageBnd"},
 }
