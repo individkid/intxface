@@ -1,5 +1,5 @@
 
-Bringup: Convert to metx matrix calculation. Use Configure to transform and start render.
+Bringup: Change to multi-depend Texturez. Change to multi-depend Drawz. Use Drawz from TestState. Add write modify read Piercez. Have TestState periodically change cursor Configure and get Pierce Configure. Add MicroDebug that does log<< from pierce Configure fields. Move matrix transformation functions from plane.c to metx.c. Change to matrix transformation from metx.c, and stop including glm.h.
 
 Regress: Use indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add memory to add coincidence color, and feedback coincidence buffer to draw. Demonstrate depth and coincidence color with irregular triangles.
 
@@ -35,7 +35,7 @@ space.lua to demonstrate sampling and equivalence,
 line.lua to demonstrate multimedia,
 point.lua to demonstrate communication.
 
-Add decoration to facets. Add projection of selected decoration onto otherwise transparent picture plane.
+Add decoration to facets, including transparency into other spaces, streaming of video or framebuffer, desktops, graffiti, pictures, drawings, 2d spaces, applications, text.
 Add interpretation of visible facet metrics as sound attractors.
 Add requirement of observation of other decorations in certain orders before observation of a protected decoration.
-Add change of subspace in response to passing through a facet.
+Add change of subspace, or move to editor, shell, or desktop, in response to passing through a facet.

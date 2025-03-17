@@ -409,6 +409,7 @@ struct BaseState {
     SafeState safe;
     BaseEnum state;
     BindLoc bloc;
+    Micro bmic;
     Bind bder;
     int rlock, wlock;
     BindState *lock;
@@ -419,19 +420,19 @@ struct BaseState {
     SizeState size, todo;
     void *ptr; int loc; int siz;
     char debug[64];
-    BaseState() : safe(1), state(InitBase), bloc(BindLocs), bder(Binds),
+    BaseState() : safe(1), state(InitBase), bloc(BindLocs), bmic(Micros), bder(Binds),
         rlock(0), wlock(0), lock(0), item(0), next(0), last(0),
         size(0,0), todo(0,0), debug{0} {
         debugChar="none";
     }
     BaseState(const char *name) :
-        safe(1), state(InitBase), bloc(BindLocs), bder(Binds),
+        safe(1), state(InitBase), bloc(BindLocs), bmic(Micros), bder(Binds),
         rlock(0), wlock(0), lock(0), item(0), next(0), last(0),
         size(0,0), todo(0,0), debug{0} {debugChar="none";
         sprintf(debug,"%s%d",name,StackState::debug++);
     }
     BaseState(const char *name, StackState *ptr) :
-        safe(1), state(InitBase), bloc(BindLocs), bder(Binds),
+        safe(1), state(InitBase), bloc(BindLocs), bmic(Micros), bder(Binds),
         rlock(0), wlock(0), lock(0), item(ptr), next(0), last(0),
         size(0,0), todo(0,0), debug{0} {
         sprintf(debug,"%s%s%d",item->name,name,StackState::debug++);
@@ -504,7 +505,7 @@ struct BaseState {
         state = FreeBase;
         safe.post();
     }
-    void push(BindState *ptr, BindLoc loc, Bind bnd, SmartState log) {
+    void push(BindState *ptr, Micro mic, BindLoc loc, Bind bnd, SmartState log) {
         safe.wait();
         if (state != BothBase && state != SizeBase && state != LockBase)
             {std::cerr << "invalid set state!" << std::endl; exit(-1);}
@@ -512,6 +513,7 @@ struct BaseState {
         if (lock != 0) {std::cerr << "invalid set lock! " <<
             debug << std::endl; exit(-1);}
         lock = ptr;
+        bmic = mic;
         bloc = loc;
         bder = bnd;
     }
@@ -565,13 +567,11 @@ struct BaseState {
         else log << "baseups " << debug << std::endl;
         if (item) item->advance();
         upset(log);
-        if (lock && size.tag != MicroSize) {std::cerr << "upset invalid tag!" <<
-            std::endl; exit(-1);}
-        Rsp rsp{size.micro,bloc,bder,lock};
-        return rsp;
+        return {bmic,bloc,bder,lock};
     }
     void free(SmartState log) {
         lock = 0;
+        bmic = Micros;
         bloc = BindLocs;
         bder = Binds;
         safe.wait();
@@ -689,8 +689,8 @@ struct BindState : public BaseState {
     }
     void push(Micro mic, BindLoc loc, Bind der, SmartState log) {
         for (int i = 0; true; i++) {
-        Bind bnd = Dependee__Micro__BindLoc__Int__Bind(mic)(loc)(i);
-        if (bnd == Binds) break;
+        auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
+        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
         rdec(bnd,log);}
         push(der,log);
     }
@@ -816,7 +816,7 @@ struct EnumState {
 };
 enum ReqEnum {
     DerReq, // push arg to current, set bind, push to thread, and advance
-    PDerReq, // push arg to next, set bind, and push to thread
+    PDerReq, // push arg to next, set bind, and push to thread that advances
     IDerReq, // push arg to indexed, set bind, push to thread, and advance to index
     RDeeReq, // increment read lock in current, and add to bind
     IRDeeReq, // increment read lock in indexed, and add to bind
@@ -826,10 +826,9 @@ enum ReqEnum {
     PEnqReq, // call function when free if pass
     FEnqReq, // call function when free if fail
     GoonReq, // retry if fail
-    NoopReq, // do nothing
 };
 struct Req {
-    ReqEnum tag; Bind bnd; BindLoc loc; int idx; Arg arg; Center *ptr; int sub; void (*fnc)(Center*,int);
+    ReqEnum tag; Bind bnd; Micro mic; BindLoc loc; int idx; Arg arg; Center *ptr; int sub; void (*fnc)(Center*,int);
 };
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread; StackState *stack[Binds];
@@ -873,13 +872,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
             if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
         if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
             break; case(DerReq): stack[req[i].bnd]->advance();
-            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
+            buf[i]->push(bind,req[i].mic,req[i].loc,req[i].bnd,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PDerReq):
-            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
+            buf[i]->push(bind,req[i].mic,req[i].loc,req[i].bnd,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(IDerReq): stack[req[i].bnd]->advance(req[i].idx);
-            buf[i]->push(bind,req[i].loc,req[i].bnd,log);
+            buf[i]->push(bind,req[i].mic,req[i].loc,req[i].bnd,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PNowReq): req[i].fnc(req[i].ptr,req[i].sub);
             break; case(PEnqReq): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
@@ -891,15 +890,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(HeapState<Req> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
-    void push(Micro mic, int idx, int siz,
-        Center *ptr, int sub,
+    void push(Micro mic, int idx, int siz, Center *ptr, int sub,
         bool pnow, void (*pass)(Center*,int),
         bool fnow, void (*fail)(Center*,int),
         bool goon, SmartState log) {
         HeapState<Req> req;
-        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,BindLocs,0,{},ptr,sub,pass};
-        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,BindLocs,0,{},ptr,sub,fail};
-        if (goon) req<<Req{GoonReq,Binds,BindLocs};
+        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,Micros,BindLocs,0,{},ptr,sub,pass};
+        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,Micros,BindLocs,0,{},ptr,sub,fail};
+        if (goon) req<<Req{GoonReq,Binds,Micros,BindLocs};
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
@@ -907,16 +905,16 @@ struct CopyState : public ChangeState<Configure,Configures> {
         auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
         auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
         BindTyp typ = BindType__Bind__BindTyp(bnd);
-        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,BindLocs,mic}; else req<<Req{RDeeReq,bnd,BindLocs};}
+        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,Micros,BindLocs,mic};
+        else req<<Req{RDeeReq,bnd,Micros,BindLocs};}
         for (int i = 0; true; i++) {
         auto bnd0 = Depended__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
         auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        BindTyp typ = BindType__Bind__BindTyp(bnd);
-        req<<Req{WDeeReq,bnd,BindLocs};}}
+        req<<Req{WDeeReq,bnd,Micros,BindLocs};}}
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
-        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc),loc,0,
+        req<<Req{DerReq,Depender__Micro__BindLoc__Bind(mic)(loc),mic,loc,0,
         {(siz == 0 ? SizeArg : BothArg),0,idx,siz,SizeState(mic)}};}
         push(req,log);
     }
@@ -926,16 +924,25 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool goon, SmartState log) {
         Bind bnd = MemoryBind__Memory__Bind(center->mem);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
+        HeapState<Req> req;
+        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,Micros,BindLocs,0,{},center,sub,pass};
+        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,Micros,BindLocs,0,{},center,sub,fail};
+        if (goon) req<<Req{GoonReq,Binds,Micros,BindLocs};
         int mod = stack[bnd]->bufsiz();
         int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
         void *ptr = 0; switch (center->mem) {
         default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
-        break; case (Texturez):
+        break; case (Texturez): {
         ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
         idx = center->idx*mod; siz = center->siz*mod;
         max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
+        req<<Req{PDerReq,ImageBnd,MicroTexture,ResizeLoc,0,{SizeArg,0,0,0,max}};
+        // TODO BeforeLoc
+        req<<Req{PDerReq,bnd,MicroTexture,MiddleLoc,0,{BothArg,ptr,idx,siz,max}};
+        // TODO AfterLoc
+        push(req,log); return;}
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -947,6 +954,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(center->drw[i].mic,center->drw[i].idx,center->drw[i].siz,
         // TODO add fields to decide upon bools and functions
         center,sub,true,planePass,true,planeFail,false,log);
+        return;
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++)
         write(center->cfg[i],center->val[i]);
@@ -957,14 +965,119 @@ struct CopyState : public ChangeState<Configure,Configures> {
         siz -= base-idx; idx = 0;}
         else {idx = idx-base;}
         if (idx+siz>size) {siz = size-idx;}*/ // TODO
-        Arg arg = {BothArg,ptr,idx,siz,max};
-        HeapState<Req> req;
-        if (pass) req<<Req{(pnow?PNowReq:PEnqReq),Binds,BindLocs,0,{},center,sub,pass};
-        if (fail) req<<Req{(fnow?FNowReq:FEnqReq),Binds,BindLocs,0,{},center,sub,fail};
-        if (goon) req<<Req{GoonReq,Binds,BindLocs};
-        req<<Req{PDerReq,bnd,BindLocs,0,arg};
+        req<<Req{PDerReq,bnd,Micros,BindLocs,0,{BothArg,ptr,idx,siz,max}};
         push(req,log);
     }
+};
+
+extern "C" {
+float *planeWindow(float *mat);
+float *matrc(float *u, int r, int c, int n);
+}
+struct TestState : public DoneState {
+    SafeState safe, wake; bool goon; CopyState *copy; SizeState *size;
+    TestState(CopyState *copy, SizeState *size) :
+        safe(1), wake(0), goon(true), copy(copy), size(size) {
+        strcpy(debug,"TestState"); std::cout << debug << std::endl;
+    }
+    ~TestState() {
+        std::cout << "~TestState" << std::endl;
+    }
+    void call() override;
+    void done() override {
+        safe.wait();
+        goon = false;
+        safe.post();
+        wake.wake();
+    }
+    void heap() override {}
+    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
+};
+void vulkanWake(Center *ptr, int sub);
+void vulkanWait(Center *ptr, int sub);
+void vulkanPass(Center *ptr, int sub);
+void vulkanForce(Center *ptr, int sub);
+void TestState::call() {
+    slog.onof(0,10000,123,5);
+    const std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, 0.5f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        //
+        {{-0.5f, -0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, -0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+    };
+    const std::vector<uint16_t> indices = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+    };
+    //
+    int xsiz = 800; int ysiz = 600;
+    copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
+    copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
+    copy->write(FocalLength,10); copy->write(FocalDepth,10);
+    //
+    copy->push(HeapState<Req>()<<
+    Req{FNowReq,Binds,Micros,BindLocs,0,{},0,0,vulkanForce}<<
+    Req{PDerReq,SwapBnd,Micros,ResizeLoc,0,{SizeArg,0,0,0,*size}},SmartState());
+    //
+    copy->push(HeapState<Req>()<<
+    Req{FNowReq,Binds,Micros,BindLocs,0,{},0,0,vulkanForce}<<
+    Req{IDerReq,PipelineBnd,Micros,ResizeLoc,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
+    //
+    for (int i = 0; i < StackState::frames; i++)
+    copy->push(MicroTest,0,0,0,0,true,0,true,vulkanWait,true,SmartState());
+    //
+    for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Req>()<<
+    Req{DerReq,AcquireBnd,Micros,ResizeLoc,0,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
+    //
+    for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Req>()<<
+    Req{DerReq,PresentBnd,Micros,ResizeLoc,0,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
+    //
+    Center *vtx = 0; allocCenter(&vtx,1);
+    vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
+    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
+    copy->push(vtx,0,false,vulkanPass,false,vulkanForce,false,SmartState());
+    //
+    Center *ind = 0; allocCenter(&ind,1);
+    int isiz = indices.size()*sizeof(uint16_t);
+    ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
+    memcpy(ind->ind,indices.data(),isiz);
+    copy->push(ind,0,false,vulkanPass,false,vulkanForce,false,SmartState());
+    //
+    Center *tex = 0; allocCenter(&tex,1);
+    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
+    fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
+    copy->push(tex,0,false,vulkanPass,false,vulkanForce,false,SmartState());
+    //
+    bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
+    //
+    glm::mat4 model, view, proj, debug;
+    testUpdate(size->capabilities.currentExtent,model,view,proj,debug);
+    Center *mat = 0; allocCenter(&mat,1);
+    mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
+    memcpy(&mat->mat[0],&model,sizeof(Matrix));
+    memcpy(&mat->mat[1],&view,sizeof(Matrix));
+    memcpy(&mat->mat[2],&proj,sizeof(Matrix));
+    memcpy(&mat->mat[3],&debug,sizeof(Matrix));
+    copy->push(mat,0,false,vulkanPass,false,vulkanPass,false,SmartState());
+    //
+    copy->push(MicroTest,0,static_cast<uint32_t>(indices.size()),0,0,
+    true,vulkanWake,true,vulkanWake,false,SmartState());}
+}
+
+struct ForkState : public DoneState {
+    Thread thd; int idx; mftype cfnc; mftype dfnc;
+    ForkState (Thread thd, int idx, mftype call, mftype done) :
+        thd(thd), idx(idx), cfnc(call), dfnc(done) {
+        strcpy(debug,"ForkState"); std::cout << debug << std::endl;
+    }
+    void call() override {cfnc(thd,idx);}
+    void done() override {dfnc(thd,idx);}
+    void heap() override {delete this;}
 };
 
 struct SwapState : public BaseState {
@@ -1239,11 +1352,11 @@ struct ImageState : public BaseState {
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkPhysicalDeviceMemoryProperties memProperties;
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
+    VkImage image;
+    VkDeviceMemory imageMemory;
     VkImageView imageView;
     VkImageView getImageView() override {return imageView;}
-    VkImage getImage() override {return textureImage;}
+    VkImage getImage() override {return image;}
     ImageState() :
         BaseState("ImageState",StackState::self),
         device(StackState::device),
@@ -1261,14 +1374,14 @@ struct ImageState : public BaseState {
         int texHeight = size.extent.height;
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            memProperties, /*output*/ textureImage, textureImageMemory);
-        imageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+            memProperties, /*output*/ image, imageMemory);
+        imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
         vkDestroyImageView(device, imageView, nullptr);
-        vkDestroyImage(device, textureImage, nullptr);
-        vkFreeMemory(device, textureImageMemory, nullptr);
+        vkDestroyImage(device, image, nullptr);
+        vkFreeMemory(device, imageMemory, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
@@ -1364,16 +1477,19 @@ struct TextureState : public BaseState {
         SmartState log; push(SizeState(0,0),log); baseres(log);
         std::cout << "~TextureState " << debug << std::endl;
     }
+    VkImage getImage() override {return textureImage;}
     VkImageView getImageView() override {return textureImageView;} // TODO keep, but forward from ImageState
     VkSampler getTextureSampler() override {return textureSampler;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
-        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            memProperties, /*output*/ textureImage, textureImageMemory);
-        textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        //createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+        //    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        //    memProperties, /*output*/ textureImage, textureImageMemory);
+        //textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        textureImage = lock->get(ImageBnd)->getImage();
+        textureImageView = lock->get(ImageBnd)->getImageView();
         textureSampler = createTextureSampler(device,properties);
         beforeBuffer = createCommandBuffer(device,commandPool);
         commandBuffer = createCommandBuffer(device,commandPool);
@@ -1392,9 +1508,9 @@ struct TextureState : public BaseState {
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeCommandBuffers(device, commandPool, 1, &beforeBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
-        vkDestroyImageView(device, textureImageView, nullptr);
-        vkDestroyImage(device, textureImage, nullptr);
-        vkFreeMemory(device, textureImageMemory, nullptr);
+        // vkDestroyImageView(device, textureImageView, nullptr);
+        // vkDestroyImage(device, textureImage, nullptr);
+        // vkFreeMemory(device, textureImageMemory, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
@@ -1651,116 +1767,6 @@ struct DrawState : public BaseState {
         VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
 };
 
-extern "C" {
-float *planeWindow(float *mat);
-float *matrc(float *u, int r, int c, int n);
-}
-struct TestState : public DoneState {
-    SafeState safe, wake; bool goon; CopyState *copy; SizeState *size;
-    TestState(CopyState *copy, SizeState *size) :
-        safe(1), wake(0), goon(true), copy(copy), size(size) {
-        strcpy(debug,"TestState"); std::cout << debug << std::endl;
-    }
-    ~TestState() {
-        std::cout << "~TestState" << std::endl;
-    }
-    void call() override;
-    void done() override {
-        safe.wait();
-        goon = false;
-        safe.post();
-        wake.wake();
-    }
-    void heap() override {}
-    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
-};
-void vulkanWake(Center *ptr, int sub);
-void vulkanWait(Center *ptr, int sub);
-void vulkanPass(Center *ptr, int sub);
-void vulkanForce(Center *ptr, int sub);
-void TestState::call() {
-    slog.onof(0,10000,123,5);
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, -0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{-0.5f, 0.5f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        //
-        {{-0.5f, -0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, -0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{-0.5f, 0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-    };
-    const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4,
-    };
-    //
-    int xsiz = 800; int ysiz = 600;
-    copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
-    copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
-    copy->write(FocalLength,10); copy->write(FocalDepth,10);
-    //
-    copy->push(HeapState<Req>()<<
-    Req{FNowReq,Binds,BindLocs,0,{},0,0,vulkanForce}<<
-    Req{PDerReq,SwapBnd,ResizeLoc,0,{SizeArg,0,0,0,*size}},SmartState());
-    //
-    copy->push(HeapState<Req>()<<
-    Req{FNowReq,Binds,BindLocs,0,{},0,0,vulkanForce}<<
-    Req{IDerReq,PipelineBnd,ResizeLoc,MicroTest,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
-    //
-    for (int i = 0; i < StackState::frames; i++)
-    copy->push(MicroTest,0,0,0,0,true,0,true,vulkanWait,true,SmartState());
-    //
-    for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Req>()<<
-    Req{DerReq,AcquireBnd,ResizeLoc,0,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
-    //
-    for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Req>()<<
-    Req{DerReq,PresentBnd,ResizeLoc,0,{SizeArg,0,0,0,SizeState(MicroTest)}},SmartState());
-    //
-    Center *vtx = 0; allocCenter(&vtx,1);
-    vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
-    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    copy->push(vtx,0,false,vulkanPass,false,vulkanForce,false,SmartState());
-    //
-    Center *ind = 0; allocCenter(&ind,1);
-    int isiz = indices.size()*sizeof(uint16_t);
-    ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
-    memcpy(ind->ind,indices.data(),isiz);
-    copy->push(ind,0,false,vulkanPass,false,vulkanForce,false,SmartState());
-    //
-    Center *tex = 0; allocCenter(&tex,1);
-    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
-    fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy->push(tex,0,false,vulkanPass,false,vulkanForce,false,SmartState());
-    //
-    bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
-    //
-    glm::mat4 model, view, proj, debug;
-    testUpdate(size->capabilities.currentExtent,model,view,proj,debug);
-    Center *mat = 0; allocCenter(&mat,1);
-    mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
-    memcpy(&mat->mat[0],&model,sizeof(Matrix));
-    memcpy(&mat->mat[1],&view,sizeof(Matrix));
-    memcpy(&mat->mat[2],&proj,sizeof(Matrix));
-    memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    copy->push(mat,0,false,vulkanPass,false,vulkanPass,false,SmartState());
-    //
-    copy->push(MicroTest,0,static_cast<uint32_t>(indices.size()),0,0,
-    true,vulkanWake,true,vulkanWake,false,SmartState());}
-}
-
-struct ForkState : public DoneState {
-    Thread thd; int idx; mftype cfnc; mftype dfnc;
-    ForkState (Thread thd, int idx, mftype call, mftype done) :
-        thd(thd), idx(idx), cfnc(call), dfnc(done) {
-        strcpy(debug,"ForkState"); std::cout << debug << std::endl;
-    }
-    void call() override {cfnc(thd,idx);}
-    void done() override {dfnc(thd,idx);}
-    void heap() override {delete this;}
-};
-
 struct MainState {
     WindowState windowState;
     VulkanState vulkanState;
@@ -1771,6 +1777,7 @@ struct MainState {
     ArrayState<PipeState,PipelineBnd,1> pipelineState; // TODO accommodate Micro without shader
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
+    ArrayState<ImageState,ImageBnd,StackState::frames> imageState;
     ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
@@ -1806,6 +1813,7 @@ struct MainState {
         pipelineState("PipelineBnd"),
         indexState("Indexz",VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState("Bringupz",VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        imageState("ImageBnd"),
         textureState("Texturez"),
         uniformState("Uniformz"),
         matrixState("Matrixz"),
@@ -1823,6 +1831,7 @@ struct MainState {
             {PipelineBnd,&pipelineState},
             {IndexBnd,&indexState},
             {BringupBnd,&bringupState},
+            {ImageBnd,&imageState},
             {TextureBnd,&textureState},
             {UniformBnd,&uniformState},
             {MatrixBnd,&matrixState},

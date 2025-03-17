@@ -230,6 +230,7 @@ QopyArg = {
 	"QopySrc",
 }
 Plan = { -- which test to run
+	"Logcout", -- printout microcode computations
 	"Bringup", -- reproduce the tutorial
 	"Regress", -- test each transformation with Configure values; send and receive Matrixz with planer.lua
 	"Builtin", -- test each interaction with space with shader indexed Memory buffers and depth color
@@ -257,6 +258,7 @@ Fixed = { -- how motion interpreted
 Micro = {
 	"MicroTest", -- for Bringup Plan
 	"MicroTexture", -- for Texturez copy
+	"MicroDebug", -- for testing microcode
 }
 Thread = {
 	"PipeThd",
@@ -385,18 +387,21 @@ Location = {
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
-	{"Micro","MicroTexture","Int","0","BindLoc","BeforeLoc"},
-	{"Micro","MicroTexture","Int","1","BindLoc","MiddleLoc"},
-	{"Micro","MicroTexture","Int","2","BindLoc","AfterLoc"},
+	-- {"Micro","MicroTexture","Int","0","BindLoc","ResizeLoc"},
+	-- {"Micro","MicroTexture","Int","1","BindLoc","BeforeLoc"},
+	-- {"Micro","MicroTexture","Int","2","BindLoc","MiddleLoc"},
+	-- {"Micro","MicroTexture","Int","3","BindLoc","AfterLoc"},
+	{"Micro","MicroTexture","Int","0","BindLoc","MiddleLoc"},
 }
 Depender = { -- push
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
-	{"Micro","MicroTexture","BindLoc","BeforeLoc","Bind","LayoutBnd"},
+	{"Micro","MicroTexture","BindLoc","ResizeLoc","Bind","ImageBnd"},
+	-- {"Micro","MicroTexture","BindLoc","BeforeLoc","Bind","LayoutBnd"},
 	{"Micro","MicroTexture","BindLoc","MiddleLoc","Bind","TextureBnd"},
-	{"Micro","MicroTexture","BindLoc","AfterLoc","Bind","LayoutBnd"},
+	-- {"Micro","MicroTexture","BindLoc","AfterLoc","Bind","LayoutBnd"},
 }
 Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
@@ -412,9 +417,8 @@ Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 }
 Depended = { -- winc
-	{"Micro","MicroTexture","BindLoc","BeforeLoc","Int","0","Bind","ImageBnd"},
-	{"Micro","MicroTexture","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
-	{"Micro","MicroTexture","BindLoc","AfterLoc","Int","0","Bind","ImageBnd"},
+	{"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
+	-- {"Micro","MicroTexture","BindLoc","AfterLoc","Int","0","Bind","ImageBnd"}, -- make ImageBnd a Depenrer instead
 }
 BindType = {
 	{"Bind","MatrixBnd","BindTyp","UniformTyp"},
