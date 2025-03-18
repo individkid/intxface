@@ -644,6 +644,28 @@ struct BaseState {
         VkImage& image, VkDeviceMemory& imageMemory);
 };
 
+struct Iter {
+    Micro mic;
+    BindLoc loc;
+    int lim, seq, sub;
+    Bind bnd;
+    Iter(Micro mic, BindLoc loc, int lim) : mic(mic), loc(loc), lim(lim), seq(0), sub(0) {init();}
+    bool operator()() {return (bnd != Binds);}
+    Iter &operator++() {sub++; init(); return *this;}
+    void init() {
+        bnd = Binds;
+        while (seq < lim && bnd == Binds) {
+        auto f = Dependee__Micro__BindLoc__Int__Bind(Micros);
+        if (seq == 0) f = Dependee__Micro__BindLoc__Int__Bind(mic);
+        else if (seq == 1) f = Dependie__Micro__BindLoc__Int__Bind(mic);
+        else if (seq == 2) f = Depended__Micro__BindLoc__Int__Bind(mic);
+        if (f == 0) {seq++; sub = 0; continue;}
+        auto g = f(loc);
+        if (g == 0) {seq++; sub = 0; continue;}
+        bnd = g(sub);
+        if (bnd == Binds) {seq++; sub = 0; continue;}}
+    }
+};
 struct BindState : public BaseState {
     BaseState *bind[Binds];
     int psav[Binds];
@@ -688,18 +710,9 @@ struct BindState : public BaseState {
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
     void push(Micro mic, BindLoc loc, Bind der, SmartState log) {
-        for (int i = 0; true; i++) {
-        auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
-        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        rdec(bnd,log);}
-        for (int i = 0; true; i++) {
-        auto bnd0 = Dependie__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
-        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        rdec(bnd,log);}
-        for (int i = 0; true; i++) {
-        auto bnd0 = Depended__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
-        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        wdec(bnd,log);}
+        for (Iter i(mic,loc,3); i(); ++i)
+        if (i.seq < 2) rdec(i.bnd,log);
+        else wdec(i.bnd,log);
         push(der,log);
     }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
@@ -910,20 +923,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
-        for (int i = 0; true; i++) {
-        auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
-        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        BindTyp typ = BindType__Bind__BindTyp(bnd);
-        if (typ == PipelineTyp) /*req<<Req{IRDeeReq,bnd,Micros,BindLocs,mic}*/;
-        else req<<Req{RDeeReq,bnd,Micros,BindLocs};}
-        for (int i = 0; true; i++) {
-        auto bnd0 = Dependie__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
-        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        req<<Req{IRDeeReq,bnd,Micros,BindLocs,mic};}
-        for (int i = 0; true; i++) {
-        auto bnd0 = Depended__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
-        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
-        req<<Req{WDeeReq,bnd,Micros,BindLocs};}}
+        for (Iter i(mic,loc,3); i(); ++i)
+        if (i.seq == 0) req<<Req{RDeeReq,i.bnd,Micros,BindLocs};
+        else if (i.seq == 1) req<<Req{IRDeeReq,i.bnd,Micros,BindLocs,mic};
+        else req<<Req{WDeeReq,i.bnd,Micros,BindLocs};}
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
@@ -1716,35 +1719,30 @@ struct DrawState : public BaseState {
             BaseState *indexPtr = 0;
             BaseState *acquirePtr = 0;
             BaseState *presentPtr = 0;
-            auto dee = Dependee__Micro__BindLoc__Int__Bind(size.micro);
-            auto die = Dependie__Micro__BindLoc__Int__Bind(size.micro);
-            auto dep = dee;
-            for (int i = 0; true; i++) {
-            Bind bnd = Binds;
-            auto fnc = dep(MiddleLoc);
-            if (fnc) bnd = fnc(i);
-            if (bnd == Binds && dep == dee) {dep = die; i = -1; continue;}
-            if (bnd == Binds) break;
-            BindTyp typ = BindType__Bind__BindTyp(bnd);
+            int index = 0;
+            for (Iter i(size.micro,MiddleLoc,2); i(); ++i) {
+            BindTyp typ = BindType__Bind__BindTyp(i.bnd);
             switch (typ) {
             default: {std::cerr << "invalid bind check! " <<
                 debug << " " << typ << std::endl; exit(-1);}
-            break; case (SwapTyp): swapPtr = get(bnd);
-            break; case (PipelineTyp): pipelinePtr = get(bnd);
-            break; case (FetchTyp): fetchPtr = get(bnd);
-            break; case (IndexTyp): indexPtr = get(bnd);
-            break; case (BeforeTyp): acquirePtr = get(bnd);
-            break; case (AfterTyp): presentPtr = get(bnd);
+            break; case (SwapTyp): swapPtr = get(i.bnd);
+            break; case (PipelineTyp): pipelinePtr = get(i.bnd);
+            break; case (FetchTyp): fetchPtr = get(i.bnd);
+            break; case (IndexTyp): indexPtr = get(i.bnd);
+            break; case (BeforeTyp): acquirePtr = get(i.bnd);
+            break; case (AfterTyp): presentPtr = get(i.bnd);
             break; case (UniformTyp):
-                if (get(bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " <<
-                    get(bnd)->debug << std::endl; exit(-1);}
-                updateUniformDescriptor(device,get(bnd)->getBuffer(),i,get(bnd)->getRange(),descriptorSet);
+                if (get(i.bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " <<
+                    get(i.bnd)->debug << std::endl; exit(-1);}
+                updateUniformDescriptor(device,get(i.bnd)->getBuffer(),
+                    index++,get(i.bnd)->getRange(),descriptorSet);
             break; case (TextureTyp):
-                if (get(bnd)->getImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " <<
-                    get(bnd)->debug << std::endl; exit(-1);}
-                if (get(bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
+                if (get(i.bnd)->getImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " <<
+                    get(i.bnd)->debug << std::endl; exit(-1);}
+                if (get(i.bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
                     std::endl; exit(-1);}
-                updateTextureDescriptor(device,get(bnd)->getImageView(),get(bnd)->getTextureSampler(),i,descriptorSet);}}
+                updateTextureDescriptor(device,get(i.bnd)->getImageView(),
+                    get(i.bnd)->getTextureSampler(),index++,descriptorSet);}}
             uint32_t imageIndex; if (acquirePtr == 0) {
                 VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
                     UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
