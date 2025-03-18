@@ -644,26 +644,39 @@ struct BaseState {
         VkImage& image, VkDeviceMemory& imageMemory);
 };
 
+enum IterEnum {
+    Dee,
+    Die,
+    Ded,
+    Deps,
+};
 struct Iter {
     Micro mic;
     BindLoc loc;
-    int lim, seq, sub;
+    IterEnum seq;
+    int sub;
     Bind bnd;
-    Iter(Micro mic, BindLoc loc, int lim) : mic(mic), loc(loc), lim(lim), seq(0), sub(0) {init();}
+    Iter(Micro mic, BindLoc loc) : mic(mic), loc(loc), seq(Deps), sub(0) {incr(); init();}
     bool operator()() {return (bnd != Binds);}
     Iter &operator++() {sub++; init(); return *this;}
+    void incr() {
+        if (seq == Deps) seq = Dee;
+        else if (seq == Dee) seq = Die;
+        else if (seq == Die) seq = Ded;
+        else if (seq == Ded) seq = Deps;
+    }
     void init() {
         bnd = Binds;
-        while (seq < lim && bnd == Binds) {
+        while (seq != Deps && bnd == Binds) {
         auto f = Dependee__Micro__BindLoc__Int__Bind(Micros);
-        if (seq == 0) f = Dependee__Micro__BindLoc__Int__Bind(mic);
-        else if (seq == 1) f = Dependie__Micro__BindLoc__Int__Bind(mic);
-        else if (seq == 2) f = Depended__Micro__BindLoc__Int__Bind(mic);
-        if (f == 0) {seq++; sub = 0; continue;}
+        if (seq == Dee) f = Dependee__Micro__BindLoc__Int__Bind(mic);
+        else if (seq == Die) f = Dependie__Micro__BindLoc__Int__Bind(mic);
+        else if (seq == Ded) f = Depended__Micro__BindLoc__Int__Bind(mic);
+        if (f == 0) {incr(); sub = 0; continue;}
         auto g = f(loc);
-        if (g == 0) {seq++; sub = 0; continue;}
+        if (g == 0) {incr(); sub = 0; continue;}
         bnd = g(sub);
-        if (bnd == Binds) {seq++; sub = 0; continue;}}
+        if (bnd == Binds) {incr(); sub = 0; continue;}}
     }
 };
 struct BindState : public BaseState {
@@ -710,9 +723,9 @@ struct BindState : public BaseState {
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
     void push(Micro mic, BindLoc loc, Bind der, SmartState log) {
-        for (Iter i(mic,loc,3); i(); ++i)
-        if (i.seq < 2) rdec(i.bnd,log);
-        else wdec(i.bnd,log);
+        for (Iter i(mic,loc); i(); ++i)
+        if (i.seq == Dee || i.seq == Die) rdec(i.bnd,log);
+        else if (i.seq == Ded) wdec(i.bnd,log);
         push(der,log);
     }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
@@ -923,10 +936,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
-        for (Iter i(mic,loc,3); i(); ++i)
-        if (i.seq == 0) req<<Req{RDeeReq,i.bnd,Micros,BindLocs};
-        else if (i.seq == 1) req<<Req{IRDeeReq,i.bnd,Micros,BindLocs,mic};
-        else req<<Req{WDeeReq,i.bnd,Micros,BindLocs};}
+        for (Iter i(mic,loc); i(); ++i)
+        if (i.seq == Dee) req<<Req{RDeeReq,i.bnd,Micros,BindLocs};
+        else if (i.seq == Die) req<<Req{IRDeeReq,i.bnd,Micros,BindLocs,mic};
+        else if (i.seq == Ded) req<<Req{WDeeReq,i.bnd,Micros,BindLocs};}
         for (int j = 0; true; j++) {
         BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
         if (loc == BindLocs) break;
@@ -1720,7 +1733,8 @@ struct DrawState : public BaseState {
             BaseState *acquirePtr = 0;
             BaseState *presentPtr = 0;
             int index = 0;
-            for (Iter i(size.micro,MiddleLoc,2); i(); ++i) {
+            for (Iter i(size.micro,MiddleLoc); i(); ++i)
+            if (i.seq == Dee || i.seq == Die) {
             BindTyp typ = BindType__Bind__BindTyp(i.bnd);
             switch (typ) {
             default: {std::cerr << "invalid bind check! " <<
