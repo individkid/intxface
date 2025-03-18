@@ -37,7 +37,7 @@ struct WindowState {
     const uint32_t WIDTH = 800;
     const uint32_t HEIGHT = 600;
     GLFWwindow* const window;
-    WindowState() :
+    WindowState() : // TODO add argument to switch between glfw and wayland
         window(createWindow(WIDTH,HEIGHT))
         {std::cout << "WindowState" << std::endl;}
     ~WindowState() {std::cout << "~WindowState" << std::endl;
@@ -967,10 +967,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
         idx = center->idx*mod; siz = center->siz*mod;
         max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
-        req<<Cmd{PDerCmd,ImageBnd,MicroTexture,ResizeLoc,0,{SizeReq,0,0,0,max}};
-        // TODO BeforeLoc
-        req<<Cmd{PDerCmd,bnd,MicroTexture,MiddleLoc,0,{BothReq,ptr,idx,siz,max}};
-        // TODO AfterLoc
+        req<<Cmd{PDerCmd,ImageBnd,Micros,ResizeLoc,0,{SizeReq,0,0,0,max}};
+        req<<Cmd{PDerCmd,BeforeBnd,Micros,BeforeLoc,0,{BothReq,0,0,0,max}};
+        req<<Cmd{PDerCmd,TextureBnd,Micros,MiddleLoc,0,{BothReq,ptr,idx,siz,max}};
+        req<<Cmd{PDerCmd,AfterBnd,Micros,AfterLoc,0,{BothReq,0,0,0,max}};
         push(req,log); return;}
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
@@ -1168,10 +1168,10 @@ struct SwapState : public BaseState {
     }
     void unsize(SmartState log) override {
         int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
+        glfwGetFramebufferSize(window, &width, &height); // TODO move glfw functions to WindowState
         while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();}
+            glfwGetFramebufferSize(window, &width, &height); // TODO move glfw functions to WindowState
+            glfwWaitEvents();} // TODO move glfw functions to WindowState
         vkDeviceWaitIdle(device);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1457,8 +1457,10 @@ struct LayoutState : public BaseState {
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         BaseState *dee = lock->get(ImageBnd);
+        vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
+        if (bloc==AfterLoc) vkResetFences(device, 1, &fence);
         transitionImageLayout(device, graphics, buffer, dee->getImage(),
-            (last?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
+            (bloc==AfterLoc?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
             (bloc==AfterLoc?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
             (bloc==AfterLoc?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bloc==AfterLoc?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
@@ -1507,64 +1509,58 @@ struct TextureState : public BaseState {
         std::cout << "~TextureState " << debug << std::endl;
     }
     VkImage getImage() override {return textureImage;}
-    VkImageView getImageView() override {return textureImageView;} // TODO keep, but forward from ImageState
+    VkImageView getImageView() override {return textureImageView;}
     VkSampler getTextureSampler() override {return textureSampler;}
+    VkSemaphore getSemaphore() override {return afterSemaphore;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
-        //createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-        //    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        //    memProperties, /*output*/ textureImage, textureImageMemory);
-        //textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureImage = lock->get(ImageBnd)->getImage();
         textureImageView = lock->get(ImageBnd)->getImageView();
         textureSampler = createTextureSampler(device,properties);
-        beforeBuffer = createCommandBuffer(device,commandPool);
+        // beforeBuffer = createCommandBuffer(device,commandPool);
         commandBuffer = createCommandBuffer(device,commandPool);
-        afterBuffer = createCommandBuffer(device,commandPool);
-        beforeSemaphore = createSemaphore(device);
+        // afterBuffer = createCommandBuffer(device,commandPool);
+        // beforeSemaphore = createSemaphore(device);
         afterSemaphore = createSemaphore(device);
-        fence = createFence(device);
+        // fence = createFence(device);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
-        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+        // vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
-        if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
-        if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &afterBuffer);
+        // if (beforeSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, beforeSemaphore, nullptr);
+        // if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
+        // vkFreeCommandBuffers(device, commandPool, 1, &afterBuffer);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        vkFreeCommandBuffers(device, commandPool, 1, &beforeBuffer);
+        // vkFreeCommandBuffers(device, commandPool, 1, &beforeBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
-        // vkDestroyImageView(device, textureImageView, nullptr);
-        // vkDestroyImage(device, textureImage, nullptr);
-        // vkFreeMemory(device, textureImageMemory, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
+        log << "setup " << debug << std::endl; slog.clr();
         if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
-            stagingBuffer, stagingBufferMemory); // TODO move this to ImageState by splitting up copyTexture
+            stagingBuffer, stagingBufferMemory);
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr, static_cast<size_t>(imageSize));
-        vkResetCommandBuffer(beforeBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        // vkResetCommandBuffer(beforeBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        vkResetCommandBuffer(afterBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        vkResetFences(device, 1, &fence);
-        LayoutState::transitionImageLayout(device, graphics, beforeBuffer, textureImage,
+        // vkResetCommandBuffer(afterBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        // vkResetFences(device, 1, &fence);
+        /*LayoutState::transitionImageLayout(device, graphics, beforeBuffer, textureImage,
             VK_NULL_HANDLE, beforeSemaphore, VK_NULL_HANDLE,
-            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);*/
         copyTextureImage(device, graphics, memProperties, textureImage, texWidth, texHeight,
-            beforeSemaphore, afterSemaphore, fence, stagingBuffer, commandBuffer);
-        LayoutState::transitionImageLayout(device, graphics, afterBuffer, textureImage,
+            last->getSemaphore(), afterSemaphore, stagingBuffer, commandBuffer);
+        /*LayoutState::transitionImageLayout(device, graphics, afterBuffer, textureImage,
             afterSemaphore, VK_NULL_HANDLE, fence,
-            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
         return fence;
     }
     void upset(SmartState log) override {
@@ -1576,7 +1572,7 @@ struct TextureState : public BaseState {
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics,
         VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
-        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
+        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
         VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
 };
 
@@ -1810,6 +1806,8 @@ struct MainState {
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<ImageState,ImageBnd,StackState::frames> imageState;
+    ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState;
+    ArrayState<LayoutState,AfterBnd,StackState::frames> afterState;
     ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
@@ -1846,6 +1844,8 @@ struct MainState {
         indexState("Indexz",VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState("Bringupz",VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         imageState("ImageBnd"),
+        beforeState("BeforeBnd"),
+        afterState("AfterBnd"),
         textureState("Texturez"),
         uniformState("Uniformz"),
         matrixState("Matrixz"),
@@ -1864,6 +1864,8 @@ struct MainState {
             {IndexBnd,&indexState},
             {BringupBnd,&bringupState},
             {ImageBnd,&imageState},
+            {BeforeBnd,&beforeState},
+            {AfterBnd,&afterState},
             {TextureBnd,&textureState},
             {UniformBnd,&uniformState},
             {MatrixBnd,&matrixState},
@@ -1896,13 +1898,13 @@ void vulkanWake(Center *ptr, int sub) {
     mptr->testState.wake.wait();
 }
 void vulkanWait(Center *ptr, int sub) {
-    glfwWaitEventsTimeout(0.001); // TODO move to WindowState; add GlfwState and WaylandState for WindowState to wrap
+    glfwWaitEventsTimeout(0.001); // TODO move to WindowState
 }
 void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanForce(Center *ptr, int sub) {
-    std::cerr << "unexpected copy fail!" << std::endl; exit(-1);
+    std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); exit(-1);
 }
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide upon bools and functions
@@ -1942,11 +1944,14 @@ void vulkanBack(Configure cfg, int sav, int val) {
 }
 
 int main(int argc, const char **argv) {
+    // TODO parse argv for arguments to main and push only unparsed to cmdl
     for (int i = 1; i < argc; i++) cmdl.push_back(argv[i]);
+    // TODO pass parsed arguments to main
     MainState main;
     mptr = &main;
     main.copyState.call(RegisterOpen,vulkanBack);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
+    // TODO move glfw functions to WindowState
     while (!glfwWindowShouldClose(main.windowState.window) && main.copyState.read(RegisterOpen) != 0) {
     glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
     planeLoop();}
@@ -2420,7 +2425,6 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     //  TODO number and type of bindings depends on micro
-    //  TODO add constant functions of micro to type.h
     //  TODO change array to vector
     std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -2673,7 +2677,7 @@ void LayoutState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCom
 }
 void TextureState::copyTextureImage(VkDevice device, VkQueue graphics,
     VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
-    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkFence fence,
+    VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
     VkBuffer stagingBuffer, VkCommandBuffer commandBuffer) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -2827,7 +2831,6 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets); // TODO depends on micro
     vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); // TODO depends on micro
-    // HERE
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
     vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
     vkCmdEndRenderPass(commandBuffer);

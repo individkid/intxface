@@ -57,7 +57,8 @@ Bind = { -- per variation of BaseState
 	"IndexBnd",
 	"BringupBnd",
 	"ImageBnd",
-	"LayoutBnd",
+	"BeforeBnd",
+	"AfterBnd",
 	"TextureBnd",
 	"UniformBnd",
 	"MatrixBnd",
@@ -257,8 +258,7 @@ Fixed = { -- how motion interpreted
 }
 Micro = {
 	"MicroTest", -- for Bringup Plan
-	"MicroTexture", -- for Texturez copy
-	"MicroDebug", -- for testing microcode
+	-- "MicroDebug", -- for testing microcode
 }
 Thread = {
 	"PipeThd",
@@ -387,28 +387,17 @@ Location = {
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
-	-- {"Micro","MicroTexture","Int","0","BindLoc","ResizeLoc"},
-	-- {"Micro","MicroTexture","Int","1","BindLoc","BeforeLoc"},
-	-- {"Micro","MicroTexture","Int","2","BindLoc","MiddleLoc"},
-	-- {"Micro","MicroTexture","Int","3","BindLoc","AfterLoc"},
-	{"Micro","MicroTexture","Int","0","BindLoc","MiddleLoc"},
 }
 Depender = { -- push
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
-	{"Micro","MicroTexture","BindLoc","ResizeLoc","Bind","ImageBnd"},
-	-- {"Micro","MicroTexture","BindLoc","BeforeLoc","Bind","LayoutBnd"},
-	{"Micro","MicroTexture","BindLoc","MiddleLoc","Bind","TextureBnd"},
-	-- {"Micro","MicroTexture","BindLoc","AfterLoc","Bind","LayoutBnd"},
 }
 Dependee = { -- rinc
-	-- {"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
-	-- {"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","IndexBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","BringupBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","AcquireBnd"},
@@ -419,11 +408,9 @@ Dependee = { -- rinc
 Dependie = { -- rinc
 	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
-	-- {"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Depended = { -- winc
 	{"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
-	-- {"Micro","MicroTexture","BindLoc","AfterLoc","Int","0","Bind","ImageBnd"}, -- make ImageBnd a Depenrer instead
 }
 BindType = {
 	{"Bind","MatrixBnd","BindTyp","UniformTyp"},
