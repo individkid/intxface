@@ -692,6 +692,14 @@ struct BindState : public BaseState {
         auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
         auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
         rdec(bnd,log);}
+        for (int i = 0; true; i++) {
+        auto bnd0 = Dependie__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
+        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
+        rdec(bnd,log);}
+        for (int i = 0; true; i++) {
+        auto bnd0 = Depended__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
+        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
+        wdec(bnd,log);}
         push(der,log);
     }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
@@ -768,6 +776,7 @@ struct ThreadState : public DoneState {
         if (before.empty()) {safe.post(); break;}
         PushState push = before.front(); before.pop_front();
         safe.post();
+        if (push.base) push.log << "stage " << push.base->debug << std::endl;
         if (push.base) switch (push.base->get()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
@@ -847,8 +856,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerReq): buf[i] = stack[req[i].bnd]->buffer(); count += 1;
             break; case(PDerReq): buf[i] = stack[req[i].bnd]->prebuf(); count += 1;
             break; case(IDerReq): buf[i] = stack[req[i].bnd]->prebuf(req[i].idx); count += 1;
-            break; case(RDeeReq): case(IRDeeReq): case(WDeeReq):
-            buf[i] = stack[req[i].bnd]->buffer(); count += 1;}
+            break; case(RDeeReq): case(WDeeReq): buf[i] = stack[req[i].bnd]->buffer(); count += 1;
+            break; case(IRDeeReq): buf[i] = stack[req[i].bnd]->prebuf(req[i].idx); count += 1;}
         if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; if (count > 1 && bind == 0) lim = -1;
         for (int i = 0; i < num && i < lim; i++) switch (req[i].tag) {default:
@@ -905,8 +914,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         auto bnd0 = Dependee__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
         auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
         BindTyp typ = BindType__Bind__BindTyp(bnd);
-        if (typ == PipelineTyp) req<<Req{IRDeeReq,bnd,Micros,BindLocs,mic};
+        if (typ == PipelineTyp) /*req<<Req{IRDeeReq,bnd,Micros,BindLocs,mic}*/;
         else req<<Req{RDeeReq,bnd,Micros,BindLocs};}
+        for (int i = 0; true; i++) {
+        auto bnd0 = Dependie__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
+        auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
+        req<<Req{IRDeeReq,bnd,Micros,BindLocs,mic};}
         for (int i = 0; true; i++) {
         auto bnd0 = Depended__Micro__BindLoc__Int__Bind(mic); if (bnd0 == 0) break;
         auto bnd1 = bnd0(loc); if (bnd1 == 0) break; Bind bnd = bnd1(i); if (bnd == Binds) break;
@@ -1669,6 +1682,7 @@ struct DrawState : public BaseState {
         return after;
     }
     BaseState *get(Bind typ) {
+        if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
         return lock->get(typ);
     }
     void resize(SmartState log) override {
@@ -1702,10 +1716,16 @@ struct DrawState : public BaseState {
             BaseState *indexPtr = 0;
             BaseState *acquirePtr = 0;
             BaseState *presentPtr = 0;
+            auto dee = Dependee__Micro__BindLoc__Int__Bind(size.micro);
+            auto die = Dependie__Micro__BindLoc__Int__Bind(size.micro);
+            auto dep = dee;
             for (int i = 0; true; i++) {
-            Bind bnd = Dependee__Micro__BindLoc__Int__Bind(size.micro)(MiddleLoc)(i);
-            BindTyp typ = BindType__Bind__BindTyp(bnd);
+            Bind bnd = Binds;
+            auto fnc = dep(MiddleLoc);
+            if (fnc) bnd = fnc(i);
+            if (bnd == Binds && dep == dee) {dep = die; i = -1; continue;}
             if (bnd == Binds) break;
+            BindTyp typ = BindType__Bind__BindTyp(bnd);
             switch (typ) {
             default: {std::cerr << "invalid bind check! " <<
                 debug << " " << typ << std::endl; exit(-1);}
@@ -1739,7 +1759,7 @@ struct DrawState : public BaseState {
                 drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
                     (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE),after,fence,VK_NULL_HANDLE);}
             else {std::cerr << "invalid bind set! " <<
-                swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
+                swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; slog.clr(); exit(-1);}
             if (presentPtr == 0 && swapPtr) {
                 if (!PresentState::presentFrame(present, swapPtr->getSwapChain(), imageIndex, after))
                     copy->wots(RegisterMask,1<<ResizeAsync);}

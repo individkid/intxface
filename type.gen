@@ -404,17 +404,22 @@ Depender = { -- push
 	-- {"Micro","MicroTexture","BindLoc","AfterLoc","Bind","LayoutBnd"},
 }
 Dependee = { -- rinc
-	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
+	-- {"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","PipelineBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","IndexBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","BringupBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","AcquireBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","6","Bind","PresentBnd"},
+	-- {"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","PipelineBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","IndexBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","BringupBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","PresentBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
+}
+Dependie = { -- rinc
+	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
+	-- {"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Depended = { -- winc
 	{"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
