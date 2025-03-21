@@ -260,6 +260,13 @@ Micro = {
 	"MicroTest", -- for Bringup Plan
 	-- "MicroDebug", -- for testing microcode
 }
+Extent = {
+    "InitExt",
+    "IntExt",
+    "ExtentExt",
+    "MicroExt",
+    "FalseExt",
+}
 Thread = {
 	"PipeThd",
 	"StdioThd",
@@ -383,13 +390,71 @@ VertexFile = {
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 }
+Memoryat = {
+	{"Memory","Indexz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
+	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
+	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
+	{"Memory","Uniformz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Matrixz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Trianglez","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Numericz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Vertexz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Basisz","Int","0","BindLoc","MiddleLoc"},
+	{"Memory","Piercez","Int","0","BindLoc","MiddleLoc"},
+}
+Memoryer = {
+	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
+	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
+	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
+	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","BeforeBnd"},
+	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","TextureBnd"},
+	{"Memory","Texturez","BindLoc","AfterLoc","Bind","AfterBnd"},
+	{"Memory","Uniformz","BindLoc","MiddleLoc","Bind","UniformBnd"},
+	{"Memory","Matrixz","BindLoc","MiddleLoc","Bind","MatrixBnd"},
+	{"Memory","Trianglez","BindLoc","MiddleLoc","Bind","TriangleBnd"},
+	{"Memory","Numericz","BindLoc","MiddleLoc","Bind","NumericBnd"},
+	{"Memory","Vertexz","BindLoc","MiddleLoc","Bind","VertexBnd"},
+	{"Memory","Basisz","BindLoc","MiddleLoc","Bind","BasisBnd"},
+	{"Memory","Piercez","BindLoc","MiddleLoc","Bind","PierceBnd"},
+}
+Memoryee = {
+	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
+Memoryie = {
+	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
+Memoryed = {
+	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
+Bindat = {
+	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","DrawBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","AcquireBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
+}
+Binder = {
+	{"Bind","DrawBnd","BindLoc","ResizeLoc","Bind","DrawBnd"},
+}
+Bindee = {
+	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
+Bindie = {
+	{"Bind","DrawBnd","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
+}
+Binded = {
+	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
 Location = {
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
 }
 Depender = { -- push
-	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"},
+	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"}, -- TODO move to Binder
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
@@ -422,7 +487,7 @@ BindType = {
 	{"Bind","AcquireBnd","BindTyp","BeforeTyp"},
 	{"Bind","PresentBnd","BindTyp","AfterTyp"},
 }
-MemoryBind = {
+MemoryBind = { -- TODO use Memoryat and Memoryer instead
 	{"Memory","Indexz","Bind","IndexBnd"},
 	{"Memory","Bringupz","Bind","BringupBnd"},
 	{"Memory","Texturez","Bind","TextureBnd"},
@@ -680,9 +745,12 @@ Pierce = {
 	{"idx","Int32",{},{}},
 }
 Draw = {
-	{"idx","Int",{},{}},
-	{"siz","Int",{},{}},
 	{"mic","Micro",{},{}},
+	{"bnd","Bind",{},{}},
+	{"idx","Int",{},{}},
+	{"tag","Extent",{},{}},
+	{"bas","Int",{},{}},
+	{"siz","Int",{},{}},
 }
 Center = {
 	{"mem","Memory",{},""},

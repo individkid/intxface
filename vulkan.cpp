@@ -325,59 +325,49 @@ template<class State> struct ConstState {
     State operator()() {return value;}
 };
 
-enum SizeEnum {
-    IntSize,
-    ExtentSize,
-    MicroSize,
-    SwapSize,
-};
 struct SizeState {
-    SizeEnum tag;
+    Extent tag;
     int base, size;
     VkExtent2D extent;
     Micro micro;
-    VkSurfaceCapabilitiesKHR capabilities;
     SizeState() {
-        tag = IntSize;
-        size = 0;
+        tag = InitExt;
     }
     SizeState(int base, int size) {
-        tag = IntSize;
+        tag = IntExt;
         this->base = base;
         this->size = size;
     }
     SizeState(VkExtent2D extent) {
-        tag = ExtentSize;
+        tag = ExtentExt;
         this->extent = extent;
     }
     SizeState(Micro micro) {
-        tag = MicroSize;
+        tag = MicroExt;
         this->micro = micro;
     }
-    SizeState(VkSurfaceCapabilitiesKHR capabilities) {
-        tag = SwapSize;
-        this->capabilities = capabilities;
+    SizeState(Extent tag) {
+        this->tag = tag;
     }
     bool operator==(const SizeState &other) const {
-        if (tag == IntSize && other.tag == IntSize &&
+        if (tag == InitExt && other.tag == InitExt) return true;
+        if (tag == IntExt && other.tag == IntExt &&
         base == other.base && size == other.size) return true;
-        if (tag == ExtentSize && other.tag == ExtentSize &&
+        if (tag == ExtentExt && other.tag == ExtentExt &&
         extent.width == other.extent.width &&
         extent.height == other.extent.height) return true;
-        if (tag == MicroSize && other.tag == MicroSize &&
+        if (tag == MicroExt && other.tag == MicroExt &&
         micro == other.micro) return true;
-        if (tag == SwapSize && other.tag == SwapSize &&
-        capabilities.currentExtent.width == other.capabilities.currentExtent.width &&
-        capabilities.currentExtent.height == other.capabilities.currentExtent.height) return true;
         return false;
     }
 };
 std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     switch (size.tag) {default: os << "MicroSize()"; break;
-    case (IntSize): os << "IntSize(" << size.size << ")"; break;
-    case (ExtentSize): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
-    case (MicroSize): os << "MicroSize(" << size.micro << ")"; break;
-    case (SwapSize): os << "SwapSize(" << size.capabilities.currentExtent.width << "," << size.capabilities.currentExtent.height << ")"; break;}
+    case (InitExt): os << "InitSize()"; break;
+    case (IntExt): os << "IntSize(" << size.size << ")"; break;
+    case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
+    case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
+    case (FalseExt): os << "FalseSize()"; break;}
     return os;
 }
 
@@ -421,20 +411,17 @@ struct BaseState {
     void *ptr; int loc; int siz;
     char debug[64];
     BaseState() : safe(1), state(InitBase), bloc(BindLocs), bmic(Micros), bder(Binds),
-        rlock(0), wlock(0), lock(0), item(0), next(0), last(0),
-        size(0,0), todo(0,0), debug{0} {
+        rlock(0), wlock(0), lock(0), item(0), next(0), last(0), debug{0} {
         debugChar="none";
     }
     BaseState(const char *name) :
         safe(1), state(InitBase), bloc(BindLocs), bmic(Micros), bder(Binds),
-        rlock(0), wlock(0), lock(0), item(0), next(0), last(0),
-        size(0,0), todo(0,0), debug{0} {debugChar="none";
+        rlock(0), wlock(0), lock(0), item(0), next(0), last(0), debug{0} {debugChar="none";
         sprintf(debug,"%s%d",name,StackState::debug++);
     }
     BaseState(const char *name, StackState *ptr) :
         safe(1), state(InitBase), bloc(BindLocs), bmic(Micros), bder(Binds),
-        rlock(0), wlock(0), lock(0), item(ptr), next(0), last(0),
-        size(0,0), todo(0,0), debug{0} {
+        rlock(0), wlock(0), lock(0), item(ptr), next(0), last(0), debug{0} {
         sprintf(debug,"%s%s%d",item->name,name,StackState::debug++);
     }
     bool push(int rdec, int wdec, Req req, SmartState log) {
@@ -522,11 +509,11 @@ struct BaseState {
         if (state != BothBase) {std::cerr << "sizeup invalid state! " <<
             state << std::endl; exit(-1);}
         if (size == todo); else {
-        if (size == SizeState(0,0)); else {
+        if (size == SizeState(InitExt)); else {
         safe.post();
         unsize(log);
         safe.wait();}
-        if ((size = todo) == SizeState(0,0)); else {
+        if ((size = todo) == SizeState(InitExt)); else {
         safe.post();
         resize(log);
         safe.wait();}}
@@ -539,11 +526,11 @@ struct BaseState {
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state <<
             "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
         if (size == todo); else {
-        if (size == SizeState(0,0)); else {
+        if (size == SizeState(InitExt)); else {
         safe.post();
         unsize(log);
         safe.wait();}
-        if ((size = todo) == SizeState(0,0)); else {
+        if ((size = todo) == SizeState(InitExt)); else {
         safe.post();
         resize(log);
         safe.wait();}}
@@ -925,7 +912,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(HeapState<Cmd> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
-    void push(Micro mic, int idx, int siz, Center *ptr, int sub,
+    void push(Draw drw, Center *ptr, int sub,
         bool pnow, void (*pass)(Center*,int),
         bool fnow, void (*fail)(Center*,int),
         bool goon, SmartState log) {
@@ -934,17 +921,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (fail) req<<Cmd{(fnow?FNowCmd:FEnqCmd),Binds,Micros,BindLocs,0,{},ptr,sub,fail};
         if (goon) req<<Cmd{GoonCmd,Binds,Micros,BindLocs};
         for (int j = 0; true; j++) {
-        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
+        // TODO use Draw of Micros,DrawBnd insteas of testing dra.siz
+        // TODO thus Microat is MiddleLoc and Bindat is ResizeLoc
+        BindLoc loc = (drw.siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(drw.mic)(j));
         if (loc == BindLocs) break;
-        for (Iter i(mic,loc); i(); ++i)
+        for (Iter i(drw.mic,loc); i(); ++i)
         if (i.seq == Dee) req<<Cmd{RDeeCmd,i.bnd,Micros,BindLocs};
-        else if (i.seq == Die) req<<Cmd{IRDeeCmd,i.bnd,Micros,BindLocs,mic};
+        else if (i.seq == Die) req<<Cmd{IRDeeCmd,i.bnd,Micros,BindLocs,drw.mic};
         else if (i.seq == Ded) req<<Cmd{WDeeCmd,i.bnd,Micros,BindLocs};}
         for (int j = 0; true; j++) {
-        BindLoc loc = (siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(mic)(j));
+        BindLoc loc = (drw.siz == 0 ? (j > 0 ? BindLocs : ResizeLoc) : Location__Micro__Int__BindLoc(drw.mic)(j));
         if (loc == BindLocs) break;
-        req<<Cmd{DerCmd,Depender__Micro__BindLoc__Bind(mic)(loc),mic,loc,0,
-        {(siz == 0 ? SizeReq : BothReq),0,idx,siz,SizeState(mic)}};}
+        req<<Cmd{DerCmd,Depender__Micro__BindLoc__Bind(drw.mic)(loc),drw.mic,loc,0,
+        {(drw.siz == 0 ? SizeReq : BothReq),0,drw.idx,drw.siz,SizeState(drw.mic)}};}
         push(req,log);
     }
     void push(Center *center, int sub,
@@ -980,8 +969,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): ptr = (void*)center->bas;
         break; case (Piercez): ptr = (void*)center->pie;
         break; case (Drawz): for (int i = 0; i < center->siz; i++)
-        push(center->drw[i].mic,center->drw[i].idx,center->drw[i].siz,
-        // TODO add fields to decide upon bools and functions
+        push(center->drw[i], // TODO add fields to decide upon bools and functions
         center,sub,true,planePass,true,planeFail,false,log);
         return;
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
@@ -1004,9 +992,9 @@ float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
 }
 struct TestState : public DoneState {
-    SafeState safe, wake; bool goon; CopyState *copy; SizeState *size;
-    TestState(CopyState *copy, SizeState *size) :
-        safe(1), wake(0), goon(true), copy(copy), size(size) {
+    SafeState safe, wake; bool goon; CopyState *copy; StackState *swap; StackState *bind;
+    TestState(CopyState *copy, StackState *swap, StackState *bind) :
+        safe(1), wake(0), goon(true), copy(copy), swap(swap), bind(bind) {
         strcpy(debug,"TestState"); std::cout << debug << std::endl;
     }
     ~TestState() {
@@ -1051,14 +1039,16 @@ void TestState::call() {
     //
     copy->push(HeapState<Cmd>()<<
     Cmd{FNowCmd,Binds,Micros,BindLocs,0,{},0,0,vulkanForce}<<
-    Cmd{PDerCmd,SwapBnd,Micros,ResizeLoc,0,{SizeReq,0,0,0,*size}},SmartState());
+    Cmd{PDerCmd,SwapBnd,Micros,ResizeLoc,0,{SizeReq,0,0,0,SizeState(FalseExt)}},SmartState());
+    // TODO use Draw{Micros,SwapBnd,0,0,SizeState(FalseSize)} instead
     //
     copy->push(HeapState<Cmd>()<<
     Cmd{FNowCmd,Binds,Micros,BindLocs,0,{},0,0,vulkanForce}<<
     Cmd{IDerCmd,PipelineBnd,Micros,ResizeLoc,MicroTest,{SizeReq,0,0,0,SizeState(MicroTest)}},SmartState());
+    // TODO use Draw{Micros,PipelineBnd,MicroTest,0,SizeState(MicroTest)}
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(MicroTest,0,0,0,0,true,0,true,vulkanWait,true,SmartState());
+    copy->push(Draw{MicroTest,Binds,0,MicroExt},0,0,true,0,true,vulkanWait,true,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Cmd>()<<
     Cmd{DerCmd,AcquireBnd,Micros,ResizeLoc,0,{SizeReq,0,0,0,SizeState(MicroTest)}},SmartState());
@@ -1084,18 +1074,24 @@ void TestState::call() {
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
+    SmartState log;
     glm::mat4 model, view, proj, debug;
-    testUpdate(size->capabilities.currentExtent,model,view,proj,debug);
+    BindState *bptr = bind->buffer()->getBind();
+    if (!bptr) {vulkanWake(0,0); continue;}
+    BaseState *sptr = swap->buffer();
+    if (!bptr->rinc(SwapBnd,sptr,log)) {vulkanWake(0,0); continue;}
+    testUpdate(sptr->getSwapChainExtent(),model,view,proj,debug);
+    bptr->rdec(SwapBnd,log);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     memcpy(&mat->mat[0],&model,sizeof(Matrix));
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    copy->push(mat,0,false,vulkanPass,false,vulkanPass,false,SmartState());
+    copy->push(mat,0,false,vulkanPass,false,vulkanPass,false,log);
     //
-    copy->push(MicroTest,0,static_cast<uint32_t>(indices.size()),0,0,
-    true,vulkanWake,true,vulkanWake,false,SmartState());}
+    copy->push(Draw{MicroTest,Binds,0,IntExt,0,static_cast<int>(indices.size())},0,0,
+    true,vulkanWake,true,vulkanWake,false,log);}
 }
 
 struct ForkState : public DoneState {
@@ -1130,6 +1126,7 @@ struct SwapState : public BaseState {
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
     std::vector<VkFramebuffer> framebuffers;
+    VkSurfaceCapabilitiesKHR capabilities;
     SwapState() :
         BaseState("SwapState"),
         window(StackState::window),
@@ -1147,15 +1144,16 @@ struct SwapState : public BaseState {
         {std::cout << "SwapState " << debug << std::endl;
     }
     ~SwapState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~SwapState " << debug << std::endl;
     }
     VkSwapchainKHR getSwapChain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
-    VkExtent2D getSwapChainExtent() override {return size.capabilities.currentExtent;}
+    VkExtent2D getSwapChainExtent() override {return capabilities.currentExtent;}
     void resize(SmartState log) override {
+        capabilities = findCapabilities(window,surface,physical);
         swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
-            size.capabilities,graphicsFamily,presentFamily);
+            capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
         swapChainImageViews.resize(swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
@@ -1167,11 +1165,6 @@ struct SwapState : public BaseState {
         createFramebuffers(device,getSwapChainExtent(),renderPass,swapChainImageViews,depthImageView,framebuffers);
     }
     void unsize(SmartState log) override {
-        int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height); // TODO move glfw functions to WindowState
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height); // TODO move glfw functions to WindowState
-            glfwWaitEvents();} // TODO move glfw functions to WindowState
         vkDeviceWaitIdle(device);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1192,6 +1185,8 @@ struct SwapState : public BaseState {
     bool get(BaseEnum state) override {
         return (state == FillBase);
     }
+    static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
     static VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
         VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
         VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily);
@@ -1266,7 +1261,7 @@ struct UniformState : public BaseState {
         std::cout << "UniformState " << debug << std::endl;
     }
     ~UniformState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~UniformState " << debug << std::endl;
     }
     VkBuffer getBuffer() override {
@@ -1323,7 +1318,7 @@ struct BufferState : public BaseState {
         std::cout << "BufferState " << debug << std::endl;
     }
     ~BufferState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~BufferState " << debug << std::endl;
     }
     VkBuffer getBuffer() override {
@@ -1394,7 +1389,7 @@ struct ImageState : public BaseState {
         std::cout << "ImageState " << debug << std::endl;
     }
     ~ImageState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log); // TODO create SizeEnum tag for no size
+        SmartState log; push(SizeState(InitExt),log); baseres(log); // TODO create SizeEnum tag for no size
         std::cout << "~ImageState " << debug << std::endl;
     }
     void resize(SmartState log) override {
@@ -1436,7 +1431,7 @@ struct LayoutState : public BaseState {
         std::cout << "LayoutState " << debug << std::endl;
     }
     ~LayoutState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~LayoutState " << debug << std::endl;
     }
     VkSemaphore getSemaphore() override {
@@ -1505,7 +1500,7 @@ struct TextureState : public BaseState {
         std::cout << "TextureState " << debug << std::endl;
     }
     ~TextureState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~TextureState " << debug << std::endl;
     }
     VkImage getImage() override {return textureImage;}
@@ -1589,7 +1584,7 @@ struct AcquireState : public BaseState {
         after(VK_NULL_HANDLE) {
         std::cout << "AcquireState " << debug << std::endl;}
     ~AcquireState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~AcquireState " << debug << std::endl;}
     VkSemaphore getSemaphore() override {
         return after;
@@ -1634,7 +1629,7 @@ struct PresentState : public BaseState {
         std::cout << "PresentState " << debug << std::endl;
     }
     ~PresentState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~PresentState " << debug << std::endl;
     }
     void resize(SmartState log) override {
@@ -1687,7 +1682,7 @@ struct DrawState : public BaseState {
         std::cout << "DrawState " << debug << std::endl;
     }
     ~DrawState() {
-        SmartState log; push(SizeState(0,0),log); baseres(log);
+        SmartState log; push(SizeState(InitExt),log); baseres(log);
         std::cout << "~DrawState " << debug << std::endl;
     }
     VkSemaphore getSemaphore() override {
@@ -1800,9 +1795,8 @@ struct MainState {
     VulkanState vulkanState;
     PhysicalState physicalState;
     LogicalState logicalState;
-    SizeState sizeState;
     ArrayState<SwapState,SwapBnd,1> swapState;
-    ArrayState<PipeState,PipelineBnd,1> pipelineState; // TODO accommodate Micro without shader
+    ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<ImageState,ImageBnd,StackState::frames> imageState;
@@ -1831,7 +1825,6 @@ struct MainState {
         logicalState(physicalState.device,physicalState.graphicsFamily,
             physicalState.presentFamily,physicalState.surfaceFormat,
             vulkanState.validationLayers,physicalState.deviceExtensions),
-        sizeState(findCapabilities(windowState.window,vulkanState.surface,physicalState.device)),
         swapState("SwapBnd",&copyState,
             windowState.window,vulkanState.surface,physicalState.device,
             physicalState.surfaceFormat,physicalState.presentMode,
@@ -1881,14 +1874,12 @@ struct MainState {
             {Binds,0}},
         threadState(logicalState.device,&copyState),
         copyState(&threadState,enumState),
-        testState(&copyState,&sizeState) {
+        testState(&copyState,&swapState,&bindState) {
         std::cout << "MainState" << std::endl;
     }
     ~MainState() {
         std::cout << "~MainState" << std::endl;
     }
-    static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
-    static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
 };
 MainState *mptr = 0;
 
@@ -2339,6 +2330,25 @@ void BaseState::createBuffer(VkDevice device, VkPhysicalDevice physical, VkDevic
     vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
+VkSurfaceCapabilitiesKHR SwapState::findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
+    VkSurfaceCapabilitiesKHR capabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
+    capabilities.currentExtent = chooseSwapExtent(window,capabilities);
+    return capabilities;
+}
+VkExtent2D SwapState::chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+    return capabilities.currentExtent;}
+    else {int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    VkExtent2D actualExtent = {
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height)
+    };
+    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+    return actualExtent;}
+}
 VkSwapchainKHR SwapState::createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
     VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode,
     VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily) {
@@ -2867,24 +2877,4 @@ void TestState::testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::ma
     proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
     proj[1][1] *= -1;
     float mat[16]; planeWindow(mat); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) debug[r][c] = *matrc(mat,r,c,4);
-}
-
-VkSurfaceCapabilitiesKHR MainState::findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {
-    VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
-    capabilities.currentExtent = chooseSwapExtent(window,capabilities);
-    return capabilities;
-}
-VkExtent2D MainState::chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities) {
-    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-    return capabilities.currentExtent;}
-    else {int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    VkExtent2D actualExtent = {
-        static_cast<uint32_t>(width),
-        static_cast<uint32_t>(height)
-    };
-    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-    return actualExtent;}
 }
