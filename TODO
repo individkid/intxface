@@ -4,22 +4,17 @@ Bringup: Change to multi-depend Texturez. Change to multi-depend Drawz. Use Draw
 Regress: Use indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add memory to add coincidence color, and feedback coincidence buffer to draw. Demonstrate depth and coincidence color with irregular triangles.
 
 Builtin: Test each Transfer from planer.lua. Test modes with writes to Configure.
- Window move and size modes include
-  — (UArw) toggle top edge fixed,
-  — (LArw) toggle left edge fixed,
-  — (DArw) toggle bottom edge fixed,
-  — (RArw) toggle right edge fixed.
  Mouse transformations include
-  — (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
-  — (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
-  — (O) cross between pierce to ortho through picture and pierce to ortho through picture moved by same delta as cursor,
-  — (T) translate parallel to picture,
-  — (P) parallel to pierced plane.
-Roller transformations include
-- (R) rotate around moved leg of cross,
-- (Z) translate perpendicular to picture,
-- (S) perpendicular to pierced plane,
-- (F) resize with pierce fixed.
+ (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
+ (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
+ (O) cross between pierce to ortho through picture and pierce to ortho through picture moved by same delta as cursor,
+ (T) translate parallel to picture,
+ (P) parallel to pierced plane.
+ Roller transformations include
+ (R) rotate around moved leg of cross,
+ (Z) translate perpendicular to picture,
+ (S) perpendicular to pierced plane,
+ (F) resize with pierce fixed.
 
 Release: Write plane.lua that starts share, file, space, plane.
 
@@ -34,6 +29,8 @@ plane.lua to demonstrate manipulation,
 space.lua to demonstrate sampling and equivalence,
 line.lua to demonstrate multimedia,
 point.lua to demonstrate communication.
+
+Sound system meant to make rhythmic harmonics, harmonic rhythms, melodic harmonics, and so on, perhaps leveraging analog electronics. Topology system needs to find fundamental permutations, perhaps leveraging an fpga. Video system integrates with hdmi, and perhaps midi peripherals.
 
 Add decoration to facets, including transparency into other spaces, streaming of video or framebuffer, desktops, graffiti, pictures, drawings, 2d spaces, applications, text.
 Add interpretation of visible facet metrics as sound attractors.

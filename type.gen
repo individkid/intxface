@@ -85,6 +85,19 @@ BindLoc = {
 	"MiddleLoc", -- like Draw
 	"AfterLoc", -- like Present
 }
+Advance = {
+	"MicroAdv", -- kick off shader with given index range
+	"SubmicAdv", -- set micro indexed by micro
+	"BufmicAdv", -- set micro in current buffer
+	"BufnotAdv", -- set false in current buffer
+	"PresizAdv", -- set base size in next buffer
+	"PrememAdv", -- set base size in next of memory
+}
+Constant = {
+	"MicroConst",
+	"MemoryConst",
+	"BindConst",
+}
 Format = {
 	"VecFormat",
 	"UvecFormat",
@@ -487,6 +500,14 @@ BindType = {
 	{"Bind","AcquireBnd","BindTyp","BeforeTyp"},
 	{"Bind","PresentBnd","BindTyp","AfterTyp"},
 }
+AdvConst = {
+	{"Advance","MicroAdv","Constant","MicroConst"},
+	{"Advance","SubmicAdv","Constant","BindConst"},
+	{"Advance","BufmicAdv","Constant","BindConst"},
+	{"Advance","BufnotAdv","Constant","BindConst"},
+	{"Advance","PresizAdv","Constant","BindConst"},
+	{"Advance","PrememAdv","Constant","MemoryConst"},
+}
 MemoryBind = { -- TODO use Memoryat and Memoryer instead
 	{"Memory","Indexz","Bind","IndexBnd"},
 	{"Memory","Bringupz","Bind","BringupBnd"},
@@ -745,12 +766,13 @@ Pierce = {
 	{"idx","Int32",{},{}},
 }
 Draw = {
-	{"mic","Micro",{},{}},
-	{"bnd","Bind",{},{}},
+	{"adv","Advance",{},""},
+	{"drw","Micro",{["adv"]={["MicroAdv"]=true}},{}},
+	{"mem","Memory",{["adv"]={["PrememAdv"]=true}},{}},
+	{"bnd","Bind",{["adv"]={["SubmicAdv"]=true,["BufmicAdv"]=true,["BufnotAdv"]=true,["PresizAdv"]=true}},{}},
 	{"idx","Int",{},{}},
-	{"tag","Extent",{},{}},
-	{"bas","Int",{},{}},
 	{"siz","Int",{},{}},
+	{"mic","Micro",{},{}},
 }
 Center = {
 	{"mem","Memory",{},""},
