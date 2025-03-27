@@ -102,12 +102,6 @@ Format = {
 	"VecFormat",
 	"UvecFormat",
 }
-Async = {
-	"FenceAsync",
-	"ResizeAsync",
-	"SelfAsync",
-	"OtherAsync",
-}
 Configure = {
 	"IndexBase",
 	"IndexSize",
@@ -288,6 +282,10 @@ Thread = {
 	"TestThd",
 }
 Mask = {
+	"FnceMsk",
+	"SizeMsk",
+	"SelfMsk",
+	"NslfMsk",
 	"NoteMsk",
 	"WarnMsk",
 	"PassMsk",
@@ -451,6 +449,8 @@ Bindat = {
 }
 Binder = {
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Bind","DrawBnd"},
+	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Bind","AcquireBnd"},
+	{"Bind","PresentBnd","BindLoc","ResizeLoc","Bind","PresentBnd"},
 }
 Bindee = {
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
@@ -467,7 +467,6 @@ Location = {
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
 }
 Depender = { -- push
-	{"Micro","MicroTest","BindLoc","ResizeLoc","Bind","DrawBnd"}, -- TODO move to Binder
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
@@ -770,6 +769,7 @@ Draw = {
 	{"drw","Micro",{["adv"]={["MicroAdv"]=true}},{}},
 	{"mem","Memory",{["adv"]={["PrememAdv"]=true}},{}},
 	{"bnd","Bind",{["adv"]={["SubmicAdv"]=true,["BufmicAdv"]=true,["BufnotAdv"]=true,["PresizAdv"]=true}},{}},
+	{"sub","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
 	{"mic","Micro",{},{}},

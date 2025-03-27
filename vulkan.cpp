@@ -379,7 +379,6 @@ enum ReqEnum {
 struct Req {
     ReqEnum tag; void *ptr; int loc; int siz; SizeState max;
 };
-struct BindState;
 struct Rsp {
     Micro mic; Memory mem; Bind der; BindLoc loc;
 };
@@ -393,6 +392,7 @@ enum BaseEnum {
     NextBase, // waiting for fence done
     BaseEnums
 };
+struct BindState;
 struct BaseState {
     int debugCount;
     const char *debugChar;
@@ -868,7 +868,7 @@ struct ThreadState : public DoneState {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.fnc) {push.fnc(push.ptr,push.sub);}
-        copy->wots(RegisterMask,1<<FenceAsync);
+        copy->wots(RegisterMask,1<<FnceMsk);
         if (push.base) {Rsp rsp = push.base->baseups(push.log);
         // TODO use getter for lock
         if (push.base->lock) push.base->lock->push(rsp,push.log);
@@ -918,48 +918,48 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
     }
-    void push(Cmd *req, int num, SmartState log) {
+    void push(Cmd *cmd, int num, SmartState log) {
         bool goon = true; while (goon) {goon = false;
         BaseState *buf[num] = {}; BindState *bind = 0; int count = 0;
-        for (int i = 0; i < num; i++) switch (req[i].tag) {default:
-            break; case(DerCmd): buf[i] = stack[req[i].rsp.der]->buffer(); count += 1;
-            break; case(PDerCmd): buf[i] = stack[req[i].rsp.der]->prebuf(); count += 1;
-            break; case(IDerCmd): buf[i] = stack[req[i].rsp.der]->prebuf(req[i].idx); count += 1;
-            break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[req[i].rsp.der]->buffer(); count += 1;
-            break; case(IRDeeCmd): buf[i] = stack[req[i].rsp.der]->prebuf(req[i].idx); count += 1;}
+        for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
+            break; case(DerCmd): buf[i] = stack[cmd[i].rsp.der]->buffer(); count += 1;
+            break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.der]->prebuf(); count += 1;
+            break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.der]->prebuf(cmd[i].idx); count += 1;
+            break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[cmd[i].rsp.der]->buffer(); count += 1;
+            break; case(IRDeeCmd): buf[i] = stack[cmd[i].rsp.der]->prebuf(cmd[i].idx); count += 1;}
         if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; if (count > 1 && bind == 0) lim = -1;
-        for (int i = 0; i < num && i < lim; i++) switch (req[i].tag) {default:
+        for (int i = 0; i < num && i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(req[i].rsp.der,buf[i],req[i].req,log)) lim = i;} else {
-            if (!buf[i]->push(req[i].req,log)) lim = i;}
-            break; case(RDeeCmd): if (!bind->rinc(req[i].rsp.der,buf[i],log)) lim = i;
-            break; case(IRDeeCmd): if (!bind->rinc(req[i].rsp.der,buf[i],log)) lim = i;
-            break; case(WDeeCmd): if (!bind->winc(req[i].rsp.der,buf[i],log)) lim = i;}
-        if (lim < num) for (int i = 0; i < lim; i++) switch (req[i].tag) {default:
+            if (!bind->push(cmd[i].rsp.der,buf[i],cmd[i].req,log)) lim = i;} else {
+            if (!buf[i]->push(cmd[i].req,log)) lim = i;}
+            break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.der,buf[i],log)) lim = i;
+            break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.der,buf[i],log)) lim = i;
+            break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.der,buf[i],log)) lim = i;}
+        if (lim < num) for (int i = 0; i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            if (bind) bind->push(req[i].rsp.der,log); buf[i]->push(log);
-            break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(req[i].rsp.der,log);
-            break; case(WDeeCmd): bind->wdec(req[i].rsp.der,log);
-            break; case(FNowCmd): req[i].fnc(req[i].ptr,req[i].sub);
-            break; case(FEnqCmd): thread->push(0,req[i].ptr,req[i].sub,req[i].fnc,log);
+            if (bind) bind->push(cmd[i].rsp.der,log); buf[i]->push(log);
+            break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(cmd[i].rsp.der,log);
+            break; case(WDeeCmd): bind->wdec(cmd[i].rsp.der,log);
+            break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
+            break; case(FEnqCmd): thread->push(0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc,log);
             break; case(GoonCmd): goon = true;}
         Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
-        if (lim == num) for (int i = 0; i < num; i++) switch(req[i].tag) {default:
+        if (lim == num) for (int i = 0; i < num; i++) switch(cmd[i].tag) {default:
             break; case(DerCmd): case (PDerCmd): case (IDerCmd):
             if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
-        if (lim == num) for (int i = 0; i < num; i++) switch (req[i].tag) {default:
-            break; case(DerCmd): stack[req[i].rsp.der]->advance();
-            buf[i]->push(req[i].rsp,bind,log);
+        if (lim == num) for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
+            break; case(DerCmd): stack[cmd[i].rsp.der]->advance();
+            buf[i]->push(cmd[i].rsp,bind,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PDerCmd):
-            buf[i]->push(req[i].rsp,bind,log);
+            buf[i]->push(cmd[i].rsp,bind,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(IDerCmd): stack[req[i].rsp.der]->advance(req[i].idx);
-            buf[i]->push(req[i].rsp,bind,log);
+            break; case(IDerCmd): stack[cmd[i].rsp.der]->advance(cmd[i].idx);
+            buf[i]->push(cmd[i].rsp,bind,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(PNowCmd): req[i].fnc(req[i].ptr,req[i].sub);
-            break; case(PEnqCmd): ptr = req[i].ptr; sub = req[i].sub; fnc = req[i].fnc;}
+            break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
+            break; case(PEnqCmd): ptr = cmd[i].ptr; sub = cmd[i].sub; fnc = cmd[i].fnc;}
         if (lim == num && bind) stack[BindBnd]->advance();}
     }
     void push(Cmd req, SmartState log) {
@@ -1010,8 +1010,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BufnotAdv): tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(FalseExt)};
         break; case (PresizAdv): tag = PDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.idx,drw.siz)};
         break; case (PrememAdv): tag = PDerCmd; rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.idx,drw.siz)};}
-        cmd<<Cmd{tag,rsp,req};}
+        cmd<<Cmd{tag,rsp,req,drw.sub};}
         push(cmd,log);
+    }
+    void push(Draw drw, SmartState log) {
+        push(drw,0,0,false,0,false,0,false,log);
     }
     void push(Center *center, int sub,
         bool pnow, void (*pass)(Center*,int),
@@ -1019,10 +1022,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool goon, SmartState log) {
         Bind bnd = MemoryBind__Memory__Bind(center->mem);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
-        HeapState<Cmd> req;
-        if (pass) req<<Cmd{(pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,pass};
-        if (fail) req<<Cmd{(fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fail};
-        if (goon) req<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
+        HeapState<Cmd> cmd;
+        if (pass) cmd<<Cmd{(pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,pass};
+        if (fail) cmd<<Cmd{(fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fail};
+        if (goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
         int mod = stack[bnd]->bufsiz();
         int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
         void *ptr = 0; switch (center->mem) {
@@ -1033,11 +1036,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
         idx = center->idx*mod; siz = center->siz*mod;
         max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
-        req<<Cmd{PDerCmd,Rsp{Micros,Memorys,ImageBnd,ResizeLoc},Req{SizeReq,0,0,0,max}};
-        req<<Cmd{PDerCmd,Rsp{Micros,Memorys,BeforeBnd,BeforeLoc},Req{BothReq,0,0,0,max}};
-        req<<Cmd{PDerCmd,Rsp{Micros,Memorys,TextureBnd,MiddleLoc},Req{BothReq,ptr,idx,siz,max}};
-        req<<Cmd{PDerCmd,Rsp{Micros,Memorys,AfterBnd,AfterLoc},{BothReq,0,0,0,max}};
-        push(req,log); return;}
+        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,ImageBnd,ResizeLoc},Req{SizeReq,0,0,0,max}};
+        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,BeforeBnd,BeforeLoc},Req{BothReq,0,0,0,max}};
+        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,TextureBnd,MiddleLoc},Req{BothReq,ptr,idx,siz,max}};
+        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,AfterBnd,AfterLoc},{BothReq,0,0,0,max}};
+        // TODO push a Draw instead
+        push(cmd,log); return;}
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1059,8 +1063,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         siz -= base-idx; idx = 0;}
         else {idx = idx-base;}
         if (idx+siz>size) {siz = size-idx;}*/ // TODO
-        req<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,BindLocs},Req{BothReq,ptr,idx,siz,max}};
-        push(req,log);
+        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,BindLocs},Req{BothReq,ptr,idx,siz,max}};
+        // TODO push a Draw instead
+        push(cmd,log);
     }
 };
 
@@ -1117,7 +1122,6 @@ void TestState::call() {
     copy->push(HeapState<Cmd>()<<
     Cmd{FNowCmd,Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,0,0,vulkanForce}<<
     Cmd{PDerCmd,Rsp{Micros,Memorys,SwapBnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState(FalseExt)}},SmartState());
-    // TODO use Draw instead of Cmd directly
     //
     copy->push(HeapState<Cmd>()<<
     Cmd{FNowCmd,Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,0,0,vulkanForce}<<
@@ -1126,11 +1130,11 @@ void TestState::call() {
     for (int i = 0; i < StackState::frames; i++)
     copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.mic=MicroTest},0,0,true,0,true,vulkanWait,true,SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Cmd>()<<
-    Cmd{DerCmd,Rsp{Micros,Memorys,AcquireBnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState(MicroTest)}},SmartState());
+    for (int i = 0; i < StackState::frames; i++)
+    copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.mic=MicroTest},SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++) copy->push(HeapState<Cmd>()<<
-    Cmd{DerCmd,Rsp{Micros,Memorys,PresentBnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState(MicroTest)}},SmartState());
+    for (int i = 0; i < StackState::frames; i++)
+    copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.mic=MicroTest},SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1667,7 +1671,7 @@ struct AcquireState : public BaseState {
         VkExtent2D frameExtent = lock->get(SwapBnd)->getSwapChainExtent();
         VkResult result = vkAcquireNextImageKHR(device,
         lock->get(SwapBnd)->getSwapChain(), UINT64_MAX, after, VK_NULL_HANDLE, &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
         framebuffer = lock->get(SwapBnd)->getFramebuffer(imageIndex);
@@ -1701,7 +1705,7 @@ struct PresentState : public BaseState {
         log << "setup " << debug << std::endl;
         if (!presentFrame(present,lock->get(SwapBnd)->getSwapChain(),
         lock->get(AcquireBnd)->getImageIndex(),last->getSemaphore()))
-        copy->wots(RegisterMask,1<<ResizeAsync);
+        copy->wots(RegisterMask,1<<SizeMsk);
         return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
@@ -1784,12 +1788,7 @@ struct DrawState : public BaseState {
             BaseState *presentPtr = 0;
             int index = 0;
             for (Iter i(Rsp{size.micro,Memorys,Binds,MiddleLoc}); i(); ++i) {
-            // TODO make dee die ded is-functions in Iter
-bool dee = false; bool die = false;
-if (i.seq == Dee || i.seq == Mee || i.seq == Bee) dee = true;
-else if (i.seq == Die || i.seq == Mie || i.seq == Bie) die = true;
-else if (i.seq == Ded || i.seq == Med || i.seq == Bed);
-            if (/*i.seq == Dee || i.seq == Die*/dee || die) {
+            if (i.isee() || i.isie()) {
             BindTyp typ = BindType__Bind__BindTyp(i.bnd);
             switch (typ) {
             default: {std::cerr << "invalid bind check! " <<
@@ -1815,7 +1814,7 @@ else if (i.seq == Ded || i.seq == Med || i.seq == Bed);
             uint32_t imageIndex; if (acquirePtr == 0) {
                 VkResult result = vkAcquireNextImageKHR(device, get(SwapBnd)->getSwapChain(),
                     UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
-                if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<ResizeAsync);
+                if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
                 else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
                     {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}}
             if ((swapPtr || acquirePtr) && pipelinePtr && fetchPtr && indexPtr) {
@@ -1829,7 +1828,7 @@ else if (i.seq == Ded || i.seq == Med || i.seq == Bed);
                 swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
             if (presentPtr == 0 && swapPtr) {
                 if (!PresentState::presentFrame(present, swapPtr->getSwapChain(), imageIndex, after))
-                    copy->wots(RegisterMask,1<<ResizeAsync);}
+                    copy->wots(RegisterMask,1<<SizeMsk);}
             return fence;
         }
         return VK_NULL_HANDLE;

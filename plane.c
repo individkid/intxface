@@ -420,7 +420,7 @@ void machineSelf(int sig, int *arg)
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     if (dst->slf != kernel->count) {kernel->count = 0;
-    callJnfo(RegisterMask,1<<SelfAsync,planeWots);}
+    callJnfo(RegisterMask,1<<SelfMsk,planeWots);}
     else {kernel->count--;
     // move portion of pulse to self to make matrix equal to self times other times comp
     // self1=matrix/(other*comp); pulse1=pulse0*self0/self1
@@ -442,7 +442,7 @@ void machineOther(int sig, int *arg)
     struct Matrix *matrix = machineMatrix(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
     struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
-    if (dst->slf) {callJnfo(RegisterMask,1<<OtherAsync,planeWots);}
+    if (dst->slf) {callJnfo(RegisterMask,1<<NslfMsk,planeWots);}
     // change other to make matrix equal to self times other times comp
     // matrix=self*other1*comp; other1=(1/self)*matrix/comp
     else {float other[16]; float self[16]; float inv[16];
