@@ -380,7 +380,7 @@ struct Req {
     ReqEnum tag; void *ptr; int loc; int siz; SizeState max;
 };
 struct Rsp {
-    Micro mic; Memory mem; Bind der; BindLoc loc;
+    Micro mic; Memory mem; Bind bnd; BindLoc loc;
 };
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
@@ -710,9 +710,9 @@ struct Iter {
         else if (seq == Mee) f = Memoryee__Memory__BindLoc__Int__Bind(rsp.mem);
         else if (seq == Mie) f = Memoryie__Memory__BindLoc__Int__Bind(rsp.mem);
         else if (seq == Med) f = Memoryed__Memory__BindLoc__Int__Bind(rsp.mem);
-        else if (seq == Bee) f = Bindee__Bind__BindLoc__Int__Bind(rsp.der);
-        else if (seq == Bie) f = Bindie__Bind__BindLoc__Int__Bind(rsp.der);
-        else if (seq == Bed) f = Binded__Bind__BindLoc__Int__Bind(rsp.der);
+        else if (seq == Bee) f = Bindee__Bind__BindLoc__Int__Bind(rsp.bnd);
+        else if (seq == Bie) f = Bindie__Bind__BindLoc__Int__Bind(rsp.bnd);
+        else if (seq == Bed) f = Binded__Bind__BindLoc__Int__Bind(rsp.bnd);
         if (f == 0) {incr(); sub = 0; continue;}
         auto g = f(rsp.loc);
         if (g == 0) {incr(); sub = 0; continue;}
@@ -768,7 +768,7 @@ struct BindState : public BaseState {
         if (i.isee()) rdec(i.bnd,log);
         else if (i.isie()) rdec(i.bnd,log);
         else if (i.ised()) wdec(i.bnd,log);}
-        push(rsp.der,log);
+        push(rsp.bnd,log);
     }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
@@ -922,25 +922,25 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool goon = true; while (goon) {goon = false;
         BaseState *buf[num] = {}; BindState *bind = 0; int count = 0;
         for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
-            break; case(DerCmd): buf[i] = stack[cmd[i].rsp.der]->buffer(); count += 1;
-            break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.der]->prebuf(); count += 1;
-            break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.der]->prebuf(cmd[i].idx); count += 1;
-            break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[cmd[i].rsp.der]->buffer(); count += 1;
-            break; case(IRDeeCmd): buf[i] = stack[cmd[i].rsp.der]->prebuf(cmd[i].idx); count += 1;}
+            break; case(DerCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
+            break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(); count += 1;
+            break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;
+            break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
+            break; case(IRDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;}
         if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; if (count > 1 && bind == 0) lim = -1;
         for (int i = 0; i < num && i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(cmd[i].rsp.der,buf[i],cmd[i].req,log)) lim = i;} else {
+            if (!bind->push(cmd[i].rsp.bnd,buf[i],cmd[i].req,log)) lim = i;} else {
             if (!buf[i]->push(cmd[i].req,log)) lim = i;}
-            break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.der,buf[i],log)) lim = i;
-            break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.der,buf[i],log)) lim = i;
-            break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.der,buf[i],log)) lim = i;}
+            break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
+            break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
+            break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.bnd,buf[i],log)) lim = i;}
         if (lim < num) for (int i = 0; i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            if (bind) bind->push(cmd[i].rsp.der,log); buf[i]->push(log);
-            break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(cmd[i].rsp.der,log);
-            break; case(WDeeCmd): bind->wdec(cmd[i].rsp.der,log);
+            if (bind) bind->push(cmd[i].rsp.bnd,log); buf[i]->push(log);
+            break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(cmd[i].rsp.bnd,log);
+            break; case(WDeeCmd): bind->wdec(cmd[i].rsp.bnd,log);
             break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(FEnqCmd): thread->push(0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc,log);
             break; case(GoonCmd): goon = true;}
@@ -949,13 +949,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): case (PDerCmd): case (IDerCmd):
             if (last) last->next = buf[i]; buf[i]->last = last; buf[i]->next = 0; last = buf[i];}
         if (lim == num) for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
-            break; case(DerCmd): stack[cmd[i].rsp.der]->advance();
+            break; case(DerCmd): stack[cmd[i].rsp.bnd]->advance();
             buf[i]->push(cmd[i].rsp,bind,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PDerCmd):
             buf[i]->push(cmd[i].rsp,bind,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(IDerCmd): stack[cmd[i].rsp.der]->advance(cmd[i].idx);
+            break; case(IDerCmd): stack[cmd[i].rsp.bnd]->advance(cmd[i].idx);
             buf[i]->push(cmd[i].rsp,bind,log);
             thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
             break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
@@ -1040,7 +1040,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,BeforeBnd,BeforeLoc},Req{BothReq,0,0,0,max}};
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,TextureBnd,MiddleLoc},Req{BothReq,ptr,idx,siz,max}};
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,AfterBnd,AfterLoc},{BothReq,0,0,0,max}};
-        // TODO push a Draw instead
         push(cmd,log); return;}
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
@@ -1064,7 +1063,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else {idx = idx-base;}
         if (idx+siz>size) {siz = size-idx;}*/ // TODO
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,BindLocs},Req{BothReq,ptr,idx,siz,max}};
-        // TODO push a Draw instead
         push(cmd,log);
     }
 };
@@ -1119,13 +1117,9 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(HeapState<Cmd>()<<
-    Cmd{FNowCmd,Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,0,0,vulkanForce}<<
-    Cmd{PDerCmd,Rsp{Micros,Memorys,SwapBnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState(FalseExt)}},SmartState());
+    copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,true,0,true,vulkanForce,false,SmartState());
     //
-    copy->push(HeapState<Cmd>()<<
-    Cmd{FNowCmd,Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,0,0,vulkanForce}<<
-    Cmd{IDerCmd,Rsp{Micros,Memorys,PipelineBnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState(MicroTest)},MicroTest},SmartState());
+    copy->push(Draw{.adv=SubmicAdv,.bnd=PipelineBnd,.sub=MicroTest,.mic=MicroTest},0,0,true,0,true,vulkanForce,false,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.mic=MicroTest},0,0,true,0,true,vulkanWait,true,SmartState());
@@ -1170,8 +1164,8 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,false,vulkanPass,false,vulkanPass,false,log);
     //
-    copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=static_cast<int>(indices.size())},0,0,
-    true,vulkanWake,true,vulkanWake,false,log);}
+    copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=static_cast<int>(indices.size())},
+    0,0,true,vulkanWake,true,vulkanWake,false,log);}
 }
 
 struct ForkState : public DoneState {

@@ -448,6 +448,8 @@ Bindat = {
 	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
 }
 Binder = {
+	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
+	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Bind","AcquireBnd"},
 	{"Bind","PresentBnd","BindLoc","ResizeLoc","Bind","PresentBnd"},
