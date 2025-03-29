@@ -660,8 +660,10 @@ void planeConsole(enum Thread tag, int idx)
     while (sizeChrq(chrq)) {*(ptr++) = frontChrq(chrq); popChrq(chrq);} *(ptr++) = 0;
     if (sem_wait(&stdioSem) != 0) ERROR();
     pushStrq(str,strin);
+    int size = sizeStrq(strin);
     if (sem_post(&stdioSem) != 0) ERROR();
-    callJnfo(RegisterMask,(1<<CnslMsk),planeWots);}}
+    callJnfo(RegisterMask,(1<<CnslMsk),planeWots);
+    callJnfo(RegisterStrq,size,planeWcfg);}}
     else break;}
 }
 void planeClose(enum Thread tag, int idx)
@@ -698,18 +700,14 @@ void registerOpen(enum Configure cfg, int sav, int val)
 }
 void registerMask(enum Configure cfg, int sav, int val)
 {
-    switch (cfg) {default: ERROR();
-    break; case (RegisterNote): callKnfo(RegisterMask,(1<<NoteMsk),planeWots);
-    break; case (RegisterWarn): callKnfo(RegisterMask,(1<<WarnMsk),planeWots);
-    break; case (RegisterPass): callKnfo(RegisterMask,(1<<PassMsk),planeWots);
-    break; case (RegisterFail): callKnfo(RegisterMask,(1<<FailMsk),planeWots);
-    break; case (RegisterMask): if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd))
-        callKnfo(RegisterOpen,(1<<CopyThd),planeWots);}
+    if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd))
+    callKnfo(RegisterOpen,(1<<CopyThd),planeWots);
 }
 
 char *planeGetstr()
 {
     if (sem_wait(&stdioSem) != 0) ERROR();
+    if (sizeStrq(strin) == 0) ERROR();
     char *str = frontStrq(strin); popStrq(strin);
     if (sem_post(&stdioSem) != 0) ERROR();
     return str;
@@ -753,14 +751,16 @@ void initBoot()
     const char **boot = malloc(size*sizeof(const char *)); size = 0;
     for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
     for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
-    for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0;
-    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
+    for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0; int ssiz = 0;
+    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0}; char *str = 0;
     if (hideArgument(&arg, boot[i], &asiz)) {
     copyArgument(&argument,&arg); freeArgument(&arg);}
     else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
     allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);}
     else if (hideMachine(&mchn, boot[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);}
+    else if (hideStr(&str,boot[i],&ssiz)) {
+    planePutstr(str); freeStr(&str,1);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
 }
 void initPlan()
@@ -790,7 +790,8 @@ void planeLoop()
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): {
-    if (callJnfo(RegisterCount,1,planeRmw) < 1000) {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
+    if (callJnfo(RegisterCount,1,planeRmw) < callInfo(RegisterLimit,0,planeRcfg))
+    {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
     }
@@ -812,10 +813,12 @@ void planeDone()
 void planePass(struct Center *ptr, int sub)
 {
     centerPlace(ptr,sub);
-    callKnfo(RegisterPass,sub,planeWcfg);
+    callJnfo(RegisterPass,sub,planeWcfg);
+    callJnfo(RegisterMask,(1<<PassMsk),planeWots);
 }
 void planeFail(struct Center *ptr, int sub)
 {
     centerPlace(ptr,sub);
-    callKnfo(RegisterFail,sub,planeWcfg);
+    callJnfo(RegisterFail,sub,planeWcfg);
+    callJnfo(RegisterMask,(1<<FailMsk),planeWots);
 }

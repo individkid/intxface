@@ -51,6 +51,8 @@ Bind = { -- per variation of BaseState
 	"BindBnd",
 	"SwapBnd",
 	"PipelineBnd",
+	"PokeBnd",
+	"PeekBnd",
 	"AcquireBnd",
 	"PresentBnd",
 	"DrawBnd",
@@ -135,12 +137,12 @@ Configure = {
 	"RegisterOpen", -- thread mask
 	"RegisterPlan", -- testing plan
 	"RegisterCount", -- test progress
+	"RegisterLimit", -- progress limit
 	"RegisterPoll", -- poll microseconds
+	"RegisterPass", -- pass center index
+	"RegisterFail", -- fail center index
 	"RegisterMask", -- interrupt mask
-	"RegisterNote",
-	"RegisterWarn",
-	"RegisterPass",
-	"RegisterFail",
+	"RegisterStrq", -- num strings in queue
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -238,7 +240,6 @@ QopyArg = {
 	"QopySrc",
 }
 Plan = { -- which test to run
-	"Logcout", -- printout microcode computations
 	"Bringup", -- reproduce the tutorial
 	"Regress", -- test each transformation with Configure values; send and receive Matrixz with planer.lua
 	"Builtin", -- test each interaction with space with shader indexed Memory buffers and depth color
@@ -286,12 +287,10 @@ Mask = {
 	"SizeMsk",
 	"SelfMsk",
 	"NslfMsk",
-	"NoteMsk",
-	"WarnMsk",
-	"PassMsk",
-	"FailMsk",
 	"SlctMsk",
 	"CnslMsk",
+	"PassMsk",
+	"FailMsk",
 }
 Emerg = {
 	"Planes", -- Scalar -- [Plane] -- per boundary
@@ -491,16 +490,6 @@ Dependie = { -- rinc
 Depended = { -- winc
 	{"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
-BindType = {
-	{"Bind","MatrixBnd","BindTyp","UniformTyp"},
-	{"Bind","TextureBnd","BindTyp","TextureTyp"},
-	{"Bind","PipelineBnd","BindTyp","PipelineTyp"},
-	{"Bind","SwapBnd","BindTyp","SwapTyp"},
-	{"Bind","IndexBnd","BindTyp","IndexTyp"},
-	{"Bind","BringupBnd","BindTyp","FetchTyp"},
-	{"Bind","AcquireBnd","BindTyp","BeforeTyp"},
-	{"Bind","PresentBnd","BindTyp","AfterTyp"},
-}
 AdvConst = {
 	{"Advance","MicroAdv","Constant","MicroConst"},
 	{"Advance","SubmicAdv","Constant","BindConst"},
@@ -522,11 +511,13 @@ MemoryBind = { -- TODO use Memoryat and Memoryer instead
 	{"Memory","Piercez","Bind","PierceBnd"},
 }
 Bootstrap = {
-	{"Int","0","Str","Force(num:2"..
+	{"Int","0","Str","Force(num:3"..
 		"cfg[0]:RegisterPlan"..
-		"cfg[1]:RegisterPoll"..
+		"cfg[1]:RegisterLimit"..
+		"cfg[2]:RegisterPoll"..
 		"val[0]:%(return castPlan(\"Bringup\"))"..
-		"val[1]:1)"},
+		"val[1]:1000"..
+		"val[2]:1)"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
