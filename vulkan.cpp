@@ -152,7 +152,6 @@ struct LogicalState {
 
 struct BaseState;
 struct StackState {
-    const char *name;
     static const int frames = 2;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
@@ -161,6 +160,7 @@ struct StackState {
     virtual void advance(int i) = 0;
     virtual Bind buftyp() = 0;
     virtual int bufsiz() = 0;
+    virtual const char *bufnam() = 0;
     static StackState* self;
     static int debug;
     static int micro;
@@ -182,7 +182,7 @@ struct StackState {
     static VkQueue graphics;
     static VkQueue present;
     static VkBufferUsageFlags flags;
-    StackState(const char *name,
+    StackState(
         ChangeState<Configure,Configures> *copy,
         GLFWwindow* window,
         VkSurfaceKHR surface,
@@ -199,8 +199,7 @@ struct StackState {
         VkFormat imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
-        VkQueue present) :
-    name(name) {
+        VkQueue present) {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;
@@ -222,13 +221,13 @@ struct StackState {
         StackState::graphics = graphics;
         StackState::present = present;
     }
-    StackState(const char *name, VkBufferUsageFlags flags) : name(name) {
+    StackState(VkBufferUsageFlags flags) {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;
         StackState::flags = flags;        
     }
-    StackState(const char *name) : name(name) {
+    StackState() {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;        
@@ -260,7 +259,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
     SafeState safe;
     int idx;
     State state[Size];
-    ArrayState(const char *name,
+    ArrayState(
         ChangeState<Configure,Configures> *copy,
         GLFWwindow* window,
         VkSurfaceKHR surface,
@@ -278,7 +277,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) :
-    StackState(name,
+    StackState(
         copy,
         window,
         surface,
@@ -296,11 +295,12 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         depthFormat,
         graphics,
         present),
-        safe(1), idx(0) {}
-    ArrayState(const char *name, VkBufferUsageFlags flags) :
-        StackState(name,flags), safe(1), idx(0) {}
-    ArrayState(const char *name) :
-        StackState(name), safe(1), idx(0) {}
+        safe(1), idx(0) {
+    }
+    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
+    }
+    ArrayState() : safe(1), idx(0) {
+    }
     BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
     BaseState *prebuf() override {safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
     BaseState *prebuf(int i) override {
@@ -312,6 +312,32 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         safe.wait(); idx = i; safe.post();}
     Bind buftyp() override {return Type;}
     int bufsiz() override {return sizeof(State);}
+    const char *bufnam() override {
+        switch (Type) {
+        default: {std::cerr << "unnamed array type!" << std::endl; exit(-1);}
+        case (SwapBnd): return "SwapBnd";
+        case (PipelineBnd): return "PipelineBnd";
+        case (IndexBnd): return "IndexBnd";
+        case (BringupBnd): return "BringupBnd";
+        case (ImageBnd): return "ImageBnd";
+        case (BeforeBnd): return "BeforeBnd";
+        case (AfterBnd): return "AfterBnd";
+        case (TextureBnd): return "TextureBnd";
+        case (UniformBnd): return "UniformBnd";
+        case (MatrixBnd): return "MatrixBnd";
+        case (TriangleBnd): return "TriangleBnd";
+        case (NumericBnd): return "NumericBnd";
+        case (VertexBnd): return "VertexBnd";
+        case (BasisBnd): return "BasisBnd";
+        case (PierceBnd): return "PierceBnd";
+        case (PokeBnd): return "PokeBnd";
+        case (PeekBnd): return "PeekBnd";
+        case (AcquireBnd): return "AcquireBnd";
+        case (PresentBnd): return "PresentBnd";
+        case (DrawBnd): return "DrawBnd";
+        case (BindBnd): return "BindBnd";}
+        return 0;
+    }
 };
 template<class State, class Init, int Size> struct InitState {
     State state[Size];
@@ -378,7 +404,7 @@ enum ReqEnum {
     ReqEnums
 };
 struct Req {
-    ReqEnum tag; void *ptr; int loc; int siz; SizeState max;
+    ReqEnum tag; void *ptr; int loc; int siz; SizeState max; bool pre;
 };
 struct Rsp {
     Micro mic; Memory mem; Bind bnd; BindLoc loc;
@@ -407,34 +433,23 @@ struct BaseState {
     Req rqst;
     SizeState size;
     char debug[64];
-    BaseState() :
-        item(0), next(0), last(0), safe(1), state(InitBase), rlock(0), wlock(0),
-        resp{Micros,Memorys,Binds,BindLocs}, rqst{ReqEnums,0,0,0},
-        lock(0), debug{0} {
-    }
-    BaseState(const char *name) :
-        item(0), next(0), last(0), safe(1), state(InitBase), rlock(0), wlock(0),
-        resp{Micros,Memorys,Binds,BindLocs}, rqst{ReqEnums,0,0,0},
-        lock(0), debug{0} {
-        sprintf(debug,"%s%d",name,StackState::debug++);
-    }
     BaseState(const char *name, StackState *ptr) :
         item(ptr), next(0), last(0), safe(1), state(InitBase), rlock(0), wlock(0),
         resp{Micros,Memorys,Binds,BindLocs}, rqst{ReqEnums,0,0,0},
         lock(0), debug{0} {
-        sprintf(debug,"%s%s%d",item->name,name,StackState::debug++);
+        sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
     }
     bool push(int rdec, int wdec, Req req, SmartState log) {
         switch (req.tag) {default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
-        break; case (BothReq): return push(rdec,wdec,req.ptr,req.loc,req.siz,req.max,log);
-        break; case (LockReq): return push(rdec,wdec,req.ptr,req.loc,req.siz,log);
-        break; case (SizeReq): return push(rdec,wdec,req.max,log);}
+        break; case (BothReq): return push(rdec,wdec,req.ptr,req.loc,req.siz,req.max,req.pre,log);
+        break; case (LockReq): return push(rdec,wdec,req.ptr,req.loc,req.siz,req.pre,log);
+        break; case (SizeReq): return push(rdec,wdec,req.max,req.pre,log);}
         return false;
     }
     bool push(Req req, SmartState log) {
         return push(0,0,req,log);
     }
-    bool push(int rdec, int wdec, void *ptr, int loc, int siz, SizeState max, SmartState log) {
+    bool push(int rdec, int wdec, void *ptr, int loc, int siz, SizeState max, bool pre, SmartState log) {
         safe.wait();
         if (state != InitBase && state != FillBase && state != FreeBase) {
         log << "both state fail " << debug << " " << state << std::endl;
@@ -443,15 +458,18 @@ struct BaseState {
         log << "both lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         log << "both pass " << debug << std::endl;
-        rqst.ptr = ptr; rqst.loc = loc; rqst.siz = siz; rqst.max = max;
+        rqst.ptr = ptr; rqst.loc = loc; rqst.siz = siz; rqst.max = max; rqst.pre = pre;
         state = BothBase;
         safe.post();
         return true;
     }
-    bool push(void *ptr, int loc, int siz, SizeState max, SmartState log) {
-        return push(0,0,ptr,loc,siz,max,log);
+    bool push(void *ptr, int loc, int siz, SizeState max, bool pre, SmartState log) {
+        return push(0,0,ptr,loc,siz,max,pre,log);
     }
-    bool push(int rdec, int wdec, SizeState max, SmartState log) {
+    bool push(void *ptr, int loc, int siz, SizeState max, SmartState log) {
+        return push(ptr,loc,siz,max,false,log);
+    }
+    bool push(int rdec, int wdec, SizeState max, bool pre, SmartState log) {
         safe.wait();
         if (state != InitBase && state != FillBase && state != FreeBase) {
         log << "size state fail " << debug << " " << state << std::endl;
@@ -460,15 +478,18 @@ struct BaseState {
         log << "size lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         log << "size pass " << debug << std::endl;
-        rqst.max = max;
+        rqst.max = max; rqst.pre = pre;
         state = SizeBase;
         safe.post();
         return true;
     }
-    bool push(SizeState max, SmartState log) {
-        return push(0,0,max,log);
+    bool push(SizeState max, bool pre, SmartState log) {
+        return push(0,0,max,pre,log);
     }
-    bool push(int rdec, int wdec, void *ptr, int loc, int siz, SmartState log) {
+    bool push(SizeState max, SmartState log) {
+        return push(max,false,log);
+    }
+    bool push(int rdec, int wdec, void *ptr, int loc, int siz, bool pre, SmartState log) {
         safe.wait();
         if (state != FillBase && state != FreeBase) {
         log << "lock state fail " << debug << " " << state << std::endl;
@@ -477,18 +498,21 @@ struct BaseState {
         log << "lock lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         log << "lock pass " << debug << std::endl;
-        rqst.ptr = ptr; rqst.loc = loc; rqst.siz = siz;
+        rqst.ptr = ptr; rqst.loc = loc; rqst.siz = siz; rqst.pre = pre;
         state = LockBase;
         safe.post();
         return true;
     }
+    bool push(void *ptr, int loc, int siz, bool pre, SmartState log) {
+        return push(0,0,ptr,loc,siz,pre,log);
+    }
     bool push(void *ptr, int loc, int siz, SmartState log) {
-        return push(0,0,ptr,loc,siz,log);
+        return push(ptr,loc,siz,false,log);
     }
     void push(SmartState log) {
         safe.wait();
         if (state != BothBase && state != SizeBase && state != LockBase)
-        {std::cerr << "invalid push state!" << std::endl; exit(-1);}
+            {std::cerr << "invalid push state!" << std::endl; exit(-1);}
         state = FreeBase;
         safe.post();
     }
@@ -549,9 +573,9 @@ struct BaseState {
         if (state != NextBase) {std::cerr << "upset invalid state!" <<
             std::endl; exit(-1);}
         safe.post();
-        if (item) log << "baseups " << debug << " " << item->name << std::endl;
+        if (rqst.pre) log << "baseups " << debug << " " << item->debug << std::endl;
         else log << "baseups " << debug << std::endl;
-        if (item) item->advance();
+        if (rqst.pre) item->advance();
         upset(log);
         unlock(log);
         resp = Rsp{Micros,Memorys,Binds,BindLocs};
@@ -732,13 +756,15 @@ struct BindState : public BaseState {
     int wsav[Binds];
     int lock; bool excl;
     BaseState *last;
-    BindState() : BaseState("BindState"), lock(0), excl(false), last(0) {
-        std::cout << "BindState " << debug << std::endl;
+    BindState() :
+        BaseState("BindState",StackState::self),
+        lock(0), excl(false), last(0) {
+        std::cout << debug << std::endl;
         for (int i = 0; i < Binds; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
     }
     ~BindState() {
-        std::cout << "~BindState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     BindState *getBind() override {
         safe.wait();
@@ -838,7 +864,8 @@ struct ThreadState : public DoneState {
     ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
         device(device), copy(copy),
         safe(1), wake(0), goon(true) {
-        strcpy(debug,"ThreadState"); std::cout << debug << std::endl;
+        strcpy(debug,"ThreadState");
+        std::cout << debug << std::endl;
     }
     ~ThreadState() {
         std::cout << "~ThreadState" << std::endl;
@@ -929,11 +956,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     void push(Cmd *cmd, int num, SmartState log) {
         bool goon = true; while (goon) {goon = false;
-        BaseState *buf[num] = {}; BindState *bind = 0; int count = 0;
+        BaseState *buf[num] = {}; BindState *bind = 0; int count = 0; bool prep[num] = {};
         for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
-            break; case(DerCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
-            break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(); count += 1;
-            break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;
+            break; case(DerCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); cmd[i].req.pre = false; count += 1;
+            break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(); cmd[i].req.pre = true; count += 1;
+            break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); cmd[i].req.pre = false; count += 1;
             break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
             break; case(IRDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;}
         if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
@@ -1084,7 +1111,8 @@ struct TestState : public DoneState {
     SafeState safe, wake; bool goon; CopyState *copy; StackState *swap; StackState *bind;
     TestState(CopyState *copy, StackState *swap, StackState *bind) :
         safe(1), wake(0), goon(true), copy(copy), swap(swap), bind(bind) {
-        strcpy(debug,"TestState"); std::cout << debug << std::endl;
+        strcpy(debug,"TestState");
+        std::cout << debug << std::endl;
     }
     ~TestState() {
         std::cout << "~TestState" << std::endl;
@@ -1181,7 +1209,8 @@ struct ForkState : public DoneState {
     Thread thd; int idx; mftype cfnc; mftype dfnc;
     ForkState (Thread thd, int idx, mftype call, mftype done) :
         thd(thd), idx(idx), cfnc(call), dfnc(done) {
-        strcpy(debug,"ForkState"); std::cout << debug << std::endl;
+        strcpy(debug,"ForkState");
+        std::cout << debug << std::endl;
     }
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
@@ -1211,7 +1240,7 @@ struct SwapState : public BaseState {
     std::vector<VkFramebuffer> framebuffers;
     VkSurfaceCapabilitiesKHR capabilities;
     SwapState() :
-        BaseState("SwapState"),
+        BaseState("SwapState",StackState::self),
         window(StackState::window),
         surface(StackState::surface),
         physical(StackState::physical),
@@ -1223,12 +1252,12 @@ struct SwapState : public BaseState {
         imageFormat(StackState::imageFormat),
         depthFormat(StackState::depthFormat),
         renderPass(StackState::renderPass),
-        memProperties(StackState::memProperties)
-        {std::cout << "SwapState " << debug << std::endl;
+        memProperties(StackState::memProperties) {
+        std::cout << debug << std::endl;
     }
     ~SwapState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~SwapState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkSwapchainKHR getSwapChain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
@@ -1286,18 +1315,17 @@ struct PipeState : public BaseState {
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
-    const char *name() {return "PipeState";}
     PipeState() :
-        BaseState("PipeState"),
+        BaseState("PipeState",StackState::self),
         device(StackState::device), micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
-        std::cout << "PipeState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~PipeState() {
-        std::cout << "~PipeState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -1341,11 +1369,11 @@ struct UniformState : public BaseState {
         BaseState("UniformState",StackState::self),
         device(StackState::device), physical(StackState::physical),
         memProperties(StackState::memProperties) {
-        std::cout << "UniformState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~UniformState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~UniformState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkBuffer getBuffer() override {
         return buffer;
@@ -1398,11 +1426,11 @@ struct BufferState : public BaseState {
         device(StackState::device), physical(StackState::physical),
         graphics(StackState::graphics), commandPool(StackState::commandPool),
         memProperties(StackState::memProperties), flags(StackState::flags) {
-        std::cout << "BufferState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~BufferState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~BufferState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkBuffer getBuffer() override {
         return buffer;
@@ -1469,11 +1497,11 @@ struct ImageState : public BaseState {
         device(StackState::device),
         physical(StackState::physical),
         memProperties(StackState::memProperties) {
-        std::cout << "ImageState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~ImageState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~ImageState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
@@ -1511,11 +1539,11 @@ struct LayoutState : public BaseState {
         device(StackState::device),
         graphics(StackState::graphics),
         commandPool(StackState::commandPool) {
-        std::cout << "LayoutState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~LayoutState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~LayoutState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkSemaphore getSemaphore() override {
         return after;
@@ -1579,11 +1607,11 @@ struct TextureState : public BaseState {
         graphics(StackState::graphics),
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties) {
-        std::cout << "TextureState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~TextureState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~TextureState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkImage getImage() override {return textureImage;}
     VkImageView getImageView() override {return textureImageView;}
@@ -1639,14 +1667,14 @@ struct ProbeState : public BaseState {
     const VkDevice device;
     VkSemaphore after;
     ProbeState() :
-        BaseState("ProbeState"),
+        BaseState("ProbeState",StackState::self),
         device(StackState::device),
         after(VK_NULL_HANDLE) {
-        std::cout << "ProbeState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~ProbeState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~ProbeState " << debug << std::endl;}
+        std::cout << "~" << debug << std::endl;}
     VkSemaphore getSemaphore() override {
         return after;
     }
@@ -1676,14 +1704,14 @@ struct AcquireState : public BaseState {
     uint32_t imageIndex;
     VkFramebuffer framebuffer;
     AcquireState() :
-        BaseState("AcquireState"),
+        BaseState("AcquireState",StackState::self),
         device(StackState::device),
         copy(StackState::copy),
         after(VK_NULL_HANDLE) {
-        std::cout << "AcquireState " << debug << std::endl;}
+        std::cout << debug << std::endl;}
     ~AcquireState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~AcquireState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkSemaphore getSemaphore() override {
         return after;
@@ -1722,14 +1750,14 @@ struct PresentState : public BaseState {
     const VkQueue present;
     ChangeState<Configure,Configures> *copy;
     PresentState() :
-        BaseState("PresentState"),
+        BaseState("PresentState",StackState::self),
         present(StackState::present),
         copy(StackState::copy) {
-        std::cout << "PresentState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~PresentState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~PresentState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
@@ -1768,7 +1796,7 @@ struct DrawState : public BaseState {
     InitState<BaseState *, ConstState<BaseState *>, Binds> bufptr;
     InitState<int, ConstState<int>, Binds> bufidx; int bufsiz;
     DrawState() :
-        BaseState("DrawState"),
+        BaseState("DrawState",StackState::self),
         device(StackState::device),
         renderPass(StackState::renderPass),
         graphics(StackState::graphics),
@@ -1778,11 +1806,11 @@ struct DrawState : public BaseState {
         copy(StackState::copy),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0) {
-        std::cout << "DrawState " << debug << std::endl;
+        std::cout << debug << std::endl;
     }
     ~DrawState() {
         SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~DrawState " << debug << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     VkSemaphore getSemaphore() override {
         return after;
@@ -1924,7 +1952,7 @@ struct MainState {
         logicalState(physicalState.device,physicalState.graphicsFamily,
             physicalState.presentFamily,physicalState.surfaceFormat,
             vulkanState.validationLayers,physicalState.deviceExtensions),
-        swapState("SwapBnd",&copyState,
+        swapState(&copyState,
             windowState.window,vulkanState.surface,physicalState.device,
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,
@@ -1932,26 +1960,9 @@ struct MainState {
             logicalState.device,logicalState.commandPool,logicalState.renderPass,
             logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
-        pipelineState("PipelineBnd"),
-        indexState("Indexz",VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-        bringupState("Bringupz",VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        imageState("ImageBnd"),
-        beforeState("BeforeBnd"),
-        afterState("AfterBnd"),
-        textureState("Texturez"),
-        uniformState("Uniformz"),
-        matrixState("Matrixz"),
-        triangleState("Trianglez",VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-        numericState("Numericz"),
-        vertexState("Vertexz"),
-        basisState("Basisz"),
-        pierceState("Piercez"),
-        pokeState("PokeBnd"),
-        peekState("PeekBnd"),
-        acquireState("AcquireBnd"),
-        presentState("PresentBnd"),
-        drawState("DrawBnd"),
-        bindState("BindBnd"),
+        indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         enumState{
             {SwapBnd,&swapState},
             {PipelineBnd,&pipelineState},
@@ -1968,6 +1979,8 @@ struct MainState {
             {VertexBnd,&vertexState},
             {BasisBnd,&basisState},
             {PierceBnd,&pierceState},
+            {PokeBnd,&pokeState},
+            {PeekBnd,&peekState},
             {AcquireBnd,&acquireState},
             {PresentBnd,&presentState},
             {DrawBnd,&drawState},
