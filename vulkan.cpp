@@ -411,7 +411,6 @@ struct Rsp {
 };
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
-    FillBase, // ready for update
     FreeBase, // ready for use
     BothBase, // check for both change
     SizeBase, // check for size change
@@ -451,7 +450,7 @@ struct BaseState {
     }
     bool push(int rdec, int wdec, void *ptr, int loc, int siz, SizeState max, bool pre, SmartState log) {
         safe.wait();
-        if (state != InitBase && state != FillBase && state != FreeBase) {
+        if (state != InitBase && state != FreeBase) {
         log << "both state fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         if (rlock-rdec || wlock-wdec) {
@@ -471,7 +470,7 @@ struct BaseState {
     }
     bool push(int rdec, int wdec, SizeState max, bool pre, SmartState log) {
         safe.wait();
-        if (state != InitBase && state != FillBase && state != FreeBase) {
+        if (state != InitBase && state != FreeBase) {
         log << "size state fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         if (rlock-rdec || wlock-wdec) {
@@ -491,7 +490,7 @@ struct BaseState {
     }
     bool push(int rdec, int wdec, void *ptr, int loc, int siz, bool pre, SmartState log) {
         safe.wait();
-        if (state != FillBase && state != FreeBase) {
+        if (state != FreeBase) {
         log << "lock state fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         if (rlock-rdec || wlock-wdec) {
@@ -556,7 +555,7 @@ struct BaseState {
         safe.post();
         resize(log);
         safe.wait();}}
-        state = NextBase; // TODO think of way to use FillBase, or remove it
+        state = NextBase;
         safe.post();
     }
     VkFence basesup(SmartState log) {
@@ -596,15 +595,16 @@ struct BaseState {
         (elock ? wlock : rlock) -= 1;
         safe.post();
     }
-    bool get(bool elock, int psav) {
+    bool get(bool elock, int psav, int rsav, int wsav) {
         safe.wait();
         switch (state) {
         default: {safe.post(); return false;}
         break; case (FreeBase):
-        break; case (FillBase): if (!get(state)) {safe.post(); return false;}
         break; case (BothBase): case (SizeBase): case (LockBase):
         if (psav == 0) {safe.post(); return false;}}
-        if (wlock || (elock && rlock)) {safe.post(); return false;}
+        if (wlock < wsav || rlock < rsav)
+            {std::cerr << "invalid get lock!" << std::endl; exit(-1);}
+        if (wlock-wsav || (elock && rlock-rsav)) {safe.post(); return false;}
         safe.post();
         return true;
     }
@@ -805,7 +805,7 @@ struct BindState : public BaseState {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
         if (bind[i] != 0 && bind[i] != buf)
             {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
-        if (!buf->get(elock,psav[i])) {
+        if (!buf->get(elock,psav[i],rsav[i],wsav[i])) {
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
         return false;}
         if (bind[i] == 0) lock += 1;
@@ -1294,9 +1294,6 @@ struct SwapState : public BaseState {
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
     }
-    bool get(BaseEnum state) override {
-        return (state == FillBase);
-    }
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
     static VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
@@ -1345,9 +1342,6 @@ struct PipeState : public BaseState {
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
-    }
-    bool get(BaseEnum) override {
-        return (state == FillBase);
     }
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
     static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro);
