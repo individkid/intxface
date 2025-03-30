@@ -38,11 +38,13 @@ struct WindowState {
     const uint32_t HEIGHT = 600;
     GLFWwindow* const window;
     WindowState() : // TODO add argument to switch between glfw and wayland
-        window(createWindow(WIDTH,HEIGHT))
-        {std::cout << "WindowState" << std::endl;}
-    ~WindowState() {std::cout << "~WindowState" << std::endl;
+        window(createWindow(WIDTH,HEIGHT)) {
+        std::cout << "WindowState" << std::endl;
+    }
+    ~WindowState() {
         glfwDestroyWindow(window);
         glfwTerminate();
+        std::cout << "~WindowState" << std::endl;
     }
     static GLFWwindow* createWindow(uint32_t WIDTH, uint32_t HEIGHT);
 };
@@ -57,14 +59,16 @@ struct VulkanState {
         info(createInfo(validationLayers)),
         instance(createInstance(info,validationLayers)),
         debug(createDebug(instance,info,validationLayers)),
-        surface(createSurface(instance, window))
-        {std::cout << "VulkanState" << std::endl;}
-    ~VulkanState() {std::cout << "~VulkanState" << std::endl;
+        surface(createSurface(instance, window)) {
+        std::cout << "VulkanState" << std::endl;
+    }
+    ~VulkanState() {
         vkDestroySurfaceKHR(instance, surface, nullptr);
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
         vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr) func(instance, debug, nullptr);
         vkDestroyInstance(instance, nullptr);
+        std::cout << "~VulkanState" << std::endl;
     }
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -96,8 +100,8 @@ struct PhysicalState {
         properties(findProperties(device)),
         surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
-        memProperties(findMemoryProperties(device))
-        {std::cout << "PhysicalState" << std::endl;
+        memProperties(findMemoryProperties(device)) {
+        std::cout << "PhysicalState" << std::endl;
     }
     ~PhysicalState() {
         std::cout << "~PhysicalState" << std::endl;
@@ -132,14 +136,14 @@ struct LogicalState {
         imageFormat(surfaceFormat.format),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
             VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
-        renderPass(createRenderPass(device,imageFormat,depthFormat))
-        {std::cout << "LogicalState" << std::endl;
+        renderPass(createRenderPass(device,imageFormat,depthFormat)) {
+        std::cout << "LogicalState" << std::endl;
     }
     ~LogicalState() {
-        std::cout << "~LogicalState" << std::endl;
         vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
+        std::cout << "~LogicalState" << std::endl;
     }
     static VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions);
@@ -437,76 +441,30 @@ struct BaseState {
         resp{Micros,Memorys,Binds,BindLocs}, rqst{ReqEnums,0,0,0},
         lock(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
+        std::cout << debug << std::endl;
+    }
+    ~BaseState() {
+        std::cout << "~" << debug << std::endl;
     }
     bool push(int rdec, int wdec, Req req, SmartState log) {
+        safe.wait();
+        if (state != InitBase && state != FreeBase) {
+        log << "push state fail " << debug << " " << state << std::endl;
+        safe.post(); return false;}
+        if (rlock-rdec || wlock-wdec) {
+        log << "push lock fail " << debug << " " << state << std::endl;
+        safe.post(); return false;}
+        log << "push pass " << debug << std::endl;
+        rqst = req;
         switch (req.tag) {default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
-        break; case (BothReq): return push(rdec,wdec,req.ptr,req.loc,req.siz,req.max,req.pre,log);
-        break; case (LockReq): return push(rdec,wdec,req.ptr,req.loc,req.siz,req.pre,log);
-        break; case (SizeReq): return push(rdec,wdec,req.max,req.pre,log);}
-        return false;
+        break; case (BothReq): state = BothBase;
+        break; case (LockReq): state = LockBase;
+        break; case (SizeReq): state = SizeBase;}
+        safe.post();
+        return true;
     }
     bool push(Req req, SmartState log) {
         return push(0,0,req,log);
-    }
-    bool push(int rdec, int wdec, void *ptr, int loc, int siz, SizeState max, bool pre, SmartState log) {
-        safe.wait();
-        if (state != InitBase && state != FreeBase) {
-        log << "both state fail " << debug << " " << state << std::endl;
-        safe.post(); return false;}
-        if (rlock-rdec || wlock-wdec) {
-        log << "both lock fail " << debug << " " << state << std::endl;
-        safe.post(); return false;}
-        log << "both pass " << debug << std::endl;
-        rqst.ptr = ptr; rqst.loc = loc; rqst.siz = siz; rqst.max = max; rqst.pre = pre;
-        state = BothBase;
-        safe.post();
-        return true;
-    }
-    bool push(void *ptr, int loc, int siz, SizeState max, bool pre, SmartState log) {
-        return push(0,0,ptr,loc,siz,max,pre,log);
-    }
-    bool push(void *ptr, int loc, int siz, SizeState max, SmartState log) {
-        return push(ptr,loc,siz,max,false,log);
-    }
-    bool push(int rdec, int wdec, SizeState max, bool pre, SmartState log) {
-        safe.wait();
-        if (state != InitBase && state != FreeBase) {
-        log << "size state fail " << debug << " " << state << std::endl;
-        safe.post(); return false;}
-        if (rlock-rdec || wlock-wdec) {
-        log << "size lock fail " << debug << " " << state << std::endl;
-        safe.post(); return false;}
-        log << "size pass " << debug << std::endl;
-        rqst.max = max; rqst.pre = pre;
-        state = SizeBase;
-        safe.post();
-        return true;
-    }
-    bool push(SizeState max, bool pre, SmartState log) {
-        return push(0,0,max,pre,log);
-    }
-    bool push(SizeState max, SmartState log) {
-        return push(max,false,log);
-    }
-    bool push(int rdec, int wdec, void *ptr, int loc, int siz, bool pre, SmartState log) {
-        safe.wait();
-        if (state != FreeBase) {
-        log << "lock state fail " << debug << " " << state << std::endl;
-        safe.post(); return false;}
-        if (rlock-rdec || wlock-wdec) {
-        log << "lock lock fail " << debug << " " << state << std::endl;
-        safe.post(); return false;}
-        log << "lock pass " << debug << std::endl;
-        rqst.ptr = ptr; rqst.loc = loc; rqst.siz = siz; rqst.pre = pre;
-        state = LockBase;
-        safe.post();
-        return true;
-    }
-    bool push(void *ptr, int loc, int siz, bool pre, SmartState log) {
-        return push(0,0,ptr,loc,siz,pre,log);
-    }
-    bool push(void *ptr, int loc, int siz, SmartState log) {
-        return push(ptr,loc,siz,false,log);
     }
     void push(SmartState log) {
         safe.wait();
@@ -524,6 +482,10 @@ struct BaseState {
             debug << std::endl; exit(-1);}
         lock = ptr;
         resp = rsp;
+    }
+    void reset(SmartState log) {
+        push(Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
+        baseres(log);
     }
     VkFence sizeup(SmartState log) {
         safe.wait();
@@ -759,12 +721,8 @@ struct BindState : public BaseState {
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0), excl(false), last(0) {
-        std::cout << debug << std::endl;
         for (int i = 0; i < Binds; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
-    }
-    ~BindState() {
-        std::cout << "~" << debug << std::endl;
     }
     BindState *getBind() override {
         safe.wait();
@@ -868,7 +826,7 @@ struct ThreadState : public DoneState {
         std::cout << debug << std::endl;
     }
     ~ThreadState() {
-        std::cout << "~ThreadState" << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     void push(BaseState *base, Center *ptr, int sub, void (*fnc)(Center*,int), SmartState log) {
         Push push = {base,VK_NULL_HANDLE,ptr,sub,fnc,log};
@@ -948,8 +906,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread; StackState *stack[Binds];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
-        for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         std::cout << "CopyState" << std::endl;
+        for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
     }
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
@@ -1115,7 +1073,7 @@ struct TestState : public DoneState {
         std::cout << debug << std::endl;
     }
     ~TestState() {
-        std::cout << "~TestState" << std::endl;
+        std::cout << "~" << debug << std::endl;
     }
     void call() override;
     void done() override {
@@ -1210,7 +1168,6 @@ struct ForkState : public DoneState {
     ForkState (Thread thd, int idx, mftype call, mftype done) :
         thd(thd), idx(idx), cfnc(call), dfnc(done) {
         strcpy(debug,"ForkState");
-        std::cout << debug << std::endl;
     }
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
@@ -1253,11 +1210,9 @@ struct SwapState : public BaseState {
         depthFormat(StackState::depthFormat),
         renderPass(StackState::renderPass),
         memProperties(StackState::memProperties) {
-        std::cout << debug << std::endl;
     }
     ~SwapState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkSwapchainKHR getSwapChain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
@@ -1322,11 +1277,11 @@ struct PipeState : public BaseState {
         std::cout << debug << std::endl;
     }
     ~PipeState() {
-        std::cout << "~" << debug << std::endl;
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+        std::cout << "~" << debug << std::endl;
     }
     VkPipeline getPipeline() override {return pipeline;}
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
@@ -1363,11 +1318,9 @@ struct UniformState : public BaseState {
         BaseState("UniformState",StackState::self),
         device(StackState::device), physical(StackState::physical),
         memProperties(StackState::memProperties) {
-        std::cout << debug << std::endl;
     }
     ~UniformState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkBuffer getBuffer() override {
         return buffer;
@@ -1420,11 +1373,9 @@ struct BufferState : public BaseState {
         device(StackState::device), physical(StackState::physical),
         graphics(StackState::graphics), commandPool(StackState::commandPool),
         memProperties(StackState::memProperties), flags(StackState::flags) {
-        std::cout << debug << std::endl;
     }
     ~BufferState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkBuffer getBuffer() override {
         return buffer;
@@ -1491,11 +1442,9 @@ struct ImageState : public BaseState {
         device(StackState::device),
         physical(StackState::physical),
         memProperties(StackState::memProperties) {
-        std::cout << debug << std::endl;
     }
     ~ImageState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
@@ -1533,11 +1482,9 @@ struct LayoutState : public BaseState {
         device(StackState::device),
         graphics(StackState::graphics),
         commandPool(StackState::commandPool) {
-        std::cout << debug << std::endl;
     }
     ~LayoutState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkSemaphore getSemaphore() override {
         return after;
@@ -1601,11 +1548,9 @@ struct TextureState : public BaseState {
         graphics(StackState::graphics),
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties) {
-        std::cout << debug << std::endl;
     }
     ~TextureState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkImage getImage() override {return textureImage;}
     VkImageView getImageView() override {return textureImageView;}
@@ -1664,11 +1609,10 @@ struct ProbeState : public BaseState {
         BaseState("ProbeState",StackState::self),
         device(StackState::device),
         after(VK_NULL_HANDLE) {
-        std::cout << debug << std::endl;
     }
     ~ProbeState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;}
+        reset(SmartState());
+    }
     VkSemaphore getSemaphore() override {
         return after;
     }
@@ -1701,11 +1645,9 @@ struct AcquireState : public BaseState {
         BaseState("AcquireState",StackState::self),
         device(StackState::device),
         copy(StackState::copy),
-        after(VK_NULL_HANDLE) {
-        std::cout << debug << std::endl;}
+        after(VK_NULL_HANDLE) {}
     ~AcquireState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkSemaphore getSemaphore() override {
         return after;
@@ -1747,11 +1689,9 @@ struct PresentState : public BaseState {
         BaseState("PresentState",StackState::self),
         present(StackState::present),
         copy(StackState::copy) {
-        std::cout << debug << std::endl;
     }
     ~PresentState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
@@ -1800,11 +1740,9 @@ struct DrawState : public BaseState {
         copy(StackState::copy),
         bufptr(ConstState<BaseState *>((BaseState*)0)),
         bufidx(ConstState<int>(0)), bufsiz(0) {
-        std::cout << debug << std::endl;
     }
     ~DrawState() {
-        SmartState log; push(SizeState(InitExt),log); baseres(log);
-        std::cout << "~" << debug << std::endl;
+        reset(SmartState());
     }
     VkSemaphore getSemaphore() override {
         return after;
