@@ -186,6 +186,7 @@ struct StackState {
     static VkQueue graphics;
     static VkQueue present;
     static VkBufferUsageFlags flags;
+    static Bind bind;
     StackState(
         ChangeState<Configure,Configures> *copy,
         GLFWwindow* window,
@@ -231,6 +232,12 @@ struct StackState {
         StackState::micro = 0;
         StackState::flags = flags;        
     }
+    StackState(Bind bind) {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::bind = bind;
+    }
     StackState() {
         StackState::self = this;
         StackState::debug = 0;
@@ -258,6 +265,7 @@ VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
 VkBufferUsageFlags StackState::flags;
+Bind StackState::bind;
 
 template <class State, Bind Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
@@ -1331,8 +1339,8 @@ struct UniformState : public BaseState {
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        memProperties, buffer, memory);
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            memProperties, buffer, memory);
         vkMapMemory(device, memory, 0, bufferSize, 0, &mapped);
     }
     void unsize(SmartState log) override {
@@ -1605,10 +1613,12 @@ struct TextureState : public BaseState {
 struct ProbeState : public BaseState {
     const VkDevice device;
     VkSemaphore after;
+    Bind bind;
     ProbeState() :
         BaseState("ProbeState",StackState::self),
         device(StackState::device),
-        after(VK_NULL_HANDLE) {
+        after(VK_NULL_HANDLE),
+        bind(StackState::bind) {
     }
     ~ProbeState() {
         reset(SmartState());
@@ -1626,7 +1636,7 @@ struct ProbeState : public BaseState {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        VkBuffer buffer = dee(PierceBnd)->getBuffer();
+        VkBuffer buffer = dee(bind)->getBuffer();
         return VK_NULL_HANDLE; // TODO if loc == BeforeLoc copy Configure of pierce buffer to mapped buffer
     }
     void upset(SmartState log) override {
@@ -1895,6 +1905,7 @@ struct MainState {
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
+        pokeState(PierceBnd),
         enumState{
             {SwapBnd,&swapState},
             {PipelineBnd,&pipelineState},
@@ -2541,23 +2552,26 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions; {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = VertexStride__Micro__Int(micro);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        bindingDescriptions.push_back(bindingDescription);}
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    for (int i = 0; VertexFormat__Micro__Int__Format(micro)(i) != Formats; i++) {
+    if (VertexBind__Micro__Int__Bind(micro))
+    for (int i = 0; VertexBind__Micro__Int__Bind(micro)(i) != Binds; i++) {
+        Bind bind = VertexBind__Micro__Int__Bind(micro)(i);
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = i;
+        bindingDescription.stride = BindStride__Bind__Int(bind);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        bindingDescriptions.push_back(bindingDescription);
+    for (int j = 0; BindFormat__Bind__Int__Format(bind)(j) != Formats; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
-        attributeDescription.binding = 0;
-        attributeDescription.location = i;
-        switch (VertexFormat__Micro__Int__Format(micro)(i)) {
+        attributeDescription.binding = i;
+        attributeDescription.location = j;
+        switch (BindFormat__Bind__Int__Format(bind)(j)) {
         default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
         case (VecFormat): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecFormat): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
-        attributeDescription.offset = VertexOffset__Micro__Int__Int(micro)(i);
-        attributeDescriptions.push_back(attributeDescription);}
+        attributeDescription.offset = BindOffset__Bind__Int__Int(bind)(j);
+        attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();

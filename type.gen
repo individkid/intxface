@@ -381,18 +381,21 @@ Tag = {
 	-- video little language -- frame
 }
 --HERE Constants
-VertexStride = {
-	{"Micro","MicroTest","Int","48"},
+BindStride = {
+	{"Bind","VertexBnd","Int","48"},
 }
-VertexOffset = {
-	{"Micro","MicroTest","Int","0","Int","0"},
-	{"Micro","MicroTest","Int","1","Int","16"},
-	{"Micro","MicroTest","Int","2","Int","32"},
+BindOffset = {
+	{"Bind","VertexBnd","Int","0","Int","0"},
+	{"Bind","VertexBnd","Int","1","Int","16"},
+	{"Bind","VertexBnd","Int","2","Int","32"},
 }
-VertexFormat = {
-	{"Micro","MicroTest","Int","0","Format","VecFormat"},
-	{"Micro","MicroTest","Int","1","Format","VecFormat"},
-	{"Micro","MicroTest","Int","2","Format","UvecFormat"},
+BindFormat = {
+	{"Bind","VertexBnd","Int","0","Format","VecFormat"},
+	{"Bind","VertexBnd","Int","1","Format","VecFormat"},
+	{"Bind","VertexBnd","Int","2","Format","UvecFormat"},
+}
+VertexBind = {
+	{"Micro","MicroTest","Int","0","Bind","VertexBnd"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},
