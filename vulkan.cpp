@@ -491,6 +491,10 @@ struct BaseState {
         lock = ptr;
         resp = rsp;
     }
+    void setre(SizeState siz, SmartState log) {
+        push(Req{SizeReq,0,0,0,siz,false},log);
+        baseres(log); baseups(log);
+    }
     void reset(SmartState log) {
         push(Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
         baseres(log);
@@ -1123,8 +1127,6 @@ void TestState::call() {
     //
     copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,true,0,true,vulkanForce,false,SmartState());
     //
-    copy->push(Draw{.adv=SubmicAdv,.bnd=PipelineBnd,.sub=MicroTest,.mic=MicroTest},0,0,true,0,true,vulkanForce,false,SmartState());
-    //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.mic=MicroTest},0,0,true,0,true,vulkanWait,true,SmartState());
     //
@@ -1284,6 +1286,7 @@ struct PipeState : public BaseState {
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
         std::cout << debug << std::endl;
+        setre(SizeState(micro),SmartState());
     }
     ~PipeState() {
         vkDestroyPipeline(device, pipeline, nullptr);
@@ -1979,7 +1982,7 @@ void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanForce(Center *ptr, int sub) {
-    std::cerr << "unexpected copy fail!" << std::endl; exit(-1);
+    std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); exit(-1);
 }
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide upon bools and functions
