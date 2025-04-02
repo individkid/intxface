@@ -186,7 +186,6 @@ struct StackState {
     static VkQueue graphics;
     static VkQueue present;
     static VkBufferUsageFlags flags;
-    static Bind bind;
     StackState(
         ChangeState<Configure,Configures> *copy,
         GLFWwindow* window,
@@ -232,12 +231,6 @@ struct StackState {
         StackState::micro = 0;
         StackState::flags = flags;        
     }
-    StackState(Bind bind) {
-        StackState::self = this;
-        StackState::debug = 0;
-        StackState::micro = 0;
-        StackState::bind = bind;
-    }
     StackState() {
         StackState::self = this;
         StackState::debug = 0;
@@ -265,7 +258,6 @@ VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
 VkBufferUsageFlags StackState::flags;
-Bind StackState::bind;
 
 template <class State, Bind Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
@@ -368,6 +360,7 @@ struct SizeState {
     int base, size;
     VkExtent2D extent;
     Micro micro;
+    Bind bind;
     SizeState() {
         tag = InitExt;
     }
@@ -384,6 +377,10 @@ struct SizeState {
         tag = MicroExt;
         this->micro = micro;
     }
+    SizeState(Bind bind) {
+        tag = BindExt;
+        this->bind = bind;
+    }
     SizeState(Extent tag) {
         this->tag = tag;
     }
@@ -396,6 +393,8 @@ struct SizeState {
         extent.height == other.extent.height) return true;
         if (tag == MicroExt && other.tag == MicroExt &&
         micro == other.micro) return true;
+        if (tag == BindExt && other.tag == BindExt &&
+        bind == other.bind) return true;
         return false;
     }
 };
@@ -405,6 +404,7 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     case (IntExt): os << "IntSize(" << size.size << ")"; break;
     case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
     case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
+    case (BindExt): os << "BindSize(" << size.bind << ")"; break;
     case (FalseExt): os << "FalseSize()"; break;}
     return os;
 }
@@ -603,6 +603,7 @@ struct BaseState {
     virtual VkPipeline getPipeline() {std::cerr << "BaseState::pipeline" << std::endl; exit(-1);}
     virtual VkPipelineLayout getPipelineLayout() {std::cerr << "BaseState::pipelineLayout" << std::endl; exit(-1);}
     virtual VkBuffer getBuffer() {std::cerr << "BaseState::buffer" << std::endl; exit(-1);}
+    virtual VkDeviceMemory getMemory() {std::cerr << "BaseState::memory" << std::endl; exit(-1);}
     virtual int getRange() {std::cerr << "BaseState::size" << std::endl; exit(-1);}
     virtual VkImageView getImageView() {std::cerr << "BaseState::iageView" << std::endl; exit(-1);}
     virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
@@ -617,7 +618,7 @@ struct BaseState {
     static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
-        VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        VkBuffer& buffer, VkDeviceMemory& memory);
     static void createImage(VkDevice device, VkPhysicalDevice physical,
         uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
         VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
@@ -1154,9 +1155,9 @@ void TestState::call() {
     SmartState log;
     glm::mat4 model, view, proj, debug;
     BindState *bptr = bind->buffer()->getBind();
-    if (!bptr) {vulkanWake(0,0); continue;}
+    if (!bptr) {log << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
     BaseState *sptr = swap->buffer();
-    if (!bptr->rinc(SwapBnd,sptr,log)) {vulkanWake(0,0); continue;}
+    if (!bptr->rinc(SwapBnd,sptr,log)) {log << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
     testUpdate(sptr->getSwapChainExtent(),model,view,proj,debug);
     bptr->rdec(SwapBnd,log);
     Center *mat = 0; allocCenter(&mat,1);
@@ -1344,6 +1345,7 @@ struct UniformState : public BaseState {
         vkMapMemory(device, memory, 0, bufferSize, 0, &mapped);
     }
     void unsize(SmartState log) override {
+        vkUnmapMemory(device,memory);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
@@ -1369,7 +1371,7 @@ struct BufferState : public BaseState {
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkBufferUsageFlags flags;
     VkBuffer buffer;
-    VkDeviceMemory bufferMemory;
+    VkDeviceMemory memory;
     VkCommandBuffer commandBuffer;
     VkFence fence;
     VkSemaphore after;
@@ -1388,6 +1390,9 @@ struct BufferState : public BaseState {
     VkBuffer getBuffer() override {
         return buffer;
     }
+    VkDeviceMemory getMemory() override {
+        return memory;
+    }
     int getRange() override {
         return size.size;
     }
@@ -1397,7 +1402,7 @@ struct BufferState : public BaseState {
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, bufferMemory);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
         commandBuffer = createCommandBuffer(device,commandPool);
         fence = createFence(device);
         after = createSemaphore(device);
@@ -1407,7 +1412,7 @@ struct BufferState : public BaseState {
         vkDestroySemaphore(device, after, nullptr);
         vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        vkFreeMemory(device, bufferMemory, nullptr);
+        vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
@@ -1612,36 +1617,59 @@ struct TextureState : public BaseState {
 
 struct ProbeState : public BaseState {
     const VkDevice device;
-    VkSemaphore after;
-    Bind bind;
+    ChangeState<Configure,Configures> *copy;
     ProbeState() :
         BaseState("ProbeState",StackState::self),
         device(StackState::device),
-        after(VK_NULL_HANDLE),
-        bind(StackState::bind) {
+        copy(StackState::copy) {
     }
     ~ProbeState() {
         reset(SmartState());
     }
     VkSemaphore getSemaphore() override {
-        return after;
+        return VK_NULL_HANDLE;
     }
     void resize(SmartState log) override {
-        after = createSemaphore(device);
         log << "resize " << debug << std::endl;
     }
     void unsize(SmartState log) override {
-        vkDestroySemaphore(device, after, nullptr);
         log << "usize " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        VkBuffer buffer = dee(bind)->getBuffer();
-        return VK_NULL_HANDLE; // TODO if loc == BeforeLoc copy Configure of pierce buffer to mapped buffer
+        if (loc() == BeforeLoc) {
+        void *mapped = 0; int32_t value;
+        VkDeviceMemory memory = dee(size.bind)->getMemory();
+        mapMemory(device,memory,&mapped,size.bind,copy);
+        value = copy->read(ProbePoke);
+        memcpy(mapped,&value,sizeof(int32_t));
+        unmapMemory(device,memory);}
+        return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
         log << "upset" << std::endl;
-        // TODO if loc == AfterLoc copy mapped buffer to Configure
+        if (loc() == AfterLoc) {
+        void *mapped = 0; int32_t value;
+        VkDeviceMemory memory = dee(size.bind)->getMemory();
+        mapMemory(device,memory,&mapped,size.bind,copy);
+        memcpy(&value,mapped,sizeof(int32_t));
+        copy->write(ProbePeek,value);
+        unmapMemory(device,memory);}
+    }
+    static void mapMemory(VkDevice device, VkDeviceMemory memory, void **mapped,
+        Bind bnd, ChangeState<Configure,Configures> *copy) {
+        int idx = copy->read(ProbeIndex);
+        int fie = copy->read(ProbeField);
+        int dim = copy->read(ProbeDimen);
+        Format fmt = BindElement__Bind__Int__Format(bnd)(fie);
+        int siz = FormatSize__Format__Int(fmt);
+        int bas = BindOffset__Bind__Int__Int(bnd)(fie);
+        int str = BindStride__Bind__Int(bnd);
+        int ofs = idx*str+bas+dim*siz;
+        vkMapMemory(device, memory, VkDeviceSize(ofs), VkDeviceSize(siz), 0, mapped);
+    }
+    static void unmapMemory(VkDevice device, VkDeviceMemory memory) {
+        vkUnmapMemory(device,memory);
     }
 };
 
@@ -1905,7 +1933,6 @@ struct MainState {
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-        pokeState(PierceBnd),
         enumState{
             {SwapBnd,&swapState},
             {PipelineBnd,&pipelineState},
@@ -2368,7 +2395,7 @@ VkImageView BaseState::createImageView(VkDevice device, VkImage image, VkFormat 
 }
 void BaseState::createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage,
     VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
-    VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+    VkBuffer& buffer, VkDeviceMemory& memory) {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = size;
@@ -2382,9 +2409,9 @@ void BaseState::createBuffer(VkDevice device, VkPhysicalDevice physical, VkDevic
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties, memProperties);
-    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
     {std::cerr << "failed to allocate buffer memory!" << std::endl; exit(-1);}
-    vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    vkBindBufferMemory(device, buffer, memory, 0);
 }
 
 VkSurfaceCapabilitiesKHR SwapState::findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device) {

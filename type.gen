@@ -103,6 +103,8 @@ Constant = {
 Format = {
 	"VecFormat",
 	"UvecFormat",
+	"OldFormat",
+	"Int32Format",
 }
 Configure = {
 	"IndexBase",
@@ -143,6 +145,11 @@ Configure = {
 	"RegisterFail", -- fail center index
 	"RegisterMask", -- interrupt mask
 	"RegisterStrq", -- num strings in queue
+	"ProbePoke", -- probe state
+	"ProbePeek",
+	"ProbeIndex",
+	"ProbeField",
+	"ProbeDimen",
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -273,6 +280,7 @@ Extent = {
     "IntExt",
     "ExtentExt",
     "MicroExt",
+    "BindExt",
     "FalseExt",
 }
 Thread = {
@@ -383,16 +391,31 @@ Tag = {
 --HERE Constants
 BindStride = {
 	{"Bind","VertexBnd","Int","48"},
+	{"Bind","PierceBnd","Int","16"},
 }
 BindOffset = {
 	{"Bind","VertexBnd","Int","0","Int","0"},
 	{"Bind","VertexBnd","Int","1","Int","16"},
 	{"Bind","VertexBnd","Int","2","Int","32"},
+	{"Bind","PierceBnd","Int","0","Int","0"},
 }
 BindFormat = {
 	{"Bind","VertexBnd","Int","0","Format","VecFormat"},
 	{"Bind","VertexBnd","Int","1","Format","VecFormat"},
 	{"Bind","VertexBnd","Int","2","Format","UvecFormat"},
+	{"Bind","PierceBnd","Int","0","Format","VecFormat"},
+}
+BindElement = {
+	{"Bind","VertexBnd","Int","0","Format","OldFormat"},
+	{"Bind","VertexBnd","Int","1","Format","OldFormat"},
+	{"Bind","VertexBnd","Int","2","Format","Int32Format"},
+	{"Bind","PierceBnd","Int","0","Format","Int32Format"},
+}
+FormatSize = {
+	{"Format","VecFormat","Int","16"},
+	{"Format","UvecFormat","Int","16"},
+	{"Format","OldFormat","Int","4"},
+	{"Format","Int32Format","Int","4"},
 }
 VertexBind = {
 	{"Micro","MicroTest","Int","0","Bind","VertexBnd"},
@@ -757,7 +780,7 @@ Texture = {
 	{"cha","Int32",{},{}},
 }
 Pierce = {
-	{"vec","Old",{},{3}},
+	{"vec","Int32",{},{3}},
 	{"idx","Int32",{},{}},
 }
 Draw = {
