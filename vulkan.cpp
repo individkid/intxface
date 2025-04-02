@@ -915,6 +915,11 @@ enum CmdEnum {
 struct Cmd {
     CmdEnum tag; Rsp rsp; Req req; int idx; Center *ptr; int sub; void (*fnc)(Center*,int);
 };
+struct Fnc {
+    bool pnow; void (*pass)(Center*,int);
+    bool fnow; void (*fail)(Center*,int);
+    bool goon;
+};
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread; StackState *stack[Binds];
     CopyState(ThreadState *thread, EnumState *stack) :
@@ -975,14 +980,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(HeapState<Cmd> req, SmartState log) {
         push(req.data(), req.size(), log);
     }
-    void push(Draw drw, Center *ptr, int sub,
-        bool pnow, void (*pass)(Center*,int),
-        bool fnow, void (*fail)(Center*,int),
-        bool goon, SmartState log) {
+    void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Cmd> cmd;
-        if (pass) cmd<<Cmd{(pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,ptr,sub,pass};
-        if (fail) cmd<<Cmd{(fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,ptr,sub,fail};
-        if (goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
+        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,ptr,sub,fnc.pass};
+        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,ptr,sub,fnc.fail};
+        if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
         for (int j = 0; true; j++) {
         BindLoc loc = BindLocs;
         switch (AdvConst__Advance__Constant(drw.adv)) {
@@ -1020,26 +1022,20 @@ struct CopyState : public ChangeState<Configure,Configures> {
         cmd<<Cmd{tag,rsp,req,drw.sub};}
         push(cmd,log);
     }
-    void push(Draw drw, SmartState log) {
-        push(drw,0,0,false,0,false,0,false,log);
-    }
-    void push(Center *center, int sub,
-        bool pnow, void (*pass)(Center*,int),
-        bool fnow, void (*fail)(Center*,int),
-        bool goon, SmartState log) {
+    void push(Center *center, int sub, Fnc fnc, SmartState log) {
         Bind bnd = MemoryBind__Memory__Bind(center->mem);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         HeapState<Cmd> cmd;
-        if (pass) cmd<<Cmd{(pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,pass};
-        if (fail) cmd<<Cmd{(fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fail};
-        if (goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
+        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
+        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
+        if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
         int mod = stack[bnd]->bufsiz();
         int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
         void *ptr = 0; switch (center->mem) {
         default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
-        break; case (Texturez): {
+        break; case (Texturez): { // TODO convert to Memoryat; should work
         ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
         idx = center->idx*mod; siz = center->siz*mod;
         max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
@@ -1055,14 +1051,15 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Vertexz): ptr = (void*)center->vtx;
         break; case (Basisz): ptr = (void*)center->bas;
         break; case (Piercez): ptr = (void*)center->pie;
-        break; case (Drawz): for (int i = 0; i < center->siz; i++)
-        push(center->drw[i], // TODO add fields, or use same Configure as vulkanCopy, to decide upon bools and functions
-        center,sub,true,planePass,true,planeFail,false,log);
+        break; case (Drawz): for (int i = 0; i < center->siz-1; i++)
+        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        push(center->drw[i],0,i,Fnc{true,planePass,true,planeFail,false},log);
+        push(center->drw[center->siz-1],center,sub,Fnc{true,planePass,true,planeFail,false},log);
         return;
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++)
         write(center->cfg[i],center->val[i]);
-        if (pass) thread->push(0,center,0,pass,log);
+        if (fnc.pass) thread->push(0,center,0,fnc.pass,log);
         return;}
         /*if (base>idx) {
         ptr = (void*)((char*)ptr+base-idx);
@@ -1125,32 +1122,32 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,true,0,true,vulkanForce,false,SmartState());
+    copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,Fnc{true,0,true,vulkanForce,false},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.mic=MicroTest},0,0,true,0,true,vulkanWait,true,SmartState());
+    copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.mic=MicroTest},0,0,Fnc{false,0,false,0,false},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.mic=MicroTest},SmartState());
+    copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.mic=MicroTest},0,0,Fnc{false,0,false,0,false},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.mic=MicroTest},SmartState());
+    copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.mic=MicroTest},0,0,Fnc{false,0,false,0,false},SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    copy->push(vtx,0,false,vulkanPass,false,vulkanForce,false,SmartState());
+    copy->push(vtx,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    copy->push(ind,0,false,vulkanPass,false,vulkanForce,false,SmartState());
+    copy->push(ind,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy->push(tex,0,false,vulkanPass,false,vulkanForce,false,SmartState());
+    copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
@@ -1168,10 +1165,10 @@ void TestState::call() {
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    copy->push(mat,0,false,vulkanPass,false,vulkanPass,false,log);
+    copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},log);
     //
     copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=static_cast<int>(indices.size())},
-    0,0,true,vulkanWake,true,vulkanWake,false,log);}
+    0,0,Fnc{true,vulkanWake,true,vulkanWake,false},log);}
 }
 
 struct ForkState : public DoneState {
@@ -1894,10 +1891,11 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapBnd,1> swapState;
-    ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
+    // ArrayState<PipeState,PipelineBnd,Micros> pipelineState; // TODO microdode to render to pierce buffer
+    ArrayState<PipeState,PipelineBnd,1> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
-    ArrayState<ImageState,ImageBnd,StackState::frames> imageState;
+    ArrayState<ImageState,ImageBnd,StackState::frames> imageState; // TODO instead, AcquireState and PierceState should have their own
     ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState;
     ArrayState<LayoutState,AfterBnd,StackState::frames> afterState;
     ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
@@ -1985,8 +1983,8 @@ void vulkanForce(Center *ptr, int sub) {
     std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); exit(-1);
 }
 void vulkanCopy(Center *ptr, int sub) {
-    // TODO use Configure to decide upon bools and functions
-    mptr->copyState.push(ptr,sub,false,planePass,false,planeFail,false,SmartState());
+    // TODO use Configure to decide between registered Fnc structs
+    mptr->copyState.push(ptr,sub,Fnc{false,planePass,false,planeFail,false},SmartState());
 }
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);

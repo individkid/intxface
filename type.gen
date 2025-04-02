@@ -58,7 +58,7 @@ Bind = { -- per variation of BaseState
 	"DrawBnd",
 	"IndexBnd",
 	"BringupBnd",
-	"ImageBnd",
+	"ImageBnd", -- TODO remove this
 	"BeforeBnd",
 	"AfterBnd",
 	"TextureBnd",
@@ -273,7 +273,7 @@ Fixed = { -- how motion interpreted
 }
 Micro = {
 	"MicroTest", -- for Bringup Plan
-	-- "MicroDebug", -- for testing microcode
+	"MicroDebug", -- for testing microcode
 }
 Extent = {
     "InitExt",
@@ -419,12 +419,15 @@ FormatSize = {
 }
 VertexBind = {
 	{"Micro","MicroTest","Int","0","Bind","VertexBnd"},
+	{"Micro","MicroDebug","Int","0","Bind","VertexBnd"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},
+	{"Micro","MicroDebug","Str","vertexDebugG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
+	{"Micro","MicroDebug","Str","fragmentDebugG"},
 }
 Memoryat = {
 	{"Memory","Indexz","Int","0","BindLoc","MiddleLoc"},
@@ -492,11 +495,17 @@ Location = {
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
+	{"Micro","MicroDebug","Int","0","BindLoc","BeforeLoc"},
+	{"Micro","MicroDebug","Int","1","BindLoc","MiddleLoc"},
+	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
 }
 Depender = { -- push
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
+	{"Micro","MicroDebug","BindLoc","BeforeLoc","Bind","PokeBnd"},
+	{"Micro","MicroDebug","BindLoc","MiddleLoc","Bind","DrawBnd"},
+	{"Micro","MicroDebug","BindLoc","AfterLoc","Bind","PeekBnd"},
 }
 Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
@@ -508,13 +517,18 @@ Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","PresentBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
+	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
+	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","1","Bind","IndexBnd"},
+	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","2","Bind","BringupBnd"},
+	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","3","Bind","PierceBnd"},
+	{"Micro","MicroDebug","BindLoc","AfterLoc","Int","0","Bind","PierceBnd"},
 }
 Dependie = { -- rinc
-	{"Micro","MicroTest","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
+	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 }
 Depended = { -- winc
-	{"Micro","Micros","BindLoc","BindLocs","Int","0","Bind","Binds"},
+	{"Micro","MicroDebug","BindLoc","BeforeLoc","Int","0","Bind","PierceBnd"},
 }
 AdvConst = {
 	{"Advance","MicroAdv","Constant","MicroConst"},
