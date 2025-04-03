@@ -609,7 +609,7 @@ struct BaseState {
     virtual VkBuffer getBuffer() {std::cerr << "BaseState::buffer" << std::endl; exit(-1);}
     virtual VkDeviceMemory getMemory() {std::cerr << "BaseState::memory" << std::endl; exit(-1);}
     virtual int getRange() {std::cerr << "BaseState::size" << std::endl; exit(-1);}
-    virtual VkImageView getImageView() {std::cerr << "BaseState::iageView" << std::endl; exit(-1);}
+    virtual VkImageView getImageView() {std::cerr << "BaseState::imageView" << std::endl; exit(-1);}
     virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
     virtual VkDescriptorSetLayout getDescriptorSetLayout() {std::cerr << "BaseState::getDescriptorSetLayout" << std::endl; exit(-1);}
@@ -981,7 +981,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(req.data(), req.size(), log);
     }
     void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Cmd> cmd;
+        HeapState<Cmd> cmd; int count = 0; int limit = 0;
+        switch (AdvConst__Advance__Constant(drw.adv)) {
+        default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
+        break; case (MicroConst): limit = Limit__Micro__Int(drw.drw);
+        break; case (MemoryConst): limit = Memoryit__Memory__Int(drw.mem);
+        break; case (BindConst): limit = Bindit__Bind__Int(drw.bnd);}
+        if (drw.siz != limit) {
+            std::cerr << "limit check failed! " << drw.adv << " " << drw.siz << " " << limit << std::endl; exit(-1);}
         if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,ptr,sub,fnc.pass};
         if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,ptr,sub,fnc.fail};
         if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
@@ -995,31 +1002,37 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (loc == BindLocs) break;
         for (Iter i(drw,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
-        else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
+        else if (i.isie()) {if (count >= limit) {std::cerr << "invalid limit check!" << std::endl; exit(-1);}
+        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++]};}
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
         for (int j = 0; true; j++) {
-        BindLoc loc = BindLocs;
-        switch (AdvConst__Advance__Constant(drw.adv)) {
+        BindLoc loc; switch (AdvConst__Advance__Constant(drw.adv)) {
         default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
         break; case (MicroConst): loc = Location__Micro__Int__BindLoc(drw.drw)(j);
         break; case (MemoryConst): loc = Memoryat__Memory__Int__BindLoc(drw.mem)(j);
         break; case (BindConst): loc = Bindat__Bind__Int__BindLoc(drw.bnd)(j);}
         if (loc == BindLocs) break;
-        Bind bnd = Binds;
-        switch (AdvConst__Advance__Constant(drw.adv)) {
+        Bind bnd; switch (AdvConst__Advance__Constant(drw.adv)) {
         default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
         break; case (MicroConst): bnd = Depender__Micro__BindLoc__Bind(drw.drw)(loc);
         break; case (MemoryConst): bnd = Memoryer__Memory__BindLoc__Bind(drw.mem)(loc);
         break; case (BindConst): bnd = Binder__Bind__BindLoc__Bind(drw.bnd)(loc);}
-        CmdEnum tag; Rsp rsp; Req req;
+        CmdEnum tag; Rsp rsp; Req req; int idx = 0;
         switch (drw.adv) {default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
-        break; case (MicroAdv): tag = DerCmd; rsp = Rsp{drw.drw,Memorys,bnd,loc}; req = Req{LockReq,0,drw.idx,drw.siz};
-        break; case (SubmicAdv): tag = IDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.mic)};
-        break; case (BufmicAdv): tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.mic)};
-        break; case (BufnotAdv): tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(FalseExt)};
-        break; case (PresizAdv): tag = PDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.idx,drw.siz)};
-        break; case (PrememAdv): tag = PDerCmd; rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.idx,drw.siz)};}
-        cmd<<Cmd{tag,rsp,req,drw.sub};}
+        break; case (MicroAdv): if (count+1 >= limit) {
+            std::cerr << "invalid MicroAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
+        tag = DerCmd; rsp = Rsp{drw.drw,Memorys,bnd,loc}; req = Req{LockReq,0,drw.arg[count++],drw.arg[count++]}; idx = 0;
+        break; case (SubmicAdv): if (count >= limit) {std::cerr << "invalid SubmicAdv limit!" << std::endl; exit(-1);}
+        tag = IDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])}; idx = drw.arg[count++];
+        break; case (BufmicAdv): if (count >= limit) {
+            std::cerr << "invalid BufmicAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
+        tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])}; idx = 0;
+        break; case (BufnotAdv): tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(FalseExt)}; idx = 0;
+        break; case (PresizAdv): if (count+1 >= limit) {std::cerr << "invalid PresizAdv limit!" << std::endl; exit(-1);}
+        tag = PDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])}; idx = 0;
+        break; case (PrememAdv): if (count+1 >= limit) {std::cerr << "invalid PrememAdv limit!" << std::endl; exit(-1);}
+        tag = PDerCmd; rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])}; idx = 0;}
+        cmd<<Cmd{tag,rsp,req,idx};}
         push(cmd,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
@@ -1118,6 +1131,7 @@ void TestState::call() {
     };
     //
     int xsiz = 800; int ysiz = 600;
+    int args[] = {(int)MicroTest,(int)MicroTest};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
@@ -1125,13 +1139,13 @@ void TestState::call() {
     copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,Fnc{true,0,true,vulkanForce,false},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.mic=MicroTest},0,0,Fnc{false,0,false,0,false},SmartState());
+    copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.siz=2,.arg=args},0,0,Fnc{},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.mic=MicroTest},0,0,Fnc{false,0,false,0,false},SmartState());
+    copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.mic=MicroTest},0,0,Fnc{false,0,false,0,false},SmartState());
+    copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1149,6 +1163,11 @@ void TestState::call() {
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
+    int sizes[] = {
+    /*PiplelineBnd array index*/(int)MicroTest,
+    /*AcquireBnd idx,siz*/0,0,
+    /*DrawBnd idx,siz*/0,static_cast<int>(indices.size()),
+    /*PresentBnd idx,siz*/0,0};
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState log;
@@ -1167,7 +1186,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},log);
     //
-    copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=static_cast<int>(indices.size())},
+    copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=7,.arg=sizes},
     0,0,Fnc{true,vulkanWake,true,vulkanWake,false},log);}
 }
 
@@ -1230,6 +1249,7 @@ struct SwapState : public BaseState {
         swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
             capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
+        // TODO copy following to PierceState
         swapChainImageViews.resize(swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1540,15 +1560,9 @@ struct TextureState : public BaseState {
     const VkQueue graphics;
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
     VkSampler textureSampler;
-    VkCommandBuffer beforeBuffer;
     VkCommandBuffer commandBuffer;
-    VkCommandBuffer afterBuffer;
-    VkSemaphore beforeSemaphore;
-    VkSemaphore afterSemaphore;
+    VkSemaphore after;
     VkFence fence;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
@@ -1565,23 +1579,19 @@ struct TextureState : public BaseState {
     ~TextureState() {
         reset(SmartState());
     }
-    VkImage getImage() override {return textureImage;}
-    VkImageView getImageView() override {return textureImageView;}
     VkSampler getTextureSampler() override {return textureSampler;}
-    VkSemaphore getSemaphore() override {return afterSemaphore;}
+    VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
-        textureImage = dee(ImageBnd)->getImage();
-        textureImageView = dee(ImageBnd)->getImageView();
         textureSampler = createTextureSampler(device,properties);
         commandBuffer = createCommandBuffer(device,commandPool);
-        afterSemaphore = createSemaphore(device);
+        after = createSemaphore(device);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
-        if (afterSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(device, afterSemaphore, nullptr);
+        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
     }
@@ -1598,8 +1608,8 @@ struct TextureState : public BaseState {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, textureImage, texWidth, texHeight,
-            last->getSemaphore(), afterSemaphore, stagingBuffer, commandBuffer);
+        copyTextureImage(device, graphics, memProperties, dee(ImageBnd)->getImage(), texWidth, texHeight,
+            last->getSemaphore(), after, stagingBuffer, commandBuffer);
         return fence;
     }
     void upset(SmartState log) override {
@@ -1806,64 +1816,49 @@ struct DrawState : public BaseState {
         log << "setup " << debug << std::endl;
         if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" <<
             std::endl; exit(-1);}
-        if (size == SizeState(MicroTest) && siz > 0) {
-            VkExtent2D swapChainExtent = dee(SwapBnd)->getSwapChainExtent();
-            vkResetFences(device, 1, &fence);
-            vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-            BaseState *swapPtr = 0;
-            BaseState *pipelinePtr = 0;
-            BaseState *fetchPtr = 0;
-            BaseState *indexPtr = 0;
-            BaseState *acquirePtr = 0;
-            BaseState *presentPtr = 0;
-            int index = 0;
-            for (Iter i(Rsp{size.micro,Memorys,Binds,MiddleLoc}); i(); ++i)
-            if (i.isee() || i.isie()) switch (i.bnd) {
-            default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
-            break; case (SwapBnd): swapPtr = dee(i.bnd);
-            break; case (PipelineBnd): pipelinePtr = dee(i.bnd);
-            break; case (BringupBnd): fetchPtr = dee(i.bnd);
-            break; case (IndexBnd): indexPtr = dee(i.bnd);
-            break; case (AcquireBnd): acquirePtr = dee(i.bnd);
-            break; case (PresentBnd): presentPtr = dee(i.bnd);
-            break; case (PierceBnd):
-                if (dee(i.bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid pierce buffer!" <<
-                    dee(i.bnd)->debug << std::endl; exit(-1);}
-                updateStorageDescriptor(device,dee(i.bnd)->getBuffer(),
-                    index++,dee(i.bnd)->getRange(),descriptorSet);
-            break; case (MatrixBnd):
-                if (dee(i.bnd)->getBuffer() == VK_NULL_HANDLE) {std::cerr << "invalid uniform buffer! " <<
-                    dee(i.bnd)->debug << std::endl; exit(-1);}
-                updateUniformDescriptor(device,dee(i.bnd)->getBuffer(),
-                    index++,dee(i.bnd)->getRange(),descriptorSet);
-            break; case (TextureBnd):
-                if (dee(i.bnd)->getImageView() == VK_NULL_HANDLE) {std::cerr << "invalid texture view! " <<
-                    dee(i.bnd)->debug << std::endl; exit(-1);}
-                if (dee(i.bnd)->getTextureSampler() == VK_NULL_HANDLE) {std::cerr << "invalid texture sampler!" <<
-                    std::endl; exit(-1);}
-                updateTextureDescriptor(device,dee(i.bnd)->getImageView(),
-                    dee(i.bnd)->getTextureSampler(),index++,descriptorSet);}
-            uint32_t imageIndex; if (acquirePtr == 0) {
-                VkResult result = vkAcquireNextImageKHR(device, dee(SwapBnd)->getSwapChain(),
-                    UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
-                if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
-                else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-                    {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}}
-            if ((swapPtr || acquirePtr) && pipelinePtr && fetchPtr && indexPtr) {
-                recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
-                    (acquirePtr ? acquirePtr->getFramebuffer() : swapPtr->getFramebuffer(imageIndex)),
-                    pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
-                    fetchPtr->getBuffer(),indexPtr->getBuffer());
-                drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
-                    (acquirePtr ? acquirePtr->getSemaphore() : VK_NULL_HANDLE),after,fence,VK_NULL_HANDLE);}
-            else {std::cerr << "invalid bind set! " <<
-                swapPtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
-            if (presentPtr == 0 && swapPtr) {
-                if (!PresentState::presentFrame(present, swapPtr->getSwapChain(), imageIndex, after))
-                    copy->wots(RegisterMask,1<<SizeMsk);}
-            return fence;
-        }
-        return VK_NULL_HANDLE;
+        VkExtent2D swapChainExtent = dee(SwapBnd)->getSwapChainExtent();
+        vkResetFences(device, 1, &fence);
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        BaseState *pipelinePtr = 0;
+        BaseState *fetchPtr = 0;
+        BaseState *indexPtr = 0;
+        BaseState *acquirePtr = 0;
+        BaseState *piercePtr = 0;
+        BaseState *matrixPtr = 0;
+        BaseState *imagePtr = 0;
+        BaseState *texturePtr = 0;
+        int index = 0;
+        int matrixIdx = 0;
+        int textureIdx = 0;
+        for (Iter i(Rsp{size.micro,Memorys,Binds,MiddleLoc}); i(); ++i)
+        if (i.isee() || i.isie()) switch (i.bnd) {
+        default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
+        break; case (PipelineBnd): pipelinePtr = dee(i.bnd);
+        break; case (AcquireBnd): acquirePtr = dee(i.bnd);
+        break; case (IndexBnd): indexPtr = dee(i.bnd);
+        break; case (BringupBnd): fetchPtr = dee(i.bnd);
+        break; case (ImageBnd): imagePtr = dee(i.bnd);
+        break; case (TextureBnd): texturePtr = dee(i.bnd); textureIdx = index++;
+        break; case (MatrixBnd): matrixPtr = dee(i.bnd); matrixIdx = index++;
+        break; case (PierceBnd): piercePtr = dee(i.bnd);} // TODO use this instead of acquirePtr for MicroDebug
+        /*if (trianglePtr) {
+            updateStorageDescriptor(device,trianglePtr->getBuffer(),
+                trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
+        if (matrixPtr) {
+            updateUniformDescriptor(device,matrixPtr->getBuffer(),
+                matrixPtr->getRange(),matrixIdx,descriptorSet);}
+        if (imagePtr && texturePtr) {
+            updateTextureDescriptor(device,imagePtr->getImageView(),
+                texturePtr->getTextureSampler(),textureIdx,descriptorSet);}
+        if (pipelinePtr && fetchPtr && indexPtr && acquirePtr) {
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
+                acquirePtr->getFramebuffer(),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
+                fetchPtr->getBuffer(),indexPtr->getBuffer());
+            drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
+                acquirePtr->getSemaphore(),after,fence,VK_NULL_HANDLE);}
+        else {std::cerr << "invalid bind set! " <<
+            acquirePtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
+        return fence;
     }
     void upset(SmartState log) override {
         log << "upset" << std::endl;
@@ -1871,9 +1866,9 @@ struct DrawState : public BaseState {
     static VkDescriptorSet createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
         VkDescriptorSetLayout descriptorSetLayout, int frames);
     static void updateStorageDescriptor(VkDevice device, VkBuffer buffer,
-        int index, int size, VkDescriptorSet descriptorSet);
+        int size, int index, VkDescriptorSet descriptorSet);
     static void updateUniformDescriptor(VkDevice device, VkBuffer buffer,
-        int index, int size, VkDescriptorSet descriptorSet);
+        int size, int index, VkDescriptorSet descriptorSet);
     static void updateTextureDescriptor(VkDevice device,
         VkImageView textureImageView, VkSampler textureSampler,
         int index, VkDescriptorSet descriptorSet);
@@ -1891,11 +1886,11 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapBnd,1> swapState;
-    // ArrayState<PipeState,PipelineBnd,Micros> pipelineState; // TODO microdode to render to pierce buffer
+    // ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
     ArrayState<PipeState,PipelineBnd,1> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
-    ArrayState<ImageState,ImageBnd,StackState::frames> imageState; // TODO instead, AcquireState and PierceState should have their own
+    ArrayState<ImageState,ImageBnd,StackState::frames> imageState;
     ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState;
     ArrayState<LayoutState,AfterBnd,StackState::frames> afterState;
     ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
@@ -1905,7 +1900,7 @@ struct MainState {
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<BufferState,PierceBnd,StackState::frames> pierceState;
+    ArrayState<BufferState,PierceBnd,StackState::frames> pierceState; // TODO change to PierceState that has getFramebuffer
     ArrayState<ProbeState,PokeBnd,StackState::frames> pokeState;
     ArrayState<ProbeState,PeekBnd,StackState::frames> peekState;
     ArrayState<AcquireState,AcquireBnd,StackState::frames> acquireState;
@@ -2841,7 +2836,7 @@ VkDescriptorSet DrawState::createDescriptorSet(VkDevice device, VkDescriptorPool
     return descriptorSet;
 }
 void DrawState::updateStorageDescriptor(VkDevice device, VkBuffer buffer,
-    int index, int size, VkDescriptorSet descriptorSet) {
+    int size, int index, VkDescriptorSet descriptorSet) {
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = buffer;
     bufferInfo.offset = 0;
@@ -2858,7 +2853,7 @@ void DrawState::updateStorageDescriptor(VkDevice device, VkBuffer buffer,
     vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);\
 }
 void DrawState::updateUniformDescriptor(VkDevice device, VkBuffer buffer,
-    int index, int size, VkDescriptorSet descriptorSet) {
+    int size, int index, VkDescriptorSet descriptorSet) {
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = buffer;
     bufferInfo.offset = 0;

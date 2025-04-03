@@ -58,7 +58,7 @@ Bind = { -- per variation of BaseState
 	"DrawBnd",
 	"IndexBnd",
 	"BringupBnd",
-	"ImageBnd", -- TODO remove this
+	"ImageBnd",
 	"BeforeBnd",
 	"AfterBnd",
 	"TextureBnd",
@@ -444,6 +444,18 @@ Memoryat = {
 	{"Memory","Basisz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Piercez","Int","0","BindLoc","MiddleLoc"},
 }
+Memoryit = {
+	{"Memory","Indexz","Int","0"},
+	{"Memory","Bringupz","Int","0"},
+	{"Memory","Texturez","Int","0"},
+	{"Memory","Uniformz","Int","0"},
+	{"Memory","Matrixz","Int","0"},
+	{"Memory","Trianglez","Int","0"},
+	{"Memory","Numericz","Int","0"},
+	{"Memory","Vertexz","Int","0"},
+	{"Memory","Basisz","Int","0"},
+	{"Memory","Piercez","Int","0"},
+}
 Memoryer = {
 	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
@@ -475,6 +487,13 @@ Bindat = {
 	{"Bind","AcquireBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
 }
+Bindit = {
+	{"Bind","SwapBnd","Int","0"},
+	{"Bind","PipelineBnd","Int","1"},
+	{"Bind","DrawBnd","Int","2"},
+	{"Bind","AcquireBnd","Int","1"},
+	{"Bind","PresentBnd","Int","1"},
+}
 Binder = {
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
@@ -499,6 +518,9 @@ Location = {
 	{"Micro","MicroDebug","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
 }
+Limit = {
+	{"Micro","MicroTest","Int","7"},
+}
 Depender = { -- push
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
@@ -510,11 +532,11 @@ Depender = { -- push
 Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","IndexBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","BringupBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","AcquireBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","PresentBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","ImageBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","TextureBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","IndexBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","BringupBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
@@ -802,10 +824,8 @@ Draw = {
 	{"drw","Micro",{["adv"]={["MicroAdv"]=true}},{}},
 	{"mem","Memory",{["adv"]={["PrememAdv"]=true}},{}},
 	{"bnd","Bind",{["adv"]={["SubmicAdv"]=true,["BufmicAdv"]=true,["BufnotAdv"]=true,["PresizAdv"]=true}},{}},
-	{"sub","Int",{},{}},
-	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"mic","Micro",{},{}},
+	{"arg","Int",{},"siz"},
 }
 Center = {
 	{"mem","Memory",{},""},
