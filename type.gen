@@ -519,7 +519,7 @@ Location = {
 	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
 }
 Limit = {
-	{"Micro","MicroTest","Int","7"},
+	{"Micro","MicroTest","Int","8"},
 }
 Depender = { -- push
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
@@ -533,10 +533,9 @@ Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","ImageBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","TextureBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","IndexBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","BringupBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","IndexBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","BringupBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","AcquireBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
@@ -547,6 +546,7 @@ Dependee = { -- rinc
 }
 Dependie = { -- rinc
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 }
 Depended = { -- winc

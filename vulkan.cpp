@@ -1017,21 +1017,31 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (MicroConst): bnd = Depender__Micro__BindLoc__Bind(drw.drw)(loc);
         break; case (MemoryConst): bnd = Memoryer__Memory__BindLoc__Bind(drw.mem)(loc);
         break; case (BindConst): bnd = Binder__Bind__BindLoc__Bind(drw.bnd)(loc);}
-        CmdEnum tag; Rsp rsp; Req req; int idx = 0;
+        CmdEnum tag; Rsp rsp; Req req; int idx;
         switch (drw.adv) {default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
         break; case (MicroAdv): if (count+1 >= limit) {
             std::cerr << "invalid MicroAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
-        tag = DerCmd; rsp = Rsp{drw.drw,Memorys,bnd,loc}; req = Req{LockReq,0,drw.arg[count++],drw.arg[count++]}; idx = 0;
-        break; case (SubmicAdv): if (count >= limit) {std::cerr << "invalid SubmicAdv limit!" << std::endl; exit(-1);}
-        tag = IDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])}; idx = drw.arg[count++];
+            rsp = Rsp{drw.drw,Memorys,bnd,loc}; req = Req{LockReq,0,drw.arg[count++],drw.arg[count++]};
+            tag = DerCmd; idx = 0;
+        break; case (SubmicAdv): if (count >= limit) {
+            std::cerr << "invalid SubmicAdv limit!" << std::endl; exit(-1);}
+            rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])};
+            tag = IDerCmd; idx = drw.arg[count++];
         break; case (BufmicAdv): if (count >= limit) {
             std::cerr << "invalid BufmicAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
-        tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])}; idx = 0;
-        break; case (BufnotAdv): tag = DerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(FalseExt)}; idx = 0;
-        break; case (PresizAdv): if (count+1 >= limit) {std::cerr << "invalid PresizAdv limit!" << std::endl; exit(-1);}
-        tag = PDerCmd; rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])}; idx = 0;
-        break; case (PrememAdv): if (count+1 >= limit) {std::cerr << "invalid PrememAdv limit!" << std::endl; exit(-1);}
-        tag = PDerCmd; rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])}; idx = 0;}
+            rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])};
+            tag = DerCmd; idx = 0;
+        break; case (BufnotAdv):
+            rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(FalseExt)};
+            tag = DerCmd; idx = 0;
+        break; case (PresizAdv): if (count+1 >= limit) {
+            std::cerr << "invalid PresizAdv limit!" << std::endl; exit(-1);}
+            rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])};
+            tag = PDerCmd; idx = 0;
+        break; case (PrememAdv): if (count+1 >= limit) {
+            std::cerr << "invalid PrememAdv limit!" << std::endl; exit(-1);}
+            rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])};
+            tag = PDerCmd; idx = 0;}
         cmd<<Cmd{tag,rsp,req,idx};}
         push(cmd,log);
     }
@@ -1048,15 +1058,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
-        break; case (Texturez): { // TODO convert to Memoryat; should work
-        ptr = datxVoidz(0,center->tex[0].dat); mod = datxVoids(center->tex[0].dat);
-        idx = center->idx*mod; siz = center->siz*mod;
-        max = SizeState(VkExtent2D{(uint32_t)center->tex[0].wid,(uint32_t)center->tex[0].hei});
+        break; case (Texturez): for (int i = 0; i < center->siz; i++) { // TODO convert to Memoryat; should work
+        HeapState<Cmd> cmd; void *ptr = datxVoidz(0,center->tex[i].dat); int siz = datxVoids(center->tex[i].dat);
+        SizeState max(VkExtent2D{(uint32_t)center->tex[i].wid,(uint32_t)center->tex[i].hei});
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,ImageBnd,ResizeLoc},Req{SizeReq,0,0,0,max}};
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,BeforeBnd,BeforeLoc},Req{BothReq,0,0,0,max}};
-        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,TextureBnd,MiddleLoc},Req{BothReq,ptr,idx,siz,max}};
+        cmd<<Cmd{IDerCmd,Rsp{Micros,Memorys,TextureBnd,MiddleLoc},Req{BothReq,ptr,0,siz,max},center->idx+i};
         cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,AfterBnd,AfterLoc},{BothReq,0,0,0,max}};
-        push(cmd,log); return;}
+        push(cmd,log);} return;
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1165,6 +1174,7 @@ void TestState::call() {
     //
     int sizes[] = {
     /*PiplelineBnd array index*/(int)MicroTest,
+    /*TextureBnd array index*/0,
     /*AcquireBnd idx,siz*/0,0,
     /*DrawBnd idx,siz*/0,static_cast<int>(indices.size()),
     /*PresentBnd idx,siz*/0,0};
@@ -1186,7 +1196,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},log);
     //
-    copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=7,.arg=sizes},
+    copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=8,.arg=sizes},
     0,0,Fnc{true,vulkanWake,true,vulkanWake,false},log);}
 }
 
@@ -1249,7 +1259,6 @@ struct SwapState : public BaseState {
         swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
             capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
-        // TODO copy following to PierceState
         swapChainImageViews.resize(swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -1287,6 +1296,34 @@ struct SwapState : public BaseState {
         std::vector<VkImageView> swapChainImageViews, VkImageView depthImageView,
         std::vector<VkFramebuffer> &framebuffers);
 };
+
+#if 0
+struct PierceState : public BaseState {
+    VkFramebuffer framebuffers;
+    VkFramebuffer getFramebuffer() override {return framebuffer;}
+    void resize(SmartState log) override {
+        createSwapChainImages(device,swapChain,swapChainImages);
+        swapChainImageViews.resize(swapChainImages.size());
+        for (int i = 0; i < swapChainImages.size(); i++)
+        swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+        createImage(device, physical, getSwapChainExtent().width, getSwapChainExtent().height, depthFormat,
+            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties,/*output*/ depthImage, depthImageMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffers(device,getSwapChainExtent(),renderPass,swapChainImageViews,depthImageView,framebuffers);
+    }
+    void unsize(SmartState log) override {
+        vkDeviceWaitIdle(device);
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthImageMemory, nullptr);
+        for (auto framebuffer : framebuffers)
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        for (auto imageView : swapChainImageViews)
+            vkDestroyImageView(device, imageView, nullptr);
+    }
+};
+#endif
 
 struct PipeState : public BaseState {
     const VkDevice device;
@@ -1351,12 +1388,8 @@ struct UniformState : public BaseState {
     ~UniformState() {
         reset(SmartState());
     }
-    VkBuffer getBuffer() override {
-        return buffer;
-    }
-    int getRange() override {
-        return size.size;
-    }
+    VkBuffer getBuffer() override {return buffer;}
+    int getRange() override {return size.size;}
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -1407,18 +1440,10 @@ struct BufferState : public BaseState {
     ~BufferState() {
         reset(SmartState());
     }
-    VkBuffer getBuffer() override {
-        return buffer;
-    }
-    VkDeviceMemory getMemory() override {
-        return memory;
-    }
-    int getRange() override {
-        return size.size;
-    }
-    VkSemaphore getSemaphore() override {
-        return after;
-    }
+    VkBuffer getBuffer() override {return buffer;}
+    VkDeviceMemory getMemory() override {return memory;}
+    int getRange() override {return size.size;}
+    VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
@@ -1519,9 +1544,7 @@ struct LayoutState : public BaseState {
     ~LayoutState() {
         reset(SmartState());
     }
-    VkSemaphore getSemaphore() override {
-        return after;
-    }
+    VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
         buffer = createCommandBuffer(device,commandPool);
@@ -1636,9 +1659,7 @@ struct ProbeState : public BaseState {
     ~ProbeState() {
         reset(SmartState());
     }
-    VkSemaphore getSemaphore() override {
-        return VK_NULL_HANDLE;
-    }
+    VkSemaphore getSemaphore() override {return VK_NULL_HANDLE;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
     }
@@ -1697,15 +1718,9 @@ struct AcquireState : public BaseState {
     ~AcquireState() {
         reset(SmartState());
     }
-    VkSemaphore getSemaphore() override {
-        return after;
-    }
-    uint32_t getImageIndex() override {
-        return imageIndex;
-    }
-    VkFramebuffer getFramebuffer() override {
-        return framebuffer;
-    }
+    VkSemaphore getSemaphore() override {return after;}
+    uint32_t getImageIndex() override {return imageIndex;}
+    VkFramebuffer getFramebuffer() override {return framebuffer;}
     void resize(SmartState log) override {
         after = createSemaphore(device);
         log << "resize " << debug << std::endl;
@@ -1792,9 +1807,7 @@ struct DrawState : public BaseState {
     ~DrawState() {
         reset(SmartState());
     }
-    VkSemaphore getSemaphore() override {
-        return after;
-    }
+    VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         descriptorPool = dee(PipelineBnd)->getDescriptorPool();
         descriptorLayout = dee(PipelineBnd)->getDescriptorSetLayout();
