@@ -560,18 +560,6 @@ AdvConst = {
 	{"Advance","PresizAdv","Constant","BindConst"},
 	{"Advance","PrememAdv","Constant","MemoryConst"},
 }
-MemoryBind = { -- TODO use Memoryat and Memoryer instead
-	{"Memory","Indexz","Bind","IndexBnd"},
-	{"Memory","Bringupz","Bind","BringupBnd"},
-	{"Memory","Texturez","Bind","TextureBnd"},
-	{"Memory","Uniformz","Bind","UniformBnd"},
-	{"Memory","Matrixz","Bind","MatrixBnd"},
-	{"Memory","Trianglez","Bind","TriangleBnd"},
-	{"Memory","Numericz","Bind","NumericBnd"},
-	{"Memory","Vertexz","Bind","VertexBnd"},
-	{"Memory","Basisz","Bind","BasisBnd"},
-	{"Memory","Piercez","Bind","PierceBnd"},
-}
 Bootstrap = {
 	{"Int","0","Str","Force(num:3"..
 		"cfg[0]:RegisterPlan"..

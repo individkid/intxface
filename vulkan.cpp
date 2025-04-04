@@ -630,18 +630,9 @@ struct BaseState {
 };
 
 enum IterEnum {
-    Dee,
-    Die,
-    Ded,
-    Deps,
-    Mee,
-    Mie,
-    Med,
-    Meps,
-    Bee,
-    Bie,
-    Bed,
-    Beps,
+    Dee,Die,Ded,Deps,
+    Mee,Mie,Med,Meps,
+    Bee,Bie,Bed,Beps,
 };
 struct Iter {
     Rsp rsp;
@@ -1046,26 +1037,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(cmd,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
-        Bind bnd = MemoryBind__Memory__Bind(center->mem);
-        if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
-        HeapState<Cmd> cmd;
+        int lim = (center->mem == Texturez ? center->siz : 1);
+        for (int i = 0; i < lim; i++) {HeapState<Cmd> cmd;
         if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
         if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
         if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};
-        int mod = stack[bnd]->bufsiz();
-        int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
-        void *ptr = 0; switch (center->mem) {
-        default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+        Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
+        if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
+        CmdEnum tag = PDerCmd; int sub = 0; int mod = stack[bnd]->bufsiz();
+        void *ptr = 0; int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
+        switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
-        break; case (Texturez): for (int i = 0; i < center->siz; i++) { // TODO convert to Memoryat; should work
-        HeapState<Cmd> cmd; void *ptr = datxVoidz(0,center->tex[i].dat); int siz = datxVoids(center->tex[i].dat);
-        SizeState max(VkExtent2D{(uint32_t)center->tex[i].wid,(uint32_t)center->tex[i].hei});
-        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,ImageBnd,ResizeLoc},Req{SizeReq,0,0,0,max}};
-        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,BeforeBnd,BeforeLoc},Req{BothReq,0,0,0,max}};
-        cmd<<Cmd{IDerCmd,Rsp{Micros,Memorys,TextureBnd,MiddleLoc},Req{BothReq,ptr,0,siz,max},center->idx+i};
-        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,AfterBnd,AfterLoc},{BothReq,0,0,0,max}};
-        push(cmd,log);} return;
+        break; case (Texturez): ptr = datxVoidz(0,center->tex[i].dat);
+        idx = 0; siz = datxVoids(center->tex[i].dat); tag = IDerCmd; sub = center->idx+i;
+        max = SizeState(VkExtent2D{(uint32_t)center->tex[i].wid,(uint32_t)center->tex[i].hei});
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1079,17 +1065,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(center->drw[center->siz-1],center,sub,Fnc{true,planePass,true,planeFail,false},log);
         return;
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
-        for (int i = 0; i < center->siz; i++)
-        write(center->cfg[i],center->val[i]);
+        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push(0,center,0,fnc.pass,log);
         return;}
         /*if (base>idx) {
         ptr = (void*)((char*)ptr+base-idx);
         siz -= base-idx; idx = 0;}
         else {idx = idx-base;}
-        if (idx+siz>size) {siz = size-idx;}*/ // TODO
-        cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,BindLocs},Req{BothReq,ptr,idx,siz,max}};
-        push(cmd,log);
+        if (idx+siz>size) {siz = size-idx;}*/ // TODO for Configure Base and Size
+        for (int j = 0; true; j++) {
+        BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
+        if (loc == BindLocs) break;
+        Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
+        if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
+        else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max}};}
+        push(cmd,log);}
     }
 };
 
@@ -1988,7 +1978,7 @@ void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanForce(Center *ptr, int sub) {
-    std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); exit(-1);
+    std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); slog.clr(); exit(-1);
 }
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide between registered Fnc structs
