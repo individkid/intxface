@@ -48,14 +48,8 @@ Memory = {
 	"Configurez", -- configure to value
 }
 Bind = { -- per variation of BaseState
-	"BindBnd",
 	"SwapBnd",
 	"PipelineBnd",
-	"PokeBnd",
-	"PeekBnd",
-	"AcquireBnd",
-	"PresentBnd",
-	"DrawBnd",
 	"IndexBnd",
 	"BringupBnd",
 	"ImageBnd",
@@ -69,6 +63,12 @@ Bind = { -- per variation of BaseState
 	"VertexBnd",
 	"BasisBnd",
 	"PierceBnd",
+	"PokeBnd",
+	"PeekBnd",
+	"AcquireBnd",
+	"PresentBnd",
+	"DrawBnd",
+	"BindBnd",
 }
 BindTyp = {
 	"StorageTyp",
@@ -486,6 +486,7 @@ Bindat = {
 	{"Bind","DrawBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","AcquireBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","PierceBnd","Int","0","BindLoc","ResizeLoc"},
 }
 Bindit = {
 	{"Bind","SwapBnd","Int","0"},
@@ -493,6 +494,7 @@ Bindit = {
 	{"Bind","DrawBnd","Int","2"},
 	{"Bind","AcquireBnd","Int","1"},
 	{"Bind","PresentBnd","Int","1"},
+	{"Bind","PierceBnd","Int","2"},
 }
 Binder = {
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
@@ -500,6 +502,7 @@ Binder = {
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Bind","DrawBnd"},
 	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Bind","AcquireBnd"},
 	{"Bind","PresentBnd","BindLoc","ResizeLoc","Bind","PresentBnd"},
+	{"Bind","PierceBnd","BindLoc","ResizeLoc","Bind","PierceBnd"},
 }
 Bindee = {
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},

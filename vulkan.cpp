@@ -614,7 +614,7 @@ struct BaseState {
     virtual VkSampler getTextureSampler() {std::cerr << "BaseState::textureSampler" << std::endl; exit(-1);}
     virtual VkDescriptorPool getDescriptorPool() {std::cerr << "BaseState::getDescriptorPool" << std::endl; exit(-1);}
     virtual VkDescriptorSetLayout getDescriptorSetLayout() {std::cerr << "BaseState::getDescriptorSetLayout" << std::endl; exit(-1);}
-    virtual VkExtent2D getSwapChainExtent() {std::cerr << "BaseState::getSwapChainExtent" << std::endl; exit(-1);}
+    virtual VkExtent2D getExtent() {std::cerr << "BaseState::getExtent" << std::endl; exit(-1);}
     static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags,
         VkPhysicalDeviceMemoryProperties memProperties);
     static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool);
@@ -1136,21 +1136,26 @@ void TestState::call() {
     };
     //
     int xsiz = 800; int ysiz = 600;
-    int args[] = {(int)MicroTest,(int)MicroTest};
+    int args[] = {/*draw index*/(int)MicroTest,/*draw size*/(int)MicroTest};
+    int imgs[] = {/*image index*/0};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
     copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,Fnc{true,0,true,vulkanForce,false},SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++)
+    for (int i = 0; i < StackState::frames; i++) // TODO change to BufnotAdv since size comes from SwapBnd
     copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.siz=2,.arg=args},0,0,Fnc{},SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++)
+    for (int i = 0; i < StackState::frames; i++) // TODO change to BufnotAdv since size comes from SwapBnd
     copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
+    //
+    // TODO need to initialize ImageBnd first
+    // for (int i = 0; i < StackState::frames; i++)
+    // copy->push(Draw{.adv=BufnotAdv,.bnd=PierceBnd,.siz=1,.arg=imgs},0,0,Fnc{},SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1182,7 +1187,7 @@ void TestState::call() {
     if (!bptr) {log << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
     BaseState *sptr = swap->buffer();
     if (!bptr->rinc(SwapBnd,sptr,log)) {log << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
-    testUpdate(sptr->getSwapChainExtent(),model,view,proj,debug);
+    testUpdate(sptr->getExtent(),model,view,proj,debug);
     bptr->rdec(SwapBnd,log);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
@@ -1249,20 +1254,20 @@ struct SwapState : public BaseState {
     }
     VkSwapchainKHR getSwapChain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
-    VkExtent2D getSwapChainExtent() override {return capabilities.currentExtent;}
+    VkExtent2D getExtent() override {return capabilities.currentExtent;}
     void resize(SmartState log) override {
         capabilities = findCapabilities(window,surface,physical);
-        swapChain = createSwapChain(surface,device,getSwapChainExtent(),surfaceFormat,presentMode,
+        swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode,
             capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
         swapChainImageViews.resize(swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-        createImage(device, physical, getSwapChainExtent().width, getSwapChainExtent().height, depthFormat,
+        createImage(device, physical, getExtent().width, getExtent().height, depthFormat,
             VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties,/*output*/ depthImage, depthImageMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffers(device,getSwapChainExtent(),renderPass,swapChainImageViews,depthImageView,framebuffers);
+        createFramebuffers(device,getExtent(),renderPass,swapChainImageViews,depthImageView,framebuffers);
     }
     void unsize(SmartState log) override {
         vkDestroyImageView(device, depthImageView, nullptr);
@@ -1290,66 +1295,6 @@ struct SwapState : public BaseState {
     static void createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
         std::vector<VkImageView> swapChainImageViews, VkImageView depthImageView,
         std::vector<VkFramebuffer> &framebuffers);
-};
-
-struct PierceState : public BaseState {
-    const VkPhysicalDevice physical;
-    const VkDevice device;
-    const VkPhysicalDeviceMemoryProperties memProperties;
-    const VkFormat depthFormat;
-    const VkRenderPass renderPass;
-    VkImage image;
-    VkDeviceMemory imageMemory;
-    VkImageView imageView;
-    VkImage depthImage;
-    VkDeviceMemory depthMemory;
-    VkImageView depthImageView;
-    VkFramebuffer framebuffer;
-    VkDeviceMemory getMemory() override {return imageMemory;}
-    VkFramebuffer getFramebuffer() override {return framebuffer;}
-    PierceState() :
-        BaseState("PierceState",StackState::self),
-        physical(StackState::physical),
-        device(StackState::device),
-        memProperties(StackState::memProperties),
-        depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass) {
-    }
-    ~PierceState() {
-        reset(SmartState());
-    }
-    void resize(SmartState log) override {
-        int texWidth = size.extent.width;
-        int texHeight = size.extent.height;
-        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            memProperties, /*output*/ image, imageMemory);
-        imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        createImage(device, physical, texWidth, texHeight, depthFormat,
-            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            memProperties,/*output*/ depthImage, depthMemory);
-        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        std::vector<VkImageView> imageViews; imageViews.push_back(imageView);
-        std::vector<VkFramebuffer> framebuffers; framebuffers.resize(imageViews.size());
-        SwapState/*TODO make createFramebuffer in BaseState*/::createFramebuffers(device,size.extent,renderPass,imageViews,depthImageView,framebuffers);
-        framebuffer = framebuffers.front();
-    }
-    void unsize(SmartState log) override {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-        vkDestroyImageView(device, depthImageView, nullptr);
-        vkDestroyImage(device, depthImage, nullptr);
-        vkFreeMemory(device, depthMemory, nullptr);
-        vkDestroyImageView(device, imageView, nullptr);
-        vkDestroyImage(device, image, nullptr);
-        vkFreeMemory(device, imageMemory, nullptr);
-    }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
-        return VK_NULL_HANDLE;
-    }
-    void upset(SmartState log) override {
-        log << "upset " << debug << std::endl;
-    }
 };
 
 struct PipeState : public BaseState {
@@ -1520,8 +1465,10 @@ struct ImageState : public BaseState {
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
-    VkImageView getImageView() override {return imageView;}
     VkImage getImage() override {return image;}
+    VkDeviceMemory getMemory() override {return imageMemory;}
+    VkImageView getImageView() override {return imageView;}
+    VkExtent2D getExtent() override {return size.extent;}
     ImageState() :
         BaseState("ImageState",StackState::self),
         device(StackState::device),
@@ -1545,6 +1492,54 @@ struct ImageState : public BaseState {
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);
+    }
+    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
+        return VK_NULL_HANDLE;
+    }
+    void upset(SmartState log) override {
+        log << "upset " << debug << std::endl;
+    }
+};
+
+struct PierceState : public BaseState {
+    const VkPhysicalDevice physical;
+    const VkDevice device;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    const VkFormat depthFormat;
+    const VkRenderPass renderPass;
+    VkImage depthImage;
+    VkDeviceMemory depthMemory;
+    VkImageView depthImageView;
+    VkFramebuffer framebuffer;
+    VkExtent2D extent;
+    VkSemaphore getSemaphore() override {return VK_NULL_HANDLE;}
+    VkFramebuffer getFramebuffer() override {return framebuffer;}
+    VkExtent2D getExtent() override {return extent;}
+    PierceState() :
+        BaseState("PierceState",StackState::self),
+        physical(StackState::physical),
+        device(StackState::device),
+        memProperties(StackState::memProperties),
+        depthFormat(StackState::depthFormat),
+        renderPass(StackState::renderPass) {
+    }
+    ~PierceState() {
+        reset(SmartState());
+    }
+    void resize(SmartState log) override {
+        extent = dee(ImageBnd)->getExtent();
+        createImage(device, physical, dee(ImageBnd)->getExtent().width, dee(ImageBnd)->getExtent().height, depthFormat,
+            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties,/*output*/ depthImage, depthMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffer(device,dee(ImageBnd)->getExtent(),renderPass,dee(ImageBnd)->getImageView(),depthImageView,framebuffer);
+    }
+    void unsize(SmartState log) override {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthMemory, nullptr);
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
@@ -1633,8 +1628,6 @@ struct TextureState : public BaseState {
     VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
-        int texWidth = size.extent.width;
-        int texHeight = size.extent.height;
         textureSampler = createTextureSampler(device,properties);
         commandBuffer = createCommandBuffer(device,commandPool);
         after = createSemaphore(device);
@@ -1648,7 +1641,7 @@ struct TextureState : public BaseState {
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
-        int texWidth = size.extent.width;
+        int texWidth = size.extent.width; // TODO use dee(ImageBnd)->getExtent() and resize TextureBnd with FalseExt
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1678,6 +1671,7 @@ struct TextureState : public BaseState {
 struct ProbeState : public BaseState {
     const VkDevice device;
     ChangeState<Configure,Configures> *copy;
+    VkExtent2D extent;
     ProbeState() :
         BaseState("ProbeState",StackState::self),
         device(StackState::device),
@@ -1687,6 +1681,7 @@ struct ProbeState : public BaseState {
         reset(SmartState());
     }
     VkSemaphore getSemaphore() override {return VK_NULL_HANDLE;}
+    VkExtent2D getExtent() override {return extent;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
     }
@@ -1695,6 +1690,7 @@ struct ProbeState : public BaseState {
     }
     VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
+        extent = dee(size.bind)->getExtent();
         if (loc() == BeforeLoc) {
         void *mapped = 0; int32_t value;
         VkDeviceMemory memory = dee(size.bind)->getMemory();
@@ -1737,6 +1733,7 @@ struct AcquireState : public BaseState {
     VkSemaphore after;
     uint32_t imageIndex;
     VkFramebuffer framebuffer;
+    VkExtent2D extent;
     AcquireState() :
         BaseState("AcquireState",StackState::self),
         device(StackState::device),
@@ -1748,6 +1745,7 @@ struct AcquireState : public BaseState {
     VkSemaphore getSemaphore() override {return after;}
     uint32_t getImageIndex() override {return imageIndex;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
+    VkExtent2D getExtent() override {return extent;}
     void resize(SmartState log) override {
         after = createSemaphore(device);
         log << "resize " << debug << std::endl;
@@ -1758,7 +1756,7 @@ struct AcquireState : public BaseState {
     }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        VkExtent2D frameExtent = dee(SwapBnd)->getSwapChainExtent();
+        extent = dee(SwapBnd)->getExtent();
         VkResult result = vkAcquireNextImageKHR(device,
         dee(SwapBnd)->getSwapChain(), UINT64_MAX, after, VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
@@ -1856,31 +1854,29 @@ struct DrawState : public BaseState {
         log << "setup " << debug << std::endl;
         if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" <<
             std::endl; exit(-1);}
-        VkExtent2D swapChainExtent = dee(SwapBnd)->getSwapChainExtent();
         vkResetFences(device, 1, &fence);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        BaseState *pipelinePtr = 0;
-        BaseState *fetchPtr = 0;
+        BaseState *pipePtr = 0;
+        BaseState *framePtr = 0;
         BaseState *indexPtr = 0;
-        BaseState *acquirePtr = 0;
-        BaseState *piercePtr = 0;
-        BaseState *matrixPtr = 0;
+        BaseState *fetchPtr = 0;
         BaseState *imagePtr = 0;
         BaseState *texturePtr = 0;
-        int index = 0;
-        int matrixIdx = 0;
+        BaseState *matrixPtr = 0;
         int textureIdx = 0;
+        int matrixIdx = 0;
+        int index = 0;
         for (Iter i(Rsp{size.micro,Memorys,Binds,MiddleLoc}); i(); ++i)
         if (i.isee() || i.isie()) switch (i.bnd) {
         default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
-        break; case (PipelineBnd): pipelinePtr = dee(i.bnd);
-        break; case (AcquireBnd): acquirePtr = dee(i.bnd);
+        break; case (PipelineBnd): pipePtr = dee(i.bnd);
+        break; case (AcquireBnd): framePtr = dee(i.bnd);
         break; case (IndexBnd): indexPtr = dee(i.bnd);
         break; case (BringupBnd): fetchPtr = dee(i.bnd);
         break; case (ImageBnd): imagePtr = dee(i.bnd);
         break; case (TextureBnd): texturePtr = dee(i.bnd); textureIdx = index++;
         break; case (MatrixBnd): matrixPtr = dee(i.bnd); matrixIdx = index++;
-        break; case (PierceBnd): piercePtr = dee(i.bnd);} // TODO use this instead of acquirePtr for MicroDebug
+        break; case (PierceBnd): framePtr = dee(i.bnd);}
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
@@ -1890,14 +1886,15 @@ struct DrawState : public BaseState {
         if (imagePtr && texturePtr) {
             updateTextureDescriptor(device,imagePtr->getImageView(),
                 texturePtr->getTextureSampler(),textureIdx,descriptorSet);}
-        if (pipelinePtr && fetchPtr && indexPtr && acquirePtr) {
-            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,swapChainExtent,size.micro,siz,
-                acquirePtr->getFramebuffer(),pipelinePtr->getPipeline(),pipelinePtr->getPipelineLayout(),
+        if (pipePtr && framePtr && indexPtr && fetchPtr) {
+            VkExtent2D extent = framePtr->getExtent();
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,size.micro,siz,
+                framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
             drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
-                acquirePtr->getSemaphore(),after,fence,VK_NULL_HANDLE);}
+                framePtr->getSemaphore(),after,fence,VK_NULL_HANDLE);}
         else {std::cerr << "invalid bind set! " <<
-            acquirePtr << " " << pipelinePtr << " " << fetchPtr << " " << indexPtr << std::endl; exit(-1);}
+            pipePtr << " " << framePtr << " " << indexPtr << " " << fetchPtr << std::endl; exit(-1);}
         return fence;
     }
     void upset(SmartState log) override {
@@ -1926,8 +1923,7 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapBnd,1> swapState;
-    // ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
-    ArrayState<PipeState,PipelineBnd,1> pipelineState;
+    ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<ImageState,ImageBnd,StackState::images> imageState;
