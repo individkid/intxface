@@ -494,7 +494,7 @@ Bindit = {
 	{"Bind","DrawBnd","Int","2"},
 	{"Bind","AcquireBnd","Int","1"},
 	{"Bind","PresentBnd","Int","1"},
-	{"Bind","PierceBnd","Int","2"},
+	{"Bind","PierceBnd","Int","1"},
 }
 Binder = {
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
@@ -508,6 +508,7 @@ Bindee = {
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bindie = {
+	{"Bind","PierceBnd","BindLoc","ResizeLoc","Int","0","Bind","ImageBnd"},
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 }
 Binded = {
