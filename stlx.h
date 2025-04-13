@@ -244,6 +244,9 @@ template <class Type> struct HeapState {
     int size() {
         return vec.size();
     }
+    void clear() {
+        vec.clear();
+    }
 };
 #endif
 
