@@ -674,7 +674,7 @@ struct Iter {
         break; case(MicroAdv): rsp = Rsp{drw.drw,Memorys,Binds,loc};
         break; case(PrememAdv): rsp = Rsp{Micros,drw.mem,Binds,loc};
         break; case(SubmicAdv): case(BufmicAdv): case(BufnotAdv): case(PresizAdv):
-        rsp = Rsp{Micros,Memorys,drw.bnd};}
+        rsp = Rsp{Micros,Memorys,drw.bnd,loc};}
         return rsp;
     }
     IterEnum d2s(Draw drw) {

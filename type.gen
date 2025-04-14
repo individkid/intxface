@@ -82,6 +82,7 @@ BindTyp = {
 	"AfterTyp",
 }
 BindLoc = {
+	"RebindLoc",
 	"ResizeLoc",
 	"BeforeLoc", -- like Acquire
 	"MiddleLoc", -- like Draw
