@@ -14,3 +14,5 @@ void planeLoop();
 void planeDone();
 void planePass(struct Center *ptr, int sub);
 void planeFail(struct Center *ptr, int sub);
+void planePrep(struct Center *ptr, int sub);
+void planePref(struct Center *ptr, int sub);

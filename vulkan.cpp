@@ -456,6 +456,7 @@ struct BaseState {
         std::cout << "~" << debug << std::endl;
     }
     bool push(int rdec, int wdec, Req req, SmartState log) {
+        // reserve before pushing to thread
         safe.wait();
         if (state != InitBase && state != FreeBase) {
         log << "push state fail " << debug << " " << state << std::endl;
@@ -476,6 +477,7 @@ struct BaseState {
         return push(0,0,req,log);
     }
     void push(SmartState log) {
+        // unreserve after done in thread
         safe.wait();
         if (state != BothBase && state != SizeBase && state != LockBase)
             {std::cerr << "invalid push state!" << std::endl; exit(-1);}
@@ -483,6 +485,7 @@ struct BaseState {
         safe.post();
     }
     void push(Rsp rsp, BindState *ptr, SmartState log) {
+        // save info for use in thread
         safe.wait();
         if (state != BothBase && state != SizeBase && state != LockBase)
             {std::cerr << "invalid set state!" << std::endl; exit(-1);}
@@ -591,6 +594,9 @@ struct BaseState {
     }
     BindLoc loc() {
         return resp.loc;
+    }
+    Bind bnd() {
+        return item->buftyp();
     }
     BaseState *bnd(Bind typ);
     BaseState *nxt() {
@@ -821,13 +827,19 @@ BaseState *BaseState::bnd(Bind typ) {
     return lock->get(typ);
 }
 
+struct Next;
+struct Loop {
+    virtual void push(Next *next) = 0;
+};
 struct Push {
+    SmartState log;
     BaseState *base;
-    VkFence fence;
     Center *ptr;
     int sub;
     void (*fnc)(Center*,int);
-    SmartState log;
+    Next *nxt;
+    Loop *loo;
+    VkFence fence;
 };
 struct ThreadState : public DoneState {
     const VkDevice device;
@@ -835,18 +847,20 @@ struct ThreadState : public DoneState {
     SafeState safe; SafeState wake;
     std::deque<Push> before;
     std::deque<Push> after;
+    std::map<int,Push> topush;
+    int seqnum;
     bool goon;
     ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
         device(device), copy(copy),
-        safe(1), wake(0), goon(true) {
+        safe(1), wake(0), seqnum(0), goon(true) {
         strcpy(debug,"ThreadState");
         std::cout << debug << std::endl;
     }
     ~ThreadState() {
         std::cout << "~" << debug << std::endl;
     }
-    void push(BaseState *base, Center *ptr, int sub, void (*fnc)(Center*,int), SmartState log) {
-        Push push = {base,VK_NULL_HANDLE,ptr,sub,fnc,log};
+    void push(Push push) {
+        push.fence = VK_NULL_HANDLE;
         safe.wait();
         before.push_back(push);
         safe.post();
@@ -881,8 +895,9 @@ struct ThreadState : public DoneState {
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
-        if (push.fnc) push.fnc(push.ptr,push.sub);
         if (push.base) push.base->baseups(push.log);
+        if (push.fnc) push.fnc(push.ptr,push.sub);
+        if (push.loo) push.loo->push(push.nxt);
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
@@ -924,8 +939,41 @@ struct Fnc {
     bool fnow; void (*fail)(Center*,int);
     bool goon;
 };
-struct CopyState : public ChangeState<Configure,Configures> {
-    ThreadState *thread; StackState *stack[Binds];
+struct Next {
+    HeapState<Cmd> cmd;
+    HeapState<BaseState*> buf;
+    BindState *bind;
+    SmartState log;
+    void push(HeapState<Cmd> &cmd, HeapState<BaseState*> &buf, BindState *bind, SmartState log) {
+        for (int i = 0; i < cmd.size(); i++) this->cmd<<cmd[i];
+        for (int i = 0; i < buf.size(); i++) this->buf<<buf[i];
+        this->bind = bind; this->log = log;
+    }
+    void push(ThreadState *thread, StackState *stack[Binds]) {
+        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
+        if (cmd.size() != buf.size()) {std::cerr << "invalid next size! " << cmd.size() << " " << buf.size() << std::endl; exit(-1);}
+        for (int i = 0; i < cmd.size(); i++) switch (cmd[i].tag) {default:
+        // TODO in case of rebind, clear cmd to after i, push this to thread, and return
+        break; case(DerCmd): stack[cmd[i].rsp.bnd]->advance();
+        buf[i]->push(cmd[i].rsp,bind,log);
+        thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
+        break; case(PDerCmd):
+        buf[i]->push(cmd[i].rsp,bind,log);
+        thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
+        break; case(IDerCmd): stack[cmd[i].rsp.bnd]->advance(cmd[i].idx);
+        buf[i]->push(cmd[i].rsp,bind,log);
+        thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
+        break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
+        break; case(PEnqCmd): ptr = cmd[i].ptr; sub = cmd[i].sub; fnc = cmd[i].fnc;}
+        if (bind) stack[BindBnd]->advance();
+        cmd.clear(); buf.clear(); bind = 0;
+        // TODO deallocate this to given circular buffer
+    }
+};
+struct CopyState : public ChangeState<Configure,Configures>, public Loop {
+    ThreadState *thread;
+    StackState *stack[Binds];
+    HeapState<Next> circle;
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
         std::cout << "CopyState" << std::endl;
@@ -934,17 +982,23 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
     }
-    void push(Cmd *cmd, int num, SmartState log) {
+    void push(HeapState<Cmd> &cmd, SmartState log) {
+        int num = cmd.size();
+        // TODO use circular buffer of Next for all local variables
+        // TODO keep track of phase, and fail if phase of next is non-zero
+        // TODO this is all phase zero; use push(Next*) for non-zero phases
         bool goon = true; while (goon) {goon = false;
-        BaseState *buf[num] = {}; BindState *bind = 0; int count = 0; bool prep[num] = {};
+        HeapState<BaseState*> buf(num); int count = 0;
         for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); cmd[i].req.pre = false; count += 1;
             break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(); cmd[i].req.pre = true; count += 1;
             break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); cmd[i].req.pre = false; count += 1;
             break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
             break; case(IRDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;}
+        BindState *bind = 0;
         if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
-        int lim = num; if (count > 1 && bind == 0) lim = -1;
+        int lim = num;
+        if (count > 1 && bind == 0) lim = -1;
         for (int i = 0; i < num && i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
             if (!bind->push(cmd[i].rsp.bnd,buf[i],cmd[i].req,log)) lim = i;} else {
@@ -952,36 +1006,26 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.bnd,buf[i],log)) lim = i;}
-        if (lim < num) for (int i = 0; i < lim; i++) switch (cmd[i].tag) {default:
+        Next temp = {}; Next *next = 0;
+        if (lim == num) next = &temp; // TODO use circular buffer instead of auto
+        if (next) {
+        BaseState *last = 0;
+        for (int i = 0; i < num; i++) switch(cmd[i].tag) {default:
+            break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = buf[i]->lnk(last);}
+        next->push(cmd,buf,bind,log);
+        push(next);}
+        else {
+        for (int i = 0; i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->push(cmd[i].rsp.bnd,log); buf[i]->push(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(cmd[i].rsp.bnd,log);
             break; case(WDeeCmd): bind->wdec(cmd[i].rsp.bnd,log);
             break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
-            break; case(FEnqCmd): thread->push(0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc,log);
-            break; case(GoonCmd): goon = true;}
-        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0; BaseState *last = 0;
-        if (lim == num) for (int i = 0; i < num; i++) switch(cmd[i].tag) {default:
-            break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = buf[i]->lnk(last);}
-        if (lim == num) for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
-            break; case(DerCmd): stack[cmd[i].rsp.bnd]->advance();
-            buf[i]->push(cmd[i].rsp,bind,log);
-            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(PDerCmd):
-            buf[i]->push(cmd[i].rsp,bind,log);
-            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(IDerCmd): stack[cmd[i].rsp.bnd]->advance(cmd[i].idx);
-            buf[i]->push(cmd[i].rsp,bind,log);
-            thread->push(buf[i],ptr,sub,fnc,log); ptr = 0; sub = 0; fnc = 0;
-            break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
-            break; case(PEnqCmd): ptr = cmd[i].ptr; sub = cmd[i].sub; fnc = cmd[i].fnc;}
-        if (lim == num && bind) stack[BindBnd]->advance();}
+            break; case(FEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});
+            break; case(GoonCmd): goon = true;}}}
     }
-    void push(Cmd req, SmartState log) {
-        push(&req,1,log);
-    }
-    void push(HeapState<Cmd> req, SmartState log) {
-        push(req.data(), req.size(), log);
+    void push(Next *next) override {
+        next->push(thread,stack); // TODO pass circular buffer for deallocate
     }
     void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Cmd> cmd; int count = 0; int limit = 0;
@@ -1057,12 +1101,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Piercez): ptr = (void*)center->pie;
         break; case (Drawz): for (int i = 0; i < center->siz-1; i++)
         // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(center->drw[i],0,i,Fnc{true,planePass,true,planeFail,false},log);
+        push(center->drw[i],0,i,Fnc{true,planePrep,true,planePref,false},log);
         push(center->drw[center->siz-1],center,sub,Fnc{true,planePass,true,planeFail,false},log);
         return;
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push(0,center,0,fnc.pass,log);
+        if (fnc.pass) thread->push({log,0,center,0,fnc.pass});
         return;}
         /*if (base>idx) {
         ptr = (void*)((char*)ptr+base-idx);
@@ -1465,22 +1509,49 @@ struct BufferState : public BaseState {
         VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
+enum ImageEnum {
+    TextureImage,
+    FrameImage,
+    ImageEnums,
+};
 struct ImageState : public BaseState {
     const VkDevice device;
     const VkPhysicalDevice physical;
+    const VkPhysicalDeviceProperties properties;
+    const VkQueue graphics;
+    const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
+    const VkFormat depthFormat;
+    const VkRenderPass renderPass;
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
+    VkImage depthImage;
+    VkDeviceMemory depthMemory;
+    VkImageView depthImageView;
+    VkFramebuffer framebuffer;
+    VkSampler textureSampler;
+    VkCommandBuffer commandBuffer;
+    VkSemaphore after;
+    // temporary between sup and ups:
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
     VkImage getImage() override {return image;}
     VkDeviceMemory getMemory() override {return imageMemory;}
     VkImageView getImageView() override {return imageView;}
     VkExtent2D getExtent() override {return size.extent;}
+    VkSampler getTextureSampler() override {return textureSampler;}
+    VkSemaphore getSemaphore() override {return after;}
     ImageState() :
         BaseState("ImageState",StackState::self),
         device(StackState::device),
         physical(StackState::physical),
-        memProperties(StackState::memProperties) {
+        properties(StackState::properties),
+        graphics(StackState::graphics),
+        commandPool(StackState::commandPool),
+        memProperties(StackState::memProperties),
+        depthFormat(StackState::depthFormat),
+        renderPass(StackState::renderPass) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -1493,20 +1564,69 @@ struct ImageState : public BaseState {
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        if (bnd() == TextureBnd) {
+        textureSampler = createTextureSampler(device,properties);}
+        else if (bnd() == PierceBnd) {
+        // TODO need to create color image for framebuffer too
+        createImage(device, physical, texWidth, texHeight, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_LAYOUT_UNDEFINED, // TODO this is always the value of the parameter; remove the parameter
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties, depthImage, depthMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffer(device,bnd(ImageBnd)->getExtent(),renderPass,imageView,depthImageView,framebuffer);
+        commandBuffer = createCommandBuffer(device,commandPool);
+        after = createSemaphore(device);}
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
+        if (bnd() == TextureBnd) {
+        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkDestroySampler(device, textureSampler, nullptr);}
+        else if (bnd() == PierceBnd) {
+        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthMemory, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);
     }
+    // TODO setup is not called if pushed with SizeReq; so push LayoutBnd after SizeReq push of TextureBnd or PierceBnd
+    // TODO resize is not called if the same size is used, so push of image data need not cause layout error if resize called separately before
+    // TODO since size.extent is not known prior to having image data, use RebindLoc to push resize and setup separately from same center push
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        return VK_NULL_HANDLE;
+        if (bnd() == TextureBnd) {
+        if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
+        int texWidth = size.extent.width; // TODO use bnd(ImageBnd)->getExtent() and resize TextureBnd with FalseExt
+        int texHeight = size.extent.height;
+        VkDeviceSize imageSize = texWidth * texHeight * 4;
+        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
+            stagingBuffer, stagingBufferMemory);
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, ptr, static_cast<size_t>(imageSize));
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
+            last->getSemaphore(), (nxt()/*TODO add nxt(after) to return VkSemaphore*/?after:VK_NULL_HANDLE), stagingBuffer, commandBuffer);}
+        return VK_NULL_HANDLE; // TODO pass lst(fence) to copyTextureImage
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
+        if (bnd() == TextureBnd) {
+        vkUnmapMemory(device, stagingBufferMemory);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);}
     }
+    static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
+    static void copyTextureImage(VkDevice device, VkQueue graphics,
+        VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
+        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
+        VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
 };
 
 struct PierceState : public BaseState {
@@ -1589,13 +1709,13 @@ struct LayoutState : public BaseState {
     VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        if (loc()==AfterLoc) vkResetFences(device, 1, &fence);
+        if (bnd()==AfterBnd) vkResetFences(device, 1, &fence);
         transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (loc()==AfterLoc?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
-            (loc()==AfterLoc?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
-            (loc()==AfterLoc?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
-            (loc()==AfterLoc?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-        return (loc()==AfterLoc?fence:VK_NULL_HANDLE);
+            (bnd()==AfterBnd?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
+            (bnd()==AfterBnd?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
+            (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
+            (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+        return (bnd()==AfterBnd?fence:VK_NULL_HANDLE);
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1635,7 +1755,7 @@ struct TextureState : public BaseState {
     VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
-        textureSampler = createTextureSampler(device,properties);
+        textureSampler = ImageState::createTextureSampler(device,properties);
         commandBuffer = createCommandBuffer(device,commandPool);
         after = createSemaphore(device);
     }
@@ -1658,7 +1778,7 @@ struct TextureState : public BaseState {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
+        ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
             last->getSemaphore(), after, stagingBuffer, commandBuffer);
         return fence;
     }
@@ -1668,11 +1788,6 @@ struct TextureState : public BaseState {
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
-    static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
-    static void copyTextureImage(VkDevice device, VkQueue graphics,
-        VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
-        VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
-        VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
 };
 
 struct ProbeState : public BaseState {
@@ -1698,7 +1813,7 @@ struct ProbeState : public BaseState {
     VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         extent = bnd(size.bind)->getExtent();
-        if (loc() == BeforeLoc) {
+        if (bnd() == PokeBnd) {
         void *mapped = 0; int32_t value;
         VkDeviceMemory memory = bnd(size.bind)->getMemory();
         mapMemory(device,memory,&mapped,size.bind,copy);
@@ -1709,7 +1824,7 @@ struct ProbeState : public BaseState {
     }
     void upset(SmartState log) override {
         log << "upset" << std::endl;
-        if (loc() == AfterLoc) {
+        if (bnd() == PeekBnd) {
         void *mapped = 0; int32_t value;
         VkDeviceMemory memory = bnd(size.bind)->getMemory();
         mapMemory(device,memory,&mapped,size.bind,copy);
@@ -1933,17 +2048,17 @@ struct MainState {
     ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
-    ArrayState<ImageState,ImageBnd,StackState::images> imageState;
+    ArrayState<ImageState,ImageBnd,StackState::images> imageState; // TODO use TextureBnd or PierceBnd instead
     ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState;
     ArrayState<LayoutState,AfterBnd,StackState::frames> afterState;
-    ArrayState<TextureState,TextureBnd,StackState::frames> textureState;
+    ArrayState<TextureState,TextureBnd,StackState::frames> textureState; // TODO use ImageState instead
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<PierceState,PierceBnd,StackState::frames> pierceState;
+    ArrayState<PierceState,PierceBnd,StackState::frames> pierceState; // TODO use ImageState instead
     ArrayState<ProbeState,PokeBnd,StackState::frames> pokeState;
     ArrayState<ProbeState,PeekBnd,StackState::frames> peekState;
     ArrayState<AcquireState,AcquireBnd,StackState::frames> acquireState;
@@ -2743,7 +2858,7 @@ void BufferState::copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuff
     vkQueueSubmit(graphics, 1, &submitInfo, fence);
 }
 
-VkSampler TextureState::createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties) {
+VkSampler ImageState::createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties) {
     VkSampler textureSampler;
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -2815,7 +2930,7 @@ void LayoutState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCom
     vkQueueSubmit(graphics, 1, &submitInfo, fenceOut);
     if (semaphoreOut == VK_NULL_HANDLE) vkQueueWaitIdle(graphics);
 }
-void TextureState::copyTextureImage(VkDevice device, VkQueue graphics,
+void ImageState::copyTextureImage(VkDevice device, VkQueue graphics,
     VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
     VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
     VkBuffer stagingBuffer, VkCommandBuffer commandBuffer) {

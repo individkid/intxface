@@ -52,7 +52,7 @@ Bind = { -- per variation of BaseState
 	"PipelineBnd",
 	"IndexBnd",
 	"BringupBnd",
-	"ImageBnd",
+	"ImageBnd", -- TODO use TextureBnd or PierceBnd instead
 	"BeforeBnd",
 	"AfterBnd",
 	"TextureBnd",
