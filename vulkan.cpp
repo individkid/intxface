@@ -951,7 +951,8 @@ struct Next {
     }
     void push(HeapState<Cmd> &cmd, HeapState<BaseState*> &buf, BindState *bind, SmartState log) {
         for (int i = 0; i < cmd.size(); i++) this->cmd<<cmd[i];
-        for (int i = 0; i < buf.size(); i++) this->buf<<buf[i];
+        for (int i = 0; i < cmd.size(); i++) if (cmd[i].rsp.bnd == Binds) this->buf<<0; else this->buf<<buf[cmd[i].rsp.bnd];
+        for (int i = 0; i < cmd.size(); i++) if (cmd[i].rsp.bnd == Binds); else buf[cmd[i].rsp.bnd] = 0;
         this->bind = bind; this->log = log;
     }
     void push(ThreadState *thread, StackState *(&stack)[Binds], Loop *loop, HeapState<Next> &circle) {
@@ -959,7 +960,7 @@ struct Next {
         if (cmd.size() != buf.size()) {std::cerr << "invalid next size!" << std::endl; exit(-1);}
         for (int i = 0; i < cmd.size(); i++) switch (cmd[i].tag) {default:
         break; case(RebCmd):
-        for (int j = 0; j <= i; j++) {Cmd tmp; cmd>>tmp; BaseState *ptr; buf>>ptr;}
+        for (int j = 0; j <= i; j++) {Cmd *tmp; cmd>>tmp; BaseState *ptr; buf>>ptr;}
         thread->push(Push{log,0,0,0,0,this,loop}); return;
         break; case(DerCmd): stack[cmd[i].rsp.bnd]->advance();
         buf[i]->push(cmd[i].rsp,bind,log);
@@ -981,10 +982,12 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
     ThreadState *thread;
     StackState *stack[Binds];
     HeapState<Next> circle;
+    HeapState<BaseState*> buf;
     CopyState(ThreadState *thread, EnumState *stack) :
-        thread(thread), stack{0}, circle(StackState::copies,StackState::copies) {
+        thread(thread), stack{0}, circle(StackState::copies,StackState::copies), buf(Binds,Binds) {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
+        for (int i = 0; i < Binds; i++) buf[i] = 0;
     }
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
@@ -995,41 +998,42 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         // TODO keep track of phase, and fail if phase of next is non-zero
         // TODO this is all phase zero; use push(Next*) for non-zero phases
         bool goon = true; while (goon) {goon = false;
-        HeapState<BaseState*> buf(num,num); int count = 0;
+        int count = 0;
         for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
-            break; case(DerCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); cmd[i].req.pre = false; count += 1;
-            break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(); cmd[i].req.pre = true; count += 1;
-            break; case(IDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); cmd[i].req.pre = false; count += 1;
-            break; case(RDeeCmd): case(WDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
-            break; case(IRDeeCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;}
+            break; case(DerCmd): if (buf[cmd[i].rsp.bnd] == 0) buf[cmd[i].rsp.bnd] = stack[cmd[i].rsp.bnd]->buffer(); cmd[i].req.pre = false; count += 1;
+            break; case(PDerCmd): if (buf[cmd[i].rsp.bnd] == 0) buf[cmd[i].rsp.bnd] = stack[cmd[i].rsp.bnd]->prebuf(); cmd[i].req.pre = true; count += 1;
+            break; case(IDerCmd): if (buf[cmd[i].rsp.bnd] == 0) buf[cmd[i].rsp.bnd] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); cmd[i].req.pre = false; count += 1;
+            break; case(RDeeCmd): case(WDeeCmd): if (buf[cmd[i].rsp.bnd] == 0) buf[cmd[i].rsp.bnd] = stack[cmd[i].rsp.bnd]->buffer(); count += 1;
+            break; case(IRDeeCmd): if (buf[cmd[i].rsp.bnd] == 0) buf[cmd[i].rsp.bnd] = stack[cmd[i].rsp.bnd]->prebuf(cmd[i].idx); count += 1;}
         BindState *bind = 0;
         if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num;
         if (count > 1 && bind == 0) lim = -1;
         for (int i = 0; i < num && i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(cmd[i].rsp.bnd,buf[i],cmd[i].req,log)) lim = i;} else {
-            if (!buf[i]->push(cmd[i].req,log)) lim = i;}
-            break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
-            break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
-            break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.bnd,buf[i],log)) lim = i;}
+            if (!bind->push(cmd[i].rsp.bnd,buf[cmd[i].rsp.bnd],cmd[i].req,log)) lim = i;} else {
+            if (!buf[cmd[i].rsp.bnd]->push(cmd[i].req,log)) lim = i;}
+            break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[cmd[i].rsp.bnd],log)) lim = i;
+            break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[cmd[i].rsp.bnd],log)) lim = i;
+            break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.bnd,buf[cmd[i].rsp.bnd],log)) lim = i;}
         Next *next = 0; if (lim == num) circle >> next;
         if (next) {
         BaseState *last = 0;
         for (int i = 0; i < num; i++) switch(cmd[i].tag) {default:
-            break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = buf[i]->lnk(last);}
+            break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = buf[cmd[i].rsp.bnd]->lnk(last);}
         next->push(cmd,buf,bind,log);
         push(next);}
         else {
         if (lim == num) std::cerr << "exhausted circle " << &circle << std::endl;
         for (int i = 0; i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            if (bind) bind->push(cmd[i].rsp.bnd,log); buf[i]->push(log);
+            if (bind) bind->push(cmd[i].rsp.bnd,log); buf[cmd[i].rsp.bnd]->push(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(cmd[i].rsp.bnd,log);
             break; case(WDeeCmd): bind->wdec(cmd[i].rsp.bnd,log);
             break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(FEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});
-            break; case(GoonCmd): goon = true;}}}
+            break; case(GoonCmd): goon = true;}
+        for (int i = 0; i < num; i++) if (cmd[i].rsp.bnd == Binds); else buf[cmd[i].rsp.bnd] = 0;}}
     }
     void push(Next *next) override {
         next->push(thread,stack,this,circle);
