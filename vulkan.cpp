@@ -158,6 +158,8 @@ struct BaseState;
 struct StackState {
     static const int frames = 2;
     static const int images = 2;
+    static const int copies = 2;
+    static const int comnds = 20;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
@@ -919,6 +921,7 @@ struct EnumState {
     StackState *val;
 };
 enum CmdEnum {
+    RebCmd, // postpone following until previous done
     DerCmd, // push req to current, set bind, push to thread, and advance
     PDerCmd, // push req to next, set bind, and push to thread that advances
     IDerCmd, // push req to indexed, set bind, push to thread, and advance to index
@@ -944,16 +947,20 @@ struct Next {
     HeapState<BaseState*> buf;
     BindState *bind;
     SmartState log;
+    Next() : cmd(StackState::comnds), buf(StackState::comnds) {
+    }
     void push(HeapState<Cmd> &cmd, HeapState<BaseState*> &buf, BindState *bind, SmartState log) {
         for (int i = 0; i < cmd.size(); i++) this->cmd<<cmd[i];
         for (int i = 0; i < buf.size(); i++) this->buf<<buf[i];
         this->bind = bind; this->log = log;
     }
-    void push(ThreadState *thread, StackState *stack[Binds]) {
+    void push(ThreadState *thread, StackState *(&stack)[Binds], Loop *loop, HeapState<Next> &circle) {
         Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
-        if (cmd.size() != buf.size()) {std::cerr << "invalid next size! " << cmd.size() << " " << buf.size() << std::endl; exit(-1);}
+        if (cmd.size() != buf.size()) {std::cerr << "invalid next size!" << std::endl; exit(-1);}
         for (int i = 0; i < cmd.size(); i++) switch (cmd[i].tag) {default:
-        // TODO in case of rebind, clear cmd to after i, push this to thread, and return
+        break; case(RebCmd):
+        for (int j = 0; j <= i; j++) {Cmd tmp; cmd>>tmp; BaseState *ptr; buf>>ptr;}
+        thread->push(Push{log,0,0,0,0,this,loop}); return;
         break; case(DerCmd): stack[cmd[i].rsp.bnd]->advance();
         buf[i]->push(cmd[i].rsp,bind,log);
         thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
@@ -967,7 +974,7 @@ struct Next {
         break; case(PEnqCmd): ptr = cmd[i].ptr; sub = cmd[i].sub; fnc = cmd[i].fnc;}
         if (bind) stack[BindBnd]->advance();
         cmd.clear(); buf.clear(); bind = 0;
-        // TODO deallocate this to given circular buffer
+        circle << *this;
     }
 };
 struct CopyState : public ChangeState<Configure,Configures>, public Loop {
@@ -975,7 +982,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
     StackState *stack[Binds];
     HeapState<Next> circle;
     CopyState(ThreadState *thread, EnumState *stack) :
-        thread(thread), stack{0} {
+        thread(thread), stack{0}, circle(StackState::copies,StackState::copies) {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
     }
@@ -988,7 +995,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         // TODO keep track of phase, and fail if phase of next is non-zero
         // TODO this is all phase zero; use push(Next*) for non-zero phases
         bool goon = true; while (goon) {goon = false;
-        HeapState<BaseState*> buf(num); int count = 0;
+        HeapState<BaseState*> buf(num,num); int count = 0;
         for (int i = 0; i < num; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): buf[i] = stack[cmd[i].rsp.bnd]->buffer(); cmd[i].req.pre = false; count += 1;
             break; case(PDerCmd): buf[i] = stack[cmd[i].rsp.bnd]->prebuf(); cmd[i].req.pre = true; count += 1;
@@ -1006,8 +1013,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
             break; case(RDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(cmd[i].rsp.bnd,buf[i],log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(cmd[i].rsp.bnd,buf[i],log)) lim = i;}
-        Next temp = {}; Next *next = 0;
-        if (lim == num) next = &temp; // TODO use circular buffer instead of auto
+        Next *next = 0; if (lim == num) circle >> next;
         if (next) {
         BaseState *last = 0;
         for (int i = 0; i < num; i++) switch(cmd[i].tag) {default:
@@ -1015,6 +1021,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         next->push(cmd,buf,bind,log);
         push(next);}
         else {
+        if (lim == num) std::cerr << "exhausted circle " << &circle << std::endl;
         for (int i = 0; i < lim; i++) switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->push(cmd[i].rsp.bnd,log); buf[i]->push(log);
@@ -1025,10 +1032,10 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
             break; case(GoonCmd): goon = true;}}}
     }
     void push(Next *next) override {
-        next->push(thread,stack); // TODO pass circular buffer for deallocate
+        next->push(thread,stack,this,circle);
     }
     void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Cmd> cmd; int count = 0; int limit = 0;
+        HeapState<Cmd> cmd(StackState::comnds); int count = 0; int limit = 0;
         switch (AdvConst__Advance__Constant(drw.adv)) {
         default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
         break; case (MicroConst): limit = Limit__Micro__Int(drw.drw);
@@ -1078,7 +1085,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         int lim = (center->mem == Texturez ? center->siz : 1);
-        for (int i = 0; i < lim; i++) {HeapState<Cmd> cmd;
+        for (int i = 0; i < lim; i++) {HeapState<Cmd> cmd(StackState::comnds);
         if (i == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
         if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
         if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};}
