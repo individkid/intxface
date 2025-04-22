@@ -272,11 +272,11 @@ Fixed = { -- how motion interpreted
 	"Ortho",
 	"Normal",
 }
-Micro = {
+Micro = { -- what runs on gpu
 	"MicroTest", -- for Bringup Plan
 	"MicroDebug", -- for testing microcode
 }
-Extent = {
+Extent = { -- resource initialization done on gpu thread
     "InitExt",
     "IntExt",
     "ExtentExt",
@@ -284,14 +284,14 @@ Extent = {
     "BindExt",
     "FalseExt",
 }
-Thread = {
+Thread = { -- separate threads
 	"PipeThd",
 	"StdioThd",
 	"CopyThd",
 	"FenceThd",
 	"TestThd",
 }
-Mask = {
+Mask = { -- signals between threads
 	"FnceMsk",
 	"SizeMsk",
 	"SelfMsk",
@@ -301,7 +301,7 @@ Mask = {
 	"PassMsk",
 	"FailMsk",
 }
-Emerg = {
+Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary
 	"Halfs", -- Nested -- Space -- per boundary
 	"Coins", -- Listed -- [[Boundary]] -- per vertex
@@ -316,13 +316,13 @@ Valid = {
 	"Toadd", -- additively change
 	"Tosub", -- subtractively change
 }
-Stream = {
+Stream = { -- commandline process pipe connector
 	"Fanout", -- write from readable pipe round robin to one of several pipes
 	"Combine", -- write to pipe from expression if any of several expression values change
 	"Buffer", -- set expression value from pipe
 	"Execute", -- start a filter between the last and next pipe
 }
-Operate = {
+Operate = { -- little language expressions
 	"AddOp",
 	"SubOp",
 	"MulOp",
@@ -352,7 +352,7 @@ Operate = {
 	"MemOp", -- ImmOp sugar
 	"UnqOp", -- magic number
 }
-Compare = {
+Compare = { -- little language comparisons
 	-- Less Equal More
 	-- Open Closed
 	"LOCmp",
@@ -364,7 +364,7 @@ Compare = {
 	"ReCmp", -- regular expression
 	"IrCmp", -- irregular expression
 }
-Order = {
+Order = { -- ireg expression operators
 	"ChrOrd",
 	"PreOrd",
 	"PostOrd",
@@ -372,7 +372,7 @@ Order = {
 	"ForkOrd",
 	"BeginOrd",
 }
-Program = {
+Program = { -- process type in standard commandline argument
 	"Filez", -- Persist
 	"Holez", -- Persist
 	"Linez", -- Event
@@ -382,7 +382,7 @@ Program = {
 	"Framez", -- video little language
 	"Sharez", -- Valve
 }
-Tag = {
+Tag = { -- type of data piped between processes
 	"Persistz", -- file hole side
 	"Eventz", -- line
 	"Centerz", -- plane
@@ -430,7 +430,7 @@ FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
 }
-Memoryat = {
+Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Indexz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
@@ -446,7 +446,7 @@ Memoryat = {
 	{"Memory","Basisz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Piercez","Int","0","BindLoc","MiddleLoc"},
 }
-Memoryit = {
+Memoryit = { -- ptr loc siz need no additional arguments
 	{"Memory","Indexz","Int","0"},
 	{"Memory","Bringupz","Int","0"},
 	{"Memory","Texturez","Int","0"},
@@ -458,7 +458,7 @@ Memoryit = {
 	{"Memory","Basisz","Int","0"},
 	{"Memory","Piercez","Int","0"},
 }
-Memoryer = {
+Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
@@ -473,16 +473,16 @@ Memoryer = {
 	{"Memory","Basisz","BindLoc","MiddleLoc","Bind","BasisBnd"},
 	{"Memory","Piercez","BindLoc","MiddleLoc","Bind","PierceBnd"},
 }
-Memoryee = {
+Memoryee = { -- prevent resources from being changed while in use
+	{"Memory","Texturez","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
+}
+Memoryie = { -- reserve resources indexed by Draw argument
 	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
-Memoryie = {
+Memoryed = { -- reserve resource to change when other resource finishes
 	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
-Memoryed = {
-	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
-}
-Bindat = {
+Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","DrawBnd","Int","0","BindLoc","ResizeLoc"},
@@ -490,7 +490,7 @@ Bindat = {
 	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PierceBnd","Int","0","BindLoc","ResizeLoc"},
 }
-Bindit = {
+Bindit = { -- number of draw arguments and resource indices
 	{"Bind","SwapBnd","Int","0"},
 	{"Bind","PipelineBnd","Int","1"},
 	{"Bind","DrawBnd","Int","2"},
@@ -498,7 +498,7 @@ Bindit = {
 	{"Bind","PresentBnd","Int","1"},
 	{"Bind","PierceBnd","Int","1"},
 }
-Binder = {
+Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Bind","DrawBnd"},
@@ -506,17 +506,17 @@ Binder = {
 	{"Bind","PresentBnd","BindLoc","ResizeLoc","Bind","PresentBnd"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Bind","PierceBnd"},
 }
-Bindee = {
+Bindee = { -- resources reserved
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
-Bindie = {
+Bindie = { -- indexed resources reserved
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Int","0","Bind","ImageBnd"},
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 }
-Binded = {
+Binded = { -- modified after submitted resource completes
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
-Location = {
+Location = { -- list of locations
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
@@ -524,7 +524,7 @@ Location = {
 	{"Micro","MicroDebug","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
 }
-Limit = {
+Limit = { -- number of arguments
 	{"Micro","MicroTest","Int","8"},
 }
 Depender = { -- push
@@ -550,7 +550,7 @@ Dependee = { -- rinc
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","3","Bind","PierceBnd"},
 	{"Micro","MicroDebug","BindLoc","AfterLoc","Int","0","Bind","PierceBnd"},
 }
-Dependie = { -- rinc
+Dependie = { -- indexed rinc
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
@@ -558,7 +558,7 @@ Dependie = { -- rinc
 Depended = { -- winc
 	{"Micro","MicroDebug","BindLoc","BeforeLoc","Int","0","Bind","PierceBnd"},
 }
-AdvConst = {
+AdvConst = { -- so Draw can push Micro Memory or Bind
 	{"Advance","MicroAdv","Constant","MicroConst"},
 	{"Advance","SubmicAdv","Constant","BindConst"},
 	{"Advance","BufmicAdv","Constant","BindConst"},

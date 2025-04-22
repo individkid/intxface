@@ -757,7 +757,7 @@ struct BindState : public BaseState {
         return this;
     }
     BaseState *get(Bind i) {
-        if (bind[i] == 0) {std::cerr << "invalid get bind!" << std::endl; exit(-1);}
+        if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
     bool push(Bind i, BaseState *buf, Req req, SmartState log) {
@@ -971,7 +971,7 @@ struct Next {
         Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
         if (cmd.size() != buf.size()) {std::cerr << "invalid next size!" << std::endl; exit(-1);}
         for (int i = 0; i < cmd.size(); i++) {Bind bnd = cmd[i].rsp.bnd; switch (cmd[i].tag) {default:
-        break; case(RebCmd): cmd.clear(i); buf.clear(i);
+        break; case(RebCmd): cmd.clear(i+1); buf.clear(i+1);
         thread->push(Push{log,0,0,0,0,this,loop}); return;
         break; case(DerCmd): src(stack,bnd)->advance();
         buf[i]->push(cmd[i].rsp,bind,log);
@@ -1519,9 +1519,11 @@ struct BufferState : public BaseState {
         memcpy((void*)((char*)data+loc),ptr,siz);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fence);
-        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fence,
-        (last ? last->getSemaphore() : VK_NULL_HANDLE), (next ? after : VK_NULL_HANDLE));
-        return fence;
+        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer,
+        (nxt() ? VK_NULL_HANDLE : fence),
+        (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE),
+        (nxt() ? after : VK_NULL_HANDLE));
+        return (nxt() ? VK_NULL_HANDLE : fence);
     }
     void upset(SmartState log) override {
         vkUnmapMemory(device, stagingBufferMemory);
@@ -1635,8 +1637,9 @@ struct ImageState : public BaseState {
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
-            last->getSemaphore(), (nxt()/*TODO add nxt(after) to return VkSemaphore*/?after:VK_NULL_HANDLE), stagingBuffer, commandBuffer);}
-        return VK_NULL_HANDLE; // TODO pass lst(fence) to copyTextureImage
+            (lst()?lst()->getSemaphore():VK_NULL_HANDLE), (nxt()?after:VK_NULL_HANDLE),
+            stagingBuffer, commandBuffer);}
+        return VK_NULL_HANDLE; // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1734,11 +1737,11 @@ struct LayoutState : public BaseState {
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (bnd()==AfterBnd) vkResetFences(device, 1, &fence);
         transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (bnd()==AfterBnd?last->getSemaphore():VK_NULL_HANDLE), (next?after:VK_NULL_HANDLE),
-            (bnd()==AfterBnd?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
+            (lst()?lst()->getSemaphore():VK_NULL_HANDLE), (nxt()?after:VK_NULL_HANDLE),
+            (nxt() ? VK_NULL_HANDLE : fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-        return (bnd()==AfterBnd?fence:VK_NULL_HANDLE);
+        return (nxt() ? VK_NULL_HANDLE : fence);
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1758,7 +1761,6 @@ struct TextureState : public BaseState {
     VkSampler textureSampler;
     VkCommandBuffer commandBuffer;
     VkSemaphore after;
-    VkFence fence;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1802,8 +1804,8 @@ struct TextureState : public BaseState {
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
-            last->getSemaphore(), after, stagingBuffer, commandBuffer);
-        return fence;
+            (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);
+        return VK_NULL_HANDLE; // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1935,7 +1937,7 @@ struct PresentState : public BaseState {
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),
-        bnd(AcquireBnd)->getImageIndex(),last->getSemaphore()))
+        bnd(AcquireBnd)->getImageIndex(),lst()->getSemaphore()))
         copy->wots(RegisterMask,1<<SizeMsk);
         return VK_NULL_HANDLE;
     }
