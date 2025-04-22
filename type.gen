@@ -435,6 +435,7 @@ Memoryat = {
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
 	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
+	--{"Memory","Texturez","Int","2","BindLoc","RebindLoc"},
 	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
 	{"Memory","Uniformz","Int","0","BindLoc","MiddleLoc"},

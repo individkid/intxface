@@ -240,6 +240,8 @@ template <class Type> struct HeapState {
     HeapState(int num) : vec(num), bas(0), siz(0) {
     }
     HeapState(int num, int siz) : vec(num), bas(0), siz(siz) {
+        if (siz < 0 || siz > num)
+        {std::cerr << "invalid heap size!" << std::endl; exit(-1);}
     }
     void push(int num) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
@@ -259,21 +261,19 @@ template <class Type> struct HeapState {
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
         bas = 0; siz = 0;
     }
+    void clear(int i) {
+        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
+        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        if (siz < i) {std::cerr << "invalid clear siz!" << std::endl; exit(-1);}
+        bas = (bas+i)%vec.size();
+        siz -= i;
+    }
     HeapState<Type> &operator<<(const Type &val) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
         if (siz == vec.size()) push(1);
         vec[(siz+bas)%vec.size()] = val;
         siz += 1;
-        return *this;
-    }
-    HeapState<Type> &operator>>(Type &val) {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
-        if (siz <= 0) {std::cerr << "invalid heap siz!" << std::endl; exit(-1);}
-        val = vec[bas%vec.size()];
-        bas = (bas+1)%vec.size();
-        siz -= 1;
         return *this;
     }
     HeapState<Type> &operator>>(Type *&val) {
