@@ -968,22 +968,19 @@ struct Next {
         this->bind = bind; this->log = log;
     }
     void push(ThreadState *thread, StackState *(&stack)[Binds], Loop *loop, HeapState<Next> &circle) {
-        Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
         if (cmd.size() != buf.size()) {std::cerr << "invalid next size!" << std::endl; exit(-1);}
         for (int i = 0; i < cmd.size(); i++) {Bind bnd = cmd[i].rsp.bnd; switch (cmd[i].tag) {default:
         break; case(RebCmd): cmd.clear(i+1); buf.clear(i+1);
         thread->push(Push{log,0,0,0,0,this,loop}); return;
         break; case(DerCmd): src(stack,bnd)->advance();
-        buf[i]->push(cmd[i].rsp,bind,log);
-        thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
+        buf[i]->push(cmd[i].rsp,bind,log); thread->push({log,buf[i]});
         break; case(PDerCmd):
-        buf[i]->push(cmd[i].rsp,bind,log);
-        thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
+        buf[i]->push(cmd[i].rsp,bind,log); thread->push({log,buf[i]});
         break; case(IDerCmd): src(stack,bnd)->advance(cmd[i].idx);
-        buf[i]->push(cmd[i].rsp,bind,log);
-        thread->push({log,buf[i],ptr,sub,fnc}); ptr = 0; sub = 0; fnc = 0;
+        buf[i]->push(cmd[i].rsp,bind,log); thread->push({log,buf[i]});}}
+        for (int i = 0; i < cmd.size(); i++) {switch (cmd[i].tag) {default:
         break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
-        break; case(PEnqCmd): ptr = cmd[i].ptr; sub = cmd[i].sub; fnc = cmd[i].fnc;}}
+        break; case(PEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});}}
         if (bind) stack[BindBnd]->advance();
         cmd.clear(); buf.clear(); bind = 0;
         circle << *this;
@@ -1031,6 +1028,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         next->push(thread,stack,this,circle);
     }
     void push(HeapState<Cmd> &cmd, SmartState log) {
+        // four orderings, in same list: acquire reserve submit notify
         int num = cmd.size(); bool goon = true; while (goon) {goon = false;
         int count = 0; for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
@@ -1061,7 +1059,9 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->push(bnd,log); dst(bnd)->push(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
-            break; case(WDeeCmd): bind->wdec(bnd,log);
+            break; case(WDeeCmd): bind->wdec(bnd,log);}}
+        for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
+            switch (cmd[i].tag) {default:
             break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(FEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});
             break; case(GoonCmd): goon = true;}}
