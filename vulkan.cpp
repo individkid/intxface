@@ -790,11 +790,13 @@ struct BindState : public BaseState {
             {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
         if (!buf->get(elock,psav[i],rsav[i],wsav[i])) {
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
+        log << "incr fail " << buf->debug << std::endl;
         return false;}
         if (bind[i] == 0) lock += 1;
         bind[i] = buf;
         buf->incr(elock);
         (elock ? wsav[i] : rsav[i]) += 1;
+        log << "incr pass " << buf->debug << std::endl;
         return true;
     }
     void decr(Bind i, bool elock, SmartState log) {
@@ -1076,17 +1078,6 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         break; case (MemoryConst): limit = Memoryit__Memory__Int(drw.mem);
         break; case (BindConst): limit = Bindit__Bind__Int(drw.bnd);}
         if (drw.siz != limit) {std::cerr << "limit check failed!" << std::endl; exit(-1);}
-        Rsp rsp{Micros,Memorys,Binds,BindLocs}; Req req{};
-        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),rsp,req,0,ptr,sub,fnc.pass};
-        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),rsp,req,0,ptr,sub,fnc.fail};
-        if (fnc.goon) cmd<<Cmd{GoonCmd,rsp};
-        for (int j = 0; location(drw,j) != BindLocs; j++) {
-        BindLoc loc = location(drw,j);
-        for (Iter i(drw,loc); i(); ++i) {
-        if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
-        else if (i.isie()) {if (count >= limit) {std::cerr << "invalid limit check!" << std::endl; exit(-1);}
-        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++]};}
-        else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
         for (int j = 0; location(drw,j) != BindLocs; j++) {
         BindLoc loc = location(drw,j); Bind bnd = depender(drw,loc); CmdEnum tag; Rsp rsp; Req req; int idx;
         switch (drw.adv) {default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
@@ -1114,14 +1105,22 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
             rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])};
             tag = PDerCmd; idx = 0;}
         cmd<<Cmd{tag,rsp,req,idx};}
+        for (int j = 0; location(drw,j) != BindLocs; j++) {
+        BindLoc loc = location(drw,j);
+        for (Iter i(drw,loc); i(); ++i) {
+        if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
+        else if (i.isie()) {if (count >= limit) {std::cerr << "invalid limit check!" << std::endl; exit(-1);}
+        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++]};}
+        else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
+        Rsp rsp{Micros,Memorys,Binds,BindLocs}; Req req{};
+        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),rsp,req,0,ptr,sub,fnc.pass};
+        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),rsp,req,0,ptr,sub,fnc.fail};
+        if (fnc.goon) cmd<<Cmd{GoonCmd,rsp};
         push(cmd,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         int lim = (center->mem == Texturez ? center->siz : 1);
         for (int i = 0; i < lim; i++) {HeapState<Cmd> cmd(StackState::comnds);
-        if (i == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
-        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
-        if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};}
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         CmdEnum tag = PDerCmd; int sub = 0; int mod = src(bnd)->bufsiz();
@@ -1160,6 +1159,9 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
         if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
         else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max}};}
+        if (i == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
+        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
+        if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};}
         push(cmd,log);}
     }
 };
@@ -1248,31 +1250,32 @@ void TestState::call() {
     copy->push(Draw{.adv=BufnotAdv,.bnd=PierceBnd,.siz=1,.arg=imgs},0,0,Fnc{},SmartState());
     //
     int sizes[] = {
-    /*PiplelineBnd array index*/(int)MicroTest,
-    /*TextureBnd array index*/0,
     /*AcquireBnd idx,siz*/0,0,
     /*DrawBnd idx,siz*/0,static_cast<int>(indices.size()),
-    /*PresentBnd idx,siz*/0,0};
+    /*PresentBnd idx,siz*/0,0,
+    /*PiplelineBnd array index*/(int)MicroTest,
+    /*TextureBnd array index*/0};
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
-    SmartState log;
+    SmartState mlog;
     glm::mat4 model, view, proj, debug;
     BindState *bptr = bind->buffer()->getBind();
-    if (!bptr) {log << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
+    if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
     BaseState *sptr = swap->buffer();
-    if (!bptr->rinc(SwapBnd,sptr,log)) {log << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
+    if (!bptr->rinc(SwapBnd,sptr,mlog)) {mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
     testUpdate(sptr->getExtent(),model,view,proj,debug);
-    bptr->rdec(SwapBnd,log);
+    bptr->rdec(SwapBnd,mlog);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     memcpy(&mat->mat[0],&model,sizeof(Matrix));
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},log);
+    copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
     //
+    SmartState dlog;
     copy->push(Draw{.adv=MicroAdv,.drw=MicroTest,.siz=8,.arg=sizes},
-    0,0,Fnc{true,vulkanWake,true,vulkanWake,false},log);}
+    0,0,Fnc{true,vulkanWake,true,vulkanWake,false},dlog);}
 }
 
 struct ForkState : public DoneState {
