@@ -435,9 +435,9 @@ Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
 	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
-	--{"Memory","Texturez","Int","2","BindLoc","RebindLoc"},
-	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
-	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
+	{"Memory","Texturez","Int","2","BindLoc","RebindLoc"},
+	{"Memory","Texturez","Int","3","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","4","BindLoc","AfterLoc"},
 	{"Memory","Uniformz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Trianglez","Int","0","BindLoc","MiddleLoc"},
@@ -474,10 +474,11 @@ Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Piercez","BindLoc","MiddleLoc","Bind","PierceBnd"},
 }
 Memoryee = { -- prevent resources from being changed while in use
-	{"Memory","Texturez","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
+	{"Memory","Texturez","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Memoryie = { -- reserve resources indexed by Draw argument
-	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
+	{"Memory","Texturez","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
+	--{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Memoryed = { -- reserve resource to change when other resource finishes
 	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},

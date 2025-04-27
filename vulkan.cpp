@@ -662,6 +662,7 @@ struct Iter {
     Bind bnd;
     Iter(Rsp rsp) : rsp(rsp), seq(r2s(rsp)), sub(0) {incr(); init();}
     Iter(Draw drw, BindLoc loc) : rsp(d2r(drw,loc)), seq(d2s(drw)), sub(0) {incr(); init();}
+    Iter(Memory mem, BindLoc loc) : rsp{Micros,mem,Binds,loc}, seq(Meps), sub(0) {incr(); init();}
     bool operator()() {return (bnd != Binds);}
     Iter &operator++() {sub++; init(); return *this;}
     bool isee() {
@@ -806,6 +807,7 @@ struct BindState : public BaseState {
         bind[i]->decr(elock);
         if ((elock ? wsav[i] : rsav[i]) <= 0)
             {std::cerr << "invalid rdec sav!" << std::endl; exit(-1);}
+        log << "decr " << bind[i]->debug << std::endl;
         (elock ? wsav[i] : rsav[i]) -= 1;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
@@ -1120,7 +1122,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         int lim = (center->mem == Texturez ? center->siz : 1);
-        for (int i = 0; i < lim; i++) {HeapState<Cmd> cmd(StackState::comnds);
+        for (int k = 0; k < lim; k++) {HeapState<Cmd> cmd(StackState::comnds);
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         CmdEnum tag = PDerCmd; int sub = 0; int mod = src(bnd)->bufsiz();
@@ -1128,9 +1130,9 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
-        break; case (Texturez): ptr = datxVoidz(0,center->tex[i].dat);
-        idx = 0; siz = datxVoids(center->tex[i].dat); tag = IDerCmd; sub = center->idx+i;
-        max = SizeState(VkExtent2D{(uint32_t)center->tex[i].wid,(uint32_t)center->tex[i].hei});
+        break; case (Texturez): ptr = datxVoidz(0,center->tex[k].dat);
+        idx = 0; siz = datxVoids(center->tex[k].dat); tag = IDerCmd; sub = center->idx+k;
+        max = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1157,9 +1159,13 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         if (loc == BindLocs) break;
         if (loc == RebindLoc) {cmd<<Cmd{RebCmd}; continue;}
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
-        if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
-        else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max}};}
-        if (i == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
+        if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,center->mem,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
+        else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max}};
+        for (Iter i(center->mem,loc); i(); ++i) {
+        if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
+        else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},sub};
+        else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
+        if (k == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
         if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
         if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};}
         push(cmd,log);}
@@ -1738,7 +1744,7 @@ struct LayoutState : public BaseState {
     VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        if (bnd()==AfterBnd) vkResetFences(device, 1, &fence);
+        if (nxt()); else vkResetFences(device, 1, &fence);
         transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
             (lst()?lst()->getSemaphore():VK_NULL_HANDLE), (nxt()?after:VK_NULL_HANDLE),
             (nxt() ? VK_NULL_HANDLE : fence), VK_FORMAT_R8G8B8A8_SRGB,
