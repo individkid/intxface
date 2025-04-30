@@ -594,9 +594,6 @@ struct BaseState {
         safe.post();
         return ret;
     }
-    BindLoc loc() {
-        return resp.loc;
-    }
     Bind bnd() {
         return item->buftyp();
     }
@@ -1598,32 +1595,11 @@ struct ImageState : public BaseState {
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (bnd() == TextureBnd) {
-        textureSampler = createTextureSampler(device,properties);}
-        else if (bnd() == PierceBnd) {
-        // TODO need to create color image for framebuffer too
-        createImage(device, physical, texWidth, texHeight, depthFormat, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_LAYOUT_UNDEFINED, // TODO this is always the value of the parameter; remove the parameter
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            memProperties, depthImage, depthMemory);
-        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,bnd(ImageBnd)->getExtent(),renderPass,imageView,depthImageView,framebuffer);
-        commandBuffer = createCommandBuffer(device,commandPool);
-        after = createSemaphore(device);}
+        after = createSemaphore(device);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
-        if (bnd() == TextureBnd) {
         if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        vkDestroySampler(device, textureSampler, nullptr);}
-        else if (bnd() == PierceBnd) {
-        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-        vkDestroyImageView(device, depthImageView, nullptr);
-        vkDestroyImage(device, depthImage, nullptr);
-        vkFreeMemory(device, depthMemory, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);
@@ -1633,29 +1609,10 @@ struct ImageState : public BaseState {
     // TODO since size.extent is not known prior to having image data, use RebindLoc to push resize and setup separately from same center push
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        if (bnd() == TextureBnd) {
-        if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
-        int texWidth = size.extent.width; // TODO use bnd(ImageBnd)->getExtent() and resize TextureBnd with FalseExt
-        int texHeight = size.extent.height;
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
-        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
-            stagingBuffer, stagingBufferMemory);
-        void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        memcpy(data, ptr, static_cast<size_t>(imageSize));
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
-            (lst()?lst()->getSemaphore():VK_NULL_HANDLE), (nxt()?after:VK_NULL_HANDLE),
-            stagingBuffer, commandBuffer);}
         return VK_NULL_HANDLE; // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
-        if (bnd() == TextureBnd) {
-        vkUnmapMemory(device, stagingBufferMemory);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);}
     }
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics,
@@ -1746,8 +1703,8 @@ struct LayoutState : public BaseState {
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (nxt()); else vkResetFences(device, 1, &fence);
         transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (lst()?lst()->getSemaphore():VK_NULL_HANDLE), (nxt()?after:VK_NULL_HANDLE),
-            (nxt() ? VK_NULL_HANDLE : fence), VK_FORMAT_R8G8B8A8_SRGB,
+            (bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
+            (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
         return (nxt() ? VK_NULL_HANDLE : fence);
