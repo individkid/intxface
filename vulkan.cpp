@@ -1157,6 +1157,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         if (loc == RebindLoc) {cmd<<Cmd{RebCmd}; continue;}
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
         if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,center->mem,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
+        else if (loc == ResizeLoc) cmd<<Cmd{tag,Rsp{Micros,Memorys,bnd,loc},Req{SizeReq,ptr,idx,siz,max},sub};
         else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max}};
         for (Iter i(center->mem,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
@@ -1595,78 +1596,65 @@ struct ImageState : public BaseState {
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        if (bnd() == TextureBnd) {
+        textureSampler = ImageState::createTextureSampler(device,properties);
+        commandBuffer = createCommandBuffer(device,commandPool);}
+        if (bnd() == PierceBnd) {
+        createImage(device, physical, bnd(ImageBnd)->getExtent().width, bnd(ImageBnd)->getExtent().height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            memProperties,/*output*/ depthImage, depthMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffer(device,bnd(ImageBnd)->getExtent(),renderPass,bnd(ImageBnd)->getImageView(),depthImageView,framebuffer);}
         after = createSemaphore(device);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
-        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
+        vkDestroySemaphore(device, after, nullptr);
+        if (bnd() == PierceBnd) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthMemory, nullptr);}
+        if (bnd() == TextureBnd) {
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);
     }
-    // TODO setup is not called if pushed with SizeReq; so push LayoutBnd after SizeReq push of TextureBnd or PierceBnd
-    // TODO resize is not called if the same size is used, so push of image data need not cause layout error if resize called separately before
-    // TODO since size.extent is not known prior to having image data, use RebindLoc to push resize and setup separately from same center push
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
-        return VK_NULL_HANDLE; // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage
+        if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
+        int texWidth = size.extent.width;
+        int texHeight = size.extent.height;
+        VkDeviceSize imageSize = texWidth * texHeight * 4;
+        if (bnd() == TextureBnd) {
+        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
+            stagingBuffer, stagingBufferMemory);
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, ptr, static_cast<size_t>(imageSize));
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage and return fence
+        ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
+            (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);}
+        if (bnd() == PierceBnd) {}
+        return VK_NULL_HANDLE;
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
+        if (bnd() == TextureBnd) {
+        vkUnmapMemory(device, stagingBufferMemory);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);}
+        if (bnd() == PierceBnd) {}
     }
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics,
         VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
         VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
         VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
-};
-
-struct PierceState : public BaseState {
-    const VkPhysicalDevice physical;
-    const VkDevice device;
-    const VkPhysicalDeviceMemoryProperties memProperties;
-    const VkFormat depthFormat;
-    const VkRenderPass renderPass;
-    VkImage depthImage;
-    VkDeviceMemory depthMemory;
-    VkImageView depthImageView;
-    VkFramebuffer framebuffer;
-    VkExtent2D extent;
-    VkSemaphore getSemaphore() override {return VK_NULL_HANDLE;}
-    VkFramebuffer getFramebuffer() override {return framebuffer;}
-    VkExtent2D getExtent() override {return extent;}
-    PierceState() :
-        BaseState("PierceState",StackState::self),
-        physical(StackState::physical),
-        device(StackState::device),
-        memProperties(StackState::memProperties),
-        depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass) {
-    }
-    ~PierceState() {
-        reset(SmartState());
-    }
-    void resize(SmartState log) override {
-        extent = bnd(ImageBnd)->getExtent();
-        createImage(device, physical, bnd(ImageBnd)->getExtent().width, bnd(ImageBnd)->getExtent().height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            memProperties,/*output*/ depthImage, depthMemory);
-        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,bnd(ImageBnd)->getExtent(),renderPass,bnd(ImageBnd)->getImageView(),depthImageView,framebuffer);
-    }
-    void unsize(SmartState log) override {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-        vkDestroyImageView(device, depthImageView, nullptr);
-        vkDestroyImage(device, depthImage, nullptr);
-        vkFreeMemory(device, depthMemory, nullptr);
-    }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
-        return VK_NULL_HANDLE;
-    }
-    void upset(SmartState log) override {
-        log << "upset " << debug << std::endl;
-    }
 };
 
 struct LayoutState : public BaseState {
@@ -1715,70 +1703,6 @@ struct LayoutState : public BaseState {
     static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
         VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
         VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-};
-
-struct TextureState : public BaseState {
-    const VkDevice device;
-    const VkPhysicalDevice physical;
-    const VkPhysicalDeviceProperties properties;
-    const VkQueue graphics;
-    const VkCommandPool commandPool;
-    const VkPhysicalDeviceMemoryProperties memProperties;
-    VkSampler textureSampler;
-    VkCommandBuffer commandBuffer;
-    VkSemaphore after;
-    // temporary between sup and ups:
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    TextureState() :
-        BaseState("TextureState",StackState::self),
-        device(StackState::device),
-        physical(StackState::physical),
-        properties(StackState::properties),
-        graphics(StackState::graphics),
-        commandPool(StackState::commandPool),
-        memProperties(StackState::memProperties) {
-    }
-    ~TextureState() {
-        reset(SmartState());
-    }
-    VkSampler getTextureSampler() override {return textureSampler;}
-    VkSemaphore getSemaphore() override {return after;}
-    void resize(SmartState log) override {
-        log << "resize " << debug << std::endl;
-        textureSampler = ImageState::createTextureSampler(device,properties);
-        commandBuffer = createCommandBuffer(device,commandPool);
-        after = createSemaphore(device);
-    }
-    void unsize(SmartState log) override {
-        log << "unsize " << debug << std::endl;
-        if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        vkDestroySampler(device, textureSampler, nullptr);
-    }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
-        if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
-        int texWidth = size.extent.width; // TODO use bnd(ImageBnd)->getExtent() and resize TextureBnd with FalseExt
-        int texHeight = size.extent.height;
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
-        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
-            stagingBuffer, stagingBufferMemory);
-        void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        memcpy(data, ptr, static_cast<size_t>(imageSize));
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
-            (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);
-        return VK_NULL_HANDLE; // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage
-    }
-    void upset(SmartState log) override {
-        log << "upset " << debug << std::endl;
-        vkUnmapMemory(device, stagingBufferMemory);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
 };
 
 struct ProbeState : public BaseState {
@@ -2042,14 +1966,14 @@ struct MainState {
     ArrayState<ImageState,ImageBnd,StackState::images> imageState; // TODO use TextureBnd or PierceBnd instead
     ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState;
     ArrayState<LayoutState,AfterBnd,StackState::frames> afterState;
-    ArrayState<TextureState,TextureBnd,StackState::frames> textureState; // TODO use ImageState instead
+    ArrayState<ImageState,TextureBnd,StackState::frames> textureState; // TODO use ImageState instead
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<PierceState,PierceBnd,StackState::frames> pierceState; // TODO use ImageState instead
+    ArrayState<ImageState,PierceBnd,StackState::frames> pierceState;
     ArrayState<ProbeState,PokeBnd,StackState::frames> pokeState;
     ArrayState<ProbeState,PeekBnd,StackState::frames> peekState;
     ArrayState<AcquireState,AcquireBnd,StackState::frames> acquireState;
