@@ -868,8 +868,9 @@ struct ThreadState : public DoneState {
         while (1) {while (1) {
         safe.wait();
         if (before.empty()) {safe.post(); break;}
-        Push push = before.front(); before.pop_front();
-        safe.post();
+        Push push = before.front();
+        if (!push.base && !push.fnc && !after.empty()) {safe.post(); break;}
+        before.pop_front(); safe.post();
         if (push.base) push.log << "stage " << push.base->debug << std::endl;
         if (push.base) switch (push.base->get()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
@@ -980,16 +981,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     void push(HeapState<Cmd> &cmd, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
-        int num = cmd.size(); bool goon = true; while (goon) {goon = false;
-        int count = 0; for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        int num = cmd.size(); // number that might be reserved
+        bool goon = true; while (goon) {goon = false;
+        // choose buffers
+        int count = 0; // actual number of reservations
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); cmd[i].req.pre = false; count += 1;
             break; case(PDerCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(); cmd[i].req.pre = true; count += 1;
             break; case(IDerCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); cmd[i].req.pre = false; count += 1;
             break; case(RDeeCmd): case(WDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); count += 1;
             break; case(IRDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); count += 1;}}
+        // choose binding
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
-        int lim = num; if (count > 1 && bind == 0) lim = -1;
+        int lim = num; // number checked for reservation
+        if (count > 1 && bind == 0) lim = -1;
+        // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
@@ -999,41 +1006,52 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
         if (lim == num) {BaseState *last = 0;
+        // link list
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch(cmd[i].tag) {default:
             break; case(RebCmd): last = 0;
             break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = dst(bnd)->lnk(last);}}
+        // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
-            if (bnd != Binds) switch (cmd[i].tag) {default:
+            switch (cmd[i].tag) {default:
+            break; case(RebCmd): thread->push({log});
             break; case(DerCmd): src(bnd)->advance();
             dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});
             break; case(PDerCmd):
             dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});
             break; case(IDerCmd): src(bnd)->advance(cmd[i].idx);
             dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});}}
+        // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
-            if (bnd != Binds) dst(bnd) = 0;}
+            switch (cmd[i].tag) {default:
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
+            break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
+        // notify pass
         for (int i = 0; i < num; i++) {
             switch (cmd[i].tag) {default:
             break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(PEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});}}
         if (bind) stack[BindBnd]->advance();
-        //
         } else {
         if (lim == num) std::cerr << "exhausted circle" << std::endl;
+        // release reserved
         for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->push(bnd,log); dst(bnd)->push(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
+        // clean up
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+            switch (cmd[i].tag) {default:
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
+            break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
+        // notify fail
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(FEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});
-            break; case(GoonCmd): goon = true;}}
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
-            if (bnd == Binds); else dst(bnd) = 0;}}}
+            break; case(GoonCmd): goon = true;}}}}
     }
     void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Cmd> cmd(StackState::comnds); int count = 0; int limit = 0;
