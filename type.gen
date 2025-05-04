@@ -82,7 +82,7 @@ BindTyp = {
 	"AfterTyp",
 }
 BindLoc = {
-	"RebindLoc",
+	"RebindLoc", -- TODO wait for prior fences; break linked list
 	"ResizeLoc",
 	"BeforeLoc", -- like Acquire
 	"MiddleLoc", -- like Draw
@@ -435,9 +435,8 @@ Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
 	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
-	{"Memory","Texturez","Int","2","BindLoc","RebindLoc"},
-	{"Memory","Texturez","Int","3","BindLoc","MiddleLoc"},
-	{"Memory","Texturez","Int","4","BindLoc","AfterLoc"},
+	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
 	{"Memory","Uniformz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Trianglez","Int","0","BindLoc","MiddleLoc"},

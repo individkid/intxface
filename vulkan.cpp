@@ -158,7 +158,6 @@ struct BaseState;
 struct StackState {
     static const int frames = 2;
     static const int images = 2;
-    static const int copies = 2;
     static const int comnds = 20;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
@@ -443,8 +442,10 @@ struct BaseState {
     // indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
     BindState *lock;
-    Rsp resp;
-    Req rqst;
+    Rsp resp; // TODO change to array that baseups iterates through
+    Req rqst; // TODO change to array that baseups iterates through
+    // TODO a special Push causes stage to wait for prior fences
+    // TODO the special Push also breaks the linked list
     SizeState size;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
@@ -830,18 +831,12 @@ BaseState *BaseState::bnd(Bind typ) {
     return lock->get(typ);
 }
 
-struct Next;
-struct Loop {
-    virtual void push(Next *next) = 0;
-};
 struct Push {
     SmartState log;
     BaseState *base;
     Center *ptr;
     int sub;
     void (*fnc)(Center*,int);
-    Next *nxt;
-    Loop *loo;
     VkFence fence;
 };
 struct ThreadState : public DoneState {
@@ -900,7 +895,6 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
         if (push.base) push.base->baseups(push.log);
         if (push.fnc) push.fnc(push.ptr,push.sub);
-        if (push.loo) push.loo->push(push.nxt);
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
@@ -943,57 +937,12 @@ struct Fnc {
     bool fnow; void (*fail)(Center*,int);
     bool goon;
 };
-struct Next {
-    HeapState<Cmd> cmd;
-    HeapState<BaseState*> buf;
-    BindState *bind;
-    SmartState log;
-    Next() : cmd(StackState::comnds), buf(StackState::comnds) {
-    }
-    static BaseState *&dst(BaseState *(&buffer)[Binds], Bind bnd) {
-        if ((int)bnd < 0 || (int)bnd >= Binds)
-        {std::cerr << "invalid buff bind!" << std::endl; exit(-1);}
-        return buffer[bnd];
-    }
-    static StackState *src(StackState *(&stack)[Binds], Bind bnd) {
-        if ((int)bnd < 0 || (int)bnd >= Binds)
-        {std::cerr << "invalid source bind!" << std::endl; exit(-1);}
-        return stack[bnd];
-    }
-    void push(HeapState<Cmd> &cmd, BaseState *(&buf)[Binds], BindState *bind, SmartState log) {
-        for (int i = 0; i < cmd.size(); i++) this->cmd<<cmd[i];
-        for (int i = 0; i < cmd.size(); i++) {Bind bnd = cmd[i].rsp.bnd;
-        if (bnd == Binds) this->buf<<0; else this->buf<<dst(buf,bnd);}
-        for (int i = 0; i < cmd.size(); i++) {Bind bnd = cmd[i].rsp.bnd;
-        if (bnd == Binds); else dst(buf,bnd) = 0;}
-        this->bind = bind; this->log = log;
-    }
-    void push(ThreadState *thread, StackState *(&stack)[Binds], Loop *loop, HeapState<Next> &circle) {
-        if (cmd.size() != buf.size()) {std::cerr << "invalid next size!" << std::endl; exit(-1);}
-        for (int i = 0; i < cmd.size(); i++) {Bind bnd = cmd[i].rsp.bnd; switch (cmd[i].tag) {default:
-        break; case(RebCmd): cmd.clear(i+1); buf.clear(i+1);
-        thread->push(Push{log,0,0,0,0,this,loop}); return;
-        break; case(DerCmd): src(stack,bnd)->advance();
-        buf[i]->push(cmd[i].rsp,bind,log); thread->push({log,buf[i]});
-        break; case(PDerCmd):
-        buf[i]->push(cmd[i].rsp,bind,log); thread->push({log,buf[i]});
-        break; case(IDerCmd): src(stack,bnd)->advance(cmd[i].idx);
-        buf[i]->push(cmd[i].rsp,bind,log); thread->push({log,buf[i]});}}
-        for (int i = 0; i < cmd.size(); i++) {switch (cmd[i].tag) {default:
-        break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
-        break; case(PEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});}}
-        if (bind) stack[BindBnd]->advance();
-        cmd.clear(); buf.clear(); bind = 0;
-        circle << *this;
-    }
-};
-struct CopyState : public ChangeState<Configure,Configures>, public Loop {
+struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Binds];
-    HeapState<Next> circle;
     BaseState *buffer[Binds];
     CopyState(ThreadState *thread, EnumState *stack) :
-        thread(thread), stack{0}, circle(StackState::copies,StackState::copies) {
+        thread(thread), stack{0} {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         for (int i = 0; i < Binds; i++) buffer[i] = 0;
@@ -1002,10 +951,14 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         std::cout << "~CopyState" << std::endl;
     }
     BaseState *&dst(Bind bnd) {
-        return Next::dst(buffer,bnd);
+        if ((int)bnd < 0 || (int)bnd >= Binds)
+        {std::cerr << "invalid buff bind!" << std::endl; exit(-1);}
+        return buffer[bnd];
     }
     StackState *src(Bind bnd) {
-        return Next::src(stack,bnd);
+        if ((int)bnd < 0 || (int)bnd >= Binds)
+        {std::cerr << "invalid source bind!" << std::endl; exit(-1);}
+        return stack[bnd];
     }
     static BindLoc location(Draw drw, int j) {
         BindLoc loc = BindLocs;
@@ -1024,9 +977,6 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         break; case (MemoryConst): bnd = Memoryer__Memory__BindLoc__Bind(drw.mem)(loc);
         break; case (BindConst): bnd = Binder__Bind__BindLoc__Bind(drw.bnd)(loc);}
         return bnd;
-    }
-    void push(Next *next) override {
-        next->push(thread,stack,this,circle);
     }
     void push(HeapState<Cmd> &cmd, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
@@ -1048,12 +998,28 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
-        Next *next = 0; if (lim == num) circle >> next; if (next) {
-        BaseState *last = 0; for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        if (lim == num) {BaseState *last = 0;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch(cmd[i].tag) {default:
             break; case(RebCmd): last = 0;
             break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = dst(bnd)->lnk(last);}}
-        next->push(cmd,buffer,bind,log); push(next);} else {
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+            if (bnd != Binds) switch (cmd[i].tag) {default:
+            break; case(DerCmd): src(bnd)->advance();
+            dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});
+            break; case(PDerCmd):
+            dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});
+            break; case(IDerCmd): src(bnd)->advance(cmd[i].idx);
+            dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});}}
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+            if (bnd != Binds) dst(bnd) = 0;}
+        for (int i = 0; i < num; i++) {
+            switch (cmd[i].tag) {default:
+            break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
+            break; case(PEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});}}
+        if (bind) stack[BindBnd]->advance();
+        //
+        } else {
         if (lim == num) std::cerr << "exhausted circle" << std::endl;
         for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
@@ -1061,7 +1027,7 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
             if (bind) bind->push(bnd,log); dst(bnd)->push(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
-        for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(FEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});
@@ -1154,7 +1120,6 @@ struct CopyState : public ChangeState<Configure,Configures>, public Loop {
         for (int j = 0; true; j++) {
         BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
         if (loc == BindLocs) break;
-        if (loc == RebindLoc) {cmd<<Cmd{RebCmd}; continue;}
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
         if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,center->mem,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
         else if (loc == ResizeLoc) cmd<<Cmd{tag,Rsp{Micros,Memorys,bnd,loc},Req{SizeReq,ptr,idx,siz,max},sub};
