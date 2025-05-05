@@ -439,7 +439,7 @@ struct BaseState {
     BaseState *next; BaseState *last;
     SafeState safe;
     BaseEnum state;
-    int rlock, wlock;
+    int plock, rlock, wlock;
     // indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
     BindState *lock;
@@ -451,7 +451,7 @@ struct BaseState {
     BaseState(const char *name, StackState *ptr) :
         item(ptr), next(0), last(0),
         safe(1), state(InitBase),
-        rlock(0), wlock(0), lock(0),
+        plock(0), rlock(0), wlock(0), lock(0),
         nrsp(0), rspn(0), nreq(0), reqn(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
@@ -459,13 +459,13 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int rdec, int wdec, Req req, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, Req req, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (state != InitBase && state != FreeBase) {
         log << "push state fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
-        if (rlock-rdec || wlock-wdec) {
+        if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         log << "push pass " << debug << std::endl;
@@ -474,22 +474,21 @@ struct BaseState {
         break; case (BothReq): state = BothBase;
         break; case (LockReq): state = LockBase;
         break; case (SizeReq): state = SizeBase;}
-        rqst[nreq] = req; nreq += 1;
+        rqst[nreq] = req; nreq += 1; plock += 1;
         safe.post();
         return true;
     }
     bool push(Req req, SmartState log) {
-        return push(0,0,req,log);
+        return push(0,0,0,req,log);
     }
     void push(SmartState log) {
         // unreserve after done in thread
         safe.wait();
         if (state != BothBase && state != SizeBase && state != LockBase && state != NextBase)
             {std::cerr << "invalid push state!" << std::endl; exit(-1);}
-        lock = 0;
         if (reqn >= nreq)
             {std::cerr << "invalid num req!" << std::endl; exit(-1);}
-        reqn += 1;
+        lock = 0; reqn += 1; plock -= 1;
         if (reqn == nreq) {reqn = 0; nreq = 0; state = FreeBase;}
         else switch (rqst[nreq].tag) {
         default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
@@ -506,9 +505,7 @@ struct BaseState {
         safe.post();
         if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
             {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
-        lock = ptr;
-        resp[nrsp] = rsp;
-        nrsp += 1;
+        lock = ptr; resp[nrsp] = rsp; nrsp += 1;
     }
     void setre(SizeState siz, SmartState log) {
         push(Req{SizeReq,0,0,0,siz,false},log);
@@ -770,7 +767,7 @@ struct BindState : public BaseState {
     }
     bool push(Bind i, BaseState *buf, Req req, SmartState log) {
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        if (!buf->push(rsav[i],wsav[i],req,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],req,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf)
         {std::cerr << "invalid rinc bind!" << std::endl; exit(-1);}
