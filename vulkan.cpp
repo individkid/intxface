@@ -158,6 +158,7 @@ struct BaseState;
 struct StackState {
     static const int frames = 2;
     static const int images = 2;
+    static const int reqsts = 2;
     static const int comnds = 20;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
@@ -442,16 +443,16 @@ struct BaseState {
     // indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
     BindState *lock;
-    Rsp resp; // TODO change to array that baseups iterates through
-    Req rqst; // TODO change to array that baseups iterates through
-    // TODO a special Push causes stage to wait for prior fences
-    // TODO the special Push also breaks the linked list
+    Rsp resp[StackState::reqsts];
+    Req rqst[StackState::reqsts];
+    int nrsp, rspn, nreq, reqn;
     SizeState size;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
-        item(ptr), next(0), last(0), safe(1), state(InitBase), rlock(0), wlock(0),
-        resp{Micros,Memorys,Binds,BindLocs}, rqst{ReqEnums,0,0,0},
-        lock(0), debug{0} {
+        item(ptr), next(0), last(0),
+        safe(1), state(InitBase),
+        rlock(0), wlock(0), lock(0),
+        nrsp(0), rspn(0), nreq(0), reqn(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
     }
@@ -468,11 +469,12 @@ struct BaseState {
         log << "push lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         log << "push pass " << debug << std::endl;
-        rqst = req;
-        switch (req.tag) {default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
+        if (nreq == 0) switch (req.tag) {
+        default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
         break; case (BothReq): state = BothBase;
         break; case (LockReq): state = LockBase;
         break; case (SizeReq): state = SizeBase;}
+        rqst[nreq] = req; nreq += 1;
         safe.post();
         return true;
     }
@@ -482,9 +484,18 @@ struct BaseState {
     void push(SmartState log) {
         // unreserve after done in thread
         safe.wait();
-        if (state != BothBase && state != SizeBase && state != LockBase)
+        if (state != BothBase && state != SizeBase && state != LockBase && state != NextBase)
             {std::cerr << "invalid push state!" << std::endl; exit(-1);}
-        state = FreeBase;
+        lock = 0;
+        if (reqn >= nreq)
+            {std::cerr << "invalid num req!" << std::endl; exit(-1);}
+        reqn += 1;
+        if (reqn == nreq) {reqn = 0; nreq = 0; state = FreeBase;}
+        else switch (rqst[nreq].tag) {
+        default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
+        break; case (BothReq): state = BothBase;
+        break; case (LockReq): state = LockBase;
+        break; case (SizeReq): state = SizeBase;}
         safe.post();
     }
     void push(Rsp rsp, BindState *ptr, SmartState log) {
@@ -493,10 +504,11 @@ struct BaseState {
         if (state != BothBase && state != SizeBase && state != LockBase)
             {std::cerr << "invalid set state!" << std::endl; exit(-1);}
         safe.post();
-        if (lock != 0) {std::cerr << "invalid set lock! " <<
-            debug << std::endl; exit(-1);}
+        if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
+            {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
         lock = ptr;
-        resp = rsp;
+        resp[nrsp] = rsp;
+        nrsp += 1;
     }
     void setre(SizeState siz, SmartState log) {
         push(Req{SizeReq,0,0,0,siz,false},log);
@@ -510,29 +522,30 @@ struct BaseState {
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " <<
             state << std::endl; exit(-1);}
-        if (size == rqst.max); else {
+        if (size == rqst[reqn].max); else {
         if (size == SizeState(InitExt)); else {
         safe.post();
         unsize(log);
         safe.wait();}
-        if ((size = rqst.max) == SizeState(InitExt)); else {
+        size = rqst[reqn].max;
+        if (size == SizeState(InitExt)); else {
         safe.post();
         resize(log);
         safe.wait();}}
         state = NextBase;
         safe.post();
-        return setup(rqst.ptr,rqst.loc,rqst.siz,log);
+        return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
     }
     void baseres(SmartState log) {
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state <<
             "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
-        if (size == rqst.max); else {
+        if (size == rqst[reqn].max); else {
         if (size == SizeState(InitExt)); else {
         safe.post();
         unsize(log);
         safe.wait();}
-        if ((size = rqst.max) == SizeState(InitExt)); else {
+        if ((size = rqst[reqn].max) == SizeState(InitExt)); else {
         safe.post();
         resize(log);
         safe.wait();}}
@@ -545,7 +558,7 @@ struct BaseState {
             debug << " " << state << std::endl; exit(-1);}
         state = NextBase;
         safe.post();
-        return setup(rqst.ptr,rqst.loc,rqst.siz,log);
+        return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
     }
     void unlock(SmartState log);
     void baseups(SmartState log) {
@@ -553,16 +566,12 @@ struct BaseState {
         if (state != NextBase) {std::cerr << "upset invalid state!" <<
             std::endl; exit(-1);}
         safe.post();
-        if (rqst.pre) log << "baseups " << debug << " " << item->debug << std::endl;
+        if (rqst[reqn].pre) log << "baseups " << debug << " " << item->debug << std::endl;
         else log << "baseups " << debug << std::endl;
-        if (rqst.pre) item->advance();
+        if (rqst[reqn].pre) item->advance();
         upset(log);
         unlock(log);
-        resp = Rsp{Micros,Memorys,Binds,BindLocs};
-        lock = 0;
-        safe.wait();
-        state = FreeBase;
-        safe.post();
+        push(log);
     }
     void incr(bool elock) {
         safe.wait();
@@ -824,7 +833,10 @@ struct BindState : public BaseState {
     }
 };
 void BaseState::unlock(SmartState log) {
-    if (lock) lock->push(resp,log);
+    if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
+    if (lock) lock->push(resp[rspn],log);
+    if (rspn < nrsp) rspn += 1;
+    if (rspn == nrsp) {rspn = 0; nrsp = 0;}
 }
 BaseState *BaseState::bnd(Bind typ) {
     if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
@@ -1011,16 +1023,17 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch(cmd[i].tag) {default:
             break; case(RebCmd): last = 0;
             break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = dst(bnd)->lnk(last);}}
+        // prepare buffers
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+            switch (cmd[i].tag) {default:
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd)->push(cmd[i].rsp,bind,log);}}
         // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(RebCmd): thread->push({log});
-            break; case(DerCmd): src(bnd)->advance();
-            dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});
-            break; case(PDerCmd):
-            dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});
-            break; case(IDerCmd): src(bnd)->advance(cmd[i].idx);
-            dst(bnd)->push(cmd[i].rsp,bind,log); thread->push({log,dst(bnd)});}}
+            break; case(DerCmd): src(bnd)->advance(); thread->push({log,dst(bnd)});
+            break; case(PDerCmd): thread->push({log,dst(bnd)});
+            break; case(IDerCmd): src(bnd)->advance(cmd[i].idx); thread->push({log,dst(bnd)});}}
         // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
