@@ -279,6 +279,7 @@ Micro = { -- what runs on gpu
 Extent = { -- resource initialization done on gpu thread
     "InitExt",
     "IntExt",
+    "FormExt",
     "ExtentExt",
     "MicroExt",
     "BindExt",

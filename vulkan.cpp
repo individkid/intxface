@@ -360,7 +360,8 @@ template<class State> struct ConstState {
 
 struct SizeState {
     Extent tag;
-    int base, size;
+    int base,size;
+    VkImageLayout src,dst;
     VkExtent2D extent;
     Micro micro;
     Bind bind;
@@ -371,6 +372,11 @@ struct SizeState {
         tag = IntExt;
         this->base = base;
         this->size = size;
+    }
+    SizeState(VkImageLayout src, VkImageLayout dst) {
+        tag = FormExt;
+        this->src = src;
+        this->dst = dst;
     }
     SizeState(VkExtent2D extent) {
         tag = ExtentExt;
@@ -391,6 +397,8 @@ struct SizeState {
         if (tag == InitExt && other.tag == InitExt) return true;
         if (tag == IntExt && other.tag == IntExt &&
         base == other.base && size == other.size) return true;
+        if (tag == FormExt && other.tag == FormExt &&
+        src == other.src && dst == other.dst) return true;
         if (tag == ExtentExt && other.tag == ExtentExt &&
         extent.width == other.extent.width &&
         extent.height == other.extent.height) return true;
@@ -414,8 +422,10 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 
 enum ReqEnum {
     BothReq,
+    DualReq,
     LockReq,
     SizeReq,
+    FormReq,
     ReqEnums
 };
 struct Req {
@@ -428,7 +438,9 @@ enum BaseEnum {
     InitBase, // avoid binding to uninitialized
     FreeBase, // ready for use
     BothBase, // check for both change
+    DualBase, // check for dual change
     SizeBase, // check for size change
+    FormBase, // check for format change
     LockBase, // check for data change
     NextBase, // waiting for fence done
     BaseEnums
@@ -446,7 +458,7 @@ struct BaseState {
     Rsp resp[StackState::reqsts];
     Req rqst[StackState::reqsts];
     int nrsp, rspn, nreq, reqn;
-    SizeState size;
+    SizeState size, form;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr), next(0), last(0),
@@ -472,8 +484,10 @@ struct BaseState {
         if (nreq == 0) switch (req.tag) {
         default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
         break; case (BothReq): state = BothBase;
+        break; case (DualReq): state = DualBase;
         break; case (LockReq): state = LockBase;
-        break; case (SizeReq): state = SizeBase;}
+        break; case (SizeReq): state = SizeBase;
+        break; case (FormReq): state = FormBase;}
         rqst[nreq] = req; nreq += 1; plock += 1;
         safe.post();
         return true;
@@ -484,7 +498,8 @@ struct BaseState {
     void push(SmartState log) {
         // unreserve after done in thread
         safe.wait();
-        if (state != BothBase && state != SizeBase && state != LockBase && state != NextBase)
+        if (state != BothBase && state != DualBase &&
+            state != SizeBase && state != FormBase && state != LockBase && state != NextBase)
             {std::cerr << "invalid push state!" << std::endl; exit(-1);}
         if (reqn >= nreq)
             {std::cerr << "invalid num req!" << std::endl; exit(-1);}
@@ -493,14 +508,17 @@ struct BaseState {
         else switch (rqst[nreq].tag) {
         default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
         break; case (BothReq): state = BothBase;
+        break; case (DualReq): state = DualBase;
         break; case (LockReq): state = LockBase;
-        break; case (SizeReq): state = SizeBase;}
+        break; case (SizeReq): state = SizeBase;
+        break; case (FormReq): state = FormBase;}
         safe.post();
     }
     void push(Rsp rsp, BindState *ptr, SmartState log) {
         // save info for use in thread
         safe.wait();
-        if (state != BothBase && state != SizeBase && state != LockBase)
+        if (state != BothBase && state != DualBase &&
+            state != SizeBase && state != FormBase && state != LockBase)
             {std::cerr << "invalid set state!" << std::endl; exit(-1);}
         safe.post();
         if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
@@ -515,46 +533,53 @@ struct BaseState {
         push(Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
         baseres(log);
     }
+    void recall(SizeState &size, SmartState log) {
+        if (size == rqst[reqn].max); else {
+        if (size == SizeState(InitExt)); else {
+        if (&size == &this->size) unsize(log);
+        else unform(log);}
+        size = rqst[reqn].max;
+        if (size == SizeState(InitExt)); else {
+        if (&size == &this->size) resize(log);
+        else reform(log);}}
+        state = NextBase;
+    }
     VkFence sizeup(SmartState log) {
         safe.wait();
         if (state != BothBase) {std::cerr << "sizeup invalid state! " <<
             state << std::endl; exit(-1);}
-        if (size == rqst[reqn].max); else {
-        if (size == SizeState(InitExt)); else {
         safe.post();
-        unsize(log);
-        safe.wait();}
-        size = rqst[reqn].max;
-        if (size == SizeState(InitExt)); else {
+        recall(size,log);
+        return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
+    }
+    VkFence formup(SmartState log) {
+        safe.wait();
+        if (state != DualBase) {std::cerr << "formup invalid state! " <<
+            state << std::endl; exit(-1);}
         safe.post();
-        resize(log);
-        safe.wait();}}
-        state = NextBase;
-        safe.post();
+        recall(form,log);
         return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
     }
     void baseres(SmartState log) {
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state <<
             "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
-        if (size == rqst[reqn].max); else {
-        if (size == SizeState(InitExt)); else {
         safe.post();
-        unsize(log);
-        safe.wait();}
-        if ((size = rqst[reqn].max) == SizeState(InitExt)); else {
+        recall(size,log);
+    }
+    void baseref(SmartState log) {
+        safe.wait();
+        if (state != FormBase) {std::cerr << "baseref invalid state!" <<
+            std::endl; exit(-1);}
         safe.post();
-        resize(log);
-        safe.wait();}}
-        state = NextBase;
-        safe.post();
+        recall(form,log);
     }
     VkFence basesup(SmartState log) {
         safe.wait();
         if (state != LockBase) {std::cerr << "basesup invalid state! " <<
             debug << " " << state << std::endl; exit(-1);}
-        state = NextBase;
         safe.post();
+        state = NextBase;
         return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
     }
     void unlock(SmartState log);
@@ -587,9 +612,10 @@ struct BaseState {
         switch (state) {
         default: {safe.post(); return false;}
         break; case (FreeBase):
-        break; case (BothBase): case (SizeBase): case (LockBase):
+        break; case (BothBase): case (DualBase):
+        case (SizeBase): case (FormBase): case (LockBase):
         if (psav == 0) {safe.post(); return false;}}
-        if (wlock < wsav || rlock < rsav)
+        if (plock < psav || wlock < wsav || rlock < rsav)
             {std::cerr << "invalid get lock!" << std::endl; exit(-1);}
         if (wlock-wsav || (elock && rlock-rsav)) {safe.post(); return false;}
         safe.post();
@@ -616,9 +642,11 @@ struct BaseState {
         return last;
     }
     virtual void unsize(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual void resize(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual VkFence setup(void *ptr, int loc, int siz, SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual void upset(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
+    virtual void resize(SmartState log) {std::cerr << "resize not base!" << std::endl; exit(-1);}
+    virtual void unform(SmartState log) {std::cerr << "unform not base!" << std::endl; exit(-1);}
+    virtual void reform(SmartState log) {std::cerr << "reform not base!" << std::endl; exit(-1);}
+    virtual VkFence setup(void *ptr, int loc, int siz, SmartState log) {std::cerr << "setup not base!" << std::endl; exit(-1);}
+    virtual void upset(SmartState log) {std::cerr << "upset not base!" << std::endl; exit(-1);}
     virtual bool get(BaseEnum state) {return false;}
     virtual BindState *getBind() {std::cerr << "BaseState::getBind" << std::endl; exit(-1);}
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
@@ -884,8 +912,10 @@ struct ThreadState : public DoneState {
         if (push.base) switch (push.base->get()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
+        break; case(FormBase): push.fence = VK_NULL_HANDLE; push.base->baseref(push.log);
         break; case(LockBase): push.fence = push.base->basesup(push.log);
-        break; case(BothBase): push.fence = push.base->sizeup(push.log);}
+        break; case(BothBase): push.fence = push.base->sizeup(push.log);
+        break; case(DualBase): push.fence = push.base->formup(push.log);}
         after.push_back(push);}
         if (!after.empty()) break;
         safe.wait();
@@ -1558,6 +1588,7 @@ struct ImageState : public BaseState {
     VkSampler textureSampler;
     VkCommandBuffer commandBuffer;
     VkSemaphore after;
+    VkFence fence;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1599,9 +1630,11 @@ struct ImageState : public BaseState {
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,bnd(ImageBnd)->getExtent(),renderPass,bnd(ImageBnd)->getImageView(),depthImageView,framebuffer);}
         after = createSemaphore(device);
+        fence = createFence(device);
     }
     void unsize(SmartState log) override {
         log << "unsize " << debug << std::endl;
+        vkDestroyFence(device, fence, nullptr);
         vkDestroySemaphore(device, after, nullptr);
         if (bnd() == PierceBnd) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -1615,13 +1648,26 @@ struct ImageState : public BaseState {
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);
     }
+    void reform(SmartState log) {
+        log << "reform " << debug << std::endl;
+    }
+    void unform(SmartState log) {
+        log << "unform " << debug << std::endl;
+    }
     VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
-        if (bnd() == TextureBnd) {
+        if (nxt()); else vkResetFences(device, 1, &fence);
+        if (bnd() == TextureBnd && form.tag == FormExt) {
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, commandBuffer, bnd(ImageBnd)->getImage(),
+            (lst()?lst()->getSemaphore():VK_NULL_HANDLE),
+            (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence),
+            VK_FORMAT_R8G8B8A8_SRGB,form.src,form.dst);}
+        if (bnd() == TextureBnd && form.tag != FormExt) {
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
             stagingBuffer, stagingBufferMemory);
@@ -1633,7 +1679,7 @@ struct ImageState : public BaseState {
         ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
             (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
-        return VK_NULL_HANDLE;
+        return (nxt() ? VK_NULL_HANDLE : fence);
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1648,6 +1694,9 @@ struct ImageState : public BaseState {
         VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight,
         VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore,
         VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
+    static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
+        VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
+        VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 };
 
 struct LayoutState : public BaseState {
@@ -1683,7 +1732,7 @@ struct LayoutState : public BaseState {
         log << "setup " << debug << std::endl;
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (nxt()); else vkResetFences(device, 1, &fence);
-        transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
+        ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
             (bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
@@ -1693,9 +1742,6 @@ struct LayoutState : public BaseState {
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
     }
-    static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
-        VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
-        VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 };
 
 struct ProbeState : public BaseState {
@@ -1957,8 +2003,8 @@ struct MainState {
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<ImageState,ImageBnd,StackState::images> imageState; // TODO use TextureBnd or PierceBnd instead
-    ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState;
-    ArrayState<LayoutState,AfterBnd,StackState::frames> afterState;
+    ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState; // TODO use reform in ImageState instead
+    ArrayState<LayoutState,AfterBnd,StackState::frames> afterState; // TODO use reform in ImageState instead
     ArrayState<ImageState,TextureBnd,StackState::frames> textureState; // TODO use ImageState instead
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
@@ -2786,7 +2832,7 @@ VkSampler ImageState::createTextureSampler(VkDevice device, VkPhysicalDeviceProp
     {std::cerr << "failed to create texture sampler!" << std::endl; exit(-1);}
     return textureSampler;
 }
-void LayoutState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
+void ImageState::transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
     VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
     VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBufferBeginInfo beginInfo{};
