@@ -981,6 +981,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Binds];
     BaseState *buffer[Binds];
+    SizeState max[BindLocs];
+    ReqEnum req[BindLocs];
+    CmdEnum tag[BindLocs];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
         std::cout << "CopyState" << std::endl;
@@ -1146,14 +1149,20 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int k = 0; k < lim; k++) {HeapState<Cmd> cmd(StackState::comnds);
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
-        CmdEnum tag = PDerCmd; int sub = 0; int mod = src(bnd)->bufsiz();
-        void *ptr = 0; int idx = center->idx*mod; int siz = center->siz*mod; SizeState max(0,center->siz*mod);
+        int mod = src(bnd)->bufsiz(); void *ptr = 0; int idx = center->idx*mod; int siz = center->siz*mod; int sub = 0;
+        tag[MiddleLoc] = PDerCmd; req[MiddleLoc] = BothReq; max[MiddleLoc] = SizeState(0,center->siz*mod);
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
         break; case (Texturez): ptr = datxVoidz(0,center->tex[k].dat);
-        idx = 0; siz = datxVoids(center->tex[k].dat); tag = IDerCmd; sub = center->idx+k;
-        max = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
+        idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
+        tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
+        max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
+        tag[BeforeLoc] = IDerCmd; req[BeforeLoc] = DualReq;
+        max[BeforeLoc] = SizeState(VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = max[ResizeLoc]; // SizeState();
+        tag[AfterLoc] = IDerCmd; req[AfterLoc] = DualReq;
+        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1179,9 +1188,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
         if (loc == BindLocs) break;
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
-        if (loc == MiddleLoc) cmd<<Cmd{tag,Rsp{Micros,center->mem,bnd,loc},Req{BothReq,ptr,idx,siz,max},sub};
-        else if (loc == ResizeLoc) cmd<<Cmd{tag,Rsp{Micros,Memorys,bnd,loc},Req{SizeReq,ptr,idx,siz,max},sub};
-        else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max}};
+        /*switch (loc) {
+        default: cmd<<Cmd{tag,Rsp{Micro,center->mem,bnd,loc},Req{req,ptr,idx,siz,max},sub};
+        break; case (RebindLoc): cmd<<Cmd{RebCmd};}*/
+        if (loc == MiddleLoc) cmd<<Cmd{tag[MiddleLoc],Rsp{Micros,center->mem,bnd,loc},Req{BothReq,ptr,idx,siz,max[MiddleLoc]},sub};
+        else if (loc == ResizeLoc) cmd<<Cmd{tag[MiddleLoc],Rsp{Micros,Memorys,bnd,loc},Req{SizeReq,ptr,idx,siz,max[MiddleLoc]},sub};
+        else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max[MiddleLoc]}};
         for (Iter i(center->mem,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},sub};
@@ -1676,6 +1688,7 @@ struct ImageState : public BaseState {
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage and return fence
+        // TODO replace bnd(ImageBnd)->getImage() by image after eliminating TextureBnd BeforeBnd AfterBnd
         ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
             (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
