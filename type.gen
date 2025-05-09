@@ -435,9 +435,10 @@ Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Indexz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
-	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
-	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
-	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
+	{"Memory","Texturez","Int","1","BindLoc","RebindLoc"},
+	{"Memory","Texturez","Int","2","BindLoc","BeforeLoc"},
+	{"Memory","Texturez","Int","3","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","4","BindLoc","AfterLoc"},
 	{"Memory","Uniformz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Trianglez","Int","0","BindLoc","MiddleLoc"},
@@ -497,7 +498,7 @@ Bindit = { -- number of draw arguments and resource indices
 	{"Bind","DrawBnd","Int","2"},
 	{"Bind","AcquireBnd","Int","1"},
 	{"Bind","PresentBnd","Int","1"},
-	{"Bind","PierceBnd","Int","1"},
+	{"Bind","PierceBnd","Int","0"},
 }
 Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
@@ -511,7 +512,6 @@ Bindee = { -- resources reserved
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bindie = { -- indexed resources reserved
-	{"Bind","PierceBnd","BindLoc","ResizeLoc","Int","0","Bind","ImageBnd"},
 	{"Bind","DrawBnd","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
 }
 Binded = { -- modified after submitted resource completes

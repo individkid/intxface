@@ -908,7 +908,6 @@ struct ThreadState : public DoneState {
         Push push = before.front();
         if (!push.base && !push.fnc && !after.empty()) {safe.post(); break;}
         before.pop_front(); safe.post();
-        if (push.base) push.log << "stage " << push.base->debug << std::endl;
         if (push.base) switch (push.base->get()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
@@ -1158,11 +1157,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
         tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
         max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
-        tag[BeforeLoc] = IDerCmd; req[BeforeLoc] = DualReq;
+        /*tag[BeforeLoc] = IDerCmd; req[BeforeLoc] = DualReq;
         max[BeforeLoc] = SizeState(VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = max[ResizeLoc]; // SizeState();
+        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = SizeState();
         tag[AfterLoc] = IDerCmd; req[AfterLoc] = DualReq;
-        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
+        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; max[BeforeLoc] = max[ResizeLoc];
+        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; max[MiddleLoc] = max[ResizeLoc];
+        tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; max[AfterLoc] = max[ResizeLoc];
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1188,12 +1190,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
         if (loc == BindLocs) break;
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
-        /*switch (loc) {
-        default: cmd<<Cmd{tag,Rsp{Micro,center->mem,bnd,loc},Req{req,ptr,idx,siz,max},sub};
-        break; case (RebindLoc): cmd<<Cmd{RebCmd};}*/
-        if (loc == MiddleLoc) cmd<<Cmd{tag[MiddleLoc],Rsp{Micros,center->mem,bnd,loc},Req{BothReq,ptr,idx,siz,max[MiddleLoc]},sub};
-        else if (loc == ResizeLoc) cmd<<Cmd{tag[MiddleLoc],Rsp{Micros,Memorys,bnd,loc},Req{SizeReq,ptr,idx,siz,max[MiddleLoc]},sub};
-        else cmd<<Cmd{PDerCmd,Rsp{Micros,Memorys,bnd,loc},Req{BothReq,ptr,idx,siz,max[MiddleLoc]}};
+        switch (loc) {
+        default: cmd<<Cmd{tag[loc],Rsp{Micros,center->mem,bnd,loc},Req{req[loc],ptr,idx,siz,max[loc]},sub};
+        break; case (RebindLoc): cmd<<Cmd{RebCmd};}
         for (Iter i(center->mem,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},sub};
@@ -1286,7 +1285,8 @@ void TestState::call() {
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufnotAdv,.bnd=PierceBnd,.siz=1,.arg=imgs},0,0,Fnc{},SmartState());
+    copy->push(Draw{.adv=BufnotAdv,.bnd=PierceBnd},0,0,Fnc{},SmartState());
+    slog.clr();
     //
     int sizes[] = {
     /*AcquireBnd idx,siz*/0,0,
@@ -1626,6 +1626,7 @@ struct ImageState : public BaseState {
     }
     void resize(SmartState log) override {
         log << "resize " << debug << std::endl;
+        if (size.tag != ExtentExt) return; // TODO should not have image without extent
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
@@ -1746,7 +1747,7 @@ struct LayoutState : public BaseState {
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (nxt()); else vkResetFences(device, 1, &fence);
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
+            (lst()?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
