@@ -616,7 +616,7 @@ struct BaseState {
         case (SizeBase): case (FormBase): case (LockBase):
         if (psav == 0) {safe.post(); return false;}}
         if (plock < psav || wlock < wsav || rlock < rsav)
-            {std::cerr << "invalid get lock!" << std::endl; exit(-1);}
+            {std::cerr << "invalid save lock!" << std::endl; exit(-1);}
         if (wlock-wsav || (elock && rlock-rsav)) {safe.post(); return false;}
         safe.post();
         return true;
@@ -711,20 +711,20 @@ struct Iter {
     }
     Rsp d2r(Draw drw, BindLoc loc) {
         Rsp rsp;
-        switch (drw.adv) {default: {std::cerr << "invalid rsp adv!" << std::endl; exit(-1);}
-        break; case(MicroAdv): rsp = Rsp{drw.drw,Memorys,Binds,loc};
-        break; case(PrememAdv): rsp = Rsp{Micros,drw.mem,Binds,loc};
-        break; case(SubmicAdv): case(BufmicAdv): case(BufnotAdv): case(PresizAdv):
-        rsp = Rsp{Micros,Memorys,drw.bnd,loc};}
+        switch (AdvConst__Advance__Constant(drw.adv)) {
+        default: {std::cerr << "invalid rsp adv!" << std::endl; exit(-1);}
+        break; case(MicroConst): rsp = Rsp{drw.drw,Memorys,Binds,loc};
+        break; case(MemoryConst): rsp = Rsp{Micros,drw.mem,Binds,loc};
+        break; case(BindConst): rsp = Rsp{Micros,Memorys,drw.bnd,loc};}
         return rsp;
     }
     IterEnum d2s(Draw drw) {
         IterEnum seq;
-        switch (drw.adv) {default: {std::cerr << "invalid seq adv!" << std::endl; exit(-1);}
-        break; case(MicroAdv): seq = Deps;
-        break; case(PrememAdv): seq = Meps;
-        break; case(SubmicAdv): case(BufmicAdv): case(BufnotAdv): case(PresizAdv):
-        seq = Beps;}
+        switch (AdvConst__Advance__Constant(drw.adv)) {
+        default: {std::cerr << "invalid seq adv!" << std::endl; exit(-1);}
+        break; case(MicroConst): seq = Deps;
+        break; case(MemoryConst): seq = Meps;
+        break; case(BindConst): seq = Beps;}
         return seq;
     }
     IterEnum r2s(Rsp rsp) {
@@ -1114,6 +1114,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
             std::cerr << "invalid SubmicAdv limit!" << std::endl; exit(-1);}
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])};
             tag = IDerCmd; idx = drw.arg[count++];
+        break; case (SubextAdv): if (count+2 >= limit) {
+            std::cerr << "invalid SubextAdv limit!" << std::endl; exit(-1);}
+            rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,
+            SizeState(VkExtent2D{(uint32_t)drw.arg[count++],(uint32_t)drw.arg[count++]})};
+            tag = IDerCmd; idx = drw.arg[count++];
         break; case (BufmicAdv): if (count >= limit) {
             std::cerr << "invalid BufmicAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])};
@@ -1252,7 +1257,7 @@ void TestState::call() {
     //
     int xsiz = 800; int ysiz = 600;
     int args[] = {/*draw index*/(int)MicroTest,/*draw size*/(int)MicroTest};
-    int imgs[] = {/*image index*/0};
+    int imgs[] = {/*image width*/100,/*image height*/100,/*image index*/0};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
@@ -1284,9 +1289,8 @@ void TestState::call() {
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++)
-    copy->push(Draw{.adv=BufnotAdv,.bnd=PierceBnd},0,0,Fnc{},SmartState());
-    slog.clr();
+    for (int i = 0; i < StackState::frames; i++) {imgs[2] = i;
+    copy->push(Draw{.adv=SubextAdv,.bnd=PierceBnd,.siz=3,.arg=imgs},0,0,Fnc{},SmartState());}
     //
     int sizes[] = {
     /*AcquireBnd idx,siz*/0,0,
@@ -1625,7 +1629,7 @@ struct ImageState : public BaseState {
         reset(SmartState());
     }
     void resize(SmartState log) override {
-        log << "resize " << debug << std::endl;
+        log << "resize " << debug << std::endl; slog.clr();
         if (size.tag != ExtentExt) return; // TODO should not have image without extent
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
@@ -1636,12 +1640,12 @@ struct ImageState : public BaseState {
         if (bnd() == TextureBnd) {
         textureSampler = ImageState::createTextureSampler(device,properties);
         commandBuffer = createCommandBuffer(device,commandPool);}
-        if (bnd() == PierceBnd) {
-        createImage(device, physical, bnd(ImageBnd)->getExtent().width, bnd(ImageBnd)->getExtent().height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+        if (bnd() == PierceBnd && 0) { // TODO
+        createImage(device, physical, size.extent.width, size.extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,bnd(ImageBnd)->getExtent(),renderPass,bnd(ImageBnd)->getImageView(),depthImageView,framebuffer);}
+        createFramebuffer(device,size.extent,renderPass,imageView,depthImageView,framebuffer);}
         after = createSemaphore(device);
         fence = createFence(device);
     }
@@ -1649,7 +1653,7 @@ struct ImageState : public BaseState {
         log << "unsize " << debug << std::endl;
         vkDestroyFence(device, fence, nullptr);
         vkDestroySemaphore(device, after, nullptr);
-        if (bnd() == PierceBnd) {
+        if (bnd() == PierceBnd && 0) { // TODO
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1676,6 +1680,7 @@ struct ImageState : public BaseState {
         if (nxt()); else vkResetFences(device, 1, &fence);
         if (bnd() == TextureBnd && form.tag == FormExt) {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
         transitionImageLayout(device, graphics, commandBuffer, bnd(ImageBnd)->getImage(),
             (lst()?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence),
@@ -1689,8 +1694,8 @@ struct ImageState : public BaseState {
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage and return fence
-        // TODO replace bnd(ImageBnd)->getImage() by image after eliminating TextureBnd BeforeBnd AfterBnd
-        ImageState::copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
+        // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
+        copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
             (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
         return (nxt() ? VK_NULL_HANDLE : fence);
@@ -2101,7 +2106,7 @@ void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanForce(Center *ptr, int sub) {
-    std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); slog.clr(); exit(-1);
+    std::cerr << "unexpected copy fail!" << std::endl; exit(-1);
 }
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide between registered Fnc structs

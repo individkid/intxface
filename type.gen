@@ -91,6 +91,7 @@ BindLoc = {
 Advance = {
 	"MicroAdv", -- kick off shader with given index range
 	"SubmicAdv", -- set micro indexed by micro
+	"SubextAdv", -- set extent indexed by arg
 	"BufmicAdv", -- set micro in current buffer
 	"BufnotAdv", -- set false in current buffer
 	"PresizAdv", -- set base size in next buffer
@@ -498,7 +499,7 @@ Bindit = { -- number of draw arguments and resource indices
 	{"Bind","DrawBnd","Int","2"},
 	{"Bind","AcquireBnd","Int","1"},
 	{"Bind","PresentBnd","Int","1"},
-	{"Bind","PierceBnd","Int","0"},
+	{"Bind","PierceBnd","Int","3"},
 }
 Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
@@ -562,6 +563,7 @@ Depended = { -- winc
 AdvConst = { -- so Draw can push Micro Memory or Bind
 	{"Advance","MicroAdv","Constant","MicroConst"},
 	{"Advance","SubmicAdv","Constant","BindConst"},
+	{"Advance","SubextAdv","Constant","BindConst"},
 	{"Advance","BufmicAdv","Constant","BindConst"},
 	{"Advance","BufnotAdv","Constant","BindConst"},
 	{"Advance","PresizAdv","Constant","BindConst"},
