@@ -413,6 +413,7 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     switch (size.tag) {default: os << "MicroSize()"; break;
     case (InitExt): os << "InitSize()"; break;
     case (IntExt): os << "IntSize(" << size.size << ")"; break;
+    case (FormExt): os << "FormSize(" << size.src << "," << size.dst << ")"; break;
     case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
     case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
     case (BindExt): os << "BindSize(" << size.bind << ")"; break;
@@ -474,13 +475,18 @@ struct BaseState {
     bool push(int pdec, int rdec, int wdec, Req req, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
-        if (state != InitBase && state != FreeBase) {
+        if ((int)state < 0 || (int)state >= BaseEnums)
+        {std::cerr << "invalid push state!" << std::endl; exit(-1);}
+        if (state != InitBase && state != FreeBase && plock == 0) {
         log << "push state fail " << debug << " " << state << std::endl;
+        safe.post(); return false;}
+        if (state == NextBase) {
+        log << "repush state fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
-        log << "push pass " << debug << std::endl;
+        log << "push pass " << debug << " max:" << req.max << " nreq:" << nreq << std::endl;
         if (nreq == 0) switch (req.tag) {
         default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
         break; case (BothReq): state = BothBase;
@@ -503,15 +509,16 @@ struct BaseState {
             {std::cerr << "invalid push state!" << std::endl; exit(-1);}
         if (reqn >= nreq)
             {std::cerr << "invalid num req!" << std::endl; exit(-1);}
-        lock = 0; reqn += 1; plock -= 1;
+        reqn += 1; plock -= 1;
         if (reqn == nreq) {reqn = 0; nreq = 0; state = FreeBase;}
-        else switch (rqst[nreq].tag) {
+        else switch (rqst[reqn].tag) {
         default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
         break; case (BothReq): state = BothBase;
         break; case (DualReq): state = DualBase;
         break; case (LockReq): state = LockBase;
         break; case (SizeReq): state = SizeBase;
         break; case (FormReq): state = FormBase;}
+        log << "done " << debug << " " << reqn << "/" << nreq << std::endl;
         safe.post();
     }
     void push(Rsp rsp, BindState *ptr, SmartState log) {
@@ -807,6 +814,7 @@ struct BindState : public BaseState {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
+        log << "done " << bind[i]->debug << " bnd:" << i << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << std::endl;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
@@ -861,7 +869,7 @@ void BaseState::unlock(SmartState log) {
     if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
     if (lock) lock->push(resp[rspn],log);
     if (rspn < nrsp) rspn += 1;
-    if (rspn == nrsp) {rspn = 0; nrsp = 0;}
+    if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
 }
 BaseState *BaseState::bnd(Bind typ) {
     if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
@@ -1162,12 +1170,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
         tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
         max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
-        /*tag[BeforeLoc] = IDerCmd; req[BeforeLoc] = DualReq;
+        tag[BeforeLoc] = IDerCmd; req[BeforeLoc] = DualReq;
         max[BeforeLoc] = SizeState(VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = SizeState();
+        /*tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = SizeState();
         tag[AfterLoc] = IDerCmd; req[AfterLoc] = DualReq;
-        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
-        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; max[BeforeLoc] = max[ResizeLoc];
+        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; max[BeforeLoc] = max[ResizeLoc];*/
         tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; max[MiddleLoc] = max[ResizeLoc];
         tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; max[AfterLoc] = max[ResizeLoc];
         break; case (Uniformz): ptr = (void*)center->uni;
@@ -1287,7 +1295,7 @@ void TestState::call() {
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
+    copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState("texture"));
     //
     for (int i = 0; i < StackState::frames; i++) {imgs[2] = i;
     copy->push(Draw{.adv=SubextAdv,.bnd=PierceBnd,.siz=3,.arg=imgs},0,0,Fnc{},SmartState());}
@@ -1614,6 +1622,7 @@ struct ImageState : public BaseState {
     VkExtent2D getExtent() override {return size.extent;}
     VkSampler getTextureSampler() override {return textureSampler;}
     VkSemaphore getSemaphore() override {return after;}
+    BaseState *get(Bind i) {return (i==bnd()?this:bnd(i));} // TODO remove when TextureBnd is gone
     ImageState() :
         BaseState("ImageState",StackState::self),
         device(StackState::device),
@@ -1637,7 +1646,7 @@ struct ImageState : public BaseState {
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (bnd() == TextureBnd) {
+        if (bnd() == TextureBnd || bnd() == ImageBnd) { // TODO remove TextureBnd from type.gen
         textureSampler = ImageState::createTextureSampler(device,properties);
         commandBuffer = createCommandBuffer(device,commandPool);}
         if (bnd() == PierceBnd && 0) { // TODO
@@ -1658,7 +1667,7 @@ struct ImageState : public BaseState {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (bnd() == TextureBnd) {
+        if (bnd() == TextureBnd || bnd() == ImageBnd) { // TODO remove TextureBnd from type.gen
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
@@ -1678,10 +1687,10 @@ struct ImageState : public BaseState {
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
         if (nxt()); else vkResetFences(device, 1, &fence);
-        if (bnd() == TextureBnd && form.tag == FormExt) {
+        if (bnd() == ImageBnd && form.tag == FormExt) {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
-        transitionImageLayout(device, graphics, commandBuffer, bnd(ImageBnd)->getImage(),
+        transitionImageLayout(device, graphics, commandBuffer, get(ImageBnd)->getImage(),
             (lst()?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence),
             VK_FORMAT_R8G8B8A8_SRGB,form.src,form.dst);}
@@ -1695,7 +1704,7 @@ struct ImageState : public BaseState {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage and return fence
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
-        copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight,
+        copyTextureImage(device, graphics, memProperties, get(ImageBnd)->getImage(), texWidth, texHeight,
             (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
         return (nxt() ? VK_NULL_HANDLE : fence);

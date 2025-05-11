@@ -464,7 +464,7 @@ Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","BeforeBnd"},
+	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","ImageBnd"},
 	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","TextureBnd"},
 	{"Memory","Texturez","BindLoc","AfterLoc","Bind","AfterBnd"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Bind","UniformBnd"},
