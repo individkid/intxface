@@ -501,8 +501,19 @@ struct BaseState {
     bool push(Req req, SmartState log) {
         return push(0,0,0,req,log);
     }
-    void push(SmartState log) {
-        // unreserve after done in thread
+    void push(Rsp rsp, BindState *ptr, SmartState log) {
+        // save info for use in thread
+        safe.wait();
+        if (state != BothBase && state != DualBase &&
+            state != SizeBase && state != FormBase && state != LockBase)
+            {std::cerr << "invalid set state!" << std::endl; exit(-1);}
+        safe.post();
+        if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
+            {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
+        lock = ptr; resp[nrsp] = rsp; nrsp += 1;
+    }
+    void done(SmartState log) {
+        // unreserve after done in thread or upon error
         safe.wait();
         if (state != BothBase && state != DualBase &&
             state != SizeBase && state != FormBase && state != LockBase && state != NextBase)
@@ -520,17 +531,6 @@ struct BaseState {
         break; case (FormReq): state = FormBase;}
         log << "done " << debug << " " << reqn << "/" << nreq << std::endl;
         safe.post();
-    }
-    void push(Rsp rsp, BindState *ptr, SmartState log) {
-        // save info for use in thread
-        safe.wait();
-        if (state != BothBase && state != DualBase &&
-            state != SizeBase && state != FormBase && state != LockBase)
-            {std::cerr << "invalid set state!" << std::endl; exit(-1);}
-        safe.post();
-        if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
-            {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
-        lock = ptr; resp[nrsp] = rsp; nrsp += 1;
     }
     void setre(SizeState siz, SmartState log) {
         push(Req{SizeReq,0,0,0,siz,false},log);
@@ -600,7 +600,7 @@ struct BaseState {
         if (rqst[reqn].pre) item->advance();
         upset(log);
         unlock(log);
-        push(log);
+        done(log);
     }
     void incr(bool elock) {
         safe.wait();
@@ -810,7 +810,7 @@ struct BindState : public BaseState {
         psav[i] += 1;
         return true;
     }
-    void push(Bind i, SmartState log) {
+    void done(Bind i, SmartState log) {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
@@ -818,12 +818,12 @@ struct BindState : public BaseState {
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
-    void push(Rsp rsp, SmartState log) {
+    void done(Rsp rsp, SmartState log) {
         for (Iter i(rsp); i(); ++i) {
         if (i.isee()) rdec(i.bnd,log);
         else if (i.isie()) rdec(i.bnd,log);
         else if (i.ised()) wdec(i.bnd,log);}
-        push(rsp.bnd,log);
+        done(rsp.bnd,log);
     }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
@@ -867,7 +867,7 @@ struct BindState : public BaseState {
 };
 void BaseState::unlock(SmartState log) {
     if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
-    if (lock) lock->push(resp[rspn],log);
+    if (lock) lock->done(resp[rspn],log);
     if (rspn < nrsp) rspn += 1;
     if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
 }
@@ -1088,7 +1088,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            if (bind) bind->push(bnd,log); dst(bnd)->push(log);
+            if (bind) bind->done(bnd,log); dst(bnd)->done(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
         // clean up
@@ -1295,7 +1295,7 @@ void TestState::call() {
     Center *tex = 0; allocCenter(&tex,1);
     tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState("texture"));
+    copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     for (int i = 0; i < StackState::frames; i++) {imgs[2] = i;
     copy->push(Draw{.adv=SubextAdv,.bnd=PierceBnd,.siz=3,.arg=imgs},0,0,Fnc{},SmartState());}
