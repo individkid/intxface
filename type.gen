@@ -82,7 +82,6 @@ BindTyp = {
 	"AfterTyp",
 }
 BindLoc = {
-	"RebindLoc", -- TODO wait for prior fences; break linked list
 	"ResizeLoc",
 	"BeforeLoc", -- like Acquire
 	"MiddleLoc", -- like Draw
@@ -436,10 +435,9 @@ Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Indexz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
-	{"Memory","Texturez","Int","1","BindLoc","RebindLoc"},
-	{"Memory","Texturez","Int","2","BindLoc","BeforeLoc"},
-	{"Memory","Texturez","Int","3","BindLoc","MiddleLoc"},
-	{"Memory","Texturez","Int","4","BindLoc","AfterLoc"},
+	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
+	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
 	{"Memory","Uniformz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Trianglez","Int","0","BindLoc","MiddleLoc"},
@@ -464,7 +462,7 @@ Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","ImageBnd"},
+	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","BeforeBnd"},
 	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","TextureBnd"},
 	{"Memory","Texturez","BindLoc","AfterLoc","Bind","AfterBnd"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Bind","UniformBnd"},

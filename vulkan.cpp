@@ -158,7 +158,7 @@ struct BaseState;
 struct StackState {
     static const int frames = 2;
     static const int images = 2;
-    static const int reqsts = 2;
+    static const int reqsts = 4;
     static const int comnds = 20;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
@@ -494,6 +494,8 @@ struct BaseState {
         break; case (LockReq): state = LockBase;
         break; case (SizeReq): state = SizeBase;
         break; case (FormReq): state = FormBase;}
+        if (nreq >= StackState::reqsts)
+        {std::cerr << "too many requests!" << std::endl; exit(-1);}
         rqst[nreq] = req; nreq += 1; plock += 1;
         safe.post();
         return true;
@@ -776,16 +778,24 @@ struct Iter {
         if (bnd == Binds) {incr(); sub = 0; continue;}}
     }
 };
+enum BindEnum {
+    FenBnd,
+    SemBnd,
+    BindEnums
+};
 struct BindState : public BaseState {
     BaseState *bind[Binds];
     int psav[Binds];
     int rsav[Binds];
     int wsav[Binds];
     int lock; bool excl;
-    BaseState *last;
+    VkFence fence[StackState::comnds];
+    VkSemaphore semaphore[StackState::comnds];
+    BindEnum tag[StackState::comnds];
+    int ntag, tagn, tagm;
     BindState() :
         BaseState("BindState",StackState::self),
-        lock(0), excl(false), last(0) {
+        lock(0), excl(false), ntag(0), tagn(0), tagm(0) {
         for (int i = 0; i < Binds; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
     }
@@ -793,6 +803,7 @@ struct BindState : public BaseState {
         safe.wait();
         if (excl) {safe.post(); return 0;}
         excl = true;
+        if (lock != 0) {std::cerr << "invalid bind lock! " << debug << std::endl; exit(-1);}
         safe.post();
         return this;
     }
@@ -800,23 +811,52 @@ struct BindState : public BaseState {
         if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
-    bool push(Bind i, BaseState *buf, Req req, SmartState log) {
+    VkFence getf(VkFence dflt = VK_NULL_HANDLE) {
+        if (tagn < 0 || tagn >= ntag)
+        {std::cerr << "invalid fence get!" << std::endl; exit(-1);}
+        if (tag[tagn] != FenBnd) return dflt;
+        return fence[tagn++];
+    }
+    VkFence setf(VkFence dflt = VK_NULL_HANDLE) {
+        if (tagm < 0 || tagm >= ntag)
+        {std::cerr << "invalid fence set!" << std::endl; exit(-1);}
+        if (tag[tagm] != FenBnd) return dflt;
+        return fence[tagm++];
+    }
+    VkSemaphore gets(VkSemaphore dflt = VK_NULL_HANDLE) {
+        if (tagn < 0 || tagn >= ntag)
+        {std::cerr << "invalid semaphore get!" << std::endl; exit(-1);}
+        if (tag[tagn] != SemBnd) return dflt;
+        return semaphore[tagn++];
+    }
+    VkSemaphore sets(VkSemaphore dflt = VK_NULL_HANDLE) {
+        if (tagm < 0 || tagm >= ntag)
+        {std::cerr << "invalid semaphore set!" << std::endl; exit(-1);}
+        if (tag[tagm] != SemBnd) return dflt;
+        return semaphore[tagm++];
+    }
+    bool push(Bind i, BaseState *buf, Req req, BindEnum typ, SmartState log) {
+        log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
         if (!buf->push(psav[i],rsav[i],wsav[i],req,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf)
         {std::cerr << "invalid rinc bind!" << std::endl; exit(-1);}
+        if (ntag >= StackState::comnds)
+        {slog.clr(); std::cerr << "invalid rinc tag! " << ntag << std::endl; exit(-1);}
         bind[i] = buf;
         psav[i] += 1;
+        tag[ntag] = typ;
+        ntag += 1;
         return true;
     }
     void done(Bind i, SmartState log) {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
-        log << "done " << bind[i]->debug << " bnd:" << i << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << std::endl;
+        log << "done " << debug << " " << bind[i]->debug << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << " lock:" << lock << std::endl;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
-        if (lock == 0) {safe.wait(); excl = false; safe.post();}
+        if (lock == 0) {ntag = 0; tagn = 0; tagm = 0; safe.wait(); excl = false; safe.post();}
     }
     void done(Rsp rsp, SmartState log) {
         for (Iter i(rsp); i(); ++i) {
@@ -837,7 +877,7 @@ struct BindState : public BaseState {
         bind[i] = buf;
         buf->incr(elock);
         (elock ? wsav[i] : rsav[i]) += 1;
-        log << "incr pass " << buf->debug << std::endl;
+        log << "incr pass " << buf->debug << " lock:" << lock-1 << std::endl;
         return true;
     }
     void decr(Bind i, bool elock, SmartState log) {
@@ -847,7 +887,7 @@ struct BindState : public BaseState {
         bind[i]->decr(elock);
         if ((elock ? wsav[i] : rsav[i]) <= 0)
             {std::cerr << "invalid rdec sav!" << std::endl; exit(-1);}
-        log << "decr " << bind[i]->debug << std::endl;
+        log << "decr " << bind[i]->debug << " lock:" << lock << std::endl;
         (elock ? wsav[i] : rsav[i]) -= 1;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
@@ -913,9 +953,7 @@ struct ThreadState : public DoneState {
         while (1) {while (1) {
         safe.wait();
         if (before.empty()) {safe.post(); break;}
-        Push push = before.front();
-        if (!push.base && !push.fnc && !after.empty()) {safe.post(); break;}
-        before.pop_front(); safe.post();
+        Push push = before.front(); before.pop_front(); safe.post();
         if (push.base) switch (push.base->get()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
@@ -963,7 +1001,6 @@ struct EnumState {
     StackState *val;
 };
 enum CmdEnum {
-    RebCmd, // postpone following until previous done
     DerCmd, // push req to current, set bind, push to thread, and advance
     PDerCmd, // push req to next, set bind, and push to thread that advances
     IDerCmd, // push req to indexed, set bind, push to thread, and advance to index
@@ -1049,7 +1086,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(bnd,dst(bnd),cmd[i].req,log)) lim = i;} else {
+            if (!bind->push(bnd,dst(bnd),cmd[i].req,BindEnums,log)) lim = i;} else {
             if (!dst(bnd)->push(cmd[i].req,log)) lim = i;}
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
@@ -1058,7 +1095,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // link list
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch(cmd[i].tag) {default:
-            break; case(RebCmd): last = 0;
             break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = dst(bnd)->lnk(last);}}
         // prepare buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
@@ -1067,7 +1103,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
-            break; case(RebCmd): thread->push({log});
             break; case(DerCmd): src(bnd)->advance(); thread->push({log,dst(bnd)});
             break; case(PDerCmd): thread->push({log,dst(bnd)});
             break; case(IDerCmd): src(bnd)->advance(cmd[i].idx); thread->push({log,dst(bnd)});}}
@@ -1168,14 +1203,16 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Bringupz): ptr = (void*)center->ver;
         break; case (Texturez): ptr = datxVoidz(0,center->tex[k].dat);
         idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
-        tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
+        /*tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
         max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
         tag[BeforeLoc] = IDerCmd; req[BeforeLoc] = DualReq;
         max[BeforeLoc] = SizeState(VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        /*tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = SizeState();
+        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = SizeState();
         tag[AfterLoc] = IDerCmd; req[AfterLoc] = DualReq;
-        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; max[BeforeLoc] = max[ResizeLoc];*/
+        max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
+        tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
+        max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
+        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; max[BeforeLoc] = max[ResizeLoc];
         tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; max[MiddleLoc] = max[ResizeLoc];
         tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; max[AfterLoc] = max[ResizeLoc];
         break; case (Uniformz): ptr = (void*)center->uni;
@@ -1203,9 +1240,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
         if (loc == BindLocs) break;
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
-        switch (loc) {
-        default: cmd<<Cmd{tag[loc],Rsp{Micros,center->mem,bnd,loc},Req{req[loc],ptr,idx,siz,max[loc]},sub};
-        break; case (RebindLoc): cmd<<Cmd{RebCmd};}
+        cmd<<Cmd{tag[loc],Rsp{Micros,center->mem,bnd,loc},Req{req[loc],ptr,idx,siz,max[loc]},sub};
         for (Iter i(center->mem,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},sub};
@@ -1761,7 +1796,8 @@ struct LayoutState : public BaseState {
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (nxt()); else vkResetFences(device, 1, &fence);
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (lst()?lst()->getSemaphore():VK_NULL_HANDLE),
+            // TODO use sets and setf instead
+            (lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
