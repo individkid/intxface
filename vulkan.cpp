@@ -430,10 +430,10 @@ enum ReqEnum {
     ReqEnums
 };
 struct Req {
-    ReqEnum tag; void *ptr; int loc; int siz; SizeState max; bool pre;
+    ReqEnum tag = ReqEnums; void *ptr = 0; int loc = 0; int siz = 0; SizeState max; bool pre = false;
 };
 struct Rsp {
-    Micro mic; Memory mem; Bind bnd; BindLoc loc;
+    Micro mic = Micros; Memory mem = Memorys; Bind bnd = Binds; BindLoc loc = BindLocs;
 };
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
@@ -447,6 +447,7 @@ enum BaseEnum {
     BaseEnums
 };
 struct BindState;
+struct SyncState;
 struct BaseState {
     StackState *item;
     BaseState *next; BaseState *last;
@@ -513,6 +514,7 @@ struct BaseState {
         if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
             {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
         lock = ptr; resp[nrsp] = rsp; nrsp += 1;
+        // TODO sync = qtr;
     }
     void done(SmartState log) {
         // unreserve after done in thread or upon error
@@ -658,6 +660,7 @@ struct BaseState {
     virtual void upset(SmartState log) {std::cerr << "upset not base!" << std::endl; exit(-1);}
     virtual bool get(BaseEnum state) {return false;}
     virtual BindState *getBind() {std::cerr << "BaseState::getBind" << std::endl; exit(-1);}
+    virtual SyncState *getSync() {std::cerr << "BaseState::getSync" << std::endl; exit(-1);}
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
     virtual VkImage getImage() {std::cerr << "BaseState::getImage" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
@@ -778,24 +781,15 @@ struct Iter {
         if (bnd == Binds) {incr(); sub = 0; continue;}}
     }
 };
-enum BindEnum {
-    FenBnd,
-    SemBnd,
-    BindEnums
-};
 struct BindState : public BaseState {
     BaseState *bind[Binds];
     int psav[Binds];
     int rsav[Binds];
     int wsav[Binds];
     int lock; bool excl;
-    VkFence fence[StackState::comnds];
-    VkSemaphore semaphore[StackState::comnds];
-    BindEnum tag[StackState::comnds];
-    int ntag, tagn, tagm;
     BindState() :
         BaseState("BindState",StackState::self),
-        lock(0), excl(false), ntag(0), tagn(0), tagm(0) {
+        lock(0), excl(false) {
         for (int i = 0; i < Binds; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
     }
@@ -811,52 +805,25 @@ struct BindState : public BaseState {
         if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
-    VkFence getf(VkFence dflt = VK_NULL_HANDLE) {
-        if (tagn < 0 || tagn >= ntag)
-        {std::cerr << "invalid fence get!" << std::endl; exit(-1);}
-        if (tag[tagn] != FenBnd) return dflt;
-        return fence[tagn++];
-    }
-    VkFence setf(VkFence dflt = VK_NULL_HANDLE) {
-        if (tagm < 0 || tagm >= ntag)
-        {std::cerr << "invalid fence set!" << std::endl; exit(-1);}
-        if (tag[tagm] != FenBnd) return dflt;
-        return fence[tagm++];
-    }
-    VkSemaphore gets(VkSemaphore dflt = VK_NULL_HANDLE) {
-        if (tagn < 0 || tagn >= ntag)
-        {std::cerr << "invalid semaphore get!" << std::endl; exit(-1);}
-        if (tag[tagn] != SemBnd) return dflt;
-        return semaphore[tagn++];
-    }
-    VkSemaphore sets(VkSemaphore dflt = VK_NULL_HANDLE) {
-        if (tagm < 0 || tagm >= ntag)
-        {std::cerr << "invalid semaphore set!" << std::endl; exit(-1);}
-        if (tag[tagm] != SemBnd) return dflt;
-        return semaphore[tagm++];
-    }
-    bool push(Bind i, BaseState *buf, Req req, BindEnum typ, SmartState log) {
-        log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
+    bool push(Bind i, BaseState *buf, Req req, SmartState log) {
+        log << "push " << debug << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
         if (!buf->push(psav[i],rsav[i],wsav[i],req,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf)
         {std::cerr << "invalid rinc bind!" << std::endl; exit(-1);}
-        if (ntag >= StackState::comnds)
-        {slog.clr(); std::cerr << "invalid rinc tag! " << ntag << std::endl; exit(-1);}
         bind[i] = buf;
         psav[i] += 1;
-        tag[ntag] = typ;
-        ntag += 1;
         return true;
     }
     void done(Bind i, SmartState log) {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
-        log << "done " << debug << " " << bind[i]->debug << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << " lock:" << lock << std::endl;
+        log << "done " << debug << " " << bind[i]->debug <<
+        " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << " lock:" << lock << std::endl;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
-        if (lock == 0) {ntag = 0; tagn = 0; tagm = 0; safe.wait(); excl = false; safe.post();}
+        if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
     void done(Rsp rsp, SmartState log) {
         for (Iter i(rsp); i(); ++i) {
@@ -910,11 +877,75 @@ void BaseState::unlock(SmartState log) {
     if (lock) lock->done(resp[rspn],log);
     if (rspn < nrsp) rspn += 1;
     if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
+    // TODO call sync->done(log);
 }
 BaseState *BaseState::bnd(Bind typ) {
     if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
     return lock->get(typ);
 }
+
+enum SyncEnum {
+    FenSyn,
+    SemSyn,
+    SyncEnums
+};
+struct SyncState : public BaseState {
+    bool excl;
+    VkFence fence[StackState::comnds];
+    VkSemaphore semaphore[StackState::comnds];
+    SyncEnum tag[StackState::comnds];
+    int ntag, tagn, tagm;
+    SyncState() :
+        BaseState("SyncState",StackState::self),
+        excl(false), ntag(0), tagn(0), tagm(0) {
+    }
+    SyncState *getSync() override {
+        safe.wait();
+        if (excl) {safe.post(); return 0;}
+        excl = true;
+        if (lock != 0) {std::cerr << "invalid sync lock! " << debug << std::endl; exit(-1);}
+        safe.post();
+        return this;
+    }
+    VkFence getf(VkFence dflt = VK_NULL_HANDLE) {
+        if (tagn < 0 || tagn >= ntag)
+        {std::cerr << "invalid fence get!" << std::endl; exit(-1);}
+        if (tag[tagn] != FenSyn) return dflt;
+        return fence[tagn++];
+    }
+    VkFence setf(VkFence dflt = VK_NULL_HANDLE) {
+        if (tagm < 0 || tagm >= ntag)
+        {std::cerr << "invalid fence set!" << std::endl; exit(-1);}
+        if (tag[tagm] != FenSyn) return dflt;
+        return fence[tagm++];
+    }
+    VkSemaphore gets(VkSemaphore dflt = VK_NULL_HANDLE) {
+        if (tagn < 0 || tagn >= ntag)
+        {std::cerr << "invalid semaphore get!" << std::endl; exit(-1);}
+        if (tag[tagn] != SemSyn) return dflt;
+        return semaphore[tagn++];
+    }
+    VkSemaphore sets(VkSemaphore dflt = VK_NULL_HANDLE) {
+        if (tagm < 0 || tagm >= ntag)
+        {std::cerr << "invalid semaphore set!" << std::endl; exit(-1);}
+        if (tag[tagm] != SemSyn) return dflt;
+        return semaphore[tagm++];
+    }
+    void push(SyncEnum typ, SmartState log) {
+        log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
+        if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
+        if (ntag >= StackState::comnds)
+        {slog.clr(); std::cerr << "invalid push tag! " << ntag << std::endl; exit(-1);}
+        tag[ntag] = typ;
+        ntag += 1;
+    }
+    void done(SmartState log) {
+        if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
+        log << "done " << debug << " " << std::endl;
+        ntag = 0; tagn = 0; tagm = 0;
+        safe.wait(); excl = false; safe.post();
+    }
+};
 
 struct Push {
     SmartState log;
@@ -997,8 +1028,8 @@ int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 struct EnumState {
-    Bind key;
-    StackState *val;
+    Bind key = Binds;
+    StackState *val = 0;
 };
 enum CmdEnum {
     DerCmd, // push req to current, set bind, push to thread, and advance
@@ -1012,14 +1043,16 @@ enum CmdEnum {
     PEnqCmd, // call function when free if pass
     FEnqCmd, // call function when free if fail
     GoonCmd, // retry if fail
+    CmdEnums
 };
 struct Cmd {
-    CmdEnum tag; Rsp rsp; Req req; int idx; Center *ptr; int sub; void (*fnc)(Center*,int);
+    CmdEnum tag = CmdEnums; Rsp rsp; Req req; int idx = 0; SyncEnum syn = SyncEnums;
+    Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
 };
 struct Fnc {
-    bool pnow; void (*pass)(Center*,int);
-    bool fnow; void (*fail)(Center*,int);
-    bool goon;
+    bool pnow = false; void (*pass)(Center*,int) = 0;
+    bool fnow = false; void (*fail)(Center*,int) = 0;
+    bool goon = false;
 };
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
@@ -1028,6 +1061,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     SizeState max[BindLocs];
     ReqEnum req[BindLocs];
     CmdEnum tag[BindLocs];
+    SyncEnum syn[BindLocs];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
         std::cout << "CopyState" << std::endl;
@@ -1082,12 +1116,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
+        // TODO call getSync() for sync
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(bnd,dst(bnd),cmd[i].req,BindEnums,log)) lim = i;} else {
+            if (!bind->push(bnd,dst(bnd),cmd[i].req,log)) lim = i;} else {
             if (!dst(bnd)->push(cmd[i].req,log)) lim = i;}
+            // TODO push cmd[i].syn to sync
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
@@ -1124,6 +1160,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->done(bnd,log); dst(bnd)->done(log);
+            // TODO call sync->done(log)
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
         // clean up
@@ -1147,47 +1184,47 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindConst): limit = Bindit__Bind__Int(drw.bnd);}
         if (drw.siz != limit) {std::cerr << "limit check failed!" << std::endl; exit(-1);}
         for (int j = 0; location(drw,j) != BindLocs; j++) {
-        BindLoc loc = location(drw,j); Bind bnd = depender(drw,loc); CmdEnum tag; Rsp rsp; Req req; int idx;
+        BindLoc loc = location(drw,j); Bind bnd = depender(drw,loc); CmdEnum tag; Rsp rsp; Req req; SyncEnum syn; int idx;
         switch (drw.adv) {default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
         break; case (MicroAdv): if (count+1 >= limit) {
             std::cerr << "invalid MicroAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
             rsp = Rsp{drw.drw,Memorys,bnd,loc}; req = Req{LockReq,0,drw.arg[count++],drw.arg[count++]};
-            tag = DerCmd; idx = 0;
+            tag = DerCmd; syn = SyncEnums; idx = 0;
         break; case (SubmicAdv): if (count >= limit) {
             std::cerr << "invalid SubmicAdv limit!" << std::endl; exit(-1);}
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])};
-            tag = IDerCmd; idx = drw.arg[count++];
+            tag = IDerCmd; syn = SyncEnums; idx = drw.arg[count++];
         break; case (SubextAdv): if (count+2 >= limit) {
             std::cerr << "invalid SubextAdv limit!" << std::endl; exit(-1);}
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,
             SizeState(VkExtent2D{(uint32_t)drw.arg[count++],(uint32_t)drw.arg[count++]})};
-            tag = IDerCmd; idx = drw.arg[count++];
+            tag = IDerCmd; syn = SyncEnums; idx = drw.arg[count++];
         break; case (BufmicAdv): if (count >= limit) {
             std::cerr << "invalid BufmicAdv limit! " << count << " " << limit << " " << bnd << std::endl; exit(-1);}
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState((Micro)drw.arg[count++])};
-            tag = DerCmd; idx = 0;
+            tag = DerCmd; syn = SyncEnums; idx = 0;
         break; case (BufnotAdv):
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(FalseExt)};
-            tag = DerCmd; idx = 0;
+            tag = DerCmd; syn = SyncEnums; idx = 0;
         break; case (PresizAdv): if (count+1 >= limit) {
             std::cerr << "invalid PresizAdv limit!" << std::endl; exit(-1);}
             rsp = Rsp{Micros,Memorys,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])};
-            tag = PDerCmd; idx = 0;
+            tag = PDerCmd; syn = SyncEnums; idx = 0;
         break; case (PrememAdv): if (count+1 >= limit) {
             std::cerr << "invalid PrememAdv limit!" << std::endl; exit(-1);}
             rsp = Rsp{Micros,drw.mem,bnd,loc}; req = Req{SizeReq,0,0,0,SizeState(drw.arg[count++],drw.arg[count++])};
-            tag = PDerCmd; idx = 0;}
-        cmd<<Cmd{tag,rsp,req,idx};}
+            tag = PDerCmd; syn = SyncEnums; idx = 0;}
+        cmd<<Cmd{tag,rsp,req,idx,syn};}
         for (int j = 0; location(drw,j) != BindLocs; j++) {
         BindLoc loc = location(drw,j);
         for (Iter i(drw,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) {if (count >= limit) {std::cerr << "invalid limit check!" << std::endl; exit(-1);}
-        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++]};}
+        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++],SyncEnums};}
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
         Rsp rsp{Micros,Memorys,Binds,BindLocs}; Req req{};
-        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),rsp,req,0,ptr,sub,fnc.pass};
-        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),rsp,req,0,ptr,sub,fnc.fail};
+        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),rsp,req,0,SyncEnums,ptr,sub,fnc.pass};
+        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),rsp,req,0,SyncEnums,ptr,sub,fnc.fail};
         if (fnc.goon) cmd<<Cmd{GoonCmd,rsp};
         push(cmd,log);
     }
@@ -1197,7 +1234,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         int mod = src(bnd)->bufsiz(); void *ptr = 0; int idx = center->idx*mod; int siz = center->siz*mod; int sub = 0;
-        tag[MiddleLoc] = PDerCmd; req[MiddleLoc] = BothReq; max[MiddleLoc] = SizeState(0,center->siz*mod);
+        tag[MiddleLoc] = PDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SyncEnums;
+        max[MiddleLoc] = SizeState(0,center->siz*mod);
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
         break; case (Bringupz): ptr = (void*)center->ver;
@@ -1210,11 +1248,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = DualReq; max[MiddleLoc] = SizeState();
         tag[AfterLoc] = IDerCmd; req[AfterLoc] = DualReq;
         max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
-        tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq;
+        tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq; syn[ResizeLoc] = SyncEnums;
         max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
-        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; max[BeforeLoc] = max[ResizeLoc];
-        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; max[MiddleLoc] = max[ResizeLoc];
-        tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; max[AfterLoc] = max[ResizeLoc];
+        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; syn[BeforeLoc] = SyncEnums; max[BeforeLoc] = max[ResizeLoc];
+        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SyncEnums; max[MiddleLoc] = max[ResizeLoc];
+        tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; syn[AfterLoc] = SyncEnums; max[AfterLoc] = max[ResizeLoc];
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1240,13 +1278,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
         if (loc == BindLocs) break;
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
-        cmd<<Cmd{tag[loc],Rsp{Micros,center->mem,bnd,loc},Req{req[loc],ptr,idx,siz,max[loc]},sub};
+        cmd<<Cmd{tag[loc],Rsp{Micros,center->mem,bnd,loc},Req{req[loc],ptr,idx,siz,max[loc]},sub,syn[loc]};
         for (Iter i(center->mem,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},sub};
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
-        if (k == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.pass};
-        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,center,sub,fnc.fail};
+        if (k == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,SyncEnums,center,sub,fnc.pass};
+        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,SyncEnums,center,sub,fnc.fail};
         if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};}
         push(cmd,log);}
     }
