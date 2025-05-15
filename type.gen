@@ -69,6 +69,7 @@ Bind = { -- per variation of BaseState
 	"PresentBnd",
 	"DrawBnd",
 	"BindBnd",
+	"SyncBnd",
 }
 BindTyp = {
 	"StorageTyp",

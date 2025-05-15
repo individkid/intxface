@@ -457,6 +457,7 @@ struct BaseState {
     // indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
     BindState *lock;
+    SyncState *sync;
     Rsp resp[StackState::reqsts];
     Req rqst[StackState::reqsts];
     int nrsp, rspn, nreq, reqn;
@@ -504,7 +505,7 @@ struct BaseState {
     bool push(Req req, SmartState log) {
         return push(0,0,0,req,log);
     }
-    void push(Rsp rsp, BindState *ptr, SmartState log) {
+    void push(Rsp rsp, BindState *ptr, SyncState *qtr, SmartState log) {
         // save info for use in thread
         safe.wait();
         if (state != BothBase && state != DualBase &&
@@ -514,7 +515,7 @@ struct BaseState {
         if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
             {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
         lock = ptr; resp[nrsp] = rsp; nrsp += 1;
-        // TODO sync = qtr;
+        sync = qtr;
     }
     void done(SmartState log) {
         // unreserve after done in thread or upon error
@@ -872,13 +873,6 @@ struct BindState : public BaseState {
         decr(i,true,log);
     }
 };
-void BaseState::unlock(SmartState log) {
-    if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
-    if (lock) lock->done(resp[rspn],log);
-    if (rspn < nrsp) rspn += 1;
-    if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
-    // TODO call sync->done(log);
-}
 BaseState *BaseState::bnd(Bind typ) {
     if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
     return lock->get(typ);
@@ -889,6 +883,7 @@ enum SyncEnum {
     SemSyn,
     SyncEnums
 };
+struct Sync {VkFence fence; VkSemaphore semaphore;};
 struct SyncState : public BaseState {
     bool excl;
     VkFence fence[StackState::comnds];
@@ -907,29 +902,22 @@ struct SyncState : public BaseState {
         safe.post();
         return this;
     }
-    VkFence getf(VkFence dflt = VK_NULL_HANDLE) {
-        if (tagn < 0 || tagn >= ntag)
-        {std::cerr << "invalid fence get!" << std::endl; exit(-1);}
-        if (tag[tagn] != FenSyn) return dflt;
-        return fence[tagn++];
+    Sync ret(int tmp) {
+        if (tmp < 0 || tmp >= ntag)
+        {std::cerr << "invalid sync ntag!" << std::endl; exit(-1);}
+        VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
+        switch (tag[tmp]) {
+        default: {std::cerr << "invalid sync tag!" << std::endl; exit(-1);}
+        break; case(FenSyn): fen = fence[tmp];
+        break; case(SemSyn): sem = semaphore[tmp];}
+        return Sync{fen,sem};
     }
-    VkFence setf(VkFence dflt = VK_NULL_HANDLE) {
-        if (tagm < 0 || tagm >= ntag)
-        {std::cerr << "invalid fence set!" << std::endl; exit(-1);}
-        if (tag[tagm] != FenSyn) return dflt;
-        return fence[tagm++];
+    Sync set() {
+        return ret(tagm++);
     }
-    VkSemaphore gets(VkSemaphore dflt = VK_NULL_HANDLE) {
-        if (tagn < 0 || tagn >= ntag)
-        {std::cerr << "invalid semaphore get!" << std::endl; exit(-1);}
-        if (tag[tagn] != SemSyn) return dflt;
-        return semaphore[tagn++];
-    }
-    VkSemaphore sets(VkSemaphore dflt = VK_NULL_HANDLE) {
-        if (tagm < 0 || tagm >= ntag)
-        {std::cerr << "invalid semaphore set!" << std::endl; exit(-1);}
-        if (tag[tagm] != SemSyn) return dflt;
-        return semaphore[tagm++];
+    Sync get() {
+        if (tagn >= tagm) {std::cerr << "invalid sync get!" << std::endl; exit(-1);}
+        return ret(tagn++);
     }
     void push(SyncEnum typ, SmartState log) {
         log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
@@ -942,10 +930,23 @@ struct SyncState : public BaseState {
     void done(SmartState log) {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         log << "done " << debug << " " << std::endl;
-        ntag = 0; tagn = 0; tagm = 0;
+        if (tagn == ntag && tagm == ntag) {ntag = 0; tagn = 0; tagm = 0;}
         safe.wait(); excl = false; safe.post();
     }
+    void done(SyncEnum typ, SmartState log) {
+        log << "decr " << debug << " ntag:" << ntag << " tagn:" << tagn << " tagm:" << tagm << std::endl;
+        if (!excl) {std::cerr << "invalid excl done!" << std::endl; exit(-1);}
+        if (typ != tag[tagn] || typ != tag[tagm]) {std::cerr << "invalid set typ!" << std::endl; exit(-1);}
+        set(); get(); done(log);
+    }
 };
+void BaseState::unlock(SmartState log) {
+    if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
+    if (lock) lock->done(resp[rspn],log);
+    if (rspn < nrsp) rspn += 1;
+    if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
+    if (sync) sync->done(log);
+}
 
 struct Push {
     SmartState log;
@@ -1116,14 +1117,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
-        // TODO call getSync() for sync
+        SyncState *sync = 0; // TODO if (lim == num) sync = stack[SyncBnd]->getSync();
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
             if (!bind->push(bnd,dst(bnd),cmd[i].req,log)) lim = i;} else {
             if (!dst(bnd)->push(cmd[i].req,log)) lim = i;}
-            // TODO push cmd[i].syn to sync
+            if (sync) sync->push(cmd[i].syn,log);
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
@@ -1135,7 +1136,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // prepare buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
-            break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd)->push(cmd[i].rsp,bind,log);}}
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
+            dst(bnd)->push(cmd[i].rsp,bind,sync,log);}}
         // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
@@ -1153,14 +1155,16 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
             break; case(PEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});}}
         if (bind) stack[BindBnd]->advance();
+        if (sync) stack[SyncBnd]->advance();
         } else {
         if (lim == num) std::cerr << "exhausted circle" << std::endl;
         // release reserved
         for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            if (bind) bind->done(bnd,log); dst(bnd)->done(log);
-            // TODO call sync->done(log)
+            if (bind) bind->done(bnd,log);
+            if (sync) sync->done(cmd[i].syn,log);
+            dst(bnd)->done(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
         // clean up
@@ -1834,7 +1838,7 @@ struct LayoutState : public BaseState {
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (nxt()); else vkResetFences(device, 1, &fence);
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            // TODO use sets and setf instead
+            // TODO use sync->set() and sync->get() instead
             (lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
