@@ -466,7 +466,7 @@ struct BaseState {
     BaseState(const char *name, StackState *ptr) :
         item(ptr), next(0), last(0),
         safe(1), state(InitBase),
-        plock(0), rlock(0), wlock(0), lock(0),
+        plock(0), rlock(0), wlock(0), lock(0), sync(0),
         nrsp(0), rspn(0), nreq(0), reqn(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
@@ -882,6 +882,7 @@ enum SyncEnum {
 };
 struct Sync {VkFence fence; VkSemaphore semaphore;};
 struct SyncState : public BaseState {
+    const VkDevice device;
     bool excl;
     VkFence fence[StackState::comnds];
     VkSemaphore semaphore[StackState::comnds];
@@ -889,7 +890,17 @@ struct SyncState : public BaseState {
     int ntag, tagn;
     SyncState() :
         BaseState("SyncState",StackState::self),
+        device(StackState::device),
         excl(false), ntag(0), tagn(0) {
+        for (int i = 0; i < StackState::comnds; i++) {
+        fence[i] = VK_NULL_HANDLE;
+        semaphore[i] = VK_NULL_HANDLE;
+        tag[i] = SyncEnums;}
+        int base = 0; int size = StackState::comnds;
+        setre(SizeState(base,size),SmartState());
+    }
+    ~SyncState() {
+        reset(SmartState());
     }
     SyncState *getSync() override {
         safe.wait();
@@ -919,7 +930,7 @@ struct SyncState : public BaseState {
     void push(SyncEnum typ, SmartState log) {
         log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        if (ntag >= StackState::comnds)
+        if (ntag >= size.size)
         {slog.clr(); std::cerr << "invalid push tag! " << ntag << std::endl; exit(-1);}
         tag[ntag] = typ;
         ntag += 1;
@@ -930,6 +941,26 @@ struct SyncState : public BaseState {
         tagn += 1;
         if (tagn == ntag) {ntag = 0; tagn = 0;
         safe.wait(); excl = false; safe.post();}
+    }
+    void resize(SmartState log) override {
+        if (size.size > StackState::comnds)
+        {std::cerr << "invalid sync resize!" << std::endl; exit(-1);}
+        for (int i = 0; i < size.size; i++) {
+        fence[i] = createFence(device);
+        semaphore[i] = createSemaphore(device);}
+    }
+    void unsize(SmartState log) override {
+        for (int i = 0; i < size.size; i++) {
+        vkWaitForFences(device, 1, &fence[i], VK_TRUE, UINT64_MAX);
+        vkDestroySemaphore(device, semaphore[i], nullptr);
+        vkDestroyFence(device, fence[i], nullptr);}
+    }
+    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+        log << "setup " << debug << std::endl;
+        return VK_NULL_HANDLE;
+    }
+    void upset(SmartState log) override {
+        log << "upset " << debug << std::endl;
     }
 };
 void BaseState::unlock(SmartState log) {
@@ -1172,6 +1203,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(GoonCmd): goon = true;}}}}
     }
     void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    // TODO eliminate Draw; list Cmd as Command in Center instead
         HeapState<Cmd> cmd(StackState::comnds); int count = 0; int limit = 0;
         switch (AdvConst__Advance__Constant(drw.adv)) {
         default: {std::cerr << "invalid push adv!" << std::endl; exit(-1);}
