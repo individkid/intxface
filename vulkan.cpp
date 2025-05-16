@@ -502,9 +502,6 @@ struct BaseState {
         safe.post();
         return true;
     }
-    bool push(Req req, SmartState log) {
-        return push(0,0,0,req,log);
-    }
     void push(Rsp rsp, BindState *ptr, SyncState *qtr, SmartState log) {
         // save info for use in thread
         safe.wait();
@@ -538,11 +535,11 @@ struct BaseState {
         safe.post();
     }
     void setre(SizeState siz, SmartState log) {
-        push(Req{SizeReq,0,0,0,siz,false},log);
+        push(0,0,0,Req{SizeReq,0,0,0,siz,false},log);
         baseres(log); baseups(log);
     }
     void reset(SmartState log) {
-        push(Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
+        push(0,0,0,Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
         baseres(log);
     }
     void recall(SizeState &size, SmartState log) {
@@ -889,10 +886,10 @@ struct SyncState : public BaseState {
     VkFence fence[StackState::comnds];
     VkSemaphore semaphore[StackState::comnds];
     SyncEnum tag[StackState::comnds];
-    int ntag, tagn, tagm;
+    int ntag, tagn;
     SyncState() :
         BaseState("SyncState",StackState::self),
-        excl(false), ntag(0), tagn(0), tagm(0) {
+        excl(false), ntag(0), tagn(0) {
     }
     SyncState *getSync() override {
         safe.wait();
@@ -913,11 +910,11 @@ struct SyncState : public BaseState {
         return Sync{fen,sem};
     }
     Sync set() {
-        return ret(tagm++);
+        return ret(tagn);
     }
     Sync get() {
-        if (tagn >= tagm) {std::cerr << "invalid sync get!" << std::endl; exit(-1);}
-        return ret(tagn++);
+        if (tagn == 0) return Sync{VK_NULL_HANDLE,VK_NULL_HANDLE};
+        return ret(tagn-1);
     }
     void push(SyncEnum typ, SmartState log) {
         log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
@@ -928,16 +925,11 @@ struct SyncState : public BaseState {
         ntag += 1;
     }
     void done(SmartState log) {
-        if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
+        if (!excl) {std::cerr << "invalid excl unsync!" << std::endl; exit(-1);}
         log << "done " << debug << " " << std::endl;
-        if (tagn == ntag && tagm == ntag) {ntag = 0; tagn = 0; tagm = 0;}
-        safe.wait(); excl = false; safe.post();
-    }
-    void done(SyncEnum typ, SmartState log) {
-        log << "decr " << debug << " ntag:" << ntag << " tagn:" << tagn << " tagm:" << tagm << std::endl;
-        if (!excl) {std::cerr << "invalid excl done!" << std::endl; exit(-1);}
-        if (typ != tag[tagn] || typ != tag[tagm]) {std::cerr << "invalid set typ!" << std::endl; exit(-1);}
-        set(); get(); done(log);
+        tagn += 1;
+        if (tagn == ntag) {ntag = 0; tagn = 0;
+        safe.wait(); excl = false; safe.post();}
     }
 };
 void BaseState::unlock(SmartState log) {
@@ -1117,13 +1109,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
-        SyncState *sync = 0; // TODO if (lim == num) sync = stack[SyncBnd]->getSync();
+        SyncState *sync = 0; if (lim == num) sync = stack[SyncBnd]->buffer()->getSync();
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
             if (!bind->push(bnd,dst(bnd),cmd[i].req,log)) lim = i;} else {
-            if (!dst(bnd)->push(cmd[i].req,log)) lim = i;}
+            if (!dst(bnd)->push(0,0,0,cmd[i].req,log)) lim = i;}
             if (sync) sync->push(cmd[i].syn,log);
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
@@ -1163,7 +1155,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->done(bnd,log);
-            if (sync) sync->done(cmd[i].syn,log);
+            if (sync) sync->done(log);
             dst(bnd)->done(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
@@ -1838,7 +1830,7 @@ struct LayoutState : public BaseState {
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
         if (nxt()); else vkResetFences(device, 1, &fence);
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            // TODO use sync->set() and sync->get() instead
+            // TODO use sync->get() instead
             (lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
             (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
@@ -2125,6 +2117,7 @@ struct MainState {
     ArrayState<PresentState,PresentBnd,StackState::frames> presentState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
+    ArrayState<SyncState,BindBnd,StackState::frames> syncState;
     EnumState enumState[Binds+1];
     ThreadState threadState;
     CopyState copyState;
@@ -2169,6 +2162,7 @@ struct MainState {
             {PresentBnd,&presentState},
             {DrawBnd,&drawState},
             {BindBnd,&bindState},
+            {SyncBnd,&syncState},
             {Binds,0}},
         threadState(logicalState.device,&copyState),
         copyState(&threadState,enumState),
