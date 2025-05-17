@@ -511,8 +511,7 @@ struct BaseState {
         safe.post();
         if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
             {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
-        lock = ptr; resp[nrsp] = rsp; nrsp += 1;
-        sync = qtr;
+        lock = ptr; sync = qtr; resp[nrsp] = rsp; nrsp += 1;
     }
     void done(SmartState log) {
         // unreserve after done in thread or upon error
@@ -542,6 +541,8 @@ struct BaseState {
         push(0,0,0,Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
         baseres(log);
     }
+    void unlock(SmartState log);
+    void unsync(SmartState log);
     void recall(SizeState &size, SmartState log) {
         if (size == rqst[reqn].max); else {
         if (size == SizeState(InitExt)); else {
@@ -569,30 +570,49 @@ struct BaseState {
         recall(form,log);
         return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
     }
+    VkFence basesiz(SmartState log) {
+        // resize and setup
+        VkFence ret = sizeup(log);
+        unsync(log);
+        return ret;
+    }
+    VkFence basefor(SmartState log) {
+        // reform and setup
+        VkFence ret = formup(log);
+        unsync(log);
+        return ret;
+    }
     void baseres(SmartState log) {
+        // resize only
         safe.wait();
         if (state != SizeBase) {std::cerr << "baseres invalid state! " << state <<
             "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
         safe.post();
         recall(size,log);
+        unsync(log);
     }
     void baseref(SmartState log) {
+        // reform only
         safe.wait();
         if (state != FormBase) {std::cerr << "baseref invalid state!" <<
             std::endl; exit(-1);}
         safe.post();
         recall(form,log);
+        unsync(log);
     }
     VkFence basesup(SmartState log) {
+        // setup only
         safe.wait();
         if (state != LockBase) {std::cerr << "basesup invalid state! " <<
             debug << " " << state << std::endl; exit(-1);}
         safe.post();
         state = NextBase;
-        return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
+        VkFence ret = setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
+        unsync(log);
+        return ret;
     }
-    void unlock(SmartState log);
     void baseups(SmartState log) {
+        // after fence triggered
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" <<
             std::endl; exit(-1);}
@@ -874,13 +894,20 @@ BaseState *BaseState::bnd(Bind typ) {
     if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
     return lock->get(typ);
 }
+void BaseState::unlock(SmartState log) {
+    log << "unlock " << debug << std::endl;
+    if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
+    if (lock) lock->done(resp[rspn],log);
+    if (rspn < nrsp) rspn += 1;
+    if (rspn == nrsp) {lock = 0; sync = 0; rspn = 0; nrsp = 0;}
+}
 
 enum SyncEnum {
     FenSyn,
     SemSyn,
     SyncEnums
 };
-struct Sync {VkFence fence; VkSemaphore semaphore;};
+struct Sync {VkFence fen; VkSemaphore sem;};
 struct SyncState : public BaseState {
     const VkDevice device;
     bool excl;
@@ -910,22 +937,24 @@ struct SyncState : public BaseState {
         safe.post();
         return this;
     }
-    Sync ret(int tmp) {
+    Sync ret(int tmp, SmartState log) {
         if (tmp < 0 || tmp >= ntag)
         {std::cerr << "invalid sync ntag!" << std::endl; exit(-1);}
         VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
         switch (tag[tmp]) {
-        default: {std::cerr << "invalid sync tag!" << std::endl; exit(-1);}
+        default: {std::cerr << "invalid sync tag! " << tmp << "/" << tagn << "/" << ntag << std::endl; slog.clr(); exit(-1);}
         break; case(FenSyn): fen = fence[tmp];
         break; case(SemSyn): sem = semaphore[tmp];}
         return Sync{fen,sem};
     }
-    Sync set() {
-        return ret(tagn);
+    Sync set(SmartState log) {
+        log << "set " << tagn << "/" << ntag << std::endl;
+        return ret(tagn,log);
     }
-    Sync get() {
+    Sync get(SmartState log) {
+        log << "get " << tagn << "/" << ntag << std::endl;
         if (tagn == 0) return Sync{VK_NULL_HANDLE,VK_NULL_HANDLE};
-        return ret(tagn-1);
+        return ret(tagn-1,log);
     }
     void push(SyncEnum typ, SmartState log) {
         log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
@@ -936,6 +965,7 @@ struct SyncState : public BaseState {
         ntag += 1;
     }
     void done(SmartState log) {
+        log << "done " << debug << " " << tagn << "/" << ntag << std::endl;
         if (!excl) {std::cerr << "invalid excl unsync!" << std::endl; exit(-1);}
         log << "done " << debug << " " << std::endl;
         tagn += 1;
@@ -963,11 +993,8 @@ struct SyncState : public BaseState {
         log << "upset " << debug << std::endl;
     }
 };
-void BaseState::unlock(SmartState log) {
-    if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
-    if (lock) lock->done(resp[rspn],log);
-    if (rspn < nrsp) rspn += 1;
-    if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
+void BaseState::unsync(SmartState log) {
+    log << "unsync " << debug << std::endl;
     if (sync) sync->done(log);
 }
 
@@ -1014,8 +1041,8 @@ struct ThreadState : public DoneState {
         break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
         break; case(FormBase): push.fence = VK_NULL_HANDLE; push.base->baseref(push.log);
         break; case(LockBase): push.fence = push.base->basesup(push.log);
-        break; case(BothBase): push.fence = push.base->sizeup(push.log);
-        break; case(DualBase): push.fence = push.base->formup(push.log);}
+        break; case(BothBase): push.fence = push.base->basesiz(push.log);
+        break; case(DualBase): push.fence = push.base->basefor(push.log);}
         after.push_back(push);}
         if (!after.empty()) break;
         safe.wait();
@@ -1262,7 +1289,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         int mod = src(bnd)->bufsiz(); void *ptr = 0; int idx = center->idx*mod; int siz = center->siz*mod; int sub = 0;
-        tag[MiddleLoc] = PDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SyncEnums;
+        tag[MiddleLoc] = PDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = FenSyn;
         max[MiddleLoc] = SizeState(0,center->siz*mod);
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): ptr = (void*)center->ind;
@@ -1278,9 +1305,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         max[AfterLoc] = SizeState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
         tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq; syn[ResizeLoc] = SyncEnums;
         max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
-        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; syn[BeforeLoc] = SyncEnums; max[BeforeLoc] = max[ResizeLoc];
-        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SyncEnums; max[MiddleLoc] = max[ResizeLoc];
-        tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; syn[AfterLoc] = SyncEnums; max[AfterLoc] = max[ResizeLoc];
+        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; syn[BeforeLoc] = SemSyn; max[BeforeLoc] = max[ResizeLoc];
+        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SemSyn; max[MiddleLoc] = max[ResizeLoc];
+        tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; syn[AfterLoc] = FenSyn; max[AfterLoc] = max[ResizeLoc];
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1806,7 +1833,7 @@ struct ImageState : public BaseState {
         // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage and return fence
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
         copyTextureImage(device, graphics, memProperties, get(ImageBnd)->getImage(), texWidth, texHeight,
-            (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE), after, stagingBuffer, commandBuffer);}
+            /*(lst() ? lst()->getSemaphore() : VK_NULL_HANDLE)*/sync->get(log).sem, after, stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
         return (nxt() ? VK_NULL_HANDLE : fence);
     }
@@ -1864,7 +1891,7 @@ struct LayoutState : public BaseState {
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
             // TODO use sync->get() instead
             (lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
-            (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
+            /*(nxt()?after:VK_NULL_HANDLE)*/sync->set(log).sem, (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
         return (nxt() ? VK_NULL_HANDLE : fence);
