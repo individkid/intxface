@@ -838,7 +838,7 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
-	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
+	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"}, -- TODO change to Command and use idx for Fnc index
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},

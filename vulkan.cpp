@@ -673,9 +673,6 @@ struct BaseState {
     Sync lst(Sync val) {
         Sync tmp = syn0; syn0 = val; return tmp;
     }
-    BaseState *nxt() {
-        return next;
-    }
     BaseState *lst() {
         return last;
     }
@@ -862,6 +859,12 @@ struct BindState : public BaseState {
         else if (i.isie()) rdec(i.bnd,log);
         else if (i.ised()) wdec(i.bnd,log);}
         done(rsp.bnd,log);
+    }
+    void done(SmartState log) {
+        safe.wait();
+        if (!excl || lock != 0) {std::cerr << "invalid push done!" << std::endl; exit(-1);}
+        excl = false;
+        safe.post();
     }
     bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
@@ -1114,13 +1117,13 @@ enum CmdEnum {
 };
 struct Cmd {
     CmdEnum tag = CmdEnums; Rsp rsp; Req req; int idx = 0; SyncEnum syn = SyncEnums;
-    Center *ptr = 0; int sub = 0; void (*fnc)(Center*,int) = 0;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
     bool fnow = false; void (*fail)(Center*,int) = 0;
     bool goon = false;
 };
+void vulkanForce(Center *ptr, int sub);
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Binds];
@@ -1166,7 +1169,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindConst): bnd = Binder__Bind__BindLoc__Bind(drw.bnd)(loc);}
         return bnd;
     }
-    void push(HeapState<Cmd> &cmd, SmartState log) {
+    void push(HeapState<Cmd> &cmd, Fnc fnc, Center *ptr, int sub, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = cmd.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
@@ -1183,7 +1186,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
-        SyncState *sync = 0; if (lim == num) sync = stack[SyncBnd]->buffer()->getSync();
+        SyncState *sync = 0; if (count > 1 && lim == num) sync = stack[SyncBnd]->buffer()->getSync();
+        if (count > 1 && lim == num && sync == 0) {lim = -1; bind->done(log); bind = 0;}
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
@@ -1216,10 +1220,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
             break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
         // notify pass
-        for (int i = 0; i < num; i++) {
-            switch (cmd[i].tag) {default:
-            break; case(PNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
-            break; case(PEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});}}
+        if (fnc.pnow && fnc.pass) fnc.pass(ptr,sub);
+        else if (fnc.pass) thread->push({log,0,ptr,sub,fnc.pass});
         if (bind) stack[BindBnd]->advance();
         if (sync) stack[SyncBnd]->advance();
         } else {
@@ -1239,11 +1241,35 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
             break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
         // notify fail
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
-            switch (cmd[i].tag) {default:
-            break; case(FNowCmd): cmd[i].fnc(cmd[i].ptr,cmd[i].sub);
-            break; case(FEnqCmd): thread->push({log,0,cmd[i].ptr,cmd[i].sub,cmd[i].fnc});
-            break; case(GoonCmd): goon = true;}}}}
+        if (fnc.fnow && fnc.fail) fnc.fail(ptr,sub);
+        else if (fnc.fail) thread->push({log,0,ptr,sub,fnc.fail});
+        if (fnc.goon) goon = true;}}
+    }
+    void bufnot(Bind bnd, SmartState log) {
+        // push(Draw{.adv=BufnotAdv,.bnd=bnd},0,0,Fnc{true,0,true,vulkanForce,false},log);
+        HeapState<Cmd> cmd(StackState::comnds);
+        cmd << Cmd{DerCmd,Rsp{Micros,Memorys,bnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState(FalseExt)},0,SyncEnums};
+        push(cmd,Fnc{true,0,true,vulkanForce,false},0,0,log);
+    }
+    void bufmic(Bind der, Bind dee, int idx, SmartState log) {
+        // push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.siz=2,.arg=args},0,0,Fnc{},log);
+        HeapState<Cmd> cmd(StackState::comnds);
+        cmd << Cmd{DerCmd,Rsp{Micros,Memorys,der,ResizeLoc},Req{SizeReq,0,0,0,SizeState((Micro)idx)},0,SyncEnums};
+        cmd << Cmd{IRDeeCmd,Rsp{Micros,Memorys,dee,BindLocs},Req{},(Micro)idx};
+        push(cmd,Fnc{},0,0,log);
+    }
+    void bufmic(Bind bnd, int idx, SmartState log) {
+        // push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
+        HeapState<Cmd> cmd(StackState::comnds);
+        cmd << Cmd{DerCmd,Rsp{Micros,Memorys,bnd,ResizeLoc},Req{SizeReq,0,0,0,SizeState((Micro)idx)},0,SyncEnums};
+        push(cmd,Fnc{},0,0,log);
+    }
+    void subext(Bind bnd, int width, int height, int idx, SmartState log) {
+        // {imgs[2] = i; push(Draw{.adv=SubextAdv,.bnd=PierceBnd,.siz=3,.arg=imgs},0,0,Fnc{},SmartState());}
+        HeapState<Cmd> cmd(StackState::comnds);
+        Req req = Req{SizeReq,0,0,0,SizeState(VkExtent2D{(uint32_t)width,(uint32_t)height})};
+        cmd << Cmd{IDerCmd,Rsp{Micros,Memorys,bnd,ResizeLoc},req,idx,SyncEnums};
+        push(cmd,Fnc{},0,0,log);
     }
     void push(Draw drw, Center *ptr, int sub, Fnc fnc, SmartState log) {
     // TODO eliminate Draw; list Cmd as Command in Center instead
@@ -1291,13 +1317,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (Iter i(drw,loc); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) {if (count >= limit) {std::cerr << "invalid limit check!" << std::endl; exit(-1);}
-        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++],SyncEnums};}
+        cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},drw.arg[count++]};}
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
-        Rsp rsp{Micros,Memorys,Binds,BindLocs}; Req req{};
-        if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),rsp,req,0,SyncEnums,ptr,sub,fnc.pass};
-        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),rsp,req,0,SyncEnums,ptr,sub,fnc.fail};
-        if (fnc.goon) cmd<<Cmd{GoonCmd,rsp};
-        push(cmd,log);
+        push(cmd,fnc,ptr,sub,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         int lim = (center->mem == Texturez ? center->siz : 1);
@@ -1354,10 +1376,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs},Req{},sub};
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Micros,Memorys,i.bnd,BindLocs}};}}
-        if (k == lim-1) {if (fnc.pass) cmd<<Cmd{(fnc.pnow?PNowCmd:PEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,SyncEnums,center,sub,fnc.pass};
-        if (fnc.fail) cmd<<Cmd{(fnc.fnow?FNowCmd:FEnqCmd),Rsp{Micros,Memorys,Binds,BindLocs},Req{},0,SyncEnums,center,sub,fnc.fail};
-        if (fnc.goon) cmd<<Cmd{GoonCmd,Rsp{Micros,Memorys,Binds,BindLocs}};}
-        push(cmd,log);}
+        push(cmd,fnc,center,sub,log);}
     }
 };
 
@@ -1388,7 +1407,6 @@ struct TestState : public DoneState {
 void vulkanWake(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
-void vulkanForce(Center *ptr, int sub);
 void TestState::call() {
     slog.onof(0,10000,123,5);
     const std::vector<Vertex> vertices = {
@@ -1408,22 +1426,20 @@ void TestState::call() {
     };
     //
     int xsiz = 800; int ysiz = 600;
-    int args[] = {/*draw index*/(int)MicroTest,/*draw size*/(int)MicroTest};
-    int imgs[] = {/*image width*/100,/*image height*/100,/*image index*/0};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(Draw{.adv=BufnotAdv,.bnd=SwapBnd},0,0,Fnc{true,0,true,vulkanForce,false},SmartState());
+    copy->bufnot(SwapBnd,SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++) // TODO change to BufnotAdv since size comes from AcquireBnd
-    copy->push(Draw{.adv=BufmicAdv,.bnd=DrawBnd,.siz=2,.arg=args},0,0,Fnc{},SmartState());
+    for (int i = 0; i < StackState::frames; i++) copy->bufmic(DrawBnd,PipelineBnd,MicroTest,SmartState{});
+    // TODO change to BufnotAdv since size comes from AcquireBnd
     //
-    for (int i = 0; i < StackState::frames; i++) // TODO change to BufnotAdv since size comes from SwapBnd
-    copy->push(Draw{.adv=BufmicAdv,.bnd=AcquireBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
+    for (int i = 0; i < StackState::frames; i++) copy->bufmic(AcquireBnd,MicroTest,SmartState());
+    // TODO change to BufnotAdv since size comes from SwapBnd
     //
-    for (int i = 0; i < StackState::frames; i++) // TODO change to BufnotAdv since size comes from SwapBnd
-    copy->push(Draw{.adv=BufmicAdv,.bnd=PresentBnd,.siz=1,.arg=args},0,0,Fnc{},SmartState());
+    for (int i = 0; i < StackState::frames; i++) copy->bufmic(PresentBnd,MicroTest,SmartState());
+    // TODO change to BufnotAdv since size comes from SwapBnd
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1441,8 +1457,8 @@ void TestState::call() {
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++) {imgs[2] = i;
-    copy->push(Draw{.adv=SubextAdv,.bnd=PierceBnd,.siz=3,.arg=imgs},0,0,Fnc{},SmartState());}
+    for (int i = 0; i < StackState::frames; i++)
+    copy->subext(PierceBnd,/*image width*/100,/*image height*/100,/*image index*/i,SmartState());
     //
     int sizes[] = {
     /*AcquireBnd idx,siz*/0,0,
@@ -1670,8 +1686,6 @@ struct BufferState : public BaseState {
     VkBuffer buffer;
     VkDeviceMemory memory;
     VkCommandBuffer commandBuffer;
-    // VkFence fence;
-    // VkSemaphore after;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1693,17 +1707,12 @@ struct BufferState : public BaseState {
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
         commandBuffer = createCommandBuffer(device,commandPool);
-        /*fence = createFence(device);
-        after = createSemaphore(device);*/
         nxt(Sync{createFence(device),createSemaphore(device)});
     }
     void unsize(SmartState log) override {
         Sync tmp = nxt(Sync{VK_NULL_HANDLE,VK_NULL_HANDLE});
         vkDestroySemaphore(device, tmp.sem, nullptr);
         vkDestroyFence(device, tmp.fen, nullptr);
-        /*vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-        vkDestroySemaphore(device, after, nullptr);
-        vkDestroyFence(device, fence, nullptr);*/
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
@@ -1720,13 +1729,10 @@ struct BufferState : public BaseState {
         void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy((void*)((char*)data+loc),ptr,siz);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        // vkResetFences(device, 1, &fence);
         VkFence tmp = nxt(log).fen; vkResetFences(device, 1, &tmp);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer,
-        /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen,
-        /*(lst() ? lst()->getSemaphore() : VK_NULL_HANDLE)*/lst(log).sem,
-        /*(nxt() ? after : VK_NULL_HANDLE)*/nxt(log).sem);
-        return /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen;
+        nxt(log).fen,lst(log).sem,nxt(log).sem);
+        return nxt(log).fen;
     }
     void upset(SmartState log) override {
         vkUnmapMemory(device, stagingBufferMemory);
@@ -1835,13 +1841,12 @@ struct ImageState : public BaseState {
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
-        if (/*nxt()*/nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen/*fence*/);}
+        if (nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen);}
         if (bnd() == ImageBnd && form.tag == FormExt) {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
         transitionImageLayout(device, graphics, commandBuffer, get(ImageBnd)->getImage(),
-            /*(lst()?lst()->getSemaphore():VK_NULL_HANDLE)*/lst(log).sem,
-            /*(nxt()?after:VK_NULL_HANDLE)*/nxt(log).sem, /*(nxt()?VK_NULL_HANDLE:fence)*/nxt(log).fen,
+            lst(log).sem,nxt(log).sem,nxt(log).fen,
             VK_FORMAT_R8G8B8A8_SRGB,form.src,form.dst);}
         if (bnd() == TextureBnd && form.tag != FormExt) {
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1854,11 +1859,10 @@ struct ImageState : public BaseState {
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
         // TODO pass nxt(log).fen to copyTextureImage
         copyTextureImage(device, graphics, memProperties, get(ImageBnd)->getImage(), texWidth, texHeight,
-            /*(lst() ? lst()->getSemaphore() : VK_NULL_HANDLE)*/lst(log).sem,
-            /*after*/nxt(log).sem,
+            lst(log).sem,nxt(log).sem,
             stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
-        return /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen;
+        return nxt(log).fen;
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1910,14 +1914,12 @@ struct LayoutState : public BaseState {
     VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        if (/*nxt()*/nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen/*fence*/);}
+        if (nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen);}
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            // TODO use sync->get() instead
-            /*(lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE)*/lst(log).sem,
-            /*(nxt()?after:VK_NULL_HANDLE)*/nxt(log).sem, /*(nxt()?VK_NULL_HANDLE:fence)*/nxt(log).fen, VK_FORMAT_R8G8B8A8_SRGB,
+            lst(log).sem,nxt(log).sem,nxt(log).fen, VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-        return /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen;
+        return nxt(log).fen;
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
