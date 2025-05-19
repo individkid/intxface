@@ -435,6 +435,9 @@ struct Req {
 struct Rsp {
     Micro mic = Micros; Memory mem = Memorys; Bind bnd = Binds; BindLoc loc = BindLocs;
 };
+struct Sync {
+    VkFence fen; VkSemaphore sem;
+};
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
     FreeBase, // ready for use
@@ -460,6 +463,7 @@ struct BaseState {
     SyncState *sync;
     Rsp resp[StackState::reqsts];
     Req rqst[StackState::reqsts];
+    Sync syn0, syn1;
     int nrsp, rspn, nreq, reqn;
     SizeState size, form;
     char debug[64];
@@ -467,6 +471,7 @@ struct BaseState {
         item(ptr), next(0), last(0),
         safe(1), state(InitBase),
         plock(0), rlock(0), wlock(0), lock(0), sync(0),
+        syn0{VK_NULL_HANDLE,VK_NULL_HANDLE}, syn1{VK_NULL_HANDLE,VK_NULL_HANDLE},
         nrsp(0), rspn(0), nreq(0), reqn(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
@@ -660,6 +665,14 @@ struct BaseState {
         return item->buftyp();
     }
     BaseState *bnd(Bind typ);
+    Sync nxt(SmartState log);
+    Sync lst(SmartState log);
+    Sync nxt(Sync val) {
+        Sync tmp = syn1; syn1 = val; return tmp;
+    }
+    Sync lst(Sync val) {
+        Sync tmp = syn0; syn0 = val; return tmp;
+    }
     BaseState *nxt() {
         return next;
     }
@@ -907,7 +920,6 @@ enum SyncEnum {
     SemSyn,
     SyncEnums
 };
-struct Sync {VkFence fen; VkSemaphore sem;};
 struct SyncState : public BaseState {
     const VkDevice device;
     bool excl;
@@ -937,24 +949,20 @@ struct SyncState : public BaseState {
         safe.post();
         return this;
     }
-    Sync ret(int tmp, SmartState log) {
+    Sync ret(Sync syn, int tmp, SmartState log) {
+        if (tmp == -1) return syn;
         if (tmp < 0 || tmp >= ntag)
         {std::cerr << "invalid sync ntag!" << std::endl; exit(-1);}
-        VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
-        switch (tag[tmp]) {
-        default: {std::cerr << "invalid sync tag! " << tmp << "/" << tagn << "/" << ntag << std::endl; slog.clr(); exit(-1);}
-        break; case(FenSyn): fen = fence[tmp];
-        break; case(SemSyn): sem = semaphore[tmp];}
-        return Sync{fen,sem};
+        switch (tag[tmp]) {default:
+        break; case(FenSyn): syn.fen = fence[tmp];
+        break; case(SemSyn): syn.sem = semaphore[tmp];}
+        return syn;
     }
-    Sync set(SmartState log) {
-        log << "set " << tagn << "/" << ntag << std::endl;
-        return ret(tagn,log);
+    Sync set(Sync syn, SmartState log) {
+        return ret(syn,tagn,log);
     }
-    Sync get(SmartState log) {
-        log << "get " << tagn << "/" << ntag << std::endl;
-        if (tagn == 0) return Sync{VK_NULL_HANDLE,VK_NULL_HANDLE};
-        return ret(tagn-1,log);
+    Sync get(Sync syn, SmartState log) {
+        return ret(syn,tagn-1,log);
     }
     void push(SyncEnum typ, SmartState log) {
         log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
@@ -993,6 +1001,14 @@ struct SyncState : public BaseState {
         log << "upset " << debug << std::endl;
     }
 };
+Sync BaseState::nxt(SmartState log) {
+    if (sync) return sync->set(syn1,log);
+    return syn1;
+}
+Sync BaseState::lst(SmartState log) {
+    if (sync) return sync->get(syn0,log);
+    return syn0;
+}
 void BaseState::unsync(SmartState log) {
     log << "unsync " << debug << std::endl;
     if (sync) sync->done(log);
@@ -1654,8 +1670,8 @@ struct BufferState : public BaseState {
     VkBuffer buffer;
     VkDeviceMemory memory;
     VkCommandBuffer commandBuffer;
-    VkFence fence;
-    VkSemaphore after;
+    // VkFence fence;
+    // VkSemaphore after;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1671,19 +1687,23 @@ struct BufferState : public BaseState {
     VkBuffer getBuffer() override {return buffer;}
     VkDeviceMemory getMemory() override {return memory;}
     int getRange() override {return size.size;}
-    VkSemaphore getSemaphore() override {return after;}
+    // VkSemaphore getSemaphore() override {return after;}
     void resize(SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
         commandBuffer = createCommandBuffer(device,commandPool);
-        fence = createFence(device);
-        after = createSemaphore(device);
+        /*fence = createFence(device);
+        after = createSemaphore(device);*/
+        nxt(Sync{createFence(device),createSemaphore(device)});
     }
     void unsize(SmartState log) override {
-        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+        Sync tmp = nxt(Sync{VK_NULL_HANDLE,VK_NULL_HANDLE});
+        vkDestroySemaphore(device, tmp.sem, nullptr);
+        vkDestroyFence(device, tmp.fen, nullptr);
+        /*vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         vkDestroySemaphore(device, after, nullptr);
-        vkDestroyFence(device, fence, nullptr);
+        vkDestroyFence(device, fence, nullptr);*/
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
@@ -1700,12 +1720,13 @@ struct BufferState : public BaseState {
         void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy((void*)((char*)data+loc),ptr,siz);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        vkResetFences(device, 1, &fence);
+        // vkResetFences(device, 1, &fence);
+        VkFence tmp = nxt(log).fen; vkResetFences(device, 1, &tmp);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer,
-        (nxt() ? VK_NULL_HANDLE : fence),
-        (lst() ? lst()->getSemaphore() : VK_NULL_HANDLE),
-        (nxt() ? after : VK_NULL_HANDLE));
-        return (nxt() ? VK_NULL_HANDLE : fence);
+        /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen,
+        /*(lst() ? lst()->getSemaphore() : VK_NULL_HANDLE)*/lst(log).sem,
+        /*(nxt() ? after : VK_NULL_HANDLE)*/nxt(log).sem);
+        return /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen;
     }
     void upset(SmartState log) override {
         vkUnmapMemory(device, stagingBufferMemory);
@@ -1814,13 +1835,13 @@ struct ImageState : public BaseState {
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
-        if (nxt()); else vkResetFences(device, 1, &fence);
+        if (/*nxt()*/nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen/*fence*/);}
         if (bnd() == ImageBnd && form.tag == FormExt) {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
         transitionImageLayout(device, graphics, commandBuffer, get(ImageBnd)->getImage(),
-            (lst()?lst()->getSemaphore():VK_NULL_HANDLE),
-            (nxt()?after:VK_NULL_HANDLE), (nxt()?VK_NULL_HANDLE:fence),
+            /*(lst()?lst()->getSemaphore():VK_NULL_HANDLE)*/lst(log).sem,
+            /*(nxt()?after:VK_NULL_HANDLE)*/nxt(log).sem, /*(nxt()?VK_NULL_HANDLE:fence)*/nxt(log).fen,
             VK_FORMAT_R8G8B8A8_SRGB,form.src,form.dst);}
         if (bnd() == TextureBnd && form.tag != FormExt) {
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1830,12 +1851,14 @@ struct ImageState : public BaseState {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        // TODO pass (nxt()?VK_NULL_HANDLE:fence) to copyTextureImage and return fence
         // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
+        // TODO pass nxt(log).fen to copyTextureImage
         copyTextureImage(device, graphics, memProperties, get(ImageBnd)->getImage(), texWidth, texHeight,
-            /*(lst() ? lst()->getSemaphore() : VK_NULL_HANDLE)*/sync->get(log).sem, after, stagingBuffer, commandBuffer);}
+            /*(lst() ? lst()->getSemaphore() : VK_NULL_HANDLE)*/lst(log).sem,
+            /*after*/nxt(log).sem,
+            stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
-        return (nxt() ? VK_NULL_HANDLE : fence);
+        return /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen;
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -1887,14 +1910,14 @@ struct LayoutState : public BaseState {
     VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
         log << "setup " << debug << std::endl;
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        if (nxt()); else vkResetFences(device, 1, &fence);
+        if (/*nxt()*/nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen/*fence*/);}
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
             // TODO use sync->get() instead
-            (lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE),
-            /*(nxt()?after:VK_NULL_HANDLE)*/sync->set(log).sem, (nxt()?VK_NULL_HANDLE:fence), VK_FORMAT_R8G8B8A8_SRGB,
+            /*(lst()&&bnd()==AfterBnd?lst()->getSemaphore():VK_NULL_HANDLE)*/lst(log).sem,
+            /*(nxt()?after:VK_NULL_HANDLE)*/nxt(log).sem, /*(nxt()?VK_NULL_HANDLE:fence)*/nxt(log).fen, VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-        return (nxt() ? VK_NULL_HANDLE : fence);
+        return /*(nxt() ? VK_NULL_HANDLE : fence)*/nxt(log).fen;
     }
     void upset(SmartState log) override {
         log << "upset " << debug << std::endl;
@@ -2125,7 +2148,7 @@ struct DrawState : public BaseState {
                 framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
             drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
-                framePtr->getSemaphore(),after,fence,VK_NULL_HANDLE);}
+                lst()->getSemaphore(),after,fence,VK_NULL_HANDLE);}
         else {std::cerr << "invalid bind set! " <<
             pipePtr << " " << framePtr << " " << indexPtr << " " << fetchPtr << std::endl; exit(-1);}
         return fence;
