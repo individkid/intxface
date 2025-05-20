@@ -95,15 +95,6 @@ Request = {
     "SizeReq",
     "FormReq",
 }
-Advance = {
-	"MicroAdv", -- kick off shader with given index range
-	"SubmicAdv", -- set micro indexed by micro
-	"SubextAdv", -- set extent indexed by arg
-	"BufmicAdv", -- set micro in current buffer
-	"BufnotAdv", -- set false in current buffer
-	"PresizAdv", -- set base size in next buffer
-	"PrememAdv", -- set base size in next of memory
-}
 Constant = {
 	"MicroConst",
 	"MemoryConst",
@@ -551,15 +542,6 @@ Dependie = { -- indexed rinc
 Depended = { -- winc
 	{"Micro","MicroDebug","BindLoc","BeforeLoc","Int","0","Bind","PierceBnd"},
 }
-AdvConst = { -- so Draw can push Micro Memory or Bind
-	{"Advance","MicroAdv","Constant","MicroConst"},
-	{"Advance","SubmicAdv","Constant","BindConst"},
-	{"Advance","SubextAdv","Constant","BindConst"},
-	{"Advance","BufmicAdv","Constant","BindConst"},
-	{"Advance","BufnotAdv","Constant","BindConst"},
-	{"Advance","PresizAdv","Constant","BindConst"},
-	{"Advance","PrememAdv","Constant","MemoryConst"},
-}
 Bootstrap = {
 	{"Int","0","Str","Force(num:3"..
 		"cfg[0]:RegisterPlan"..
@@ -814,6 +796,7 @@ Draw = {
 	{"bnd","Bind",{["con"]={["BindConst"]=true}},{}},
 	{"tag","Command",{},{}},
 	{"idx","Int",{},{}},
+	{"ext","Extent",{},{}},
 	{"req","Request",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},

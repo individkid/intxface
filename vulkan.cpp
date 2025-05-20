@@ -1249,7 +1249,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (count+1 >= drw.siz)
         {std::cerr << "invalid bind limit! " << count << " " << drw.siz << " " << bnd << std::endl; exit(-1);}
         Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
-        Req req = Req{drw.req,0,drw.arg[count++],drw.arg[count++]}; // TODO number of args consumed depends on drw.req
+        SizeState max; switch (drw.ext) {default: {std::cerr << "invalid draw ext!" << std::endl; exit(-1);}
+        break; case (InitExt): max = SizeState(InitExt);
+        break; case (IntExt): max = SizeState(drw.arg[count++],drw.arg[count++]);
+        break; case (FormExt): max = SizeState((VkImageLayout)drw.arg[count++],(VkImageLayout)drw.arg[count++]);
+        break; case (ExtentExt): max = SizeState(VkExtent2D{(uint32_t)drw.arg[count++],(uint32_t)drw.arg[count++]});
+        break; case (MicroExt): max = SizeState((Micro)drw.arg[count++]);
+        break; case (BindExt): max = SizeState((Bind)drw.arg[count++]);
+        break; case (FalseExt): max = SizeState(FalseExt);}
+        Req req; switch (drw.req) {default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
+        break; case (BothReq): req = Req{drw.req,0,drw.arg[count++],drw.arg[count++],max};
+        break; case (DualReq): req = Req{drw.req,0,drw.arg[count++],drw.arg[count++],max};
+        break; case (LockReq): req = Req{drw.req,0,drw.arg[count++],drw.arg[count++],max};
+        break; case (SizeReq): req = Req{drw.req,0,0,0,max};
+        break; case (FormReq): req = Req{drw.req,0,0,0,max};}
+        // TODO number of args consumed depends on drw.req
         Command tag = drw.tag; SyncEnum syn = syncro(drw,j); int idx = drw.idx;
         cmd<<Cmd{tag,rsp,req,idx,syn};
         for (Iter i(rsp); i(); ++i) {
@@ -1424,7 +1438,7 @@ void TestState::call() {
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
     //
     SmartState dlog;
-    copy->push(Draw{.con=MicroConst,.drw=MicroTest,.tag=DerCmd,.req=LockReq,.siz=8,.arg=sizes},
+    copy->push(Draw{.con=MicroConst,.drw=MicroTest,.tag=DerCmd,.idx=0,.ext=InitExt,.req=LockReq,.siz=8,.arg=sizes},
     0,0,Fnc{true,vulkanWake,true,vulkanWake,false},dlog);}
 }
 
