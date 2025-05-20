@@ -1263,7 +1263,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (LockReq): req = Req{drw.req,0,drw.arg[count++],drw.arg[count++],max};
         break; case (SizeReq): req = Req{drw.req,0,0,0,max};
         break; case (FormReq): req = Req{drw.req,0,0,0,max};}
-        // TODO number of args consumed depends on drw.req
         Command tag = drw.tag; SyncEnum syn = syncro(drw,j); int idx = drw.idx;
         cmd<<Cmd{tag,rsp,req,idx,syn};
         for (Iter i(rsp); i(); ++i) {
