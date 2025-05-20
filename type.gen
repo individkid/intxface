@@ -88,6 +88,13 @@ BindLoc = {
 	"MiddleLoc", -- like Draw
 	"AfterLoc", -- like Present
 }
+Request = {
+    "BothReq",
+    "DualReq",
+    "LockReq",
+    "SizeReq",
+    "FormReq",
+}
 Advance = {
 	"MicroAdv", -- kick off shader with given index range
 	"SubmicAdv", -- set micro indexed by micro
@@ -101,6 +108,14 @@ Constant = {
 	"MicroConst",
 	"MemoryConst",
 	"BindConst",
+}
+Command = {
+    "DerCmd", -- push req to current, set bind, push to thread, and advance
+    "PDerCmd", -- push req to next, set bind, and push to thread that advances
+    "IDerCmd", -- push req to indexed, set bind, push to thread, and advance to index
+    "RDeeCmd", -- increment read lock in current, and add to bind
+    "IRDeeCmd", -- increment read lock in indexed, and add to bind
+    "WDeeCmd", -- increment write lock in current, and add to bind
 }
 Format = {
 	"VecFormat",
@@ -447,18 +462,6 @@ Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Basisz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Piercez","Int","0","BindLoc","MiddleLoc"},
 }
-Memoryit = { -- ptr loc siz need no additional arguments
-	{"Memory","Indexz","Int","0"},
-	{"Memory","Bringupz","Int","0"},
-	{"Memory","Texturez","Int","0"},
-	{"Memory","Uniformz","Int","0"},
-	{"Memory","Matrixz","Int","0"},
-	{"Memory","Trianglez","Int","0"},
-	{"Memory","Numericz","Int","0"},
-	{"Memory","Vertexz","Int","0"},
-	{"Memory","Basisz","Int","0"},
-	{"Memory","Piercez","Int","0"},
-}
 Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
@@ -492,14 +495,6 @@ Bindat = { -- resource sequence to trigger a resource
 	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PierceBnd","Int","0","BindLoc","ResizeLoc"},
 }
-Bindit = { -- number of draw arguments and resource indices
-	{"Bind","SwapBnd","Int","0"},
-	{"Bind","PipelineBnd","Int","1"},
-	{"Bind","DrawBnd","Int","2"},
-	{"Bind","AcquireBnd","Int","1"},
-	{"Bind","PresentBnd","Int","1"},
-	{"Bind","PierceBnd","Int","3"},
-}
 Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
@@ -524,9 +519,6 @@ Location = { -- list of locations
 	{"Micro","MicroDebug","Int","0","BindLoc","BeforeLoc"},
 	{"Micro","MicroDebug","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
-}
-Limit = { -- number of arguments
-	{"Micro","MicroTest","Int","8"},
 }
 Depender = { -- push
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
@@ -816,10 +808,13 @@ Pierce = {
 	{"idx","Int32",{},{}},
 }
 Draw = {
-	{"adv","Advance",{},""},
-	{"drw","Micro",{["adv"]={["MicroAdv"]=true}},{}},
-	{"mem","Memory",{["adv"]={["PrememAdv"]=true}},{}},
-	{"bnd","Bind",{["adv"]={["SubmicAdv"]=true,["BufmicAdv"]=true,["BufnotAdv"]=true,["PresizAdv"]=true}},{}},
+	{"con","Constant",{},""},
+	{"drw","Micro",{["con"]={["MicroConst"]=true}},{}},
+	{"mem","Memory",{["con"]={["MemoryConst"]=true}},{}},
+	{"bnd","Bind",{["con"]={["BindConst"]=true}},{}},
+	{"tag","Command",{},{}},
+	{"idx","Int",{},{}},
+	{"req","Request",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
 }
