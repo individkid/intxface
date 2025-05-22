@@ -1162,7 +1162,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return syn;
     }
     static int arg(Draw drw, int &count) {
-        if (count >= drw.siz) {std::cerr << "wrong arg count!" << std::endl; *(int*)0=0; exit(-1);}
+        if (count >= drw.siz) {std::cerr << "wrong arg count! " << count << "/" << drw.siz << std::endl; slog.clr(); exit(-1);}
         return drw.arg[count++];
     }
     void push(HeapState<Cmd> &cmd, Fnc fnc, Center *ptr, int sub, SmartState log) {
@@ -1240,7 +1240,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else if (fnc.fail) thread->push({log,0,ptr,sub,fnc.fail});
         if (fnc.goon) goon = true;}}
     }
-    void push(HeapState<Cmd> &cmd, HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    void push(HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        HeapState<Cmd> cmd(StackState::comnds);
         for (int k = 0; k < lst.size(); k++) {
         int count = 0; Draw drw = lst[k];
         for (int j = 0; location(drw,j) != BindLocs; j++) {
@@ -1250,6 +1251,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Syncro syn = syncro(drw,loc);
         Request tag = request(drw,loc);
         Extent ext = extent(drw,loc);
+        log << "count: " << count << " loc:" << loc << " bnd:" << bnd << " cmd:" << com <<
+        " syn:" << syn << " req:" << tag << " ext:" << ext << std::endl;
         if (drw.con == BindConst && drw.bnd != bnd)
         {std::cerr << "invalid bind const!" << std::endl; exit(-1);}
         int base, size; switch (ext) {
@@ -1260,6 +1263,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (ExtentExt): base = arg(drw,count); size = arg(drw,count);
         break; case (MicroExt): base = arg(drw,count);
         break; case (BindExt): base = arg(drw,count);
+        break; case (TrueExt):
         break; case (FalseExt): ;}
         SizeState max; switch (ext) {
         default: {std::cerr << "invalid draw ext!" << std::endl; exit(-1);}
@@ -1269,6 +1273,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (ExtentExt): max = SizeState(VkExtent2D{(uint32_t)base,(uint32_t)size});
         break; case (MicroExt): max = SizeState((Micro)base);
         break; case (BindExt): max = SizeState((Bind)base);
+        break; case (TrueExt): max = SizeState(TrueExt);
         break; case (FalseExt): max = SizeState(FalseExt);}
         int bas, siz; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
@@ -1289,23 +1294,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         cmd<<Cmd{com,rsp,req,idx,syn};
         for (Iter i(rsp); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
-        else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},arg(drw,count)};
+        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},idx};}
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
         if (count != drw.siz)
         {std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
-    }
-    void push(HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Cmd> cmd(StackState::comnds);
-        push(cmd,lst,ptr,sub,fnc,log);
         push(cmd,fnc,ptr,sub,log);
-    }
-    void check(HeapState<Cmd> &cmd, HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Cmd> tmp(StackState::comnds);
-        push(tmp,lst,ptr,sub,fnc,log);
-        if (cmd.size() != tmp.size()) {std::cerr << "mismatch cmd " << cmd.size() << " " << tmp.size() << std::endl;}
-        else for (int i = 0; i < cmd.size(); i++) {
-            if (cmd[i].tag != tmp[i].tag) {std::cerr << "mismatch tag " << cmd[i].tag << " " << tmp[i].tag << std::endl;}
-        }
     }
     void push(Bind bnd, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw;
@@ -1339,13 +1332,25 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log); return;
         break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log); return;
-        break; case (Texturez): ptr = datxVoidz(0,center->tex[k].dat);
-        idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
+        break; case (Texturez):
+        ptr = datxVoidz(0,center->tex[k].dat); idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
         tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq; syn[ResizeLoc] = Syncros;
         max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
         tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; syn[BeforeLoc] = SemSyn; max[BeforeLoc] = max[ResizeLoc];
         tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SemSyn; max[MiddleLoc] = max[ResizeLoc];
         tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; syn[AfterLoc] = FenSyn; max[AfterLoc] = max[ResizeLoc];
+        if (1) {
+            int args[] = {
+/*ResizeLoc ImageBnd width,height,image-index*/(int)max[ResizeLoc].extent.width,(int)max[ResizeLoc].extent.height,0,
+/*BeforeLoc LayoutBnd idx,siz*/idx,siz,
+/*MiddleLoc TextureBnd idx,siz,texture-index,image-index*/(int)max[ResizeLoc].extent.width,(int)max[ResizeLoc].extent.height,idx,siz,0,0,
+/*AfterLoc LayoutBnd idx,siz*/idx,siz,
+            };
+            HeapState<Draw> lst;
+            lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=(char*)ptr,.siz=13,.arg=args};
+            push(lst,center,sub,fnc,log);
+            return; // TODO allow center->siz > 1
+        }
         break; case (Uniformz): ptr = (void*)center->uni;
         break; case (Matrixz): ptr = (void*)center->mat;
         break; case (Trianglez): ptr = (void*)center->tri;
@@ -1372,20 +1377,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (loc == BindLocs) break;
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
         Rsp rsp = Rsp{MemoryConst,Micros,center->mem,bnd,loc};
-        cmd<<Cmd{tag[loc],rsp,Req{req[loc],ptr,idx,siz,max[loc]},sub,syn[loc]};
+        cmd<<Cmd{tag[loc],rsp,Req{req[loc],ptr,idx,(req[loc]==SizeReq?0:siz),max[loc]},sub,syn[loc]};
         for (Iter i(rsp); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},sub};
         else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
-        if (center->mem == Texturez && 0) {
-            int args[] = {
-(int)max[ResizeLoc].extent.width,
-(int)max[ResizeLoc].extent.height,
-            };
-            HeapState<Draw> lst;
-            lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=(char*)ptr,.siz=2,.arg=args};
-            check(cmd,lst,center,sub,fnc,log);
-        }
         push(cmd,fnc,center,sub,log);}
     }
 };

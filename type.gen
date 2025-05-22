@@ -88,6 +88,20 @@ BindLoc = {
 	"MiddleLoc", -- like Draw
 	"AfterLoc", -- like Present
 }
+Micro = { -- what runs on gpu
+	"MicroTest", -- for Bringup Plan
+	"MicroDebug", -- for testing microcode
+}
+Extent = { -- resource initialization done on gpu thread
+	"InitExt", -- leave in initial state; don't resize
+	"IntExt", -- resize to base,size
+	"FormExt", -- reform to format
+	"ExtentExt", -- resize to 2d vk extent
+	"MicroExt", -- resize to micro enum
+	"BindExt", -- resize to bind enum
+	"TrueExt", -- resize once for side effects
+	"FalseExt", -- resize every time for side effects
+}
 Request = {
     "BothReq",
     "DualReq",
@@ -282,20 +296,6 @@ Fixed = { -- how motion interpreted
 	"Focal",
 	"Ortho",
 	"Normal",
-}
-Micro = { -- what runs on gpu
-	"MicroTest", -- for Bringup Plan
-	"MicroDebug", -- for testing microcode
-}
-Extent = { -- resource initialization done on gpu thread
-    "InitExt",
-    "IntExt",
-    "FormExt",
-    "ExtentExt",
-    "MicroExt",
-    "BindExt",
-    "TrueExt",
-    "FalseExt",
 }
 Thread = { -- separate threads
 	"PipeThd",
@@ -493,7 +493,7 @@ Memoryex = { -- which size type for location
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Extent","IntExt"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Extent","ExtentExt"},
 	{"Memory","Texturez","BindLoc","BeforeLoc","Extent","TrueExt"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Extent","TrueExt"},
+	{"Memory","Texturez","BindLoc","MiddleLoc","Extent","ExtentExt"},
 	{"Memory","Texturez","BindLoc","AfterLoc","Extent","TrueExt"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Extent","TrueExt"},
 	{"Memory","Matrixz","BindLoc","MiddleLoc","Extent","TrueExt"},
