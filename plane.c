@@ -822,9 +822,3 @@ void planeFail(struct Center *ptr, int sub)
     callJnfo(RegisterFail,sub,planeWcfg);
     callJnfo(RegisterMask,(1<<FailMsk),planeWots);
 }
-void planePrep(struct Center *ptr, int sub)
-{
-}
-void planePref(struct Center *ptr, int sub)
-{
-}
