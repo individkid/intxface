@@ -1084,10 +1084,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Binds];
     BaseState *buffer[Binds];
-    SizeState max[BindLocs];
-    Request req[BindLocs];
-    Command tag[BindLocs];
-    Syncro syn[BindLocs];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
         std::cout << "CopyState" << std::endl;
@@ -1322,67 +1318,39 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(drw,ptr,sub,fnc,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
-        int lim = (center->mem == Texturez ? center->siz : 1);
-        for (int k = 0; k < lim; k++) {HeapState<Cmd> cmd(StackState::comnds);
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
-        int mod = src(bnd)->bufsiz(); void *ptr = 0; int idx = center->idx*mod; int siz = center->siz*mod; int sub = 0;
-        tag[MiddleLoc] = PDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = FenSyn;
-        max[MiddleLoc] = SizeState(0,center->siz*mod);
-        switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-        break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log); return;
-        break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log); return;
-        break; case (Texturez):
-        ptr = datxVoidz(0,center->tex[k].dat); idx = 0; siz = datxVoids(center->tex[k].dat); sub = center->idx+k;
-        tag[ResizeLoc] = IDerCmd; req[ResizeLoc] = SizeReq; syn[ResizeLoc] = Syncros;
-        max[ResizeLoc] = SizeState(VkExtent2D{(uint32_t)center->tex[k].wid,(uint32_t)center->tex[k].hei});
-        tag[BeforeLoc] = PDerCmd; req[BeforeLoc] = BothReq; syn[BeforeLoc] = SemSyn; max[BeforeLoc] = max[ResizeLoc];
-        tag[MiddleLoc] = IDerCmd; req[MiddleLoc] = BothReq; syn[MiddleLoc] = SemSyn; max[MiddleLoc] = max[ResizeLoc];
-        tag[AfterLoc] = PDerCmd; req[AfterLoc] = BothReq; syn[AfterLoc] = FenSyn; max[AfterLoc] = max[ResizeLoc];
-        if (1) {
-            int args[] = {
-/*ResizeLoc ImageBnd width,height,image-index*/(int)max[ResizeLoc].extent.width,(int)max[ResizeLoc].extent.height,0,
-/*BeforeLoc LayoutBnd idx,siz*/idx,siz,
-/*MiddleLoc TextureBnd idx,siz,texture-index,image-index*/(int)max[ResizeLoc].extent.width,(int)max[ResizeLoc].extent.height,idx,siz,0,0,
-/*AfterLoc LayoutBnd idx,siz*/idx,siz,
-            };
-            HeapState<Draw> lst;
-            lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=(char*)ptr,.siz=13,.arg=args};
-            push(lst,center,sub,fnc,log);
-            return; // TODO allow center->siz > 1
-        }
-        break; case (Uniformz): ptr = (void*)center->uni;
-        break; case (Matrixz): ptr = (void*)center->mat;
-        break; case (Trianglez): ptr = (void*)center->tri;
-        break; case (Numericz): ptr = (void*)center->num;
-        break; case (Vertexz): ptr = (void*)center->vtx;
-        break; case (Basisz): ptr = (void*)center->bas;
-        break; case (Piercez): ptr = (void*)center->pie;
-        break; case (Drawz): {HeapState<Draw> drw;
-        for (int i = 0; i < center->siz-1; i++) drw<<center->drw[i];
-        // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(drw,center,sub,Fnc{true,planePass,true,planeFail,false},log);}
-        return;
-        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
-        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push({log,0,center,0,fnc.pass});
-        return;}
+        int mod = src(bnd)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
         /*if (base>idx) {
         ptr = (void*)((char*)ptr+base-idx);
         siz -= base-idx; idx = 0;}
         else {idx = idx-base;}
         if (idx+siz>size) {siz = size-idx;}*/ // TODO for Configure Base and Size
-        for (int j = 0; true; j++) {
-        BindLoc loc = Memoryat__Memory__Int__BindLoc(center->mem)(j);
-        if (loc == BindLocs) break;
-        Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(loc);
-        Rsp rsp = Rsp{MemoryConst,Micros,center->mem,bnd,loc};
-        cmd<<Cmd{tag[loc],rsp,Req{req[loc],ptr,idx,(req[loc]==SizeReq?0:siz),max[loc]},sub,syn[loc]};
-        for (Iter i(rsp); i(); ++i) {
-        if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
-        else if (i.isie()) cmd<<Cmd{IRDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},sub};
-        else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
-        push(cmd,fnc,center,sub,log);}
+        switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
+        break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log);
+        break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
+        break; case (Texturez): for (int k = 0; k < center->siz; k++) {HeapState<Draw> lst; int args[] = {
+        /*ResizeLoc ImageBnd width,height,image-index*/center->tex[k].wid,center->tex[k].hei,0,
+        /*BeforeLoc LayoutBnd idx,siz*/0,datxVoids(center->tex[k].dat),
+        /*MiddleLoc TextureBnd width,height,idx,siz,texture-index,image-index*/
+        center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,0,
+        /*AfterLoc LayoutBnd idx,siz*/0,datxVoids(center->tex[k].dat)};
+        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=(char*)datxVoidz(0,center->tex[k].dat),.siz=13,.arg=args};
+        push(lst,center,sub,fnc,log);} // TODO use fnc for intermediate result when k < center->siz-1
+        break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
+        break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
+        break; case (Trianglez): push(center->mem,(void*)center->tri,idx,siz,center,sub,fnc,log);
+        break; case (Numericz): push(center->mem,(void*)center->num,idx,siz,center,sub,fnc,log);
+        break; case (Vertexz): push(center->mem,(void*)center->vtx,idx,siz,center,sub,fnc,log);
+        break; case (Basisz): push(center->mem,(void*)center->bas,idx,siz,center,sub,fnc,log);
+        break; case (Piercez): push(center->mem,(void*)center->pie,idx,siz,center,sub,fnc,log);
+        break; case (Drawz): {HeapState<Draw> drw;
+        for (int i = 0; i < center->siz-1; i++) drw<<center->drw[i];
+        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        push(drw,center,sub,Fnc{true,planePass,true,planeFail,false},log);}
+        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
+        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
+        if (fnc.pass) thread->push({log,0,center,0,fnc.pass});}
     }
 };
 

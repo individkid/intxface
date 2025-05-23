@@ -495,13 +495,13 @@ Memoryex = { -- which size type for location
 	{"Memory","Texturez","BindLoc","BeforeLoc","Extent","TrueExt"},
 	{"Memory","Texturez","BindLoc","MiddleLoc","Extent","ExtentExt"},
 	{"Memory","Texturez","BindLoc","AfterLoc","Extent","TrueExt"},
-	{"Memory","Uniformz","BindLoc","MiddleLoc","Extent","TrueExt"},
-	{"Memory","Matrixz","BindLoc","MiddleLoc","Extent","TrueExt"},
-	{"Memory","Trianglez","BindLoc","MiddleLoc","Extent","TrueExt"},
-	{"Memory","Numericz","BindLoc","MiddleLoc","Extent","TrueExt"},
-	{"Memory","Vertexz","BindLoc","MiddleLoc","Extent","TrueExt"},
-	{"Memory","Basisz","BindLoc","MiddleLoc","Extent","TrueExt"},
-	{"Memory","Piercez","BindLoc","MiddleLoc","Extent","TrueExt"},
+	{"Memory","Uniformz","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Matrixz","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Trianglez","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Numericz","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Vertexz","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Basisz","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Piercez","BindLoc","MiddleLoc","Extent","IntExt"},
 }
 Memoryre = { -- which thread request for location
 	{"Memory","Indexz","BindLoc","MiddleLoc","Request","BothReq"},
@@ -923,7 +923,7 @@ Draw = {
 	{"drw","Micro",{["con"]={["MicroConst"]=true}},{}},
 	{"mem","Memory",{["con"]={["MemoryConst"]=true}},{}},
 	{"bnd","Bind",{["con"]={["BindConst"]=true}},{}},
-	{"ptr","Chr",{},0},
+	{"ptr","Chr",{},0}, -- TODO change to Dat and enhance Dat to allow indirect pointers
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
 }
