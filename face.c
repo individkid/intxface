@@ -645,10 +645,6 @@ void allocDat(void* **ptr, int siz)
 	if (*ptr == 0) ERRFNC(-1);
 	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
 }
-struct MetaDat {
-	int siz;
-	void *ptr;
-};
 void assignDat(void **ptr, const void *dat)
 {
 	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}

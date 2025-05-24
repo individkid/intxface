@@ -1161,6 +1161,16 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (count >= drw.siz) {std::cerr << "wrong arg count! " << count << "/" << drw.siz << std::endl; slog.clr(); exit(-1);}
         return drw.arg[count++];
     }
+    static void *get(Draw drw, int siz) {
+        if (!drw.ptr) return (void *)drw.hac;
+        if (!drw.ptr) return 0;
+        if (*(int*)drw.ptr >= 0) {
+        if (*(int*)drw.ptr != siz) {std::cerr << "mismatch dat siz!" << std::endl; exit(-1);}
+        return (void*)(((int*)drw.ptr)+1);}
+        struct UniDat *uni = (struct UniDat *)drw.ptr;
+        if (uni->siz != siz) {std::cerr << "mismatch uni siz!" << std:: endl; exit(-1);}
+        return uni->ptr;
+    }
     void push(HeapState<Cmd> &cmd, Fnc fnc, Center *ptr, int sub, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = cmd.size(); // number that might be reserved
@@ -1280,10 +1290,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (FormReq): ;}
         Req req; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
-        // TODO check that *(int*)drw.ptr == siz
-        break; case (BothReq): req = Req{tag,(drw.ptr?(void*)(((int*)drw.ptr)+1):drw.hac),bas,siz,max};
-        break; case (DualReq): req = Req{tag,(drw.ptr?(void*)(((int*)drw.ptr)+1):drw.hac),bas,siz,max};
-        break; case (LockReq): req = Req{tag,(drw.ptr?(void*)(((int*)drw.ptr)+1):drw.hac),bas,siz};
+        break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,max};
+        break; case (DualReq): req = Req{tag,get(drw,siz),bas,siz,max};
+        break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
         break; case (SizeReq): req = Req{tag,0,0,0,max};
         break; case (FormReq): req = Req{tag,0,0,0,max};}
         Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
@@ -1316,7 +1325,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         HeapState<Draw> drw;
         int arg[] = {loc,siz,loc,siz};
         // TODO use wrapDat instead of pointer hack
-        drw << Draw{.con=MemoryConst,.mem=mem,.hac=(char*)val,.ptr=0,.siz=4,.arg=arg};
+        struct UniDat uni = {.num=-1,.siz=siz,.ptr=val};
+        drw << Draw{.con=MemoryConst,.mem=mem,.hac=0,.ptr=&uni,.siz=4,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {

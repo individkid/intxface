@@ -65,6 +65,15 @@ void assignStr(char **ptr, const char *str);
 void freeDat(void **ptr, int siz);
 void allocDat(void* **ptr, int siz);
 void assignDat(void **ptr, const void *dat);
+struct MetaDat {
+	int siz;
+	void *ptr;
+};
+struct UniDat {
+	int num;
+	int siz;
+	void *ptr;
+};
 void prewrapDat(void **ptr, int num);
 void wrapDat(void *ptr, int sub, void **dat, int *siz);
 void unwrapDat(void **ptr, int *siz, void *dat, int sub);
