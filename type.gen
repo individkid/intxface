@@ -923,7 +923,6 @@ Draw = {
 	{"drw","Micro",{["con"]={["MicroConst"]=true}},{}},
 	{"mem","Memory",{["con"]={["MemoryConst"]=true}},{}},
 	{"bnd","Bind",{["con"]={["BindConst"]=true}},{}},
-	{"hac","Chr",{},0}, -- TODO use wrapDat instead of hac
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},

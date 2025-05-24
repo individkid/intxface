@@ -1162,7 +1162,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return drw.arg[count++];
     }
     static void *get(Draw drw, int siz) {
-        if (!drw.ptr) return (void *)drw.hac;
         if (!drw.ptr) return 0;
         if (*(int*)drw.ptr >= 0) {
         if (*(int*)drw.ptr != siz) {std::cerr << "mismatch dat siz!" << std::endl; exit(-1);}
@@ -1308,25 +1307,24 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     void push(Bind bnd, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw;
-        drw << Draw{.con=BindConst,.bnd=bnd,.hac=0,.ptr=0,.siz=siz,.arg=arg};
+        drw << Draw{.con=BindConst,.bnd=bnd,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Memory mem, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw;
-        drw << Draw{.con=MemoryConst,.mem=mem,.hac=0,.ptr=0,.siz=siz,.arg=arg};
+        drw << Draw{.con=MemoryConst,.mem=mem,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Micro mic, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw;
-        drw << Draw{.con=MicroConst,.drw=mic,.hac=0,.ptr=0,.siz=siz,.arg=arg};
+        drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Memory mem, void *val, int loc, int siz, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw;
         int arg[] = {loc,siz,loc,siz};
-        // TODO use wrapDat instead of pointer hack
         struct UniDat uni = {.num=-1,.siz=siz,.ptr=val};
-        drw << Draw{.con=MemoryConst,.mem=mem,.hac=0,.ptr=&uni,.siz=4,.arg=arg};
+        drw << Draw{.con=MemoryConst,.mem=mem,.ptr=&uni,.siz=4,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
@@ -1347,8 +1345,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         /*MiddleLoc TextureBnd width,height,idx,siz,texture-index,image-index*/
         center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,0,
         /*AfterLoc LayoutBnd idx,siz*/0,datxVoids(center->tex[k].dat)};
-        lst << Draw{.con=MemoryConst,.mem=Texturez,.hac=0,.ptr=center->tex[k].dat,.siz=13,.arg=args};
-        push(lst,center,sub,fnc,log);} // TODO use fnc for intermediate result when k < center->siz-1
+        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=center->tex[k].dat,.siz=13,.arg=args};
+        push(lst,center,(k<center->siz-1?-1-k:sub),fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
         break; case (Trianglez): push(center->mem,(void*)center->tri,idx,siz,center,sub,fnc,log);
@@ -1478,7 +1476,7 @@ void TestState::call() {
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
     //
     SmartState dlog; HeapState<Draw> drw;
-    drw << Draw{.con=MicroConst,.drw=MicroTest,.hac=0,.ptr=0,.siz=11,.arg=sizes};
+    drw << Draw{.con=MicroConst,.drw=MicroTest,.ptr=0,.siz=11,.arg=sizes};
     copy->push(drw,0,0,Fnc{true,vulkanWake,true,vulkanWake,false},dlog);}
 }
 
