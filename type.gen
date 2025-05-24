@@ -923,7 +923,8 @@ Draw = {
 	{"drw","Micro",{["con"]={["MicroConst"]=true}},{}},
 	{"mem","Memory",{["con"]={["MemoryConst"]=true}},{}},
 	{"bnd","Bind",{["con"]={["BindConst"]=true}},{}},
-	{"ptr","Chr",{},0}, -- TODO change to Dat and enhance Dat to allow indirect pointers
+	{"hac","Chr",{},0}, -- TODO use wrapDat instead of hac
+	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
 }
