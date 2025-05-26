@@ -104,10 +104,8 @@ Extent = { -- resource initialization done on gpu thread
 }
 Request = {
     "BothReq",
-    "DualReq",
     "LockReq",
     "SizeReq",
-    "FormReq",
 }
 Constant = {
 	"MicroConst",
@@ -641,9 +639,9 @@ Dependre = { -- requ
 	{"Micro","MicroDebug","BindLoc","AfterLoc","Request","BothReq"},
 }
 Dependro = { -- sync
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Syncro","FenSyn"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Syncro","FenSyn"},
+	{"Micro","MicroTest","BindLoc","BeforeLoc","Syncro","SemSyn"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Syncro","SemSyn"},
+	{"Micro","MicroTest","BindLoc","AfterLoc","Syncro","SemSyn"},
 	{"Micro","MicroDebug","BindLoc","BeforeLoc","Syncro","FenSyn"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Syncro","FenSyn"},
 	{"Micro","MicroDebug","BindLoc","AfterLoc","Syncro","FenSyn"},
