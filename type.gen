@@ -120,10 +120,6 @@ Command = {
     "IRDeeCmd", -- increment read lock in indexed, and add to bind
     "WDeeCmd", -- increment write lock in current, and add to bind
 }
-Syncro = {
-    "FenSyn",
-    "SemSyn",
-}
 Format = {
 	"VecFormat",
 	"UvecFormat",
@@ -516,21 +512,6 @@ Memoryre = { -- which thread request for location
 	{"Memory","Basisz","BindLoc","MiddleLoc","Request","BothReq"},
 	{"Memory","Piercez","BindLoc","MiddleLoc","Request","BothReq"},
 }
-Memoryro = { -- which synchronization for location
-	{"Memory","Indexz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Bringupz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Texturez","BindLoc","ResizeLoc","Syncro","Syncros"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Syncro","SemSyn"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Syncro","SemSyn"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Syncro","FenSyn"},
-	{"Memory","Uniformz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Matrixz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Trianglez","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Numericz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Vertexz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Basisz","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Memory","Piercez","BindLoc","MiddleLoc","Syncro","FenSyn"},
-}
 Memoryee = { -- prevent resources from being changed while in use
 	{"Memory","Texturez","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
@@ -581,14 +562,6 @@ Bindre = { -- resource request type
 	{"Bind","PresentBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 }
-Bindro = { -- resource syncronization type
-	{"Bind","SwapBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","PresentBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","PierceBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-}
 Bindee = { -- resources reserved
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
@@ -637,14 +610,6 @@ Dependre = { -- requ
 	{"Micro","MicroDebug","BindLoc","BeforeLoc","Request","BothReq"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Request","BothReq"},
 	{"Micro","MicroDebug","BindLoc","AfterLoc","Request","BothReq"},
-}
-Dependro = { -- sync
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Syncro","SemSyn"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Syncro","SemSyn"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Syncro","SemSyn"},
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Syncro","FenSyn"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Syncro","FenSyn"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Syncro","FenSyn"},
 }
 Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
