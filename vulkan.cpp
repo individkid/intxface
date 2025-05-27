@@ -438,6 +438,9 @@ struct Lnk {
 };
 struct Loc {
     SizeState siz; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
+    BindLoc operator()() {
+        return rsp.loc;
+    }
 };
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
@@ -1620,8 +1623,9 @@ struct ImageState : public BaseState {
     }
     void resize(const Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl; slog.clr();
+        if (loc.req.loc != 0) {std::cerr << "unsupported image loc!" << std::endl; exit(-1);}
         // TODO allow for FormExt in BeforeLoc and AfterLoc
-        if (loc.rsp.loc == ResizeLoc) {
+        if (loc() == ResizeLoc) {
         if (log.siz.tag != ExtentExt) {std::cerr << "invalid image size!" << std::endl; exit(-1);}
         int texWidth = log.siz.extent.width;
         int texHeight = log.siz.extent.height;
@@ -1649,7 +1653,7 @@ struct ImageState : public BaseState {
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        if (loc.rsp.loc == ResizeLoc) {
+        if (loc() == ResizeLoc) {
         vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
@@ -1661,7 +1665,7 @@ struct ImageState : public BaseState {
         int texWidth = loc.siz.extent.width;
         int texHeight = loc.siz.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
-        if (loc.rsp.loc == MiddleLoc) {
+        if (loc() == MiddleLoc) {
         vkResetFences(device, 1, &loc.syn.fen);
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
@@ -1680,7 +1684,7 @@ struct ImageState : public BaseState {
     }
     void upset(const Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
-        if (loc.rsp.loc == MiddleLoc) {
+        if (loc() == MiddleLoc) {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
@@ -1718,21 +1722,21 @@ struct LayoutState : public BaseState {
         loc.syn.fen = createFence(device);
     }
     void unsize(const Loc &loc, SmartState log) override {
-        log << "unsize " << debug << std::endl;
-        vkDestroySemaphore(device, loc.syn.sem, nullptr);
         vkDestroyFence(device, loc.syn.fen, nullptr);
+        vkDestroySemaphore(device, loc.syn.sem, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &buffer);
+        log << "unsize " << debug << std::endl;
     }
     VkFence setup(const Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        if (loc.rsp.loc == AfterLoc) vkResetFences(device, 1, &loc.syn.fen);
+        if (loc() == AfterLoc) vkResetFences(device, 1, &loc.syn.fen);
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (loc.rsp.loc==AfterLoc?lst(loc).sem:VK_NULL_HANDLE),
-            (loc.rsp.loc==BeforeLoc?loc.syn.sem:VK_NULL_HANDLE),
-            (loc.rsp.loc==AfterLoc?loc.syn.fen:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
-            (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
-            (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+            (loc()==AfterLoc?lst(loc).sem:VK_NULL_HANDLE),
+            (loc()==BeforeLoc?loc.syn.sem:VK_NULL_HANDLE),
+            (loc()==AfterLoc?loc.syn.fen:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
+            (loc()==AfterLoc?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
+            (loc()==AfterLoc?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
         return loc.syn.fen;
     }
     void upset(const Loc &loc, SmartState log) override {
@@ -1754,13 +1758,13 @@ struct ProbeState : public BaseState {
     }
     VkSemaphore getSemaphore() override {return VK_NULL_HANDLE;}
     VkExtent2D getExtent() override {return extent;}
-    void resize(SmartState log) override {
+    void resize(const Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
     }
-    void unsize(SmartState log) override {
+    void unsize(const Loc &loc, SmartState log) override {
         log << "usize " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
+    VkFence setup(const Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         extent = bnd(loc.siz.bind)->getExtent();
         if (bnd() == PokeBnd) { // TODO use loc to reuse same bind
@@ -1772,7 +1776,7 @@ struct ProbeState : public BaseState {
         unmapMemory(device,memory);}
         return VK_NULL_HANDLE;
     }
-    void upset(SmartState log) override {
+    void upset(const Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
         if (bnd() == PeekBnd) { // TODO use loc to reuse same bind
         void *mapped = 0; int32_t value;
@@ -1817,8 +1821,10 @@ struct AcquireState : public BaseState {
     VkExtent2D getExtent() override {return extent;}
     void resize(const Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
+        loc.syn.sem = createSemaphore(device);
     }
     void unsize(const Loc &loc, SmartState log) override {
+        vkDestroySemaphore(device, loc.syn.sem, nullptr);
         log << "usize " << debug << std::endl;
     }
     VkFence setup(const Loc &loc, SmartState log) override {
@@ -1875,7 +1881,6 @@ struct DrawState : public BaseState {
     const VkCommandPool commandPool;
     const int frames;
     ChangeState<Configure,Configures> *copy;
-    VkFence fence;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorLayout;
     VkDescriptorSet descriptorSet;
@@ -1898,20 +1903,24 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(const Loc &loc, SmartState log) override {
+        log << "resize " << debug << std::endl;
         descriptorPool = bnd(PipelineBnd)->getDescriptorPool();
         descriptorLayout = bnd(PipelineBnd)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
-        fence = createFence(device);     
+        loc.syn.sem = createSemaphore(device);
+        loc.syn.fen = createFence(device);
     }
     void unsize(const Loc &loc, SmartState log) override {
-        vkDestroyFence(device, fence, nullptr);
+        vkDestroyFence(device, loc.syn.fen, nullptr);
+        vkDestroySemaphore(device, loc.syn.sem, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
+        log << "unsize " << debug << std::endl;
     }
     VkFence setup(const Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
-        if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
+        if (ptr != 0 || loc.req.loc != 0) {std::cerr << "unsupported draw loc!" << std::endl; exit(-1);}
         vkResetFences(device, 1, &fence);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         BaseState *pipePtr = 0;
@@ -1950,10 +1959,10 @@ struct DrawState : public BaseState {
                 framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
             drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
-                lst(log).sem,nxt(log).sem,fence,VK_NULL_HANDLE);}
+                lst(log).sem,loc.syn.sem,loc.syn.fen,VK_NULL_HANDLE);}
         else {std::cerr << "invalid bind set! " <<
             pipePtr << " " << framePtr << " " << indexPtr << " " << fetchPtr << std::endl; exit(-1);}
-        return fence;
+        return loc.syn.fen;
     }
     void upset(const Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
