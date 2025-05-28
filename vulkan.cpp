@@ -424,27 +424,32 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 }
 
 struct Req {
-    Request tag = Requests; void *ptr = 0; int loc = 0; int siz = 0; SizeState max; bool pre = false;
+    Request tag = Requests; void *ptr = 0; int idx = 0; int len = 0; SizeState max; bool pre = false;
 };
 struct Rsp {
     Constant con = Constants; Micro mic = Micros; Memory mem = Memorys; Bind bnd = Binds; BindLoc loc = BindLocs;
 };
-struct Sync {
-    VkFence fen; VkSemaphore sem;
+struct Syn {
+    VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
+};
+struct BaseState;
+struct Lnk {
+    BaseState *ptr = 0; BindLoc loc;
+};
+struct Loc {
+    BindLoc loc; SizeState siz; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
+    BindLoc operator()() {
+        return rsp.loc;
+    }
 };
 enum BaseEnum {
     InitBase, // avoid binding to uninitialized
     FreeBase, // ready for use
-    BothBase, // check for both change
-    DualBase, // check for dual change
-    SizeBase, // check for size change
-    FormBase, // check for format change
-    LockBase, // check for data change
+    LockBase, // check for change
     NextBase, // waiting for fence done
     BaseEnums
 };
 struct BindState;
-struct SyncState;
 struct BaseState {
     StackState *item;
     BaseState *next; BaseState *last;
@@ -454,18 +459,16 @@ struct BaseState {
     // indirectly protected by state/lock that are directly protected by safe
     // only one ThreadState acts on BaseState with reserved state/lock
     BindState *lock;
-    SyncState *sync;
     Rsp resp[StackState::reqsts];
     Req rqst[StackState::reqsts];
-    Sync syn0, syn1;
     int nrsp, rspn, nreq, reqn;
-    SizeState size, form;
+    SizeState size;
+    Loc ploc[BindLocs];
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr), next(0), last(0),
         safe(1), state(InitBase),
-        plock(0), rlock(0), wlock(0), lock(0), sync(0),
-        syn0{VK_NULL_HANDLE,VK_NULL_HANDLE}, syn1{VK_NULL_HANDLE,VK_NULL_HANDLE},
+        plock(0), rlock(0), wlock(0), lock(0),
         nrsp(0), rspn(0), nreq(0), reqn(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
@@ -473,7 +476,7 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, Req req, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindLoc loc, Req req, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if ((int)state < 0 || (int)state >= BaseEnums)
@@ -488,129 +491,88 @@ struct BaseState {
         log << "push lock fail " << debug << " " << state << std::endl;
         safe.post(); return false;}
         log << "push pass " << debug << " max:" << req.max << " nreq:" << nreq << std::endl;
-        if (nreq == 0) switch (req.tag) {
-        default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
-        break; case (BothReq): state = BothBase;
-        break; case (DualReq): state = DualBase;
-        break; case (LockReq): state = LockBase;
-        break; case (SizeReq): state = SizeBase;
-        break; case (FormReq): state = FormBase;}
+        if (nreq == 0) state = LockBase;
         if (nreq >= StackState::reqsts)
         {std::cerr << "too many requests!" << std::endl; exit(-1);}
-        rqst[nreq] = req; nreq += 1; plock += 1;
+        rqst[nreq] = req; nreq += 1;
+        ploc[loc].loc = loc; ploc[loc].req = req; plock += 1;
         safe.post();
         return true;
     }
-    void push(Rsp rsp, BindState *ptr, SyncState *qtr, SmartState log) {
+    void push(BindState *ptr, BindLoc loc, Rsp rsp, SmartState log) {
         // save info for use in thread
         safe.wait();
-        if (state != BothBase && state != DualBase &&
-            state != SizeBase && state != FormBase && state != LockBase)
+        if (state != LockBase)
             {std::cerr << "invalid set state!" << std::endl; exit(-1);}
         safe.post();
         if (nrsp == 0 && lock != 0 || nrsp > 0 && lock != ptr)
             {std::cerr << "invalid set lock! " << debug << std::endl; exit(-1);}
-        lock = ptr; sync = qtr; resp[nrsp] = rsp; nrsp += 1;
+        lock = ptr; resp[nrsp] = rsp; nrsp += 1;
+        if (ploc[loc].loc != loc)
+            {std::cerr << "invalid per location!" << std::endl; exit(-1);}
+        ploc[loc].rsp = rsp;
     }
     void done(SmartState log) {
         // unreserve after done in thread or upon error
         safe.wait();
-        if (state != BothBase && state != DualBase &&
-            state != SizeBase && state != FormBase && state != LockBase && state != NextBase)
+        if (state != LockBase && state != NextBase)
             {std::cerr << "invalid push state!" << std::endl; exit(-1);}
         if (reqn >= nreq)
             {std::cerr << "invalid num req!" << std::endl; exit(-1);}
         reqn += 1; plock -= 1;
-        if (reqn == nreq) {reqn = 0; nreq = 0; state = FreeBase;}
-        else switch (rqst[reqn].tag) {
-        default: {std::cerr << "invalid push req!" << std::endl; exit(-1);}
-        break; case (BothReq): state = BothBase;
-        break; case (DualReq): state = DualBase;
-        break; case (LockReq): state = LockBase;
-        break; case (SizeReq): state = SizeBase;
-        break; case (FormReq): state = FormBase;}
+        if (reqn == nreq) {reqn = 0; nreq = 0; state = FreeBase;} else state = LockBase;
         log << "done " << debug << " " << reqn << "/" << nreq << std::endl;
         safe.post();
     }
-    void setre(SizeState siz, SmartState log) {
-        push(0,0,0,Req{SizeReq,0,0,0,siz,false},log);
-        baseres(log); baseups(log);
+    void setre(BindLoc loc, SizeState siz, SmartState log) {
+        push(0,0,0,loc,Req{SizeReq,0,0,0,siz,false},log);
+        baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
-        push(0,0,0,Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
-        baseres(log);
+        for (int i = 0; i < BindLocs; i++)
+        if (ploc[i].siz == SizeState(InitExt)); else {
+        push(0,0,0,(BindLoc)i,Req{SizeReq,0,0,0,SizeState(InitExt),false},log);
+        baseres((BindLoc)i,log);}
     }
-    void unlock(SmartState log);
-    void unsync(SmartState log);
-    void recall(SizeState &size, SmartState log) {
+    void recall(SizeState &size, BindLoc loc, SmartState log) {
         if (size == rqst[reqn].max); else {
-        if (size == SizeState(InitExt)); else {
-        if (&size == &this->size) unsize(log);
-        else unform(log);}
-        size = rqst[reqn].max;
-        if (size == SizeState(InitExt)); else {
-        if (&size == &this->size) resize(log);
-        else reform(log);}}
+        if (size == SizeState(InitExt)); else unsize(ploc[loc],log);
+        size = rqst[reqn].max; ploc[loc].siz = ploc[loc].req.max;
+        if (size == SizeState(InitExt)); else resize(ploc[loc],log);}
         state = NextBase;
     }
-    VkFence sizeup(SmartState log) {
-        safe.wait();
-        if (state != BothBase) {std::cerr << "sizeup invalid state! " <<
-            state << std::endl; exit(-1);}
-        safe.post();
-        recall(size,log);
-        return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
-    }
-    VkFence formup(SmartState log) {
-        safe.wait();
-        if (state != DualBase) {std::cerr << "formup invalid state! " <<
-            state << std::endl; exit(-1);}
-        safe.post();
-        recall(form,log);
-        return setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
-    }
-    VkFence basesiz(SmartState log) {
+    VkFence basesiz(BindLoc loc, SmartState log) {
         // resize and setup
-        VkFence ret = sizeup(log);
-        unsync(log);
-        return ret;
+        safe.wait();
+        if (state != LockBase || rqst[reqn].tag != BothReq)
+            {std::cerr << "sizeup invalid state! " <<
+            state << std::endl; exit(-1);}
+        safe.post();
+        recall(size,loc,log);
+        return setup(ploc[loc],rqst[reqn].ptr,rqst[reqn].idx,rqst[reqn].len,log);
     }
-    VkFence basefor(SmartState log) {
-        // reform and setup
-        VkFence ret = formup(log);
-        unsync(log);
-        return ret;
-    }
-    void baseres(SmartState log) {
+    void baseres(BindLoc loc, SmartState log) {
         // resize only
         safe.wait();
-        if (state != SizeBase) {std::cerr << "baseres invalid state! " << state <<
-            "(" << SizeBase << ")" << " " << debug << std::endl; exit(-1);}
+        if (state != LockBase || rqst[reqn].tag != SizeReq)
+            {std::cerr << "baseres invalid state! " << debug << " " << state << "(" << LockBase << ") " <<
+            rqst[reqn].tag << "(" << SizeReq << ")" << std::endl; exit(-1);}
         safe.post();
-        recall(size,log);
-        unsync(log);
+        recall(size,loc,log);
     }
-    void baseref(SmartState log) {
-        // reform only
-        safe.wait();
-        if (state != FormBase) {std::cerr << "baseref invalid state!" <<
-            std::endl; exit(-1);}
-        safe.post();
-        recall(form,log);
-        unsync(log);
-    }
-    VkFence basesup(SmartState log) {
+    VkFence basesup(BindLoc loc, SmartState log) {
         // setup only
         safe.wait();
-        if (state != LockBase) {std::cerr << "basesup invalid state! " <<
+        if (state != LockBase || rqst[reqn].tag != LockReq)
+            {std::cerr << "basesup invalid state! " <<
             debug << " " << state << std::endl; exit(-1);}
         safe.post();
         state = NextBase;
-        VkFence ret = setup(rqst[reqn].ptr,rqst[reqn].loc,rqst[reqn].siz,log);
-        unsync(log);
+        VkFence ret = setup(ploc[loc],rqst[reqn].ptr,rqst[reqn].idx,rqst[reqn].len,log);
         return ret;
     }
-    void baseups(SmartState log) {
+    void unlock(SmartState log);
+    void baseups(BindLoc loc, SmartState log) {
         // after fence triggered
         safe.wait();
         if (state != NextBase) {std::cerr << "upset invalid state!" <<
@@ -619,7 +581,7 @@ struct BaseState {
         if (rqst[reqn].pre) log << "baseups " << debug << " " << item->debug << std::endl;
         else log << "baseups " << debug << std::endl;
         if (rqst[reqn].pre) item->advance();
-        upset(log);
+        upset(ploc[loc],log);
         unlock(log);
         done(log);
     }
@@ -640,49 +602,75 @@ struct BaseState {
         switch (state) {
         default: {safe.post(); return false;}
         break; case (FreeBase):
-        break; case (BothBase): case (DualBase):
-        case (SizeBase): case (FormBase): case (LockBase):
-        if (psav == 0) {safe.post(); return false;}}
+        break; case (LockBase): if (psav == 0) {safe.post(); return false;}}
         if (plock < psav || wlock < wsav || rlock < rsav)
             {std::cerr << "invalid save lock!" << std::endl; exit(-1);}
         if (wlock-wsav || (elock && rlock-rsav)) {safe.post(); return false;}
         safe.post();
         return true;
     }
-    BaseEnum get() {
+    Request get() {
         safe.wait();
-        BaseEnum ret = state;
+        if (state != LockBase) return Requests;
         safe.post();
-        return ret;
+        return rqst[reqn].tag;
     }
     Bind bnd() {
         return item->buftyp();
     }
     BaseState *bnd(Bind typ);
-    Sync nxt(SmartState log);
-    Sync lst(SmartState log);
-    Sync nxt(Sync val) {
-        Sync tmp = syn1; syn1 = val; return tmp;
-    }
-    Sync lst(Sync val) {
-        Sync tmp = syn0; syn0 = val; return tmp;
-    }
-    BaseState *lst() {
-        return last;
-    }
     BaseState *lnk(BaseState *last) {
         if (last) last->next = this; this->last = last; this->next = 0; last = this;
         return last;
     }
-    virtual void unsize(SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
-    virtual void resize(SmartState log) {std::cerr << "resize not base!" << std::endl; exit(-1);}
-    virtual void unform(SmartState log) {std::cerr << "unform not base!" << std::endl; exit(-1);}
-    virtual void reform(SmartState log) {std::cerr << "reform not base!" << std::endl; exit(-1);}
-    virtual VkFence setup(void *ptr, int loc, int siz, SmartState log) {std::cerr << "setup not base!" << std::endl; exit(-1);}
-    virtual void upset(SmartState log) {std::cerr << "upset not base!" << std::endl; exit(-1);}
+    Lnk *lnk(BindLoc loc, BaseState *ptr, BindLoc lst, Lnk *lnk) {
+        if (lnk) {lnk->ptr = this; lnk->loc = loc;}
+        ploc[loc].lst.ptr = ptr; ploc[loc].lst.loc = lst;
+        ploc[loc].nxt.ptr = 0; ploc[loc].nxt.loc = BindLocs;
+        return &ploc[loc].nxt;
+    }
+    BaseState *lst() {
+        return last;
+    }
+    Loc &get(BindLoc loc) {
+        return ploc[loc];
+    }
+    static Loc &lst(Loc &loc) {
+        return loc.lst.ptr->get(loc.lst.loc);
+    }
+    static Loc &nxt(Loc &loc) {
+        return loc.nxt.ptr->get(loc.nxt.loc);
+    }
+    static VkSemaphore &sem(Loc &loc) {
+        return loc.syn.sem;
+    }
+    static VkFence &fen(Loc &loc) {
+        return loc.syn.fen;
+    }
+    static Request &tag(Loc &loc) {
+        return loc.req.tag;
+    }
+    static void *&ptr(Loc &loc) {
+        return loc.req.ptr;
+    }
+    static int &idx(Loc &loc) {
+        return loc.req.idx;
+    }
+    static int &len(Loc &loc) {
+        return loc.req.len;
+    }
+    static SizeState &siz(Loc &loc) {
+        return loc.siz;
+    }
+    static Extent &ext(Loc &loc) {
+        return loc.siz.tag;
+    }
+    virtual void unsize(Loc &loc, SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
+    virtual void resize(Loc &loc, SmartState log) {std::cerr << "resize not base!" << std::endl; exit(-1);}
+    virtual VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) {std::cerr << "setup not base!" << std::endl; exit(-1);}
+    virtual void upset(Loc &loc, SmartState log) {std::cerr << "upset not base!" << std::endl; exit(-1);}
     virtual bool get(BaseEnum state) {return false;}
     virtual BindState *getBind() {std::cerr << "BaseState::getBind" << std::endl; exit(-1);}
-    virtual SyncState *getSync() {std::cerr << "BaseState::getSync" << std::endl; exit(-1);}
     virtual VkSemaphore getSemaphore() {std::cerr << "BaseState::getSemaphore" << std::endl; exit(-1);}
     virtual VkImage getImage() {std::cerr << "BaseState::getImage" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
@@ -808,10 +796,10 @@ struct BindState : public BaseState {
         if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
-    bool push(Bind i, BaseState *buf, Req req, SmartState log) {
+    bool push(Bind i, BaseState *buf, BindLoc loc, Req req, SmartState log) {
         log << "push " << debug << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        if (!buf->push(psav[i],rsav[i],wsav[i],req,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],loc,req,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf)
         {std::cerr << "invalid rinc bind!" << std::endl; exit(-1);}
@@ -853,7 +841,7 @@ struct BindState : public BaseState {
         bind[i] = buf;
         buf->incr(elock);
         (elock ? wsav[i] : rsav[i]) += 1;
-        log << "incr pass " << buf->debug << " lock:" << lock-1 << std::endl;
+        log << "incr pass " << buf << " " << buf->debug << " lock:" << lock-1 << std::endl;
         return true;
     }
     void decr(Bind i, bool elock, SmartState log) {
@@ -890,105 +878,12 @@ void BaseState::unlock(SmartState log) {
     if (lock && rspn >= nrsp) {std::cerr << "invalid num rsp!" << std::endl; exit(-1);}
     if (lock) lock->done(resp[rspn],log);
     if (rspn < nrsp) rspn += 1;
-    if (rspn == nrsp) {lock = 0; sync = 0; rspn = 0; nrsp = 0;}
-}
-
-struct SyncState : public BaseState {
-    const VkDevice device;
-    bool excl;
-    VkFence fence[StackState::comnds];
-    VkSemaphore semaphore[StackState::comnds];
-    Syncro tag[StackState::comnds];
-    int ntag, tagn;
-    SyncState() :
-        BaseState("SyncState",StackState::self),
-        device(StackState::device),
-        excl(false), ntag(0), tagn(0) {
-        for (int i = 0; i < StackState::comnds; i++) {
-        fence[i] = VK_NULL_HANDLE;
-        semaphore[i] = VK_NULL_HANDLE;
-        tag[i] = Syncros;}
-        int base = 0; int size = StackState::comnds;
-        setre(SizeState(base,size),SmartState());
-    }
-    ~SyncState() {
-        reset(SmartState());
-    }
-    SyncState *getSync() override {
-        safe.wait();
-        if (excl) {safe.post(); return 0;}
-        excl = true;
-        if (lock != 0) {std::cerr << "invalid sync lock! " << debug << std::endl; exit(-1);}
-        safe.post();
-        return this;
-    }
-    Sync ret(Sync syn, int tmp, SmartState log) {
-        if (tmp == -1) return syn;
-        if (tmp < 0 || tmp >= ntag)
-        {std::cerr << "invalid sync ntag!" << std::endl; exit(-1);}
-        switch (tag[tmp]) {default:
-        break; case(FenSyn): syn.fen = fence[tmp];
-        break; case(SemSyn): syn.sem = semaphore[tmp];}
-        return syn;
-    }
-    Sync set(Sync syn, SmartState log) {
-        return ret(syn,tagn,log);
-    }
-    Sync get(Sync syn, SmartState log) {
-        return ret(syn,tagn-1,log);
-    }
-    void push(Syncro typ, SmartState log) {
-        log << "push " << debug << " ntag:" << ntag << " lock:" << lock << std::endl;
-        if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        if (ntag >= size.size)
-        {slog.clr(); std::cerr << "invalid push tag! " << ntag << std::endl; exit(-1);}
-        tag[ntag] = typ;
-        ntag += 1;
-    }
-    void done(SmartState log) {
-        log << "done " << debug << " " << tagn << "/" << ntag << std::endl;
-        if (!excl) {std::cerr << "invalid excl unsync!" << std::endl; exit(-1);}
-        log << "done " << debug << " " << std::endl;
-        tagn += 1;
-        if (tagn == ntag) {ntag = 0; tagn = 0;
-        safe.wait(); excl = false; safe.post();}
-    }
-    void resize(SmartState log) override {
-        if (size.size > StackState::comnds)
-        {std::cerr << "invalid sync resize!" << std::endl; exit(-1);}
-        for (int i = 0; i < size.size; i++) {
-        fence[i] = createFence(device);
-        semaphore[i] = createSemaphore(device);}
-    }
-    void unsize(SmartState log) override {
-        for (int i = 0; i < size.size; i++) {
-        vkWaitForFences(device, 1, &fence[i], VK_TRUE, UINT64_MAX);
-        vkDestroySemaphore(device, semaphore[i], nullptr);
-        vkDestroyFence(device, fence[i], nullptr);}
-    }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
-        return VK_NULL_HANDLE;
-    }
-    void upset(SmartState log) override {
-        log << "upset " << debug << std::endl;
-    }
-};
-Sync BaseState::nxt(SmartState log) {
-    if (sync) return sync->set(syn1,log);
-    return syn1;
-}
-Sync BaseState::lst(SmartState log) {
-    if (sync) return sync->get(syn0,log);
-    return syn0;
-}
-void BaseState::unsync(SmartState log) {
-    log << "unsync " << debug << std::endl;
-    if (sync) sync->done(log);
+    if (rspn == nrsp) {lock = 0; rspn = 0; nrsp = 0;}
 }
 
 struct Push {
     SmartState log;
+    BindLoc loc;
     BaseState *base;
     Center *ptr;
     int sub;
@@ -1027,11 +922,9 @@ struct ThreadState : public DoneState {
         Push push = before.front(); before.pop_front(); safe.post();
         if (push.base) switch (push.base->get()) {
         default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
-        break; case(SizeBase): push.fence = VK_NULL_HANDLE; push.base->baseres(push.log);
-        break; case(FormBase): push.fence = VK_NULL_HANDLE; push.base->baseref(push.log);
-        break; case(LockBase): push.fence = push.base->basesup(push.log);
-        break; case(BothBase): push.fence = push.base->basesiz(push.log);
-        break; case(DualBase): push.fence = push.base->basefor(push.log);}
+        break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
+        break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
+        break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);}
         after.push_back(push);}
         if (!after.empty()) break;
         safe.wait();
@@ -1048,8 +941,8 @@ struct ThreadState : public DoneState {
         Push push = after.front(); after.pop_front();
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
-        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence!" << std::endl; exit(-1);}}
-        if (push.base) push.base->baseups(push.log);
+        if (result != VK_SUCCESS) {std::cerr << "cannot wait for fence! " << push.base->debug << std::endl; exit(-1);}}
+        if (push.base) push.base->baseups(push.loc,push.log);
         if (push.fnc) push.fnc(push.ptr,push.sub);
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
@@ -1072,7 +965,7 @@ struct EnumState {
     StackState *val = 0;
 };
 struct Cmd {
-    Command tag = Commands; Rsp rsp; Req req; int idx = 0; Syncro syn = Syncros;
+    Command tag = Commands; BindLoc loc = BindLocs; Rsp rsp; Req req; int idx = 0; Syncro syn = Syncros;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
@@ -1187,34 +1080,34 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
-        SyncState *sync = 0; if (count > 1 && lim == num) sync = stack[SyncBnd]->buffer()->getSync();
-        if (count > 1 && lim == num && sync == 0) {lim = -1; bind->done(log); bind = 0;}
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(bnd,dst(bnd),cmd[i].req,log)) lim = i;} else {
-            if (!dst(bnd)->push(0,0,0,cmd[i].req,log)) lim = i;}
-            if (sync) sync->push(cmd[i].syn,log);
+            if (!bind->push(bnd,dst(bnd),cmd[i].loc,cmd[i].req,log)) lim = i;} else {
+            if (!dst(bnd)->push(0,0,0,cmd[i].loc,cmd[i].req,log)) lim = i;}
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
         if (lim == num) {BaseState *last = 0;
         // link list
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        Lnk *lnk = 0; BindLoc lst = BindLocs; BaseState *bas = 0;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd; if (last) log << "link " << last->debug << " " << dst(bnd)->debug << std::endl; slog.clr();
             switch(cmd[i].tag) {default:
-            break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = dst(bnd)->lnk(last);}}
+            break; case(DerCmd): case (PDerCmd): case (IDerCmd): last = dst(bnd)->lnk(last);
+            lnk = dst(bnd)->lnk(cmd[i].loc,bas,lst,lnk);
+            bas = dst(bnd); lst = cmd[i].loc;}}
         // prepare buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            dst(bnd)->push(cmd[i].rsp,bind,sync,log);}}
+            dst(bnd)->push(bind,cmd[i].loc,cmd[i].rsp,log);}}
         // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
-            break; case(DerCmd): src(bnd)->advance(); thread->push({log,dst(bnd)});
-            break; case(PDerCmd): thread->push({log,dst(bnd)});
-            break; case(IDerCmd): src(bnd)->advance(cmd[i].idx); thread->push({log,dst(bnd)});}}
+            break; case(DerCmd): src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
+            break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
+            break; case(IDerCmd): src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});}}
         // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
@@ -1222,16 +1115,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
         // notify pass
         if (fnc.pnow && fnc.pass) fnc.pass(ptr,sub);
-        else if (fnc.pass) thread->push({log,0,ptr,sub,fnc.pass});
+        else if (fnc.pass) thread->push({log,BindLocs,0,ptr,sub,fnc.pass});
         if (bind) stack[BindBnd]->advance();
-        if (sync) stack[SyncBnd]->advance();
         } else {
         // release reserved
         for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->done(bnd,log);
-            if (sync) sync->done(log);
             dst(bnd)->done(log);
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
@@ -1242,7 +1133,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
         // notify fail
         if (fnc.fnow && fnc.fail) fnc.fail(ptr,sub);
-        else if (fnc.fail) thread->push({log,0,ptr,sub,fnc.fail});
+        else if (fnc.fail) thread->push({log,BindLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon) goon = true;}}
     }
     void push(HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
@@ -1296,11 +1187,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (FormReq): req = Req{tag,0,0,0,max};}
         Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
-        cmd<<Cmd{com,rsp,req,idx,syn};
+        cmd<<Cmd{com,loc,rsp,req,idx,syn};
         for (Iter i(rsp); i(); ++i) {
-        if (i.isee()) cmd<<Cmd{RDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
-        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},idx};}
-        else if (i.ised()) cmd<<Cmd{WDeeCmd,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
+        if (i.isee()) cmd<<Cmd{RDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
+        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},idx};}
+        else if (i.ised()) cmd<<Cmd{WDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
         if (count != drw.siz)
         {std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
         push(cmd,fnc,ptr,sub,log);
@@ -1360,7 +1251,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(drw,center,sub,Fnc{true,planePass,true,planeFail,false},log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push({log,0,center,0,fnc.pass});}
+        if (fnc.pass) thread->push({log,BindLocs,0,center,0,fnc.pass});}
     }
 };
 
@@ -1534,7 +1425,7 @@ struct SwapState : public BaseState {
     VkSwapchainKHR getSwapChain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
     VkExtent2D getExtent() override {return capabilities.currentExtent;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         capabilities = findCapabilities(window,surface,physical);
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode,
             capabilities,graphicsFamily,presentFamily);
@@ -1548,7 +1439,7 @@ struct SwapState : public BaseState {
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffers(device,getExtent(),renderPass,swapChainImageViews,depthImageView,framebuffers);
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthImageMemory, nullptr);
@@ -1558,11 +1449,11 @@ struct SwapState : public BaseState {
             vkDestroyImageView(device, imageView, nullptr);
         vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
         return VK_NULL_HANDLE;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
     }
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
@@ -1590,8 +1481,9 @@ struct PipeState : public BaseState {
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
-        std::cout << debug << std::endl;
-        setre(SizeState(micro),SmartState());
+        std::cout << debug << " " << this <<  std::endl;
+        setre(ResizeLoc,SizeState(micro),SmartState());
+        std::cout << "after " << debug << std::endl;
     }
     ~PipeState() {
         vkDestroyPipeline(device, pipeline, nullptr);
@@ -1604,15 +1496,15 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
         return VK_NULL_HANDLE; // return null fence for no wait
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
     }
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
@@ -1641,28 +1533,28 @@ struct UniformState : public BaseState {
     }
     VkBuffer getBuffer() override {return buffer;}
     int getRange() override {return size.size;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             memProperties, buffer, memory);
         vkMapMemory(device, memory, 0, bufferSize, 0, &mapped);
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         vkUnmapMemory(device,memory);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
-        loc = loc - size.base;
-        if (loc < 0 || siz < 0 || loc+siz > size.size)
+        idx = idx - size.base;
+        if (idx < 0 || lim < 0 || idx+lim > size.size)
         {std::cerr << "invalid uniform size!" << std::endl; exit(-1);}
-        log << "memcpy " << debug << " " << ptr << " " << loc << " " << siz << std::endl;
-        memcpy((void*)((char*)mapped+loc), ptr, siz);
+        log << "memcpy " << debug << " " << ptr << " " << idx << " " << lim << std::endl;
+        memcpy((void*)((char*)mapped+idx), ptr, lim);
         return VK_NULL_HANDLE; // return null fence for no wait
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
     }
 };
@@ -1677,6 +1569,7 @@ struct BufferState : public BaseState {
     VkBuffer buffer;
     VkDeviceMemory memory;
     VkCommandBuffer commandBuffer;
+    VkFence fence;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1693,40 +1586,38 @@ struct BufferState : public BaseState {
     VkDeviceMemory getMemory() override {return memory;}
     int getRange() override {return size.size;}
     // VkSemaphore getSemaphore() override {return after;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " " << size.size << std::endl; slog.clr();
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
         commandBuffer = createCommandBuffer(device,commandPool);
-        nxt(Sync{createFence(device),createSemaphore(device)});
+        fence = createFence(device);
     }
-    void unsize(SmartState log) override {
-        Sync tmp = nxt(Sync{VK_NULL_HANDLE,VK_NULL_HANDLE});
-        vkDestroySemaphore(device, tmp.sem, nullptr);
-        vkDestroyFence(device, tmp.fen, nullptr);
+    void unsize(Loc &loc, SmartState log) override {
+        vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
-        loc = loc - size.base;
-        if (loc < 0 || siz < 0 || loc+siz > size.size)
-        {std::cerr << "invalid buffer size! " << debug << " " << loc << " " << siz << " " << size.size << std::endl; exit(-1);}
+        idx = idx - size.base;
+        if (idx < 0 || lim < 0 || idx+lim > size.size)
+        {std::cerr << "invalid buffer size! " << debug << " " << idx << " " << lim << " " << size.size << std::endl; exit(-1);}
         VkDeviceSize bufferSize = size.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         memProperties, stagingBuffer, stagingBufferMemory);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy((void*)((char*)data+loc),ptr,siz);
+        memcpy((void*)((char*)data+idx),ptr,lim);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        VkFence tmp = nxt(log).fen; vkResetFences(device, 1, &tmp);
+        vkResetFences(device, 1, &fence);
         copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer,
-        nxt(log).fen,lst(log).sem,nxt(log).sem);
-        return nxt(log).fen;
+        fence,VK_NULL_HANDLE,VK_NULL_HANDLE);
+        return fence;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         vkUnmapMemory(device, stagingBufferMemory);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1784,7 +1675,7 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl; slog.clr();
         if (size.tag != ExtentExt) return; // TODO should not have image without extent
         int texWidth = size.extent.width;
@@ -1805,7 +1696,7 @@ struct ImageState : public BaseState {
         after = createSemaphore(device);
         fence = createFence(device);
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         log << "unsize " << debug << std::endl;
         vkDestroyFence(device, fence, nullptr);
         vkDestroySemaphore(device, after, nullptr);
@@ -1827,20 +1718,20 @@ struct ImageState : public BaseState {
     void unform(SmartState log) {
         log << "unform " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
-        if (loc != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
+        if (idx != 0 /*TODO lim != 0 and in Layout Probe Acquire Present?*/) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         int texWidth = size.extent.width;
         int texHeight = size.extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
-        if (nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen);}
-        if (bnd() == ImageBnd && form.tag == FormExt) {
+        if (fence == VK_NULL_HANDLE); else {VkFence fen = fence; vkResetFences(device, 1, &fen);}
+        if (bnd() == ImageBnd && 0) {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
+        // TODO change getImage to image
         transitionImageLayout(device, graphics, commandBuffer, get(ImageBnd)->getImage(),
-            lst(log).sem,nxt(log).sem,nxt(log).fen,
-            VK_FORMAT_R8G8B8A8_SRGB,form.src,form.dst);}
-        if (bnd() == TextureBnd && form.tag != FormExt) {
+            last->getSemaphore(),after,fence,
+            VK_FORMAT_R8G8B8A8_SRGB,size.src,size.dst);}
+        if (bnd() == TextureBnd) {
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
             stagingBuffer, stagingBufferMemory);
@@ -1848,15 +1739,15 @@ struct ImageState : public BaseState {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr, static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        // TODO change getImage to image after using form instead of BeforeBnd and AfterBnd
-        // TODO pass nxt(log).fen to copyTextureImage
+        // TODO change getImage to image
+        // TODO pass fence to copyTextureImage
         copyTextureImage(device, graphics, memProperties, get(ImageBnd)->getImage(), texWidth, texHeight,
-            lst(log).sem,nxt(log).sem,
+            last->getSemaphore(),after,
             stagingBuffer, commandBuffer);}
         if (bnd() == PierceBnd) {}
-        return nxt(log).fen;
+        return VK_NULL_HANDLE;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
         if (bnd() == TextureBnd) {
         vkUnmapMemory(device, stagingBufferMemory);
@@ -1891,29 +1782,30 @@ struct LayoutState : public BaseState {
         reset(SmartState());
     }
     VkSemaphore getSemaphore() override {return after;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
         buffer = createCommandBuffer(device,commandPool);
         after = createSemaphore(device);
         fence = createFence(device);
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         log << "unsize " << debug << std::endl;
         if (after != VK_NULL_HANDLE) vkDestroySemaphore(device, after, nullptr);
         if (fence != VK_NULL_HANDLE) vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &buffer);
     }
-    VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
-        log << "setup " << debug << std::endl;
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
+        log << "setup " << debug << " last:" << last->debug << std::endl; slog.clr();
         vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        if (nxt(log).fen == VK_NULL_HANDLE); else {VkFence fen = nxt(log).fen; vkResetFences(device, 1, &fen);}
+        if (fence == VK_NULL_HANDLE); else {VkFence fen = fence; vkResetFences(device, 1, &fen);}
         ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            lst(log).sem,nxt(log).sem,nxt(log).fen, VK_FORMAT_R8G8B8A8_SRGB,
+            (bnd()==AfterBnd?last->getSemaphore():VK_NULL_HANDLE),(bnd()==BeforeBnd?after:VK_NULL_HANDLE),
+            (bnd()==AfterBnd?fence:VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
             (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-        return nxt(log).fen;
+        return (bnd()==AfterBnd?fence:VK_NULL_HANDLE);
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
     }
 };
@@ -1928,17 +1820,16 @@ struct ProbeState : public BaseState {
         copy(StackState::copy) {
     }
     ~ProbeState() {
-        reset(SmartState());
     }
     VkSemaphore getSemaphore() override {return VK_NULL_HANDLE;}
     VkExtent2D getExtent() override {return extent;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         log << "usize " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int idx, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
         extent = bnd(size.bind)->getExtent();
         if (bnd() == PokeBnd) {
@@ -1950,7 +1841,7 @@ struct ProbeState : public BaseState {
         unmapMemory(device,memory);}
         return VK_NULL_HANDLE;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
         if (bnd() == PeekBnd) {
         void *mapped = 0; int32_t value;
@@ -1996,15 +1887,15 @@ struct AcquireState : public BaseState {
     uint32_t getImageIndex() override {return imageIndex;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
     VkExtent2D getExtent() override {return extent;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         after = createSemaphore(device);
         log << "resize " << debug << std::endl;
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         vkDestroySemaphore(device, after, nullptr);
         log << "usize " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
         extent = bnd(SwapBnd)->getExtent();
         VkResult result = vkAcquireNextImageKHR(device,
@@ -2015,7 +1906,7 @@ struct AcquireState : public BaseState {
         framebuffer = bnd(SwapBnd)->getFramebuffer(imageIndex);
         return VK_NULL_HANDLE;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
     }
 };
@@ -2031,20 +1922,20 @@ struct PresentState : public BaseState {
     ~PresentState() {
         reset(SmartState());
     }
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         log << "usize " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
         if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),
         bnd(AcquireBnd)->getImageIndex(),lst()->getSemaphore()))
         copy->wots(RegisterMask,1<<SizeMsk);
         return VK_NULL_HANDLE;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
     }
     static bool presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before);
@@ -2083,7 +1974,8 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     VkSemaphore getSemaphore() override {return after;}
-    void resize(SmartState log) override {
+    void resize(Loc &loc, SmartState log) override {
+        log << "resize " << debug << std::endl;
         descriptorPool = bnd(PipelineBnd)->getDescriptorPool();
         descriptorLayout = bnd(PipelineBnd)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
@@ -2092,17 +1984,18 @@ struct DrawState : public BaseState {
         after = createSemaphore(device);
         fence = createFence(device);
     }
-    void unsize(SmartState log) override {
+    void unsize(Loc &loc, SmartState log) override {
         vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
         vkDestroySemaphore(device, acquire, nullptr);
         vkDestroySemaphore(device, after, nullptr);
         vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
+        log << "unsize " << debug << std::endl;
     }
-    VkFence setup(void *ptr, int loc, int siz, SmartState log) override {
+    VkFence setup(Loc &loc, void *ptr, int idx, int lim, SmartState log) override {
         log << "setup " << debug << std::endl;
-        if (ptr != 0 || loc != 0) {std::cerr << "unsupported draw loc!" <<
+        if (ptr != 0 || idx != 0) {std::cerr << "unsupported draw idx!" <<
             std::endl; exit(-1);}
         vkResetFences(device, 1, &fence);
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2138,16 +2031,16 @@ struct DrawState : public BaseState {
                 texturePtr->getTextureSampler(),textureIdx,descriptorSet);}
         if (pipePtr && framePtr && indexPtr && fetchPtr) {
             VkExtent2D extent = framePtr->getExtent();
-            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,size.micro,siz,
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,size.micro,lim,
                 framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
-            drawFrame(commandBuffer, graphics, ptr, loc, siz, size.micro,
+            drawFrame(commandBuffer, graphics, ptr, idx, lim, size.micro,
                 lst()->getSemaphore(),after,fence,VK_NULL_HANDLE);}
         else {std::cerr << "invalid bind set! " <<
             pipePtr << " " << framePtr << " " << indexPtr << " " << fetchPtr << std::endl; exit(-1);}
         return fence;
     }
-    void upset(SmartState log) override {
+    void upset(Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
     }
     static VkDescriptorSet createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
@@ -2193,7 +2086,6 @@ struct MainState {
     ArrayState<PresentState,PresentBnd,StackState::frames> presentState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
-    ArrayState<SyncState,BindBnd,StackState::frames> syncState;
     EnumState enumState[Binds+1];
     ThreadState threadState;
     CopyState copyState;
@@ -2238,7 +2130,6 @@ struct MainState {
             {PresentBnd,&presentState},
             {DrawBnd,&drawState},
             {BindBnd,&bindState},
-            {SyncBnd,&syncState},
             {Binds,0}},
         threadState(logicalState.device,&copyState),
         copyState(&threadState,enumState),
