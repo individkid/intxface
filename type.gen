@@ -546,56 +546,56 @@ Memoryed = { -- reserve resource to change when other resource finishes
 Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","DrawBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","AcquireBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","PresentBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","DrawBnd","Int","0","BindLoc","MiddleLoc"},
+	{"Bind","AcquireBnd","Int","0","BindLoc","BeforeLoc"},
+	{"Bind","PresentBnd","Int","0","BindLoc","AfterLoc"},
 	{"Bind","PierceBnd","Int","0","BindLoc","ResizeLoc"},
 }
 Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Bind","DrawBnd"},
-	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Bind","AcquireBnd"},
-	{"Bind","PresentBnd","BindLoc","ResizeLoc","Bind","PresentBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Bind","DrawBnd"},
+	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Bind","AcquireBnd"},
+	{"Bind","PresentBnd","BindLoc","AfterLoc","Bind","PresentBnd"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Bind","PierceBnd"},
 }
 Bindir = { -- resource push command
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Command","DerCmd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Command","DerCmd"},
-	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Command","DerCmd"},
-	{"Bind","PresentBnd","BindLoc","ResizeLoc","Command","DerCmd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Command","DerCmd"},
+	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Command","DerCmd"},
+	{"Bind","PresentBnd","BindLoc","AfterLoc","Command","DerCmd"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
 }
 Bindex = { -- resource push extent
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Extent","FalseExt"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
-	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
-	{"Bind","PresentBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Extent","MicroExt"},
+	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Extent","MicroExt"},
+	{"Bind","PresentBnd","BindLoc","AfterLoc","Extent","MicroExt"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Extent","ExtentExt"},
 }
 Bindre = { -- resource request type
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Request","SizeReq"},
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Request","SizeReq"},
-	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Request","SizeReq"},
-	{"Bind","PresentBnd","BindLoc","ResizeLoc","Request","SizeReq"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Request","SizeReq"},
+	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Request","SizeReq"},
+	{"Bind","PresentBnd","BindLoc","AfterLoc","Request","SizeReq"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 }
 Bindro = { -- resource syncronization type
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","AcquireBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
-	{"Bind","PresentBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Syncro","FenSyn"},
+	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Syncro","FenSyn"},
+	{"Bind","PresentBnd","BindLoc","AfterLoc","Syncro","FenSyn"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Syncro","FenSyn"},
 }
 Bindee = { -- resources reserved
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bindie = { -- indexed resources reserved
-	{"Bind","DrawBnd","BindLoc","ResizeLoc","Int","0","Bind","PipelineBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 }
 Binded = { -- modified after submitted resource completes
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
