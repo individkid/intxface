@@ -939,7 +939,7 @@ struct EnumState {
     StackState *val = 0;
 };
 struct Cmd {
-    Command tag = Commands; BindLoc loc = BindLocs; Rsp rsp; Req req; int idx = 0; Syncro syn = Syncros;
+    Command tag = Commands; BindLoc loc = BindLocs; Rsp rsp; Req req; int idx = 0;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
@@ -1014,15 +1014,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (MemoryConst): req = Memoryre__Memory__BindLoc__Request(drw.mem)(loc);
         break; case (BindConst): req = Bindre__Bind__BindLoc__Request(drw.bnd)(loc);}
         return req;
-    }
-    static Syncro syncro(Draw drw, BindLoc loc) {
-        Syncro syn = Syncros;
-        switch (drw.con) {
-        default: {std::cerr << "invalid syn con!" << std::endl; exit(-1);}
-        break; case (MicroConst): syn = Dependro__Micro__BindLoc__Syncro(drw.drw)(loc);
-        break; case (MemoryConst): syn = Memoryro__Memory__BindLoc__Syncro(drw.mem)(loc);
-        break; case (BindConst): syn = Bindro__Bind__BindLoc__Syncro(drw.bnd)(loc);}
-        return syn;
     }
     static int arg(Draw drw, int &count) {
         if (count >= drw.siz) {std::cerr << "wrong arg count! " << count << "/" << drw.siz << std::endl; slog.clr(); exit(-1);}
@@ -1118,11 +1109,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindLoc loc = location(drw,j);
         Bind bnd = depender(drw,loc);
         Command com = command(drw,loc);
-        Syncro syn = syncro(drw,loc);
         Request tag = request(drw,loc);
         Extent ext = extent(drw,loc);
         log << "count: " << count << " loc:" << loc << " bnd:" << bnd << " cmd:" << com <<
-        " syn:" << syn << " req:" << tag << " ext:" << ext << std::endl;
+        " req:" << tag << " ext:" << ext << std::endl;
         if (drw.con == BindConst && drw.bnd != bnd)
         {std::cerr << "invalid bind const!" << std::endl; exit(-1);}
         int base, size; switch (ext) {
@@ -1161,7 +1151,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (FormReq): req = Req{tag,0,0,0,max};}
         Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
-        cmd<<Cmd{com,loc,rsp,req,idx,syn};
+        cmd<<Cmd{com,loc,rsp,req,idx};
         for (Iter i(rsp); i(); ++i) {
         if (i.isee()) cmd<<Cmd{RDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
         else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},idx};}
