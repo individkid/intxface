@@ -360,13 +360,26 @@ template<class State> struct ConstState {
 
 struct SizeState {
     Extent tag;
-    int base,size;
-    VkImageLayout src,dst;
+    union {
+    struct {int base,size;};
+    struct {VkImageLayout src,dst;};
     VkExtent2D extent;
     Micro micro;
-    Bind bind;
+    Bind bind;};
     SizeState() {
         tag = InitExt;
+    }
+    SizeState(Extent ext, int base, int size) {
+        tag = ext; switch (ext) {
+        default: {std::cerr << "invalid state size!" << std::endl; exit(-1);}
+        break; case (InitExt):
+        break; case (IntExt): this->base = base; this->size = size;
+        break; case (FormExt): src = (VkImageLayout)base; dst = (VkImageLayout)size;
+        break; case (ExtentExt): extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
+        break; case (MicroExt): micro = (Micro)base;
+        break; case (BindExt): bind = (Bind)base;
+        break; case (TrueExt):
+        break; case (FalseExt):;}
     }
     SizeState(int base, int size) {
         tag = IntExt;
@@ -423,12 +436,6 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     return os;
 }
 
-struct Req {
-    Request tag = Requests; void *ptr = 0; int idx = 0; int lim = 0; SizeState siz; bool pre = false;
-};
-struct Rsp {
-    Constant con = Constants; Micro mic = Micros; Memory mem = Memorys; Bind bnd = Binds; BindLoc loc = BindLocs;
-};
 struct Syn {
     VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
 };
@@ -438,10 +445,10 @@ struct Lnk {
 };
 struct Loc {
     SizeState siz; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
-    BindLoc operator()() {
-        return rsp.loc;
-    }
 };
+BindLoc &operator*(Loc &loc) {
+    return loc.rsp.loc;
+}
 struct BindState;
 struct BaseState {
     StackState *item;
@@ -449,6 +456,7 @@ struct BaseState {
     int plock, rlock, wlock;
     BindState *lock;
     Loc ploc[BindLocs];
+    SizeState psiz[BindLocs];
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr), safe(1), plock(0), rlock(0), wlock(0), lock(0), debug{0} {
@@ -489,8 +497,8 @@ struct BaseState {
         log << "done " << debug << " " << plock << std::endl;
         safe.post();
     }
-    void setre(BindLoc loc, SizeState siz, SmartState log) {
-        push(0,0,0,loc,Req{SizeReq,0,0,0,siz,false},log);
+    void setre(BindLoc loc, Extent ext, int base, int size, SmartState log) {
+        push(0,0,0,loc,Req{SizeReq,0,0,0,ext,base,size,false},log);
         baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
@@ -499,9 +507,9 @@ struct BaseState {
         else unsize(ploc[i],log);
     }
     void recall(Loc &loc, SmartState log) {
-        if (loc.siz == loc.req.siz); else {
+        if (loc.siz == SizeState(loc.req.ext,loc.req.base,loc.req.size)); else {
         if (loc.siz == SizeState(InitExt)); else unsize(loc,log);
-        loc.siz = loc.req.siz;
+        loc.siz = SizeState(loc.req.ext,loc.req.base,loc.req.size);
         log << "recall " << debug << " " << loc.siz << std::endl;
         if (loc.siz == SizeState(InitExt)); else resize(loc,log);}
     }
@@ -901,11 +909,7 @@ int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 struct EnumState {
-    Bind key = Binds;
-    StackState *val = 0;
-};
-struct Cmd {
-    Command tag = Commands; BindLoc loc = BindLocs; Rsp rsp; Req req; int idx = 0;
+    Bind key = Binds; StackState *val = 0;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
@@ -1092,16 +1096,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindExt): base = arg(drw,count);
         break; case (TrueExt):
         break; case (FalseExt): ;}
-        SizeState max; switch (ext) {
-        default: {std::cerr << "invalid draw ext!" << std::endl; exit(-1);}
-        break; case (InitExt): max = SizeState(InitExt);
-        break; case (IntExt): max = SizeState(base,size);
-        break; case (FormExt): max = SizeState((VkImageLayout)base,(VkImageLayout)size);
-        break; case (ExtentExt): max = SizeState(VkExtent2D{(uint32_t)base,(uint32_t)size});
-        break; case (MicroExt): max = SizeState((Micro)base);
-        break; case (BindExt): max = SizeState((Bind)base);
-        break; case (TrueExt): max = SizeState(TrueExt);
-        break; case (FalseExt): max = SizeState(FalseExt);}
+        SizeState max = SizeState(ext,base,size);
         int bas, siz; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
         break; case (BothReq): bas = arg(drw,count); siz = arg(drw,count);
@@ -1109,9 +1104,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (SizeReq): ;}
         Req req; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
-        break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,max};
+        break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,ext,base,size};
         break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
-        break; case (SizeReq): req = Req{tag,0,0,0,max};}
+        break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
         Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
         cmd<<Cmd{com,loc,rsp,req,idx};
@@ -1173,9 +1168,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): push(center->mem,(void*)center->bas,idx,siz,center,sub,fnc,log);
         break; case (Piercez): push(center->mem,(void*)center->pie,idx,siz,center,sub,fnc,log);
         break; case (Drawz): {HeapState<Draw> drw;
-        for (int i = 0; i < center->siz-1; i++) drw<<center->drw[i];
+        for (int i = 0; i < center->siz; i++) drw<<center->drw[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
         push(drw,center,sub,Fnc{true,planePass,true,planeFail,false},log);}
+        break; case (Commandz): {HeapState<Cmd> cmd;
+        for (int i = 0; i < center->siz; i++) cmd<<center->com[i];
+        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        push(cmd,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,BindLocs,0,center,0,fnc.pass});}
@@ -1409,7 +1408,7 @@ struct PipeState : public BaseState {
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
         std::cout << debug << " " << this <<  std::endl;
-        setre(ResizeLoc,SizeState(micro),SmartState());
+        setre(ResizeLoc,MicroExt,micro,0,SmartState());
         std::cout << "after " << debug << std::endl;
     }
     ~PipeState() {
@@ -1607,7 +1606,7 @@ struct ImageState : public BaseState {
         int texWidth = siz(loc).extent.width;
         int texHeight = siz(loc).extent.height;
         extent = siz(loc).extent;
-        if (loc() == ResizeLoc) { // TODO remove TextureBnd from type.gen
+        if (*loc == ResizeLoc) { // TODO remove TextureBnd from type.gen
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
@@ -1632,7 +1631,7 @@ struct ImageState : public BaseState {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (loc() == ResizeLoc) { // TODO remove TextureBnd from type.gen
+        if (*loc == ResizeLoc) { // TODO remove TextureBnd from type.gen
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, imageView, nullptr);
@@ -1641,17 +1640,17 @@ struct ImageState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
-        VkFence fence = (loc()==AfterLoc?fen(loc):VK_NULL_HANDLE);
-        VkSemaphore before = (loc()!=BeforeLoc?sem(lst(loc)):VK_NULL_HANDLE);
-        VkSemaphore after = (loc()!=AfterLoc?sem(loc):VK_NULL_HANDLE);
+        VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
+        VkSemaphore before = (*loc!=BeforeLoc?sem(lst(loc)):VK_NULL_HANDLE);
+        VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         if (idx(loc) != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
-        if (loc() == BeforeLoc || loc() == AfterLoc) { // TODO for layout change
+        if (*loc == BeforeLoc || *loc == AfterLoc) { // TODO for layout change
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBuffer,
             bnd(ImageBnd)->getImage(),before,after,fence,
             VK_FORMAT_R8G8B8A8_SRGB,siz(loc).src,siz(loc).dst);}
-        if (loc() == MiddleLoc) {
+        if (*loc == MiddleLoc) {
         int texWidth = siz(loc).extent.width;
         int texHeight = siz(loc).extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -1671,7 +1670,7 @@ struct ImageState : public BaseState {
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << std::endl;
-        if (loc() == MiddleLoc) {
+        if (*loc == MiddleLoc) {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}

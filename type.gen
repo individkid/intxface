@@ -42,6 +42,7 @@ Memory = {
 	"Basisz", -- base for each dimension
 	"Piercez", -- per fragment info
 	"Drawz", -- draw range info
+	"Commandz", -- little vulkan language
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
 	"Kernelz", -- inflight transformations
@@ -880,6 +881,30 @@ Pierce = {
 	{"vec","Int32",{},{3}},
 	{"idx","Int32",{},{}},
 }
+Req = {
+    {"tag","Request",{},{}},
+    {"ptr","Dat",{},{}},
+    {"idx","Int",{},{}},
+    {"lim","Int",{},{}},
+    {"ext","Extent",{},{}},
+    {"base","Int",{},{}},
+    {"size","Int",{},{}},
+    {"pre","Int",{},{}},
+}
+Rsp = {
+    {"con","Constant",{},{}},
+    {"mic","Micro",{},{}},
+    {"mem","Memory",{},{}},
+    {"bnd","Bind",{},{}},
+    {"loc","BindLoc",{},{}},
+}
+Cmd = {
+	{"tag","Command",{},{}},
+	{"loc","BindLoc",{},{}},
+	{"rsp","Rsp",{},{}},
+	{"req","Req",{},{}},
+	{"idx","Int",{},{}},
+}
 Draw = {
 	{"con","Constant",{},""},
 	{"drw","Micro",{["con"]={["MicroConst"]=true}},{}},
@@ -904,7 +929,8 @@ Center = {
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
-	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"}, -- TODO change to Command and use idx for Fnc index
+	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
+	{"com","Cmd",{["mem"]={["Commandz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
