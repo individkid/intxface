@@ -459,7 +459,7 @@ Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
 	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","BeforeBnd"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","TextureBnd"},
+	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","ImageBnd"},
 	{"Memory","Texturez","BindLoc","AfterLoc","Bind","AfterBnd"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Bind","UniformBnd"},
 	{"Memory","Matrixz","BindLoc","MiddleLoc","Bind","MatrixBnd"},
@@ -630,7 +630,6 @@ Dependee = { -- rinc
 }
 Dependie = { -- indexed rinc
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","TextureBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 }
 Depended = { -- winc
