@@ -1105,17 +1105,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         int bas, siz; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
         break; case (BothReq): bas = arg(drw,count); siz = arg(drw,count);
-        break; case (DualReq): bas = arg(drw,count); siz = arg(drw,count);
         break; case (LockReq): bas = arg(drw,count); siz = arg(drw,count);
-        break; case (SizeReq): ;
-        break; case (FormReq): ;}
+        break; case (SizeReq): ;}
         Req req; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
         break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,max};
-        break; case (DualReq): req = Req{tag,get(drw,siz),bas,siz,max};
         break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
-        break; case (SizeReq): req = Req{tag,0,0,0,max};
-        break; case (FormReq): req = Req{tag,0,0,0,max};}
+        break; case (SizeReq): req = Req{tag,0,0,0,max};}
         Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
         cmd<<Cmd{com,loc,rsp,req,idx};

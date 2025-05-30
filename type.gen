@@ -104,10 +104,8 @@ Extent = { -- resource initialization done on gpu thread
 }
 Request = {
     "BothReq",
-    "DualReq",
     "LockReq",
     "SizeReq",
-    "FormReq",
 }
 Constant = {
 	"MicroConst",
