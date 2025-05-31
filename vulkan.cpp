@@ -1096,7 +1096,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindExt): base = arg(drw,count);
         break; case (TrueExt):
         break; case (FalseExt): ;}
-        SizeState max = SizeState(ext,base,size);
         int bas, siz; switch (tag) {
         default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
         break; case (BothReq): bas = arg(drw,count); siz = arg(drw,count);
@@ -1250,14 +1249,25 @@ void TestState::call() {
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    // copy->push(Bringupz,vtx->ver,0,vsiz,vtx,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     copy->push(vtx,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
+    /*copy->push(Bringupz,(void*)vertices.data(),0,vertices.size()*copy->src(BringupBnd)->bufsiz(),
+    0,0,Fnc{false,0,false,0,false},SmartState());*/
+    /*int siz = vertices.size()*copy->src(BringupBnd)->bufsiz();
+    int ary[] = {0,siz,0,siz}; HeapState<Draw> drw;
+    struct UniDat uni = {.num=-1,.siz=siz,.ptr=(void*)vertices.data()};
+    drw<<Draw{.con=MemoryConst,.mem=Bringupz,.ptr=(void*)&uni,.siz=4,.arg=ary};
+    copy->push(drw,0,0,Fnc{false,0,false,0,false},SmartState());*/
+    /*int siz = vertices.size()*copy->src(BringupBnd)->bufsiz();
+    HeapState<Cmd> cmd; cmd<<Cmd{.tag=PDerCmd,.loc=MiddleLoc,
+    .rsp=Rsp{.con=MemoryConst,.mic=Micros,.mem=Bringupz,.bnd=BringupBnd,.loc=MiddleLoc},
+    .req=Req{.tag=BothReq,.ptr=(void*)vertices.data(),.idx=0,.lim=siz,.ext=IntExt,.base=0,.size=siz}};
+    copy->push(cmd,Fnc{false,0,false,0,false},0,0,SmartState());*/
+    
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    // copy->push(Indexz,ind->ind,0,isiz,ind,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     copy->push(ind,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     Center *tex = 0; allocCenter(&tex,1);
