@@ -329,7 +329,6 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         case (ImageBnd): return "ImageBnd";
         case (BeforeBnd): return "BeforeBnd";
         case (AfterBnd): return "AfterBnd";
-        case (TextureBnd): return "TextureBnd";
         case (UniformBnd): return "UniformBnd";
         case (MatrixBnd): return "MatrixBnd";
         case (TriangleBnd): return "TriangleBnd";
@@ -992,7 +991,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     static void *get(Draw drw, int siz) {
         if (!drw.ptr) return 0;
         if (*(int*)drw.ptr >= 0) {
-        if (*(int*)drw.ptr != siz) {std::cerr << "mismatch dat siz!" << std::endl; exit(-1);}
+        if (*(int*)drw.ptr != siz) {std::cerr << "mismatch dat siz!" << std::endl; *(int*)0=0; exit(-1);}
         return (void*)(((int*)drw.ptr)+1);}
         struct UniDat *uni = (struct UniDat *)drw.ptr;
         if (uni->siz != siz) {std::cerr << "mismatch uni siz!" << std:: endl; exit(-1);}
@@ -1153,11 +1152,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
         break; case (Texturez): for (int k = 0; k < center->siz; k++) {HeapState<Draw> lst; int args[] = {
         /*ResizeLoc ImageBnd width,height,image-index*/center->tex[k].wid,center->tex[k].hei,0,
-        /*BeforeLoc LayoutBnd idx,siz*/0,datxVoids(center->tex[k].dat),
-        /*MiddleLoc TextureBnd width,height,idx,siz,texture-index,image-index*/
+        /*BeforeLoc ImageBnd src,dst,idx,siz,texture-index,image-index*/ // TODO no need to bind to self
+        VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,datxVoids(center->tex[k].dat),0,0,
+        /*MiddleLoc ImageBnd width,height,idx,siz,texture-index,image-index*/ // TODO no need to bind to self
         center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,0,
         /*AfterLoc LayoutBnd idx,siz*/0,datxVoids(center->tex[k].dat)};
-        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=center->tex[k].dat,.siz=13,.arg=args};
+        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=center->tex[k].dat,.siz=17,.arg=args};
         push(lst,center,(k<center->siz-1?-1-k:sub),fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
@@ -1616,13 +1616,13 @@ struct ImageState : public BaseState {
         int texWidth = siz(loc).extent.width;
         int texHeight = siz(loc).extent.height;
         extent = siz(loc).extent;
-        if (*loc == ResizeLoc) { // TODO remove TextureBnd from type.gen
+        if (*loc == ResizeLoc) {
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        textureSampler = ImageState::createTextureSampler(device,properties);}
-        commandBuffer = createCommandBuffer(device,commandPool);
+        textureSampler = ImageState::createTextureSampler(device,properties);
+        commandBuffer = createCommandBuffer(device,commandPool);}
         if (0) { // TODO for pierce point
         createImage(device, physical, siz(loc).extent.width, siz(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -1641,7 +1641,7 @@ struct ImageState : public BaseState {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (*loc == ResizeLoc) { // TODO remove TextureBnd from type.gen
+        if (*loc == ResizeLoc) {
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, imageView, nullptr);
@@ -1655,7 +1655,7 @@ struct ImageState : public BaseState {
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         if (idx(loc) != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
-        if (*loc == BeforeLoc || *loc == AfterLoc) { // TODO for layout change
+        if (*loc == BeforeLoc || *loc == AfterLoc) {
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBuffer,
             bnd(ImageBnd)->getImage(),before,after,fence,
@@ -1937,7 +1937,6 @@ struct DrawState : public BaseState {
         break; case (IndexBnd): indexPtr = bnd(i.bnd);
         break; case (BringupBnd): fetchPtr = bnd(i.bnd);
         break; case (ImageBnd): imagePtr = bnd(i.bnd); imageIdx = index++;
-        break; case (TextureBnd): // texturePtr = bnd(i.bnd); // TODO remove TextureBnd
         break; case (MatrixBnd): matrixPtr = bnd(i.bnd); matrixIdx = index++;
         break; case (PierceBnd): framePtr = bnd(i.bnd);}}
         /*if (trianglePtr) {
@@ -1989,10 +1988,9 @@ struct MainState {
     ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
-    ArrayState<ImageState,ImageBnd,StackState::images> imageState; // TODO use TextureBnd or PierceBnd instead
+    ArrayState<ImageState,ImageBnd,StackState::images> imageState;
     ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState; // TODO use reform in ImageState instead
     ArrayState<LayoutState,AfterBnd,StackState::frames> afterState; // TODO use reform in ImageState instead
-    ArrayState<ImageState,TextureBnd,StackState::frames> textureState;
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
@@ -2036,7 +2034,6 @@ struct MainState {
             {ImageBnd,&imageState},
             {BeforeBnd,&beforeState},
             {AfterBnd,&afterState},
-            {TextureBnd,&textureState},
             {UniformBnd,&uniformState},
             {MatrixBnd,&matrixState},
             {TriangleBnd,&triangleState},
