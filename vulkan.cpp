@@ -455,10 +455,10 @@ struct BaseState {
     int plock, rlock, wlock;
     BindState *lock;
     Loc ploc[BindLocs];
-    SizeState psiz[BindLocs];
+    int mask;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
-        item(ptr), safe(1), plock(0), rlock(0), wlock(0), lock(0), debug{0} {
+        item(ptr), safe(1), plock(0), rlock(0), wlock(0), lock(0), mask(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
     }
@@ -506,11 +506,14 @@ struct BaseState {
         else unsize(ploc[i],log);
     }
     void recall(Loc &loc, SmartState log) {
-        if (loc.siz == SizeState(loc.req.ext,loc.req.base,loc.req.size)); else {
-        if (loc.siz == SizeState(InitExt)); else unsize(loc,log);
-        loc.siz = SizeState(loc.req.ext,loc.req.base,loc.req.size);
+        SizeState siz = SizeState(loc.req.ext,loc.req.base,loc.req.size);
+        SizeState ini = SizeState(InitExt);
+        int msk = 1<<loc.rsp.loc;
+        if (loc.siz == siz); else {
+        if (loc.siz == ini); else {mask &= ~msk; unsize(loc,log);}
+        loc.siz = siz;
         log << "recall " << debug << " " << loc.siz << std::endl;
-        if (loc.siz == SizeState(InitExt)); else resize(loc,log);}
+        if (loc.siz == ini); else {resize(loc,log); mask |= msk;}}
     }
     VkFence basesiz(BindLoc loc, SmartState log) {
         // resize and setup
@@ -584,6 +587,9 @@ struct BaseState {
     }
     Loc &get(BindLoc loc) {
         return ploc[loc];
+    }
+    int msk() {
+        return mask;
     }
     static Loc &lst(Loc &loc) {
         return loc.lst.ptr->get(loc.lst.loc);
@@ -1621,8 +1627,8 @@ struct ImageState : public BaseState {
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        textureSampler = ImageState::createTextureSampler(device,properties);
-        commandBuffer = createCommandBuffer(device,commandPool);}
+        textureSampler = ImageState::createTextureSampler(device,properties);}
+        if (msk() == 0) commandBuffer = createCommandBuffer(device,commandPool);
         if (0) { // TODO for pierce point
         createImage(device, physical, siz(loc).extent.width, siz(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -1641,8 +1647,8 @@ struct ImageState : public BaseState {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
+        if (msk() == 0) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         if (*loc == ResizeLoc) {
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
