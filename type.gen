@@ -54,8 +54,6 @@ Bind = { -- per variation of BaseState
 	"IndexBnd",
 	"BringupBnd",
 	"ImageBnd",
-	"BeforeBnd",
-	"AfterBnd",
 	"UniformBnd",
 	"MatrixBnd",
 	"TriangleBnd",
@@ -457,9 +455,8 @@ Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
 	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","ImageBnd"},
-	-- {"Memory","Texturez","BindLoc","BeforeLoc","Bind","BeforeBnd"},
 	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Bind","AfterBnd"},
+	{"Memory","Texturez","BindLoc","AfterLoc","Bind","ImageBnd"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Bind","UniformBnd"},
 	{"Memory","Matrixz","BindLoc","MiddleLoc","Bind","MatrixBnd"},
 	{"Memory","Trianglez","BindLoc","MiddleLoc","Bind","TriangleBnd"},
@@ -474,7 +471,7 @@ Memoryir = { -- which command for location
 	{"Memory","Texturez","BindLoc","ResizeLoc","Command","IDerCmd"},
 	{"Memory","Texturez","BindLoc","BeforeLoc","Command","IDerCmd"},
 	{"Memory","Texturez","BindLoc","MiddleLoc","Command","IDerCmd"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Command","PDerCmd"},
+	{"Memory","Texturez","BindLoc","AfterLoc","Command","IDerCmd"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Command","PDerCmd"},
 	{"Memory","Matrixz","BindLoc","MiddleLoc","Command","PDerCmd"},
 	{"Memory","Trianglez","BindLoc","MiddleLoc","Command","PDerCmd"},
@@ -488,9 +485,8 @@ Memoryex = { -- which size type for location
 	{"Memory","Bringupz","BindLoc","MiddleLoc","Extent","IntExt"},
 	{"Memory","Texturez","BindLoc","ResizeLoc","Extent","ExtentExt"},
 	{"Memory","Texturez","BindLoc","BeforeLoc","Extent","FormExt"},
-	-- {"Memory","Texturez","BindLoc","BeforeLoc","Extent","TrueExt"},
 	{"Memory","Texturez","BindLoc","MiddleLoc","Extent","ExtentExt"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Extent","TrueExt"},
+	{"Memory","Texturez","BindLoc","AfterLoc","Extent","FormExt"},
 	{"Memory","Uniformz","BindLoc","MiddleLoc","Extent","IntExt"},
 	{"Memory","Matrixz","BindLoc","MiddleLoc","Extent","IntExt"},
 	{"Memory","Trianglez","BindLoc","MiddleLoc","Extent","IntExt"},
@@ -515,11 +511,10 @@ Memoryre = { -- which thread request for location
 	{"Memory","Piercez","BindLoc","MiddleLoc","Request","BothReq"},
 }
 Memoryee = { -- prevent resources from being changed while in use
-	{"Memory","Texturez","BindLoc","BindLocs","Int","0","Bind","Binds"},
+	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Memoryie = { -- reserve resources indexed by Draw argument
-	{"Memory","Texturez","BindLoc","BeforeLoc","Int","0","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Int","0","Bind","ImageBnd"},
+	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Memoryed = { -- reserve resource to change when other resource finishes
 	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},

@@ -327,8 +327,6 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         case (IndexBnd): return "IndexBnd";
         case (BringupBnd): return "BringupBnd";
         case (ImageBnd): return "ImageBnd";
-        case (BeforeBnd): return "BeforeBnd";
-        case (AfterBnd): return "AfterBnd";
         case (UniformBnd): return "UniformBnd";
         case (MatrixBnd): return "MatrixBnd";
         case (TriangleBnd): return "TriangleBnd";
@@ -452,13 +450,15 @@ struct BindState;
 struct BaseState {
     StackState *item;
     SafeState safe;
+    bool valid;
     int plock, rlock, wlock;
     BindState *lock;
     Loc ploc[BindLocs];
     int mask;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
-        item(ptr), safe(1), plock(0), rlock(0), wlock(0), lock(0), mask(0), debug{0} {
+        item(ptr), safe(1), valid(false), plock(0), rlock(0), wlock(0),
+        lock(0), mask(0), debug{0} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
     }
@@ -510,17 +510,15 @@ struct BaseState {
         SizeState ini = SizeState(InitExt);
         int msk = 1<<loc.rsp.loc;
         if (loc.siz == siz); else {
-        if (loc.siz == ini); else {mask &= ~msk; unsize(loc,log);}
+        if (loc.siz == ini); else {mask &= ~msk; if (mask == 0) valid = false; unsize(loc,log);}
         loc.siz = siz;
-        log << "recall " << debug << " " << loc.siz << std::endl;
-        if (loc.siz == ini); else {resize(loc,log); mask |= msk;}}
+        if (loc.siz == ini); else {resize(loc,log); if (mask == 0) valid = true; mask |= msk;}}
     }
     VkFence basesiz(BindLoc loc, SmartState log) {
         // resize and setup
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != BothReq)
-            {slog.clr(); std::cerr << "basesiz invalid state! plock:" <<
-            plock << " tag:" << ploc[loc].req.tag << std::endl; exit(-1);}
+            {std::cerr << "basesiz invalid state!" << std::endl; exit(-1);}
         safe.post();
         recall(ploc[loc],log);
         return setup(ploc[loc],log);
@@ -529,8 +527,7 @@ struct BaseState {
         // resize only
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != SizeReq)
-            {slog.clr(); std::cerr << "baseres invalid state! " << debug << " " << plock << " " <<
-            ploc[loc].req.tag << std::endl; exit(-1);}
+            {std::cerr << "baseres invalid state! " << debug << std::endl; exit(-1);}
         safe.post();
         recall(ploc[loc],log);
     }
@@ -560,7 +557,8 @@ struct BaseState {
         safe.wait();
         if (plock < psav || wlock < wsav || rlock < rsav)
             {std::cerr << "invalid save lock!" << std::endl; exit(-1);}
-        if (plock-psav || wlock-wsav || (elock && rlock-rsav)) {safe.post(); return false;}
+        if (!valid || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
+        safe.post(); return false;}
         (elock ? wlock : rlock) += 1;
         safe.post();
         return true;
@@ -872,9 +870,8 @@ struct ThreadState : public DoneState {
         Push push = before.front(); before.pop_front(); safe.post();
         if (push.base) {
         Request tag = push.base->tag(push.loc);
-        push.log << "stage " << push.base->debug << " loc:" << push.loc << " tag:" << tag << std::endl;
         switch (tag) {
-        default: {slog.clr(); std::cerr << "stage push tag! " << push.base->debug << " loc:" << push.loc << " tag:" << tag << std::endl; exit(-1);}
+        default: {std::cerr << "stage push tag! " << push.base->debug << std::endl; exit(-1);}
         break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
         break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
         break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);}}
@@ -926,6 +923,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Binds];
     BaseState *buffer[Binds];
+    int first[Binds];
+    int final[Binds];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread), stack{0} {
         std::cout << "CopyState" << std::endl;
@@ -991,13 +990,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return req;
     }
     static int arg(Draw drw, int &count) {
-        if (count >= drw.siz) {std::cerr << "wrong arg count! " << count << "/" << drw.siz << std::endl; slog.clr(); exit(-1);}
+        if (count >= drw.siz) {std::cerr << "wrong arg count!" << std::endl; exit(-1);}
         return drw.arg[count++];
     }
     static void *get(Draw drw, int siz) {
         if (!drw.ptr) return 0;
         if (*(int*)drw.ptr >= 0) {
-        if (*(int*)drw.ptr != siz) {std::cerr << "mismatch dat siz!" << std::endl; *(int*)0=0; exit(-1);}
+        if (*(int*)drw.ptr != siz) {std::cerr << "mismatch dat siz!" << std::endl; exit(-1);}
         return (void*)(((int*)drw.ptr)+1);}
         struct UniDat *uni = (struct UniDat *)drw.ptr;
         if (uni->siz != siz) {std::cerr << "mismatch uni siz!" << std:: endl; exit(-1);}
@@ -1011,9 +1010,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         int count = 0; // actual number of reservations
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
-            break; case(DerCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); cmd[i].req.pre = false; count += 1;
-            break; case(PDerCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(); cmd[i].req.pre = true; count += 1;
-            break; case(IDerCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); cmd[i].req.pre = false; count += 1;
+            break; case(DerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;} final[bnd] = i; count += 1;
+            break; case(PDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;} final[bnd] = i; count += 1;
+            break; case(IDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(cmd[i].idx); first[bnd] = i;} final[bnd] = i; count += 1;
             break; case(RDeeCmd): case(WDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); count += 1;
             break; case(IRDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); count += 1;}}
         // choose binding
@@ -1023,16 +1022,17 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
-            break; case(DerCmd): case(PDerCmd): case(IDerCmd): if (bind) {
-            if (!bind->push(bnd,dst(bnd),cmd[i].loc,cmd[i].req,log)) lim = i;} else {
-            if (!dst(bnd)->push(0,0,0,cmd[i].loc,cmd[i].req,log)) lim = i;}
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
+            cmd[i].req.pre = (cmd[i].tag == PDerCmd && final[bnd] == i);
+            if (bind) {if (!bind->push(bnd,dst(bnd),cmd[i].loc,cmd[i].req,log)) lim = i;}
+            else {if (!dst(bnd)->push(0,0,0,cmd[i].loc,cmd[i].req,log)) lim = i;}
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
         if (lim == num) {BaseState *last = 0;
         // link list
         Lnk *lnk = 0; BindLoc lst = BindLocs; BaseState *bas = 0;
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd; if (last) log << "link " << last->debug << " " << dst(bnd)->debug << std::endl; slog.clr();
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch(cmd[i].tag) {default:
             break; case(DerCmd): case (PDerCmd): case (IDerCmd):
             lnk = dst(bnd)->lnk(cmd[i].loc,bas,lst,lnk);
@@ -1046,9 +1046,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
-            break; case(DerCmd): src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
+            break; case(DerCmd): if (first[bnd] == i) src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(IDerCmd): src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});}}
+            break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});}}
         // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
@@ -1158,12 +1158,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
         break; case (Texturez): for (int k = 0; k < center->siz; k++) {HeapState<Draw> lst; int args[] = {
         /*ResizeLoc ImageBnd width,height,image-index*/center->tex[k].wid,center->tex[k].hei,0,
-        /*BeforeLoc ImageBnd src,dst,idx,siz,texture-index,image-index*/ // TODO no need to bind to self
-        VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,datxVoids(center->tex[k].dat),0,0,
-        /*MiddleLoc ImageBnd width,height,idx,siz,texture-index,image-index*/ // TODO no need to bind to self
-        center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,0,
-        /*AfterLoc LayoutBnd idx,siz*/0,datxVoids(center->tex[k].dat)};
-        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=center->tex[k].dat,.siz=17,.arg=args};
+        /*BeforeLoc ImageBnd src,dst,idx,siz,image-index*/
+        VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,datxVoids(center->tex[k].dat),0,
+        /*MiddleLoc ImageBnd width,height,idx,siz,image-index*/
+        center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,
+        /*AfterLoc ImageBnd src,dst,idx,siz,image-index*/
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,0,datxVoids(center->tex[k].dat),0};
+        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=center->tex[k].dat,.siz=18,.arg=args};
         push(lst,center,(k<center->siz-1?-1-k:sub),fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
@@ -1530,7 +1531,7 @@ struct BufferState : public BaseState {
     VkDeviceMemory getMemory() override {return memory;}
     int getRange() override {return range;}
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << siz(loc).size << std::endl; slog.clr();
+        log << "resize " << debug << " " << siz(loc).size << std::endl;
         range = siz(loc).size;
         VkDeviceSize bufferSize = siz(loc).size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
@@ -1593,7 +1594,9 @@ struct ImageState : public BaseState {
     VkImageView depthImageView;
     VkFramebuffer framebuffer;
     VkSampler textureSampler;
+    VkCommandBuffer commandBefore;
     VkCommandBuffer commandBuffer;
+    VkCommandBuffer commandAfter;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1617,8 +1620,7 @@ struct ImageState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << std::endl; slog.clr();
-        if (siz(loc).tag != ExtentExt) return; // TODO should not have image without extent
+        log << "resize " << debug << std::endl;
         int texWidth = siz(loc).extent.width;
         int texHeight = siz(loc).extent.height;
         extent = siz(loc).extent;
@@ -1628,7 +1630,9 @@ struct ImageState : public BaseState {
             memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureSampler = ImageState::createTextureSampler(device,properties);}
-        if (msk() == 0) commandBuffer = createCommandBuffer(device,commandPool);
+        if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
+        if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
+        if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
         if (0) { // TODO for pierce point
         createImage(device, physical, siz(loc).extent.width, siz(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -1647,7 +1651,9 @@ struct ImageState : public BaseState {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (msk() == 0) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
+        if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
         if (*loc == ResizeLoc) {
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, imageView, nullptr);
@@ -1661,9 +1667,14 @@ struct ImageState : public BaseState {
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         if (idx(loc) != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
-        if (*loc == BeforeLoc || *loc == AfterLoc) {
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBuffer,
+        if (*loc == BeforeLoc) {
+        vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, commandBefore,
+            bnd(ImageBnd)->getImage(),before,after,fence,
+            VK_FORMAT_R8G8B8A8_SRGB,siz(loc).src,siz(loc).dst);}
+        if (*loc == AfterLoc) {
+        vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, commandAfter,
             bnd(ImageBnd)->getImage(),before,after,fence,
             VK_FORMAT_R8G8B8A8_SRGB,siz(loc).src,siz(loc).dst);}
         if (*loc == MiddleLoc) {
@@ -1682,10 +1693,10 @@ struct ImageState : public BaseState {
             bnd(ImageBnd)->getImage(), texWidth, texHeight,
             before,after,stagingBuffer, commandBuffer);}
         if (0) {} // TODO for pierce point
-        return VK_NULL_HANDLE;
+        return fence;
     }
     void upset(Loc &loc, SmartState log) override {
-        log << "upset " << debug << std::endl;
+        log << "upset " << debug << " " << *loc << "(" << ResizeLoc << "," << BeforeLoc << "," << MiddleLoc << "," << AfterLoc << ")" << std::endl;
         if (*loc == MiddleLoc) {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1700,48 +1711,6 @@ struct ImageState : public BaseState {
     static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image,
         VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut,
         VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-};
-
-struct LayoutState : public BaseState {
-    const VkDevice device;
-    const VkQueue graphics;
-    const VkCommandPool commandPool;
-    VkCommandBuffer buffer;
-    LayoutState() :
-        BaseState("LayoutState",StackState::self),
-        device(StackState::device),
-        graphics(StackState::graphics),
-        commandPool(StackState::commandPool) {
-    }
-    ~LayoutState() {
-        reset(SmartState());
-    }
-    void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << std::endl;
-        buffer = createCommandBuffer(device,commandPool);
-        sem(loc) = createSemaphore(device);
-        fen(loc) = createFence(device);
-    }
-    void unsize(Loc &loc, SmartState log) override {
-        log << "unsize " << debug << std::endl;
-        vkDestroySemaphore(device, sem(loc), nullptr);
-        vkDestroyFence(device, fen(loc), nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &buffer);
-    }
-    VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << std::endl; slog.clr();
-        vkResetCommandBuffer(buffer, /*VkCommandBufferResetFlagBits*/ 0);
-        vkResetFences(device, 1, &fen(loc));
-        ImageState::transitionImageLayout(device, graphics, buffer, bnd(ImageBnd)->getImage(),
-            (bnd()==AfterBnd?sem(lst(loc)):VK_NULL_HANDLE),(bnd()==BeforeBnd?sem(loc):VK_NULL_HANDLE),
-            (bnd()==AfterBnd?fen(loc):VK_NULL_HANDLE), VK_FORMAT_R8G8B8A8_SRGB,
-            (bnd()==AfterBnd?VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:VK_IMAGE_LAYOUT_UNDEFINED),
-            (bnd()==AfterBnd?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-        return (bnd()==AfterBnd?fen(loc):VK_NULL_HANDLE);
-    }
-    void upset(Loc &loc, SmartState log) override {
-        log << "upset " << debug << std::endl;
-    }
 };
 
 struct ProbeState : public BaseState {
@@ -1949,6 +1918,7 @@ struct DrawState : public BaseState {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
         if (matrixPtr) {
+            if (matrixPtr->getBuffer() == VK_NULL_HANDLE) {std::cerr << "null buffer handle!" << std::endl; exit(-1);}
             updateUniformDescriptor(device,matrixPtr->getBuffer(),
                 matrixPtr->getRange(),matrixIdx,descriptorSet);}
         if (imagePtr) {
@@ -1961,8 +1931,7 @@ struct DrawState : public BaseState {
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
             drawFrame(commandBuffer, graphics, ptr(loc), idx(loc), lim(loc), siz(loc).micro,
                 sem(lst(loc)),sem(loc),fen(loc),VK_NULL_HANDLE);}
-        else {log << "invalid bind set! " << debug << " " <<
-            pipePtr << " " << framePtr << " " << indexPtr << " " << fetchPtr << std::endl; slog.clr(); exit(-1);}
+        else {log << "invalid bind set! " << debug << std::endl; exit(-1);}
         return fen(loc);
     }
     void upset(Loc &loc, SmartState log) override {
@@ -1995,8 +1964,6 @@ struct MainState {
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<ImageState,ImageBnd,StackState::images> imageState;
-    ArrayState<LayoutState,BeforeBnd,StackState::frames> beforeState; // TODO use reform in ImageState instead
-    ArrayState<LayoutState,AfterBnd,StackState::frames> afterState; // TODO use reform in ImageState instead
     ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
@@ -2038,8 +2005,6 @@ struct MainState {
             {IndexBnd,&indexState},
             {BringupBnd,&bringupState},
             {ImageBnd,&imageState},
-            {BeforeBnd,&beforeState},
-            {AfterBnd,&afterState},
             {UniformBnd,&uniformState},
             {MatrixBnd,&matrixState},
             {TriangleBnd,&triangleState},
@@ -2077,7 +2042,7 @@ void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanForce(Center *ptr, int sub) {
-    std::cerr << "unexpected copy fail!" << std::endl; slog.clr(); exit(-1);
+    std::cerr << "unexpected copy fail!" << std::endl; exit(-1);
 }
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide between registered Fnc structs
