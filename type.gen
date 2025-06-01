@@ -527,10 +527,14 @@ Memoryed = { -- reserve resource to change when other resource finishes
 Bindrm = { -- built in argument types
 	{"Bind","DrawBnd","Int","0","Format","RawForm"},
 	{"Bind","DrawBnd","Int","1","Format","RawForm"},
+	{"Bind","AcquireBnd","Int","0","Format","RawForm"},
+	{"Bind","PresentBnd","Int","0","Format","RawForm"},
 }
 Bindrg = { -- built in arguments
 	{"Bind","DrawBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","DrawBnd","Int","1","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Bind","AcquireBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Bind","PresentBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 }
 Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
@@ -580,6 +584,34 @@ Bindie = { -- indexed resources reserved
 }
 Binded = { -- modified after submitted resource completes
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
+ArgForm = { -- built in argument types
+        -- /*BeforeLoc AcquireBnd size,idx,siz*/(int)MicroTest,0,0,
+	{"Micro","MicroTest","Int","0","Format","RawForm"},
+	{"Micro","MicroTest","Int","1","Format","RawForm"},
+	{"Micro","MicroTest","Int","2","Format","RawForm"},
+        -- /*MiddleLoc DrawBnd size,idx,siz,PipelineBnd-array-index*/
+        -- (int)MicroTest,0,static_cast<int>(indices.size()),(int)MicroTest,
+	{"Micro","MicroTest","Int","3","Format","RawForm"},
+	{"Micro","MicroTest","Int","4","Format","RawForm"},
+	{"Micro","MicroTest","Int","5","Format","FullForm"},
+	{"Micro","MicroTest","Int","6","Format","RawForm"},
+        -- /*AfterLoc PresentBnd size,idx,siz*/(int)MicroTest,0,0};
+	{"Micro","MicroTest","Int","7","Format","RawForm"},
+	{"Micro","MicroTest","Int","8","Format","RawForm"},
+	{"Micro","MicroTest","Int","9","Format","RawForm"},
+}
+ArgVal = { -- built in arguments
+	{"Micro","MicroTest","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Micro","MicroTest","Int","1","Int","0"},
+	{"Micro","MicroTest","Int","2","Int","0"},
+	{"Micro","MicroTest","Int","3","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Micro","MicroTest","Int","4","Int","0"},
+	{"Micro","MicroTest","Int","5","Int","0"},
+	{"Micro","MicroTest","Int","6","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Micro","MicroTest","Int","7","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Micro","MicroTest","Int","8","Int","0"},
+	{"Micro","MicroTest","Int","9","Int","0"},
 }
 Location = { -- list of locations
 	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},

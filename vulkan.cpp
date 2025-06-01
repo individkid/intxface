@@ -989,7 +989,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return req;
     }
     static int argument(Format frm, int raw, int siz) {
-        return 0; // TODO
+        int ret = 0;
+        switch (frm) {
+        default: {std::cerr << "invalid argument format!" << std::endl; exit(-1);}
+        break; case (VecForm): ret = VK_FORMAT_R32G32B32A32_SFLOAT; // VkFormat
+        break; case (UvecForm): ret = VK_FORMAT_R32G32B32A32_UINT; // VkFormat
+        break; case (OldForm): // ret = VK_FORMAT_SFLOAT; // VkFormat
+        break; case (Int32Form): // ret = VK_FORMAT_UINT; // VkFormat
+        break; case (UndefForm): ret = VK_IMAGE_LAYOUT_UNDEFINED; // VkImageLayout
+        break; case (XferForm): ret = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; // VkImageLayout
+        break; case (RonlyForm): ret = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // VkImageLayout
+        break; case (RawForm): ret = raw; // unmapped int
+        break; case (FullForm): ret = siz;} // size from Dat
+        return ret;
     }
     static int arg(Draw drw, int &count) {
         if (count >= drw.siz) {std::cerr << "wrong arg count!" << std::endl; exit(-1);}
@@ -1154,6 +1166,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         drw << Draw{.con=BindConst,.bnd=bnd,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
+    void push(Micro mic, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        HeapState<Draw> drw(StackState::comnds);
+        int arg[StackState::comnds]; int siz = 0;
+        for (int i = 0; ArgForm__Micro__Int__Format(mic)(i) != Formats; i++) {siz += 1;
+        arg[i] = argument(ArgForm__Micro__Int__Format(mic)(i),ArgVal__Micro__Int__Int(mic)(i),0/*TODO data size*/);}
+        drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
+        push(drw,ptr,sub,fnc,log);
+    }
     // TODO same for Memory and Micro
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
@@ -1254,7 +1274,7 @@ void TestState::call() {
     copy->push(SwapBnd,0,0,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(DrawBnd,2,args,0,0,fnc,SmartState());
+    copy->push(DrawBnd,0,0,fnc,SmartState());
     // TODO change to FalseExt since size comes from AcquireBnd
     //
     for (int i = 0; i < StackState::frames; i++)
