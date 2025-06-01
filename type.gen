@@ -119,10 +119,15 @@ Command = {
     "WDeeCmd", -- increment write lock in current, and add to bind
 }
 Format = {
-	"VecFormat",
-	"UvecFormat",
-	"OldFormat",
-	"Int32Format",
+	"VecForm", -- VkFormat
+	"UvecForm", -- VkFormat
+	"OldForm", -- VkFormat
+	"Int32Form", -- VkFormat
+	"UndefForm", -- VkImageLayout
+	"XferForm", -- VkImageLayout
+	"RonlyForm", -- VkImageLayout
+	"RawForm", -- unmapped int
+	"FullForm", -- size from Dat
 }
 Configure = {
 	"IndexBase",
@@ -406,22 +411,22 @@ BindOffset = {
 	{"Bind","PierceBnd","Int","0","Int","0"},
 }
 BindFormat = {
-	{"Bind","VertexBnd","Int","0","Format","VecFormat"},
-	{"Bind","VertexBnd","Int","1","Format","VecFormat"},
-	{"Bind","VertexBnd","Int","2","Format","UvecFormat"},
-	{"Bind","PierceBnd","Int","0","Format","VecFormat"},
+	{"Bind","VertexBnd","Int","0","Format","VecForm"},
+	{"Bind","VertexBnd","Int","1","Format","VecForm"},
+	{"Bind","VertexBnd","Int","2","Format","UvecForm"},
+	{"Bind","PierceBnd","Int","0","Format","VecForm"},
 }
 BindElement = {
-	{"Bind","VertexBnd","Int","0","Format","OldFormat"},
-	{"Bind","VertexBnd","Int","1","Format","OldFormat"},
-	{"Bind","VertexBnd","Int","2","Format","Int32Format"},
-	{"Bind","PierceBnd","Int","0","Format","Int32Format"},
+	{"Bind","VertexBnd","Int","0","Format","OldForm"},
+	{"Bind","VertexBnd","Int","1","Format","OldForm"},
+	{"Bind","VertexBnd","Int","2","Format","Int32Form"},
+	{"Bind","PierceBnd","Int","0","Format","Int32Form"},
 }
 FormatSize = {
-	{"Format","VecFormat","Int","16"},
-	{"Format","UvecFormat","Int","16"},
-	{"Format","OldFormat","Int","4"},
-	{"Format","Int32Format","Int","4"},
+	{"Format","VecForm","Int","16"},
+	{"Format","UvecForm","Int","16"},
+	{"Format","OldForm","Int","4"},
+	{"Format","Int32Form","Int","4"},
 }
 VertexBind = {
 	{"Micro","MicroTest","Int","0","Bind","VertexBnd"},
@@ -518,6 +523,14 @@ Memoryie = { -- reserve resources indexed by Draw argument
 }
 Memoryed = { -- reserve resource to change when other resource finishes
 	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
+}
+Bindrm = { -- built in argument types
+	{"Bind","DrawBnd","Int","0","Format","RawForm"},
+	{"Bind","DrawBnd","Int","1","Format","RawForm"},
+}
+Bindrg = { -- built in arguments
+	{"Bind","DrawBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Bind","DrawBnd","Int","1","Int","%(return castMicro(\"MicroTest\"))"},
 }
 Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},

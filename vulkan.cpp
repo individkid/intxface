@@ -158,7 +158,6 @@ struct BaseState;
 struct StackState {
     static const int frames = 2;
     static const int images = 2;
-    static const int reqsts = 4;
     static const int comnds = 20;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
@@ -989,6 +988,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindConst): req = Bindre__Bind__BindLoc__Request(drw.bnd)(loc);}
         return req;
     }
+    static int argument(Format frm, int raw, int siz) {
+        return 0; // TODO
+    }
     static int arg(Draw drw, int &count) {
         if (count >= drw.siz) {std::cerr << "wrong arg count!" << std::endl; exit(-1);}
         return drw.arg[count++];
@@ -1123,27 +1125,36 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(cmd,fnc,ptr,sub,log);
     }
     void push(Bind bnd, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw;
+        HeapState<Draw> drw(StackState::comnds);
         drw << Draw{.con=BindConst,.bnd=bnd,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Memory mem, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw;
+        HeapState<Draw> drw(StackState::comnds);
         drw << Draw{.con=MemoryConst,.mem=mem,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Micro mic, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw;
+        HeapState<Draw> drw(StackState::comnds);
         drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
     void push(Memory mem, void *val, int loc, int siz, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw;
+        HeapState<Draw> drw(StackState::comnds);
         int arg[] = {loc,siz,loc,siz};
         struct UniDat uni = {.num=-1,.siz=siz,.ptr=val};
         drw << Draw{.con=MemoryConst,.mem=mem,.ptr=&uni,.siz=4,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
+    void push(Bind bnd, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        HeapState<Draw> drw(StackState::comnds);
+        int arg[StackState::comnds]; int siz = 0;
+        for (int i = 0; Bindrm__Bind__Int__Format(bnd)(i) != Formats; i++) {siz += 1;
+        arg[i] = argument(Bindrm__Bind__Int__Format(bnd)(i),Bindrg__Bind__Int__Int(bnd)(i),0/*TODO data size*/);}
+        drw << Draw{.con=BindConst,.bnd=bnd,.ptr=0,.siz=siz,.arg=arg};
+        push(drw,ptr,sub,fnc,log);
+    }
+    // TODO same for Memory and Micro
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
@@ -1156,7 +1167,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
-        break; case (Texturez): for (int k = 0; k < center->siz; k++) {HeapState<Draw> lst; int args[] = {
+        break; case (Texturez): for (int k = 0; k < center->siz; k++) {
+        HeapState<Draw> lst(StackState::comnds); int args[] = {
         /*ResizeLoc ImageBnd width,height,image-index*/center->tex[k].wid,center->tex[k].hei,0,
         /*BeforeLoc ImageBnd src,dst,idx,siz,image-index*/
         VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,datxVoids(center->tex[k].dat),0,
@@ -1173,11 +1185,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Vertexz): push(center->mem,(void*)center->vtx,idx,siz,center,sub,fnc,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,idx,siz,center,sub,fnc,log);
         break; case (Piercez): push(center->mem,(void*)center->pie,idx,siz,center,sub,fnc,log);
-        break; case (Drawz): {HeapState<Draw> drw;
+        break; case (Drawz): {HeapState<Draw> drw(StackState::comnds);
         for (int i = 0; i < center->siz; i++) drw<<center->drw[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
         push(drw,center,sub,Fnc{true,planePass,true,planeFail,false},log);}
-        break; case (Commandz): {HeapState<Cmd> cmd;
+        break; case (Commandz): {HeapState<Cmd> cmd(StackState::comnds);
         for (int i = 0; i < center->siz; i++) cmd<<center->com[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
         push(cmd,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
@@ -2662,8 +2674,8 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
         attributeDescription.location = j;
         switch (BindFormat__Bind__Int__Format(bind)(j)) {
         default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
-        case (VecFormat): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
-        case (UvecFormat): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
+        case (VecForm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
+        case (UvecForm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
         attributeDescription.offset = BindOffset__Bind__Int__Int(bind)(j);
         attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
