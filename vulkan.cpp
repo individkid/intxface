@@ -994,8 +994,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         default: {std::cerr << "invalid argument format!" << std::endl; exit(-1);}
         break; case (VecForm): ret = VK_FORMAT_R32G32B32A32_SFLOAT; // VkFormat
         break; case (UvecForm): ret = VK_FORMAT_R32G32B32A32_UINT; // VkFormat
-        break; case (OldForm): // ret = VK_FORMAT_SFLOAT; // VkFormat
-        break; case (Int32Form): // ret = VK_FORMAT_UINT; // VkFormat
+        break; case (OldForm): // TODO ret = VK_FORMAT_SFLOAT; // VkFormat
+        break; case (Int32Form): // TODO ret = VK_FORMAT_UINT; // VkFormat
         break; case (UndefForm): ret = VK_IMAGE_LAYOUT_UNDEFINED; // VkImageLayout
         break; case (XferForm): ret = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; // VkImageLayout
         break; case (RonlyForm): ret = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // VkImageLayout

@@ -1,38 +1,29 @@
 
-Bringup: Change to multi-depend Texturez. Change to multi-depend Drawz. Use Drawz from TestState. Add write modify read Piercez. Have TestState periodically change cursor Configure and get Pierce Configure. Add MicroDebug that does log<< from pierce Configure fields. Move matrix transformation functions from plane.c to metx.c. Change to matrix transformation from metx.c, and stop including glm.h.
+Bringup: Eliminate Regex and such from datx. Instead add Fold. Add callbacks to extract and insert fields to Center in datx, so datx builds without any type.c.
 
-Regress: Use indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add memory to add coincidence color, and feedback coincidence buffer to draw. Demonstrate depth and coincidence color with irregular triangles.
+Regress: Use indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add coincidence color. Demonstrate depth and coincidence color with irregular triangles.
 
 Builtin: Test each Transfer from planer.lua. Test modes with writes to Configure.
- Mouse transformations include
- (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
- (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
- (O) cross between pierce to ortho through picture and pierce to ortho through picture moved by same delta as cursor,
- (T) translate parallel to picture,
- (P) parallel to pierced plane.
- Roller transformations include
- (R) rotate around moved leg of cross,
- (Z) translate perpendicular to picture,
- (S) perpendicular to pierced plane,
- (F) resize with pierce fixed.
+Mouse transformations include
+ — (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
+ — (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
+ — (O) cross between pierce to ortho through picture and pierce to ortho through picture moved by same delta as cursor,
+ — (T) translate parallel to picture,
+ — (P) parallel to pierced plane.
+Roller transformations include
+ — (R) rotate around moved leg of cross,
+ — (Z) translate perpendicular to picture,
+ — (Q) perpendicular to pierced plane,
+ — (F) resize with pierce fixed.
+Click actions include
+ — (A) add facet,
+ — (S) subtract facet,
+ — (B) random boundary through point,
+ — (M) send pierce point as metric,
+ — (W) warp to last metric sent.
 
 Release: Write plane.lua that starts share, file, space, plane.
 
 Generic: Remove need for hand written .mk files by adding rules to Makefile, such as %CppR.o that is like %Cpp.o except -DREGRESS. Keep .mk files generated for generated functions, but have show.lua sed for pragma to decide which types covered by generics. The default if there is no pragma is all, so have depend.lua grep for pragma to decide between base.type.c and type.c if generic functions used. Determine if a function is generic by grep for pragma in %.gen.
 
 Suite: In plane.lua, share, file, space, plane, side to manipulate polytopes. In space.lua, share, file, space, plane, to display tetrahedron overlaps as they are found and optimized. In line.lua, share, file, space, plane, line, side, to decorate polytopes with sound. In point.lua, share, file, space, plane, line, side, frame, to decorate facets with little language for textures, sound, frames, text, graffiti, permissions, wormholes, transparency. Share connects processes by pipe. Side displays and edits fields in file. Frame displays and edits video and interfaces to hdmi over usbc. 
-
-Publish: Generate and prettify all tetrahedron overlaps. Make permutation finder with fpga. Make harmonic resonator with op amps. Make diy power supply amplifier to show off diy speakers. Make gaming pc. Make paper mache mountain village tram with overhead line, and coastal high speed rail with overhead line and station without parking, displayed atop and looping under platform. Buy camera to show off home tech, photograph diridon area, perform found sound, integrate with software.
-
-print.lua to demonstrate classification and heuristic,
-plane.lua to demonstrate manipulation,
-space.lua to demonstrate sampling and equivalence,
-line.lua to demonstrate multimedia,
-point.lua to demonstrate communication.
-
-Sound system meant to make rhythmic harmonics, harmonic rhythms, melodic harmonics, and so on, perhaps leveraging analog electronics. Topology system needs to find fundamental permutations, perhaps leveraging an fpga. Video system integrates with hdmi, and perhaps midi peripherals.
-
-Add decoration to facets, including transparency into other spaces, streaming of video or framebuffer, desktops, graffiti, pictures, drawings, 2d spaces, applications, text.
-Add interpretation of visible facet metrics as sound attractors.
-Add requirement of observation of other decorations in certain orders before observation of a protected decoration.
-Add change of subspace, or move to editor, shell, or desktop, in response to passing through a facet.
