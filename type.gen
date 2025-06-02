@@ -470,7 +470,7 @@ Memoryrm = { -- built in argument types
 	{"Memory","Texturez","Int","11","Format","SizeForm"},
 	{"Memory","Texturez","Int","12","Format","RawForm"},
 	-- /*AfterLoc ImageBnd src,dst,idx,siz,image-index*/
-	-- VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,0,datxVoids(center->tex[k].dat),0};
+	-- VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,0,datxVoids(center->tex[k].dat),0
 	{"Memory","Texturez","Int","13","Format","XferForm"},
 	{"Memory","Texturez","Int","14","Format","RonlyForm"},
 	{"Memory","Texturez","Int","15","Format","RawForm"},
@@ -707,17 +707,17 @@ Binded = { -- modified after submitted resource completes
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 ArgForm = { -- built in argument types
-        -- /*BeforeLoc AcquireBnd size,idx,siz*/(int)MicroTest,0,0,
+	-- /*BeforeLoc AcquireBnd size,idx,siz*/(int)MicroTest,0,0,
 	{"Micro","MicroTest","Int","0","Format","RawForm"},
 	{"Micro","MicroTest","Int","1","Format","RawForm"},
 	{"Micro","MicroTest","Int","2","Format","RawForm"},
-        -- /*MiddleLoc DrawBnd size,idx,siz,PipelineBnd-array-index*/
-        -- (int)MicroTest,0,static_cast<int>(indices.size()),(int)MicroTest,
+	-- /*MiddleLoc DrawBnd size,idx,siz,PipelineBnd-array-index*/
+	-- (int)MicroTest,0,static_cast<int>(indices.size()),(int)MicroTest,
 	{"Micro","MicroTest","Int","3","Format","RawForm"},
 	{"Micro","MicroTest","Int","4","Format","RawForm"},
 	{"Micro","MicroTest","Int","5","Format","SizeForm"},
 	{"Micro","MicroTest","Int","6","Format","RawForm"},
-        -- /*AfterLoc PresentBnd size,idx,siz*/(int)MicroTest,0,0};
+	-- /*AfterLoc PresentBnd size,idx,siz*/(int)MicroTest,0,0};
 	{"Micro","MicroTest","Int","7","Format","RawForm"},
 	{"Micro","MicroTest","Int","8","Format","RawForm"},
 	{"Micro","MicroTest","Int","9","Format","RawForm"},

@@ -1163,12 +1163,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(Bind bnd, Center *ptr, int sub, Fnc fnc, SmartState log) {
         push(bnd,0,ptr,sub,fnc,log);
     }
-    void push(Micro mic, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    void push(Micro mic, int count, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw(StackState::comnds);
         int arg[StackState::comnds]; int siz = 0;
         for (int i = 0; ArgForm__Micro__Int__Format(mic)(i) != Formats; i++) {siz += 1;
         if (siz >= StackState::comnds) {std::cerr << "too many micros!" << std::endl; exit(-1);}
-        arg[i] = argument(ArgForm__Micro__Int__Format(mic)(i),ArgVal__Micro__Int__Int(mic)(i),0,0,0);}
+        arg[i] = argument(ArgForm__Micro__Int__Format(mic)(i),ArgVal__Micro__Int__Int(mic)(i),0,count,0);
+        log << "arg[" << i << "] " << arg[i] << std::endl;}
         drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
@@ -1254,7 +1255,6 @@ void TestState::call() {
     };
     //
     int xsiz = 800; int ysiz = 600;
-    int args[] = {MicroTest,MicroTest};
     Fnc fnc = Fnc{false,0,true,vulkanForce,false};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
@@ -1300,15 +1300,9 @@ void TestState::call() {
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
-    int exts[] = {100/*width*/,100/*height*/,0/*pierce index*/};
-    for (int i = 0; i < StackState::frames; i++) {exts[2] = i;
-    copy->push(PierceBnd,i,0,0,fnc,SmartState());}
+    for (int i = 0; i < StackState::frames; i++)
+    copy->push(PierceBnd,i,0,0,fnc,SmartState());
     //
-    int sizes[] = {
-    /*BeforeLoc AcquireBnd size,idx,siz*/(int)MicroTest,0,0,
-    /*MiddleLoc DrawBnd size,idx,siz,PipelineBnd-array-index*/
-    (int)MicroTest,0,static_cast<int>(indices.size()),(int)MicroTest,
-    /*AfterLoc PresentBnd size,idx,siz*/(int)MicroTest,0,0};
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
@@ -1316,7 +1310,8 @@ void TestState::call() {
     BindState *bptr = bind->buffer()->getBind();
     if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
     BaseState *sptr = swap->buffer();
-    if (!bptr->rinc(SwapBnd,sptr,mlog)) {mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
+    if (!bptr->rinc(SwapBnd,sptr,mlog)) {
+    mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
     testUpdate(sptr->getExtent(),model,view,proj,debug);
     bptr->rdec(SwapBnd,mlog);
     Center *mat = 0; allocCenter(&mat,1);
@@ -1327,9 +1322,8 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
     //
-    SmartState dlog; HeapState<Draw> drw;
-    drw << Draw{.con=MicroConst,.drw=MicroTest,.ptr=0,.siz=10,.arg=sizes};
-    copy->push(drw,0,0,Fnc{true,vulkanWake,true,vulkanWake,false},dlog);}
+    copy->push(MicroTest,static_cast<int>(indices.size()),
+    0,0,Fnc{true,vulkanWake,true,vulkanWake,false},SmartState());}
 }
 
 struct ForkState : public DoneState {
