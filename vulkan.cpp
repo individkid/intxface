@@ -988,7 +988,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindConst): req = Bindre__Bind__BindLoc__Request(drw.bnd)(loc);}
         return req;
     }
-    static int argument(Format frm, int raw, int siz) {
+    static int argument(Format frm, int raw, int base, int size, int high) {
         int ret = 0;
         switch (frm) {
         default: {std::cerr << "invalid argument format!" << std::endl; exit(-1);}
@@ -1000,7 +1000,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (XferForm): ret = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; // VkImageLayout
         break; case (RonlyForm): ret = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // VkImageLayout
         break; case (RawForm): ret = raw; // unmapped int
-        break; case (FullForm): ret = siz;} // size from Dat
+        break; case (BaseForm): ret = base; // base in buffer
+        break; case (SizeForm): ret = size; // size of Dat
+        break; case (HighForm): ret = high;} // second base in buffer
         return ret;
     }
     static int arg(Draw drw, int &count) {
@@ -1133,48 +1135,43 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},idx};}
         else if (i.ised()) cmd<<Cmd{WDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
         if (count != drw.siz)
-        {std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
+        {slog.clr(); std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
         push(cmd,fnc,ptr,sub,log);
     }
-    void push(Bind bnd, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    void push(Memory mem, void *val, int width, int height, int size, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw(StackState::comnds);
-        drw << Draw{.con=BindConst,.bnd=bnd,.ptr=0,.siz=siz,.arg=arg};
+        int arg[StackState::comnds]; int siz = 0;
+        struct UniDat uni = {.num=-1,.siz=size,.ptr=val};
+        for (int i = 0; Memoryrm__Memory__Int__Format(mem)(i) != Formats; i++) {siz += 1;
+        if (siz >= StackState::comnds) {std::cerr << "too many binds!" << std::endl; exit(-1);}
+        arg[i] = argument(Memoryrm__Memory__Int__Format(mem)(i),Memoryrg__Memory__Int__Int(mem)(i),width,size,height);}
+        drw << Draw{.con=MemoryConst,.mem=mem,.ptr=&uni,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
-    void push(Memory mem, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw(StackState::comnds);
-        drw << Draw{.con=MemoryConst,.mem=mem,.ptr=0,.siz=siz,.arg=arg};
-        push(drw,ptr,sub,fnc,log);
+    void push(Memory mem, void *val, int base, int size, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        push(mem,val,base,0,size,ptr,sub,fnc,log);
     }
-    void push(Micro mic, int siz, int *arg, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw(StackState::comnds);
-        drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
-        push(drw,ptr,sub,fnc,log);
-    }
-    void push(Memory mem, void *val, int loc, int siz, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw(StackState::comnds);
-        int arg[] = {loc,siz,loc,siz};
-        struct UniDat uni = {.num=-1,.siz=siz,.ptr=val};
-        drw << Draw{.con=MemoryConst,.mem=mem,.ptr=&uni,.siz=4,.arg=arg};
-        push(drw,ptr,sub,fnc,log);
-    }
-    void push(Bind bnd, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    void push(Bind bnd, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw(StackState::comnds);
         int arg[StackState::comnds]; int siz = 0;
         for (int i = 0; Bindrm__Bind__Int__Format(bnd)(i) != Formats; i++) {siz += 1;
-        arg[i] = argument(Bindrm__Bind__Int__Format(bnd)(i),Bindrg__Bind__Int__Int(bnd)(i),0/*TODO data size*/);}
+        if (siz >= StackState::comnds) {std::cerr << "too many binds!" << std::endl; exit(-1);}
+        arg[i] = argument(Bindrm__Bind__Int__Format(bnd)(i),Bindrg__Bind__Int__Int(bnd)(i),idx,0,0);}
         drw << Draw{.con=BindConst,.bnd=bnd,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
+    }
+    void push(Bind bnd, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        push(bnd,0,ptr,sub,fnc,log);
     }
     void push(Micro mic, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw(StackState::comnds);
         int arg[StackState::comnds]; int siz = 0;
         for (int i = 0; ArgForm__Micro__Int__Format(mic)(i) != Formats; i++) {siz += 1;
-        arg[i] = argument(ArgForm__Micro__Int__Format(mic)(i),ArgVal__Micro__Int__Int(mic)(i),0/*TODO data size*/);}
+        if (siz >= StackState::comnds) {std::cerr << "too many micros!" << std::endl; exit(-1);}
+        arg[i] = argument(ArgForm__Micro__Int__Format(mic)(i),ArgVal__Micro__Int__Int(mic)(i),0,0,0);}
         drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
         push(drw,ptr,sub,fnc,log);
     }
-    // TODO same for Memory and Micro
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
@@ -1188,16 +1185,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
         break; case (Texturez): for (int k = 0; k < center->siz; k++) {
-        HeapState<Draw> lst(StackState::comnds); int args[] = {
-        /*ResizeLoc ImageBnd width,height,image-index*/center->tex[k].wid,center->tex[k].hei,0,
-        /*BeforeLoc ImageBnd src,dst,idx,siz,image-index*/
-        VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,datxVoids(center->tex[k].dat),0,
-        /*MiddleLoc ImageBnd width,height,idx,siz,image-index*/
-        center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,
-        /*AfterLoc ImageBnd src,dst,idx,siz,image-index*/
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,0,datxVoids(center->tex[k].dat),0};
-        lst << Draw{.con=MemoryConst,.mem=Texturez,.ptr=center->tex[k].dat,.siz=18,.arg=args};
-        push(lst,center,(k<center->siz-1?-1-k:sub),fnc,log);}
+        push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),
+        center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center,sub,fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
         break; case (Trianglez): push(center->mem,(void*)center->tri,idx,siz,center,sub,fnc,log);
@@ -1271,19 +1260,16 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(SwapBnd,0,0,0,0,fnc,SmartState());
+    copy->push(SwapBnd,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(DrawBnd,0,0,fnc,SmartState());
-    // TODO change to FalseExt since size comes from AcquireBnd
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(AcquireBnd,1,args,0,0,fnc,SmartState());
-    // TODO change to FalseExt since size comes from SwapBnd
+    copy->push(AcquireBnd,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(PresentBnd,1,args,0,0,fnc,SmartState());
-    // TODO change to FalseExt since size comes from SwapBnd
+    copy->push(PresentBnd,0,0,fnc,SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1316,7 +1302,7 @@ void TestState::call() {
     //
     int exts[] = {100/*width*/,100/*height*/,0/*pierce index*/};
     for (int i = 0; i < StackState::frames; i++) {exts[2] = i;
-    copy->push(PierceBnd,3,exts,0,0,fnc,SmartState());}
+    copy->push(PierceBnd,i,0,0,fnc,SmartState());}
     //
     int sizes[] = {
     /*BeforeLoc AcquireBnd size,idx,siz*/(int)MicroTest,0,0,

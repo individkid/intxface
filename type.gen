@@ -127,7 +127,9 @@ Format = {
 	"XferForm", -- VkImageLayout
 	"RonlyForm", -- VkImageLayout
 	"RawForm", -- unmapped int
-	"FullForm", -- size from Dat
+	"BaseForm", -- base in buffer
+	"SizeForm", -- size from Dat
+	"HighForm", -- second base
 }
 Configure = {
 	"IndexBase",
@@ -440,6 +442,117 @@ FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
 }
+Memoryrm = { -- built in argument types
+	{"Memory","Indexz","Int","0","Format","BaseForm"},
+	{"Memory","Indexz","Int","1","Format","SizeForm"},
+	{"Memory","Indexz","Int","2","Format","BaseForm"},
+	{"Memory","Indexz","Int","3","Format","SizeForm"},
+	{"Memory","Bringupz","Int","0","Format","BaseForm"},
+	{"Memory","Bringupz","Int","1","Format","SizeForm"},
+	{"Memory","Bringupz","Int","2","Format","BaseForm"},
+	{"Memory","Bringupz","Int","3","Format","SizeForm"},
+	-- /*ResizeLoc ImageBnd width,height,image-index*/center->tex[k].wid,center->tex[k].hei,0,
+	{"Memory","Texturez","Int","0","Format","BaseForm"},
+	{"Memory","Texturez","Int","1","Format","HighForm"},
+	{"Memory","Texturez","Int","2","Format","RawForm"},
+	-- /*BeforeLoc ImageBnd src,dst,idx,siz,image-index*/
+	-- VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,datxVoids(center->tex[k].dat),0,
+	{"Memory","Texturez","Int","3","Format","UndefForm"},
+	{"Memory","Texturez","Int","4","Format","XferForm"},
+	{"Memory","Texturez","Int","5","Format","RawForm"},
+	{"Memory","Texturez","Int","6","Format","SizeForm"},
+	{"Memory","Texturez","Int","7","Format","RawForm"},
+	-- /*MiddleLoc ImageBnd width,height,idx,siz,image-index*/
+	-- center->tex[k].wid,center->tex[k].hei,0,datxVoids(center->tex[k].dat),0,
+	{"Memory","Texturez","Int","8","Format","BaseForm"},
+	{"Memory","Texturez","Int","9","Format","HighForm"},
+	{"Memory","Texturez","Int","10","Format","RawForm"},
+	{"Memory","Texturez","Int","11","Format","SizeForm"},
+	{"Memory","Texturez","Int","12","Format","RawForm"},
+	-- /*AfterLoc ImageBnd src,dst,idx,siz,image-index*/
+	-- VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,0,datxVoids(center->tex[k].dat),0};
+	{"Memory","Texturez","Int","13","Format","XferForm"},
+	{"Memory","Texturez","Int","14","Format","RonlyForm"},
+	{"Memory","Texturez","Int","15","Format","RawForm"},
+	{"Memory","Texturez","Int","16","Format","SizeForm"},
+	{"Memory","Texturez","Int","17","Format","RawForm"},
+ 	{"Memory","Uniformz","Int","0","Format","BaseForm"},
+	{"Memory","Uniformz","Int","1","Format","SizeForm"},
+	{"Memory","Uniformz","Int","2","Format","BaseForm"},
+	{"Memory","Uniformz","Int","3","Format","SizeForm"},
+	{"Memory","Matrixz","Int","0","Format","BaseForm"},
+	{"Memory","Matrixz","Int","1","Format","SizeForm"},
+	{"Memory","Matrixz","Int","2","Format","BaseForm"},
+	{"Memory","Matrixz","Int","3","Format","SizeForm"},
+	{"Memory","Trianglez","Int","0","Format","BaseForm"},
+	{"Memory","Trianglez","Int","1","Format","SizeForm"},
+	{"Memory","Trianglez","Int","2","Format","BaseForm"},
+	{"Memory","Trianglez","Int","3","Format","SizeForm"},
+	{"Memory","Numericz","Int","0","Format","BaseForm"},
+	{"Memory","Numericz","Int","1","Format","SizeForm"},
+	{"Memory","Numericz","Int","2","Format","BaseForm"},
+	{"Memory","Numericz","Int","3","Format","SizeForm"},
+	{"Memory","Basisz","Int","0","Format","BaseForm"},
+	{"Memory","Basisz","Int","1","Format","SizeForm"},
+	{"Memory","Basisz","Int","2","Format","BaseForm"},
+	{"Memory","Basisz","Int","3","Format","SizeForm"},
+	{"Memory","Piercez","Int","0","Format","BaseForm"},
+	{"Memory","Piercez","Int","1","Format","SizeForm"},
+	{"Memory","Piercez","Int","2","Format","BaseForm"},
+	{"Memory","Piercez","Int","3","Format","SizeForm"},
+}
+Memoryrg = { -- built in arguments
+	{"Memory","Indexz","Int","0","Int","0"},
+	{"Memory","Indexz","Int","1","Int","0"},
+	{"Memory","Indexz","Int","2","Int","0"},
+	{"Memory","Indexz","Int","3","Int","0"},
+	{"Memory","Bringupz","Int","0","Int","0"},
+	{"Memory","Bringupz","Int","1","Int","0"},
+	{"Memory","Bringupz","Int","2","Int","0"},
+	{"Memory","Bringupz","Int","3","Int","0"},
+	{"Memory","Texturez","Int","0","Int","0"},
+	{"Memory","Texturez","Int","1","Int","0"},
+	{"Memory","Texturez","Int","2","Int","0"},
+	{"Memory","Texturez","Int","3","Int","0"},
+	{"Memory","Texturez","Int","4","Int","0"},
+	{"Memory","Texturez","Int","5","Int","0"},
+	{"Memory","Texturez","Int","6","Int","0"},
+	{"Memory","Texturez","Int","7","Int","0"},
+	{"Memory","Texturez","Int","8","Int","0"},
+	{"Memory","Texturez","Int","9","Int","0"},
+	{"Memory","Texturez","Int","10","Int","0"},
+	{"Memory","Texturez","Int","11","Int","0"},
+	{"Memory","Texturez","Int","12","Int","0"},
+	{"Memory","Texturez","Int","13","Int","0"},
+	{"Memory","Texturez","Int","14","Int","0"},
+	{"Memory","Texturez","Int","15","Int","0"},
+	{"Memory","Texturez","Int","16","Int","0"},
+	{"Memory","Texturez","Int","17","Int","0"},
+	{"Memory","Uniformz","Int","0","Int","0"},
+	{"Memory","Uniformz","Int","1","Int","0"},
+	{"Memory","Uniformz","Int","2","Int","0"},
+	{"Memory","Uniformz","Int","3","Int","0"},
+	{"Memory","Matrixz","Int","0","Int","0"},
+	{"Memory","Matrixz","Int","1","Int","0"},
+	{"Memory","Matrixz","Int","2","Int","0"},
+	{"Memory","Matrixz","Int","3","Int","0"},
+	{"Memory","Trianglez","Int","0","Int","0"},
+	{"Memory","Trianglez","Int","1","Int","0"},
+	{"Memory","Trianglez","Int","2","Int","0"},
+	{"Memory","Trianglez","Int","3","Int","0"},
+	{"Memory","Matrixz","Int","0","Int","0"},
+	{"Memory","Matrixz","Int","1","Int","0"},
+	{"Memory","Matrixz","Int","2","Int","0"},
+	{"Memory","Matrixz","Int","3","Int","0"},
+	{"Memory","Basisz","Int","0","Int","0"},
+	{"Memory","Basisz","Int","1","Int","0"},
+	{"Memory","Basisz","Int","2","Int","0"},
+	{"Memory","Basisz","Int","3","Int","0"},
+	{"Memory","Piercez","Int","0","Int","0"},
+	{"Memory","Piercez","Int","1","Int","0"},
+	{"Memory","Piercez","Int","2","Int","0"},
+	{"Memory","Piercez","Int","3","Int","0"},
+}
 Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Indexz","Int","0","BindLoc","MiddleLoc"},
 	{"Memory","Bringupz","Int","0","BindLoc","MiddleLoc"},
@@ -525,16 +638,24 @@ Memoryed = { -- reserve resource to change when other resource finishes
 	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bindrm = { -- built in argument types
+	{"Bind","SwapBnd","Int","0","Format","Formats"},
 	{"Bind","DrawBnd","Int","0","Format","RawForm"},
 	{"Bind","DrawBnd","Int","1","Format","RawForm"},
 	{"Bind","AcquireBnd","Int","0","Format","RawForm"},
 	{"Bind","PresentBnd","Int","0","Format","RawForm"},
+	{"Bind","PierceBnd","Int","0","Format","RawForm"},
+	{"Bind","PierceBnd","Int","1","Format","RawForm"},
+	{"Bind","PierceBnd","Int","2","Format","BaseForm"},
 }
 Bindrg = { -- built in arguments
+	{"Bind","SwapBnd","Int","0","Int","0"},
 	{"Bind","DrawBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","DrawBnd","Int","1","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","AcquireBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","PresentBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Bind","PierceBnd","Int","0","Int","100"}, -- width
+	{"Bind","PierceBnd","Int","1","Int","100"}, -- height
+	{"Bind","PierceBnd","Int","2","Int","0"}, -- pierce index
 }
 Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
@@ -594,7 +715,7 @@ ArgForm = { -- built in argument types
         -- (int)MicroTest,0,static_cast<int>(indices.size()),(int)MicroTest,
 	{"Micro","MicroTest","Int","3","Format","RawForm"},
 	{"Micro","MicroTest","Int","4","Format","RawForm"},
-	{"Micro","MicroTest","Int","5","Format","FullForm"},
+	{"Micro","MicroTest","Int","5","Format","SizeForm"},
 	{"Micro","MicroTest","Int","6","Format","RawForm"},
         -- /*AfterLoc PresentBnd size,idx,siz*/(int)MicroTest,0,0};
 	{"Micro","MicroTest","Int","7","Format","RawForm"},
