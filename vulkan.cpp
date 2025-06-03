@@ -116,7 +116,7 @@ struct PhysicalState {
     static VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
 };
-const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,0};
+const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
 struct LogicalState {
     VkDevice device;
@@ -342,17 +342,6 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         return 0;
     }
 };
-template<class State, class Init, int Size> struct InitState {
-    State state[Size];
-    InitState(Init func) {for (int i = 0; i < Size; i++) state[i] = func();}
-    InitState(State init) {for (int i = 0; i < Size; i++) state[i] = init;}
-    State &operator[](int i) {return state[i];}
-};
-template<class State> struct ConstState {
-    State value;
-    ConstState(State value) : value(value) {}
-    State operator()() {return value;}
-};
 
 struct SizeState {
     Extent tag;
@@ -577,12 +566,16 @@ struct BaseState {
     }
     BaseState *bnd(Bind typ);
     Lnk *lnk(BindLoc loc, BaseState *ptr, BindLoc lst, Lnk *lnk) {
+        if ((int)loc < 0 || (int)loc >= BindLocs)
+            {std::cerr << "invalid lnk loc!" << std::endl; exit(-1);}
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ploc[loc].lst.ptr = ptr; ploc[loc].lst.loc = lst;
         ploc[loc].nxt.ptr = 0; ploc[loc].nxt.loc = BindLocs;
         return &ploc[loc].nxt;
     }
     Loc &get(BindLoc loc) {
+        if ((int)loc < 0 || (int)loc >= BindLocs)
+            {std::cerr << "invalid bind loc!" << std::endl; exit(-1);}
         return ploc[loc];
     }
     int msk() {
@@ -593,6 +586,12 @@ struct BaseState {
     }
     static Loc &nxt(Loc &loc) {
         return loc.nxt.ptr->get(loc.nxt.loc);
+    }
+    static Loc &lst(Loc &loc, BindLoc idx) {
+        return loc.lst.ptr->get(idx);
+    }
+    static Loc &nxt(Loc &loc, BindLoc idx) {
+        return loc.nxt.ptr->get(idx);
     }
     static VkSemaphore &sem(Loc &loc) {
         return loc.syn.sem;
@@ -626,6 +625,7 @@ struct BaseState {
     virtual VkImage getImage() {std::cerr << "BaseState::getImage" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
+    virtual BindLoc getImageLoc() {std::cerr << "BaseState::getImageLoc" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer() {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer(int i) {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
     virtual VkPipeline getPipeline() {std::cerr << "BaseState::pipeline" << std::endl; exit(-1);}
@@ -1583,11 +1583,6 @@ struct BufferState : public BaseState {
         VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
-enum ImageEnum {
-    TextureImage,
-    FrameImage,
-    ImageEnums,
-};
 struct ImageState : public BaseState {
     const VkDevice device;
     const VkPhysicalDevice physical;
@@ -1784,10 +1779,11 @@ struct ProbeState : public BaseState {
 
 struct AcquireState : public BaseState {
     const VkDevice device;
+    static int seqloc;
     ChangeState<Configure,Configures> *copy;
     uint32_t imageIndex;
+    BindLoc imageLoc;
     VkFramebuffer framebuffer;
-    VkExtent2D extent;
     AcquireState() :
         BaseState("AcquireState",StackState::self),
         device(StackState::device),
@@ -1796,8 +1792,8 @@ struct AcquireState : public BaseState {
         reset(SmartState());
     }
     uint32_t getImageIndex() override {return imageIndex;}
+    BindLoc getImageLoc() override {return imageLoc;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
-    VkExtent2D getExtent() override {return extent;}
     void resize(Loc &loc, SmartState log) override {
         sem(loc) = createSemaphore(device);
         log << "resize " << debug << std::endl;
@@ -1808,9 +1804,9 @@ struct AcquireState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
-        extent = bnd(SwapBnd)->getExtent();
         VkResult result = vkAcquireNextImageKHR(device,
         bnd(SwapBnd)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
+        imageLoc = (BindLoc)seqloc; seqloc = (seqloc+1)%BindLocs;
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
@@ -1821,6 +1817,7 @@ struct AcquireState : public BaseState {
         log << "upset" << std::endl;
     }
 };
+int AcquireState::seqloc = 0;
 
 struct PresentState : public BaseState {
     const VkQueue present;
@@ -1841,8 +1838,8 @@ struct PresentState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
-        if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),
-        bnd(AcquireBnd)->getImageIndex(),sem(lst(loc))))
+        VkSemaphore before = sem(lst(loc,bnd(AcquireBnd)->getImageLoc()));
+        if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),bnd(AcquireBnd)->getImageIndex(),before))
         copy->wots(RegisterMask,1<<SizeMsk);
         return VK_NULL_HANDLE;
     }
@@ -1864,8 +1861,6 @@ struct DrawState : public BaseState {
     VkDescriptorSetLayout descriptorLayout;
     VkDescriptorSet descriptorSet;
     VkCommandBuffer commandBuffer;
-    InitState<BaseState *, ConstState<BaseState *>, Binds> bufptr;
-    InitState<int, ConstState<int>, Binds> bufidx; int bufsiz;
     DrawState() :
         BaseState("DrawState",StackState::self),
         device(StackState::device),
@@ -1874,9 +1869,7 @@ struct DrawState : public BaseState {
         present(StackState::present),
         commandPool(StackState::commandPool),
         frames(StackState::frames),
-        copy(StackState::copy),
-        bufptr(ConstState<BaseState *>((BaseState*)0)),
-        bufidx(ConstState<int>(0)), bufsiz(0) {
+        copy(StackState::copy) {
     }
     ~DrawState() {
         reset(SmartState());
@@ -1887,12 +1880,12 @@ struct DrawState : public BaseState {
         descriptorLayout = bnd(PipelineBnd)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
-        sem(loc) = createSemaphore(device);
+        for (int i = 0; i < BindLocs; i++) sem(get((BindLoc)i)) = createSemaphore(device);
         fen(loc) = createFence(device);
     }
     void unsize(Loc &loc, SmartState log) override {
         vkWaitForFences(device, 1, &fen(loc), VK_TRUE, UINT64_MAX);
-        vkDestroySemaphore(device, sem(loc), nullptr);
+        for (int i = 0; i < BindLocs; i++) vkDestroySemaphore(device, sem(get((BindLoc)i)), nullptr);
         vkDestroyFence(device, fen(loc), nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
@@ -1905,6 +1898,7 @@ struct DrawState : public BaseState {
         vkResetFences(device, 1, &fen(loc));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         BaseState *pipePtr = 0;
+        BaseState *swapPtr = 0;
         BaseState *framePtr = 0;
         BaseState *indexPtr = 0;
         BaseState *fetchPtr = 0;
@@ -1920,12 +1914,12 @@ struct DrawState : public BaseState {
         if (i.isee() || i.isie()) switch (i.bnd) {
         default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
         break; case (PipelineBnd): pipePtr = bnd(i.bnd);
+        break; case (SwapBnd): swapPtr = bnd(i.bnd);
         break; case (AcquireBnd): framePtr = bnd(i.bnd);
         break; case (IndexBnd): indexPtr = bnd(i.bnd);
         break; case (BringupBnd): fetchPtr = bnd(i.bnd);
         break; case (ImageBnd): imagePtr = bnd(i.bnd); imageIdx = index++;
-        break; case (MatrixBnd): matrixPtr = bnd(i.bnd); matrixIdx = index++;
-        break; case (PierceBnd): framePtr = bnd(i.bnd);}}
+        break; case (MatrixBnd): matrixPtr = bnd(i.bnd); matrixIdx = index++;}}
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
@@ -1937,12 +1931,13 @@ struct DrawState : public BaseState {
             updateTextureDescriptor(device,imagePtr->getImageView(),
                 imagePtr->getTextureSampler(),imageIdx,descriptorSet);}
         if (pipePtr && framePtr && indexPtr && fetchPtr) {
-            VkExtent2D extent = framePtr->getExtent();
+            VkExtent2D extent = swapPtr->getExtent();
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,siz(loc).micro,lim(loc),
                 framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),
                 fetchPtr->getBuffer(),indexPtr->getBuffer());
+            VkSemaphore after = sem(get(framePtr->getImageLoc()));
             drawFrame(commandBuffer, graphics, ptr(loc), idx(loc), lim(loc), siz(loc).micro,
-                sem(lst(loc)),sem(loc),fen(loc),VK_NULL_HANDLE);}
+                sem(lst(loc)),after,fen(loc),VK_NULL_HANDLE);}
         else {log << "invalid bind set! " << debug << std::endl; exit(-1);}
         return fen(loc);
     }
@@ -2892,7 +2887,7 @@ bool PresentState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint3
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     VkSemaphore signalSemaphores[] = {before};
-    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.waitSemaphoreCount = (before==VK_NULL_HANDLE?0:1);
     presentInfo.pWaitSemaphores = signalSemaphores;
     VkSwapchainKHR swapChains[] = {swapChain};
     uint32_t imageIndices[] = {imageIndex};

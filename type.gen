@@ -776,11 +776,12 @@ Dependre = { -- requ
 }
 Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","ImageBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","IndexBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","BringupBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","SwapBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","MatrixBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","ImageBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
