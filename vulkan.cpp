@@ -116,7 +116,7 @@ struct PhysicalState {
     static VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
 };
-const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
+const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,0};
 
 struct LogicalState {
     VkDevice device;
