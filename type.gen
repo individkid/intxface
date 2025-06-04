@@ -63,8 +63,7 @@ Bind = { -- per variation of BaseState
 	"PierceBnd",
 	"PokeBnd",
 	"PeekBnd",
-	"AcquireBnd",
-	"PresentBnd",
+	"ChainBnd",
 	"DrawBnd",
 	"BindBnd",
 	"SyncBnd",
@@ -641,8 +640,7 @@ Bindrm = { -- built in argument types
 	{"Bind","SwapBnd","Int","0","Format","Formats"},
 	{"Bind","DrawBnd","Int","0","Format","RawForm"},
 	{"Bind","DrawBnd","Int","1","Format","RawForm"},
-	{"Bind","AcquireBnd","Int","0","Format","RawForm"},
-	{"Bind","PresentBnd","Int","0","Format","RawForm"},
+	{"Bind","ChainBnd","Int","0","Format","RawForm"},
 	{"Bind","PierceBnd","Int","0","Format","RawForm"},
 	{"Bind","PierceBnd","Int","1","Format","RawForm"},
 	{"Bind","PierceBnd","Int","2","Format","BaseForm"},
@@ -651,8 +649,7 @@ Bindrg = { -- built in arguments
 	{"Bind","SwapBnd","Int","0","Int","0"},
 	{"Bind","DrawBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","DrawBnd","Int","1","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Bind","AcquireBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Bind","PresentBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
+	{"Bind","ChainBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","PierceBnd","Int","0","Int","100"}, -- width
 	{"Bind","PierceBnd","Int","1","Int","100"}, -- height
 	{"Bind","PierceBnd","Int","2","Int","0"}, -- pierce index
@@ -661,40 +658,35 @@ Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","DrawBnd","Int","0","BindLoc","MiddleLoc"},
-	{"Bind","AcquireBnd","Int","0","BindLoc","BeforeLoc"},
-	{"Bind","PresentBnd","Int","0","BindLoc","AfterLoc"},
+	{"Bind","ChainBnd","Int","0","BindLoc","BeforeLoc"},
 	{"Bind","PierceBnd","Int","0","BindLoc","ResizeLoc"},
 }
 Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Bind","DrawBnd"},
-	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Bind","AcquireBnd"},
-	{"Bind","PresentBnd","BindLoc","AfterLoc","Bind","PresentBnd"},
+	{"Bind","ChainBnd","BindLoc","BeforeLoc","Bind","ChainBnd"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Bind","PierceBnd"},
 }
 Bindir = { -- resource push command
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Command","DerCmd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Command","DerCmd"},
-	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Command","DerCmd"},
-	{"Bind","PresentBnd","BindLoc","AfterLoc","Command","DerCmd"},
+	{"Bind","ChainBnd","BindLoc","BeforeLoc","Command","DerCmd"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
 }
 Bindex = { -- resource push extent
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Extent","FalseExt"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Extent","MicroExt"},
-	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Extent","MicroExt"},
-	{"Bind","PresentBnd","BindLoc","AfterLoc","Extent","MicroExt"},
+	{"Bind","ChainBnd","BindLoc","BeforeLoc","Extent","MicroExt"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Extent","ExtentExt"},
 }
 Bindre = { -- resource request type
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Request","SizeReq"},
-	{"Bind","AcquireBnd","BindLoc","BeforeLoc","Request","SizeReq"},
-	{"Bind","PresentBnd","BindLoc","AfterLoc","Request","SizeReq"},
+	{"Bind","ChainBnd","BindLoc","BeforeLoc","Request","SizeReq"},
 	{"Bind","PierceBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 }
 Bindee = { -- resources reserved
@@ -707,7 +699,7 @@ Binded = { -- modified after submitted resource completes
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 ArgForm = { -- built in argument types
-	-- /*BeforeLoc AcquireBnd size,idx,siz*/(int)MicroTest,0,0,
+	-- /*BeforeLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0,
 	{"Micro","MicroTest","Int","0","Format","RawForm"},
 	{"Micro","MicroTest","Int","1","Format","RawForm"},
 	{"Micro","MicroTest","Int","2","Format","RawForm"},
@@ -717,7 +709,7 @@ ArgForm = { -- built in argument types
 	{"Micro","MicroTest","Int","4","Format","RawForm"},
 	{"Micro","MicroTest","Int","5","Format","SizeForm"},
 	{"Micro","MicroTest","Int","6","Format","RawForm"},
-	-- /*AfterLoc PresentBnd size,idx,siz*/(int)MicroTest,0,0};
+	-- /*AfterLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0};
 	{"Micro","MicroTest","Int","7","Format","RawForm"},
 	{"Micro","MicroTest","Int","8","Format","RawForm"},
 	{"Micro","MicroTest","Int","9","Format","RawForm"},
@@ -743,9 +735,9 @@ Location = { -- list of locations
 	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
 }
 Depender = { -- push
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","ChainBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","PresentBnd"},
+	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","ChainBnd"},
 	{"Micro","MicroDebug","BindLoc","BeforeLoc","Bind","PokeBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroDebug","BindLoc","AfterLoc","Bind","PeekBnd"},
@@ -777,13 +769,12 @@ Dependre = { -- requ
 Dependee = { -- rinc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","SwapBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","AcquireBnd"},
+	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","ChainBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","MatrixBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","ImageBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Int","1","Bind","AcquireBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","1","Bind","IndexBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","2","Bind","BringupBnd"},

@@ -335,8 +335,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         case (PierceBnd): return "PierceBnd";
         case (PokeBnd): return "PokeBnd";
         case (PeekBnd): return "PeekBnd";
-        case (AcquireBnd): return "AcquireBnd";
-        case (PresentBnd): return "PresentBnd";
+        case (ChainBnd): return "ChainBnd";
         case (DrawBnd): return "DrawBnd";
         case (BindBnd): return "BindBnd";}
         return 0;
@@ -1266,10 +1265,7 @@ void TestState::call() {
     copy->push(DrawBnd,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(AcquireBnd,0,0,fnc,SmartState());
-    //
-    for (int i = 0; i < StackState::frames; i++)
-    copy->push(PresentBnd,0,0,fnc,SmartState());
+    copy->push(ChainBnd,0,0,fnc,SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1777,70 +1773,49 @@ struct ProbeState : public BaseState {
     }
 };
 
-struct AcquireState : public BaseState {
+struct ChainState : public BaseState {
     const VkDevice device;
+    const VkQueue present;
     static int seqloc;
     ChangeState<Configure,Configures> *copy;
     uint32_t imageIndex;
     BindLoc imageLoc;
     VkFramebuffer framebuffer;
-    AcquireState() :
-        BaseState("AcquireState",StackState::self),
+    ChainState() :
+        BaseState("ChainState",StackState::self),
         device(StackState::device),
+        present(StackState::present),
         copy(StackState::copy) {}
-    ~AcquireState() {
+    ~ChainState() {
         reset(SmartState());
     }
     uint32_t getImageIndex() override {return imageIndex;}
     BindLoc getImageLoc() override {return imageLoc;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
     void resize(Loc &loc, SmartState log) override {
-        sem(loc) = createSemaphore(device);
         log << "resize " << debug << std::endl;
+        if (*loc == BeforeLoc) {
+        sem(loc) = createSemaphore(device);}
     }
     void unsize(Loc &loc, SmartState log) override {
-        vkDestroySemaphore(device, sem(loc), nullptr);
+        if (*loc == BeforeLoc) {
+        vkDestroySemaphore(device, sem(loc), nullptr);}
         log << "usize " << debug << std::endl;
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
+        if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
         bnd(SwapBnd)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
         imageLoc = (BindLoc)seqloc; seqloc = (seqloc+1)%BindLocs;
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
-        framebuffer = bnd(SwapBnd)->getFramebuffer(imageIndex);
-        return VK_NULL_HANDLE;
-    }
-    void upset(Loc &loc, SmartState log) override {
-        log << "upset" << std::endl;
-    }
-};
-int AcquireState::seqloc = 0;
-
-struct PresentState : public BaseState {
-    const VkQueue present;
-    ChangeState<Configure,Configures> *copy;
-    PresentState() :
-        BaseState("PresentState",StackState::self),
-        present(StackState::present),
-        copy(StackState::copy) {
-    }
-    ~PresentState() {
-        reset(SmartState());
-    }
-    void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << std::endl;
-    }
-    void unsize(Loc &loc, SmartState log) override {
-        log << "usize " << debug << std::endl;
-    }
-    VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << std::endl;
-        VkSemaphore before = sem(lst(loc,bnd(AcquireBnd)->getImageLoc()));
-        if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),bnd(AcquireBnd)->getImageIndex(),before))
-        copy->wots(RegisterMask,1<<SizeMsk);
+        framebuffer = bnd(SwapBnd)->getFramebuffer(imageIndex);}
+        if (*loc == AfterLoc) {
+        VkSemaphore before = sem(lst(loc,imageLoc));
+        if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),imageIndex,before))
+        copy->wots(RegisterMask,1<<SizeMsk);}
         return VK_NULL_HANDLE;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -1848,6 +1823,7 @@ struct PresentState : public BaseState {
     }
     static bool presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before);
 };
+int ChainState::seqloc = 0;
 
 struct DrawState : public BaseState {
     const VkDevice device;
@@ -1915,7 +1891,7 @@ struct DrawState : public BaseState {
         default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
         break; case (PipelineBnd): pipePtr = bnd(i.bnd);
         break; case (SwapBnd): swapPtr = bnd(i.bnd);
-        break; case (AcquireBnd): framePtr = bnd(i.bnd);
+        break; case (ChainBnd): framePtr = bnd(i.bnd);
         break; case (IndexBnd): indexPtr = bnd(i.bnd);
         break; case (BringupBnd): fetchPtr = bnd(i.bnd);
         break; case (ImageBnd): imagePtr = bnd(i.bnd); imageIdx = index++;
@@ -1980,8 +1956,7 @@ struct MainState {
     ArrayState<ImageState,PierceBnd,StackState::frames> pierceState;
     ArrayState<ProbeState,PokeBnd,StackState::frames> pokeState;
     ArrayState<ProbeState,PeekBnd,StackState::frames> peekState;
-    ArrayState<AcquireState,AcquireBnd,StackState::frames> acquireState;
-    ArrayState<PresentState,PresentBnd,StackState::frames> presentState;
+    ArrayState<ChainState,ChainBnd,StackState::frames> chainState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
     EnumState enumState[Binds+1];
@@ -2021,8 +1996,7 @@ struct MainState {
             {PierceBnd,&pierceState},
             {PokeBnd,&pokeState},
             {PeekBnd,&peekState},
-            {AcquireBnd,&acquireState},
-            {PresentBnd,&presentState},
+            {ChainBnd,&chainState},
             {DrawBnd,&drawState},
             {BindBnd,&bindState},
             {Binds,0}},
@@ -2883,7 +2857,7 @@ void ImageState::copyTextureImage(VkDevice device, VkQueue graphics,
     vkQueueSubmit(graphics, 1, &submitInfo, VK_NULL_HANDLE);
 }
 
-bool PresentState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before) {
+bool ChainState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before) {
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     VkSemaphore signalSemaphores[] = {before};
