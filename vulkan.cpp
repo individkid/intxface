@@ -333,8 +333,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         case (VertexBnd): return "VertexBnd";
         case (BasisBnd): return "BasisBnd";
         case (PierceBnd): return "PierceBnd";
-        case (PokeBnd): return "PokeBnd";
-        case (PeekBnd): return "PeekBnd";
+        case (ProbeBnd): return "ProbeBnd";
         case (ChainBnd): return "ChainBnd";
         case (DrawBnd): return "DrawBnd";
         case (BindBnd): return "BindBnd";}
@@ -1737,7 +1736,7 @@ struct ProbeState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         extent = bnd(siz(loc).bind)->getExtent();
-        if (bnd() == PokeBnd) {
+        if (*loc == BeforeLoc) {
         void *mapped = 0; int32_t value;
         VkDeviceMemory memory = bnd(siz(loc).bind)->getMemory();
         mapMemory(device,memory,&mapped,siz(loc).bind,copy);
@@ -1748,7 +1747,7 @@ struct ProbeState : public BaseState {
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
-        if (bnd() == PeekBnd) {
+        if (*loc == AfterLoc) {
         void *mapped = 0; int32_t value;
         VkDeviceMemory memory = bnd(siz(loc).bind)->getMemory();
         mapMemory(device,memory,&mapped,siz(loc).bind,copy);
@@ -1954,8 +1953,7 @@ struct MainState {
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
     ArrayState<ImageState,PierceBnd,StackState::frames> pierceState;
-    ArrayState<ProbeState,PokeBnd,StackState::frames> pokeState;
-    ArrayState<ProbeState,PeekBnd,StackState::frames> peekState;
+    ArrayState<ProbeState,ProbeBnd,StackState::frames> probeState;
     ArrayState<ChainState,ChainBnd,StackState::frames> chainState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
@@ -1994,8 +1992,7 @@ struct MainState {
             {VertexBnd,&vertexState},
             {BasisBnd,&basisState},
             {PierceBnd,&pierceState},
-            {PokeBnd,&pokeState},
-            {PeekBnd,&peekState},
+            {ProbeBnd,&probeState},
             {ChainBnd,&chainState},
             {DrawBnd,&drawState},
             {BindBnd,&bindState},

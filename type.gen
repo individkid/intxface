@@ -61,8 +61,7 @@ Bind = { -- per variation of BaseState
 	"VertexBnd",
 	"BasisBnd",
 	"PierceBnd",
-	"PokeBnd",
-	"PeekBnd",
+	"ProbeBnd",
 	"ChainBnd",
 	"DrawBnd",
 	"BindBnd",
@@ -738,9 +737,9 @@ Depender = { -- push
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","ChainBnd"},
 	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","ChainBnd"},
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Bind","PokeBnd"},
+	{"Micro","MicroDebug","BindLoc","BeforeLoc","Bind","ProbeBnd"},
 	{"Micro","MicroDebug","BindLoc","MiddleLoc","Bind","DrawBnd"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Bind","PeekBnd"},
+	{"Micro","MicroDebug","BindLoc","AfterLoc","Bind","ProbeBnd"},
 }
 Dependir = { -- aloc
 	{"Micro","MicroTest","BindLoc","BeforeLoc","Command","DerCmd"},
