@@ -640,53 +640,42 @@ Bindrm = { -- built in argument types
 	{"Bind","DrawBnd","Int","0","Format","RawForm"},
 	{"Bind","DrawBnd","Int","1","Format","RawForm"},
 	{"Bind","ChainBnd","Int","0","Format","RawForm"},
-	{"Bind","PierceBnd","Int","0","Format","RawForm"},
-	{"Bind","PierceBnd","Int","1","Format","RawForm"},
-	{"Bind","PierceBnd","Int","2","Format","BaseForm"},
 }
 Bindrg = { -- built in arguments
 	{"Bind","SwapBnd","Int","0","Int","0"},
 	{"Bind","DrawBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","DrawBnd","Int","1","Int","%(return castMicro(\"MicroTest\"))"},
 	{"Bind","ChainBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Bind","PierceBnd","Int","0","Int","100"}, -- width
-	{"Bind","PierceBnd","Int","1","Int","100"}, -- height
-	{"Bind","PierceBnd","Int","2","Int","0"}, -- pierce index
 }
 Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","DrawBnd","Int","0","BindLoc","MiddleLoc"},
 	{"Bind","ChainBnd","Int","0","BindLoc","BeforeLoc"},
-	{"Bind","PierceBnd","Int","0","BindLoc","ResizeLoc"},
 }
 Binder = { -- resources sequenced to trigger a resource
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Bind","DrawBnd"},
 	{"Bind","ChainBnd","BindLoc","BeforeLoc","Bind","ChainBnd"},
-	{"Bind","PierceBnd","BindLoc","ResizeLoc","Bind","PierceBnd"},
 }
 Bindir = { -- resource push command
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Command","DerCmd"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Command","DerCmd"},
 	{"Bind","ChainBnd","BindLoc","BeforeLoc","Command","DerCmd"},
-	{"Bind","PierceBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
 }
 Bindex = { -- resource push extent
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Extent","FalseExt"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Extent","MicroExt"},
 	{"Bind","ChainBnd","BindLoc","BeforeLoc","Extent","MicroExt"},
-	{"Bind","PierceBnd","BindLoc","ResizeLoc","Extent","ExtentExt"},
 }
 Bindre = { -- resource request type
 	{"Bind","SwapBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Request","SizeReq"},
 	{"Bind","ChainBnd","BindLoc","BeforeLoc","Request","SizeReq"},
-	{"Bind","PierceBnd","BindLoc","ResizeLoc","Request","SizeReq"},
 }
 Bindee = { -- resources reserved
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},

@@ -1295,9 +1295,6 @@ void TestState::call() {
     fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++)
-    copy->push(PierceBnd,i,0,0,fnc,SmartState());
-    //
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
@@ -1716,17 +1713,16 @@ struct ImageState : public BaseState {
 };
 
 struct ProbeState : public BaseState {
-    const VkDevice device;
-    ChangeState<Configure,Configures> *copy;
-    VkExtent2D extent;
+    // TODO BeforeLoc PierceBnd writes a single entry
+    // TODO BeforeLoc ProbeBnd reformats bound PierceBnd and provides image view like SwapState/ChainState
+    // TODO MiddleLoc DrawBnd runs MicroDebug to fill in the PierceBnd buffer
+    // TODO AfterLoc ProbeBnd reformats bound PierceBnd
+    // TODO AfterLoc PierceBnd reads a single entry
     ProbeState() :
-        BaseState("ProbeState",StackState::self),
-        device(StackState::device),
-        copy(StackState::copy) {
+        BaseState("ProbeState",StackState::self) {
     }
     ~ProbeState() {
     }
-    VkExtent2D getExtent() override {return extent;}
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
     }
@@ -1735,40 +1731,10 @@ struct ProbeState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
-        extent = bnd(siz(loc).bind)->getExtent();
-        if (*loc == BeforeLoc) {
-        void *mapped = 0; int32_t value;
-        VkDeviceMemory memory = bnd(siz(loc).bind)->getMemory();
-        mapMemory(device,memory,&mapped,siz(loc).bind,copy);
-        value = copy->read(ProbePoke);
-        memcpy(mapped,&value,sizeof(int32_t));
-        unmapMemory(device,memory);}
         return VK_NULL_HANDLE;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset" << std::endl;
-        if (*loc == AfterLoc) {
-        void *mapped = 0; int32_t value;
-        VkDeviceMemory memory = bnd(siz(loc).bind)->getMemory();
-        mapMemory(device,memory,&mapped,siz(loc).bind,copy);
-        memcpy(&value,mapped,sizeof(int32_t));
-        copy->write(ProbePeek,value);
-        unmapMemory(device,memory);}
-    }
-    static void mapMemory(VkDevice device, VkDeviceMemory memory, void **mapped,
-        Bind bnd, ChangeState<Configure,Configures> *copy) {
-        int idx = copy->read(ProbeIndex);
-        int fie = copy->read(ProbeField);
-        int dim = copy->read(ProbeDimen);
-        Format fmt = BindElement__Bind__Int__Format(bnd)(fie);
-        int siz = FormatSize__Format__Int(fmt);
-        int bas = BindOffset__Bind__Int__Int(bnd)(fie);
-        int str = BindStride__Bind__Int(bnd);
-        int ofs = idx*str+bas+dim*siz;
-        vkMapMemory(device, memory, VkDeviceSize(ofs), VkDeviceSize(siz), 0, mapped);
-    }
-    static void unmapMemory(VkDevice device, VkDeviceMemory memory) {
-        vkUnmapMemory(device,memory);
     }
 };
 
@@ -1952,7 +1918,7 @@ struct MainState {
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<ImageState,PierceBnd,StackState::frames> pierceState;
+    ArrayState<BufferState,PierceBnd,StackState::frames> pierceState;
     ArrayState<ProbeState,ProbeBnd,StackState::frames> probeState;
     ArrayState<ChainState,ChainBnd,StackState::frames> chainState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
