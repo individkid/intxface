@@ -655,65 +655,40 @@ struct BaseState {
 
 enum IterEnum {
     Dee,Die,Ded,Deps,
-    Mee,Mie,Med,Meps,
-    Bee,Bie,Bed,Beps,
 };
 struct Iter {
     Rsp rsp;
     IterEnum seq;
     int sub;
     Bind bnd;
-    Iter(Rsp rsp) : rsp(rsp), seq(r2s(rsp)), sub(0) {incr(); init();}
+    Iter(Rsp rsp) : rsp(rsp), seq(Deps), sub(0) {incr(); init();}
     bool operator()() {return (bnd != Binds);}
     Iter &operator++() {sub++; init(); return *this;}
     bool isee() {
-        return (seq == Dee || seq == Mee || seq == Bee);
+        return (seq == Dee);
     }
     bool isie() {
-        return (seq == Die || seq == Mie || seq == Bie);
+        return (seq == Die);
     }
     bool ised() {
-        return (seq == Ded || seq == Med || seq == Bed);
+        return (seq == Ded);
     }
     bool iseps() {
-        return (seq == Deps || seq == Meps || seq == Beps);
-    }
-    IterEnum r2s(Rsp rsp) {
-        IterEnum seq;
-        switch (rsp.con) {
-        default: {std::cerr << "invalid iter rsp!" << std::endl; exit(-1);}
-        break; case (MicroConst): seq = Deps;
-        break; case (MemoryConst): seq = Meps;
-        break; case (BindConst): seq = Beps;}
-        return seq;
+        return (seq == Deps);
     }
     void incr() {
         if (seq == Deps) seq = Dee;
         else if (seq == Dee) seq = Die;
         else if (seq == Die) seq = Ded;
         else if (seq == Ded) seq = Deps;
-        else if (seq == Meps) seq = Mee;
-        else if (seq == Mee) seq = Mie;
-        else if (seq == Mie) seq = Med;
-        else if (seq == Med) seq = Meps;
-        else if (seq == Beps) seq = Bee;
-        else if (seq == Bee) seq = Bie;
-        else if (seq == Bie) seq = Bed;
-        else if (seq == Bed) seq = Beps;
     }
     void init() {
         bnd = Binds;
-        while (seq != Deps && seq != Meps && seq != Beps && bnd == Binds) {
-        auto f = Dependee__Micro__BindLoc__Int__Bind(Micros);
-        if (seq == Dee) f = Dependee__Micro__BindLoc__Int__Bind(rsp.mic);
-        else if (seq == Die) f = Dependie__Micro__BindLoc__Int__Bind(rsp.mic);
-        else if (seq == Ded) f = Depended__Micro__BindLoc__Int__Bind(rsp.mic);
-        else if (seq == Mee) f = Memoryee__Memory__BindLoc__Int__Bind(rsp.mem);
-        else if (seq == Mie) f = Memoryie__Memory__BindLoc__Int__Bind(rsp.mem);
-        else if (seq == Med) f = Memoryed__Memory__BindLoc__Int__Bind(rsp.mem);
-        else if (seq == Bee) f = Bindee__Bind__BindLoc__Int__Bind(rsp.bnd);
-        else if (seq == Bie) f = Bindie__Bind__BindLoc__Int__Bind(rsp.bnd);
-        else if (seq == Bed) f = Binded__Bind__BindLoc__Int__Bind(rsp.bnd);
+        while (seq != Deps && bnd == Binds) {
+        auto f = Dependee__Bind__BindLoc__Int__Bind(Binds);
+        if (seq == Dee) f = Dependee__Bind__BindLoc__Int__Bind(rsp.bnd);
+        else if (seq == Die) f = Dependie__Bind__BindLoc__Int__Bind(rsp.bnd);
+        else if (seq == Ded) f = Depended__Bind__BindLoc__Int__Bind(rsp.bnd);
         if (f == 0) {incr(); sub = 0; continue;}
         auto g = f(rsp.loc);
         if (g == 0) {incr(); sub = 0; continue;}
@@ -950,40 +925,40 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BindConst): loc = Bindat__Bind__Int__BindLoc(drw.bnd)(j);}
         return loc;
     }
-    static Bind depender(Draw drw, BindLoc loc) {
+    static Bind depender(Draw drw, int j) {
         Bind bnd = Binds;
         switch (drw.con) {
         default: {std::cerr << "invalid bnd con!" << std::endl; exit(-1);}
-        break; case (MicroConst): bnd = Depender__Micro__BindLoc__Bind(drw.drw)(loc);
-        break; case (MemoryConst): bnd = Memoryer__Memory__BindLoc__Bind(drw.mem)(loc);
-        break; case (BindConst): bnd = Binder__Bind__BindLoc__Bind(drw.bnd)(loc);}
+        break; case (MicroConst): bnd = Depender__Micro__Int__Bind(drw.drw)(j);
+        break; case (MemoryConst): bnd = Memoryer__Memory__Int__Bind(drw.mem)(j);
+        break; case (BindConst): bnd = Binder__Bind__Int__Bind(drw.bnd)(j);}
         return bnd;
     }
-    static Command command(Draw drw, BindLoc loc) {
+    static Command command(Draw drw, int j) {
         Command cmd = Commands;
         switch (drw.con) {
         default: {std::cerr << "invalid cmd con!" << std::endl; exit(-1);}
-        break; case (MicroConst): cmd = Dependir__Micro__BindLoc__Command(drw.drw)(loc);
-        break; case (MemoryConst): cmd = Memoryir__Memory__BindLoc__Command(drw.mem)(loc);
-        break; case (BindConst): cmd = Bindir__Bind__BindLoc__Command(drw.bnd)(loc);}
+        break; case (MicroConst): cmd = Dependir__Micro__Int__Command(drw.drw)(j);
+        break; case (MemoryConst): cmd = Memoryir__Memory__Int__Command(drw.mem)(j);
+        break; case (BindConst): cmd = Bindir__Bind__Int__Command(drw.bnd)(j);}
         return cmd;
     }
-    static Extent extent(Draw drw, BindLoc loc) {
+    static Extent extent(Draw drw, int j) {
         Extent ext = Extents;
         switch (drw.con) {
         default: {std::cerr << "invalid ext con!" << std::endl; exit(-1);}
-        break; case (MicroConst): ext = Dependex__Micro__BindLoc__Extent(drw.drw)(loc);
-        break; case (MemoryConst): ext = Memoryex__Memory__BindLoc__Extent(drw.mem)(loc);
-        break; case (BindConst): ext = Bindex__Bind__BindLoc__Extent(drw.bnd)(loc);}
+        break; case (MicroConst): ext = Dependex__Micro__Int__Extent(drw.drw)(j);
+        break; case (MemoryConst): ext = Memoryex__Memory__Int__Extent(drw.mem)(j);
+        break; case (BindConst): ext = Bindex__Bind__Int__Extent(drw.bnd)(j);}
         return ext;
     }
-    static Request request(Draw drw, BindLoc loc) {
+    static Request request(Draw drw, int j) {
         Request req = Requests;
         switch (drw.con) {
         default: {std::cerr << "invalid req con!" << std::endl; exit(-1);}
-        break; case (MicroConst): req = Dependre__Micro__BindLoc__Request(drw.drw)(loc);
-        break; case (MemoryConst): req = Memoryre__Memory__BindLoc__Request(drw.mem)(loc);
-        break; case (BindConst): req = Bindre__Bind__BindLoc__Request(drw.bnd)(loc);}
+        break; case (MicroConst): req = Dependre__Micro__Int__Request(drw.drw)(j);
+        break; case (MemoryConst): req = Memoryre__Memory__Int__Request(drw.mem)(j);
+        break; case (BindConst): req = Bindre__Bind__Int__Request(drw.bnd)(j);}
         return req;
     }
     static int argument(Format frm, int raw, int base, int size, int high) {
@@ -1097,10 +1072,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         int count = 0; Draw drw = lst[k];
         for (int j = 0; location(drw,j) != BindLocs; j++) {
         BindLoc loc = location(drw,j);
-        Bind bnd = depender(drw,loc);
-        Command com = command(drw,loc);
-        Request tag = request(drw,loc);
-        Extent ext = extent(drw,loc);
+        Bind bnd = depender(drw,j);
+        Command com = command(drw,j);
+        Request tag = request(drw,j);
+        Extent ext = extent(drw,j);
         log << "count: " << count << " loc:" << loc << " bnd:" << bnd << " cmd:" << com <<
         " req:" << tag << " ext:" << ext << std::endl;
         if (drw.con == BindConst && drw.bnd != bnd)
@@ -1125,13 +1100,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,ext,base,size};
         break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
         break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
-        Rsp rsp = Rsp{drw.con,drw.drw,drw.mem,bnd,loc};
+        Rsp rsp = Rsp{bnd,loc};
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
         cmd<<Cmd{com,loc,rsp,req,idx};
         for (Iter i(rsp); i(); ++i) {
-        if (i.isee()) cmd<<Cmd{RDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};
-        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs},Req{},idx};}
-        else if (i.ised()) cmd<<Cmd{WDeeCmd,BindLocs,Rsp{Constants,Micros,Memorys,i.bnd,BindLocs}};}}
+        if (i.isee()) cmd<<Cmd{RDeeCmd,BindLocs,Rsp{i.bnd,BindLocs}};
+        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,BindLocs,Rsp{i.bnd,BindLocs},Req{},idx};}
+        else if (i.ised()) cmd<<Cmd{WDeeCmd,BindLocs,Rsp{i.bnd,BindLocs}};}}
         if (count != drw.siz)
         {slog.clr(); std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
         push(cmd,fnc,ptr,sub,log);
@@ -1172,7 +1147,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(drw,ptr,sub,fnc,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
-        Bind bnd = Memoryer__Memory__BindLoc__Bind(center->mem)(MiddleLoc);
+        Bind bnd = Memoryer__Memory__Int__Bind(center->mem)(0);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         int mod = src(bnd)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
         /*if (base>idx) {
@@ -1259,9 +1234,6 @@ void TestState::call() {
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
     copy->push(SwapBnd,0,0,fnc,SmartState());
-    //
-    for (int i = 0; i < StackState::frames; i++)
-    copy->push(DrawBnd,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(ChainBnd,0,0,fnc,SmartState());
@@ -1816,7 +1788,7 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << std::endl;
+        log << "resize " << debug << " " << bnd(PipelineBnd)->debug << std::endl; slog.clr();
         descriptorPool = bnd(PipelineBnd)->getDescriptorPool();
         descriptorLayout = bnd(PipelineBnd)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
@@ -1850,7 +1822,7 @@ struct DrawState : public BaseState {
         int matrixIdx = 0;
         int index = 0;
         log << "micro " << debug << " " << siz(loc).micro << std::endl;
-        for (Iter i(Rsp{MicroConst,siz(loc).micro,Memorys,Binds,MiddleLoc}); i(); ++i) {
+        for (Iter i(Rsp{DrawBnd,MiddleLoc}); i(); ++i) {
         log << "bind " << debug << " " << i.bnd << std::endl;
         if (i.isee() || i.isie()) switch (i.bnd) {
         default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
@@ -2847,7 +2819,7 @@ VkDescriptorSet DrawState::createDescriptorSet(VkDevice device, VkDescriptorPool
     allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
     allocInfo.pSetLayouts = layouts.data();
     if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS)
-    {std::cerr << "failed to allocate descriptor sets!" << std::endl; exit(-1);}
+    {std::cerr << "failed to allocate descriptor sets!" << std::endl; slog.clr(); exit(-1);}
     return descriptorSet;
 }
 void DrawState::updateStorageDescriptor(VkDevice device, VkBuffer buffer,

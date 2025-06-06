@@ -108,7 +108,7 @@ Constant = {
 	"MemoryConst",
 	"BindConst",
 }
-Command = {
+Command = { -- TODO eliminate this, or eliminate Dee, or add punctuator and UDee for unreserve
     "DerCmd",  -- use to advance before push to thread to pipeline multiple
     "PDerCmd", -- use to advance after fence in thread so it is ready after advance
     "IDerCmd", -- use to process a particular instance of the reasource
@@ -567,73 +567,64 @@ Memoryat = { -- resource sequence to update a resource with ptr loc siz
 	{"Memory","Piercez","Int","0","BindLoc","MiddleLoc"},
 }
 Memoryer = { -- work done by separate thread on resources with a location
-	{"Memory","Indexz","BindLoc","MiddleLoc","Bind","IndexBnd"},
-	{"Memory","Bringupz","BindLoc","MiddleLoc","Bind","BringupBnd"},
-	{"Memory","Texturez","BindLoc","ResizeLoc","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Bind","ImageBnd"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Bind","ImageBnd"},
-	{"Memory","Uniformz","BindLoc","MiddleLoc","Bind","UniformBnd"},
-	{"Memory","Matrixz","BindLoc","MiddleLoc","Bind","MatrixBnd"},
-	{"Memory","Trianglez","BindLoc","MiddleLoc","Bind","TriangleBnd"},
-	{"Memory","Numericz","BindLoc","MiddleLoc","Bind","NumericBnd"},
-	{"Memory","Vertexz","BindLoc","MiddleLoc","Bind","VertexBnd"},
-	{"Memory","Basisz","BindLoc","MiddleLoc","Bind","BasisBnd"},
-	{"Memory","Piercez","BindLoc","MiddleLoc","Bind","PierceBnd"},
+	{"Memory","Indexz","Int","0","Bind","IndexBnd"},
+	{"Memory","Bringupz","Int","0","Bind","BringupBnd"},
+	{"Memory","Texturez","Int","0","Bind","ImageBnd"},
+	{"Memory","Texturez","Int","1","Bind","ImageBnd"},
+	{"Memory","Texturez","Int","2","Bind","ImageBnd"},
+	{"Memory","Texturez","Int","3","Bind","ImageBnd"},
+	{"Memory","Uniformz","Int","0","Bind","UniformBnd"},
+	{"Memory","Matrixz","Int","0","Bind","MatrixBnd"},
+	{"Memory","Trianglez","Int","0","Bind","TriangleBnd"},
+	{"Memory","Numericz","Int","0","Bind","NumericBnd"},
+	{"Memory","Vertexz","Int","0","Bind","VertexBnd"},
+	{"Memory","Basisz","Int","0","Bind","BasisBnd"},
+	{"Memory","Piercez","Int","0","Bind","PierceBnd"},
 }
 Memoryir = { -- which command for location
-	{"Memory","Indexz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Bringupz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Texturez","BindLoc","ResizeLoc","Command","IDerCmd"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Command","IDerCmd"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Command","IDerCmd"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Command","IDerCmd"},
-	{"Memory","Uniformz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Matrixz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Trianglez","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Numericz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Vertexz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Basisz","BindLoc","MiddleLoc","Command","PDerCmd"},
-	{"Memory","Piercez","BindLoc","MiddleLoc","Command","PDerCmd"},
+	{"Memory","Indexz","Int","0","Command","PDerCmd"},
+	{"Memory","Bringupz","Int","0","Command","PDerCmd"},
+	{"Memory","Texturez","Int","0","Command","IDerCmd"},
+	{"Memory","Texturez","Int","1","Command","IDerCmd"},
+	{"Memory","Texturez","Int","2","Command","IDerCmd"},
+	{"Memory","Texturez","Int","3","Command","IDerCmd"},
+	{"Memory","Uniformz","Int","0","Command","PDerCmd"},
+	{"Memory","Matrixz","Int","0","Command","PDerCmd"},
+	{"Memory","Trianglez","Int","0","Command","PDerCmd"},
+	{"Memory","Numericz","Int","0","Command","PDerCmd"},
+	{"Memory","Vertexz","Int","0","Command","PDerCmd"},
+	{"Memory","Basisz","Int","0","Command","PDerCmd"},
+	{"Memory","Piercez","Int","0","Command","PDerCmd"},
 }
 Memoryex = { -- which size type for location
-	{"Memory","Indexz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Bringupz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Texturez","BindLoc","ResizeLoc","Extent","ExtentExt"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Extent","FormExt"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Extent","ExtentExt"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Extent","FormExt"},
-	{"Memory","Uniformz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Matrixz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Trianglez","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Numericz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Vertexz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Basisz","BindLoc","MiddleLoc","Extent","IntExt"},
-	{"Memory","Piercez","BindLoc","MiddleLoc","Extent","IntExt"},
+	{"Memory","Indexz","Int","0","Extent","IntExt"},
+	{"Memory","Bringupz","Int","0","Extent","IntExt"},
+	{"Memory","Texturez","Int","0","Extent","ExtentExt"},
+	{"Memory","Texturez","Int","1","Extent","FormExt"},
+	{"Memory","Texturez","Int","2","Extent","ExtentExt"},
+	{"Memory","Texturez","Int","3","Extent","FormExt"},
+	{"Memory","Uniformz","Int","0","Extent","IntExt"},
+	{"Memory","Matrixz","Int","0","Extent","IntExt"},
+	{"Memory","Trianglez","Int","0","Extent","IntExt"},
+	{"Memory","Numericz","Int","0","Extent","IntExt"},
+	{"Memory","Vertexz","Int","0","Extent","IntExt"},
+	{"Memory","Basisz","Int","0","Extent","IntExt"},
+	{"Memory","Piercez","Int","0","Extent","IntExt"},
 }
 Memoryre = { -- which thread request for location
-	{"Memory","Indexz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Bringupz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Texturez","BindLoc","ResizeLoc","Request","SizeReq"},
-	{"Memory","Texturez","BindLoc","BeforeLoc","Request","BothReq"},
-	{"Memory","Texturez","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Texturez","BindLoc","AfterLoc","Request","BothReq"},
-	{"Memory","Uniformz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Matrixz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Trianglez","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Numericz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Vertexz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Basisz","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Memory","Piercez","BindLoc","MiddleLoc","Request","BothReq"},
-}
-Memoryee = { -- prevent resources from being changed while in use
-	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
-}
-Memoryie = { -- reserve resources indexed by Draw argument
-	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
-}
-Memoryed = { -- reserve resource to change when other resource finishes
-	{"Memory","Memorys","BindLoc","BindLocs","Int","0","Bind","Binds"},
+	{"Memory","Indexz","Int","0","Request","BothReq"},
+	{"Memory","Bringupz","Int","0","Request","BothReq"},
+	{"Memory","Texturez","Int","0","Request","SizeReq"},
+	{"Memory","Texturez","Int","1","Request","BothReq"},
+	{"Memory","Texturez","Int","2","Request","BothReq"},
+	{"Memory","Texturez","Int","3","Request","BothReq"},
+	{"Memory","Uniformz","Int","0","Request","BothReq"},
+	{"Memory","Matrixz","Int","0","Request","BothReq"},
+	{"Memory","Trianglez","Int","0","Request","BothReq"},
+	{"Memory","Numericz","Int","0","Request","BothReq"},
+	{"Memory","Vertexz","Int","0","Request","BothReq"},
+	{"Memory","Basisz","Int","0","Request","BothReq"},
+	{"Memory","Piercez","Int","0","Request","BothReq"},
 }
 Bindrm = { -- built in argument types
 	{"Bind","SwapBnd","Int","0","Format","Formats"},
@@ -650,41 +641,32 @@ Bindrg = { -- built in arguments
 Bindat = { -- resource sequence to trigger a resource
 	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
 	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","DrawBnd","Int","0","BindLoc","MiddleLoc"},
-	{"Bind","ChainBnd","Int","0","BindLoc","BeforeLoc"},
+	{"Bind","DrawBnd","Int","0","BindLoc","ResizeLoc"},
+	{"Bind","ChainBnd","Int","0","BindLoc","ResizeLoc"},
 }
 Binder = { -- resources sequenced to trigger a resource
-	{"Bind","SwapBnd","BindLoc","ResizeLoc","Bind","SwapBnd"},
-	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Bind","PipelineBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Bind","DrawBnd"},
-	{"Bind","ChainBnd","BindLoc","BeforeLoc","Bind","ChainBnd"},
+	{"Bind","SwapBnd","Int","0","Bind","SwapBnd"},
+	{"Bind","PipelineBnd","Int","0","Bind","PipelineBnd"},
+	{"Bind","DrawBnd","Int","0","Bind","DrawBnd"},
+	{"Bind","ChainBnd","Int","0","Bind","ChainBnd"},
 }
 Bindir = { -- resource push command
-	{"Bind","SwapBnd","BindLoc","ResizeLoc","Command","DerCmd"},
-	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Command","IDerCmd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Command","DerCmd"},
-	{"Bind","ChainBnd","BindLoc","BeforeLoc","Command","DerCmd"},
+	{"Bind","SwapBnd","Int","0","Command","DerCmd"},
+	{"Bind","PipelineBnd","Int","0","Command","IDerCmd"},
+	{"Bind","DrawBnd","Int","0","Command","DerCmd"},
+	{"Bind","ChainBnd","Int","0","Command","DerCmd"},
 }
 Bindex = { -- resource push extent
-	{"Bind","SwapBnd","BindLoc","ResizeLoc","Extent","FalseExt"},
-	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Extent","MicroExt"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Extent","MicroExt"},
-	{"Bind","ChainBnd","BindLoc","BeforeLoc","Extent","MicroExt"},
+	{"Bind","SwapBnd","Int","0","Extent","FalseExt"},
+	{"Bind","PipelineBnd","Int","0","Extent","MicroExt"},
+	{"Bind","DrawBnd","Int","0","Extent","MicroExt"},
+	{"Bind","ChainBnd","Int","0","Extent","MicroExt"},
 }
 Bindre = { -- resource request type
-	{"Bind","SwapBnd","BindLoc","ResizeLoc","Request","SizeReq"},
-	{"Bind","PipelineBnd","BindLoc","ResizeLoc","Request","SizeReq"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Request","SizeReq"},
-	{"Bind","ChainBnd","BindLoc","BeforeLoc","Request","SizeReq"},
-}
-Bindee = { -- resources reserved
-	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
-}
-Bindie = { -- indexed resources reserved
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
-}
-Binded = { -- modified after submitted resource completes
-	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
+	{"Bind","SwapBnd","Int","0","Request","SizeReq"},
+	{"Bind","PipelineBnd","Int","0","Request","SizeReq"},
+	{"Bind","DrawBnd","Int","0","Request","SizeReq"},
+	{"Bind","ChainBnd","Int","0","Request","SizeReq"},
 }
 ArgForm = { -- built in argument types
 	-- /*BeforeLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0,
@@ -722,59 +704,53 @@ Location = { -- list of locations
 	{"Micro","MicroDebug","Int","1","BindLoc","MiddleLoc"},
 	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
 }
-Depender = { -- push
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Bind","ChainBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Bind","DrawBnd"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Bind","ChainBnd"},
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Bind","ProbeBnd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Bind","DrawBnd"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Bind","ProbeBnd"},
+Depender = { -- list of dependers
+	{"Micro","MicroTest","Int","0","Bind","ChainBnd"},
+	{"Micro","MicroTest","Int","1","Bind","DrawBnd"},
+	{"Micro","MicroTest","Int","2","Bind","ChainBnd"},
+	{"Micro","MicroDebug","Int","0","Bind","ProbeBnd"},
+	{"Micro","MicroDebug","Int","1","Bind","DrawBnd"},
+	{"Micro","MicroDebug","Int","2","Bind","ProbeBnd"},
 }
 Dependir = { -- aloc
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Command","DerCmd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Command","DerCmd"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Command","DerCmd"},
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Command","DerCmd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Command","DerCmd"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Command","DerCmd"},
+	{"Micro","MicroTest","Int","0","Command","DerCmd"},
+	{"Micro","MicroTest","Int","1","Command","DerCmd"},
+	{"Micro","MicroTest","Int","2","Command","DerCmd"},
+	{"Micro","MicroDebug","Int","0","Command","DerCmd"},
+	{"Micro","MicroDebug","Int","1","Command","DerCmd"},
+	{"Micro","MicroDebug","Int","2","Command","DerCmd"},
 }
 Dependex = { -- size
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Extent","MicroExt"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Extent","MicroExt"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Extent","MicroExt"},
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Extent","MicroExt"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Extent","MicroExt"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Extent","MicroExt"},
+	{"Micro","MicroTest","Int","0","Extent","MicroExt"},
+	{"Micro","MicroTest","Int","1","Extent","MicroExt"},
+	{"Micro","MicroTest","Int","2","Extent","MicroExt"},
+	{"Micro","MicroDebug","Int","0","Extent","MicroExt"},
+	{"Micro","MicroDebug","Int","1","Extent","MicroExt"},
+	{"Micro","MicroDebug","Int","2","Extent","MicroExt"},
 }
 Dependre = { -- requ
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Request","BothReq"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Request","BothReq"},
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Request","BothReq"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Request","BothReq"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Request","BothReq"},
+	{"Micro","MicroTest","Int","0","Request","BothReq"},
+	{"Micro","MicroTest","Int","1","Request","BothReq"},
+	{"Micro","MicroTest","Int","2","Request","BothReq"},
+	{"Micro","MicroDebug","Int","0","Request","BothReq"},
+	{"Micro","MicroDebug","Int","1","Request","BothReq"},
+	{"Micro","MicroDebug","Int","2","Request","BothReq"},
 }
 Dependee = { -- rinc
-	{"Micro","MicroTest","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","SwapBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","1","Bind","ChainBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","2","Bind","MatrixBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","3","Bind","ImageBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
-	{"Micro","MicroTest","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","MatrixBnd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","1","Bind","IndexBnd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","2","Bind","BringupBnd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","3","Bind","PierceBnd"},
-	{"Micro","MicroDebug","BindLoc","AfterLoc","Int","0","Bind","PierceBnd"},
+	{"Bind","ChainBnd","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","SwapBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","1","Bind","ChainBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","2","Bind","MatrixBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","3","Bind","ImageBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
+	{"Bind","ChainBnd","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
 }
 Dependie = { -- indexed rinc
-	{"Micro","MicroTest","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
-	{"Micro","MicroDebug","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
+	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 }
 Depended = { -- winc
-	{"Micro","MicroDebug","BindLoc","BeforeLoc","Int","0","Bind","PierceBnd"},
+	{"Bind","DrawBnd","BindLoc","BeforeLoc","Int","0","Bind","PierceBnd"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:3"..
@@ -1033,10 +1009,7 @@ Req = {
     {"size","Int",{},{}},
     {"pre","Int",{},{}},
 }
-Rsp = {
-    {"con","Constant",{},{}},
-    {"mic","Micro",{},{}},
-    {"mem","Memory",{},{}},
+Rsp = { -- TODO perhaps replace by array of Cmd
     {"bnd","Bind",{},{}},
     {"loc","BindLoc",{},{}},
 }
