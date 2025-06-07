@@ -1015,6 +1015,8 @@ Req = {
 Rsp = { -- TODO perhaps replace by array of Cmd
     {"bnd","Bind",{},{}},
     {"loc","BindLoc",{},{}},
+    {"idx","Int",{},{}}, -- offset into bind->rsp
+    {"siz","Int",{},{}}, -- number done bind->rsp
 }
 Cmd = {
 	{"tag","Command",{},{}},

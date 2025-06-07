@@ -276,15 +276,6 @@ template <class Type> struct HeapState {
         siz += 1;
         return *this;
     }
-    HeapState<Type> &operator>>(Type *&val) {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
-        if (siz <= 0) {val = 0; return *this;}
-        val = &vec[bas%vec.size()];
-        bas = (bas+1)%vec.size();
-        siz -= 1;
-        return *this;
-    }
     Type &operator[](int i) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}

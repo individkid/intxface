@@ -456,7 +456,7 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindLoc loc, Req req, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, BindLoc loc, Req req, Rsp rsp, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -466,16 +466,10 @@ struct BaseState {
         ploc[loc].req = req;
         plock += 1;
         safe.post();
-        return true;
-    }
-    void push(BindState *ptr, BindLoc loc, Rsp rsp, SmartState log) {
-        // save info for use in thread
-        safe.wait();
-        if (plock <= 0) {std::cerr << "invalid set state!" << std::endl; exit(-1);}
-        safe.post();
         if (lock != 0 && lock != ptr) {std::cerr << "invalid set lock! " << debug << " " << plock << " " << lock << " " << ptr << std::endl; exit(-1);}
         lock = ptr;
         ploc[loc].rsp = rsp;
+        return true;
     }
     void done(SmartState log) {
         // unreserve after done in thread or upon error
@@ -487,7 +481,7 @@ struct BaseState {
         safe.post();
     }
     void setre(BindLoc loc, Extent ext, int base, int size, SmartState log) {
-        push(0,0,0,loc,Req{SizeReq,0,0,0,ext,base,size,false},log);
+        push(0,0,0,0,loc,Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
         baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
@@ -685,10 +679,12 @@ struct BindState : public BaseState {
     int rsav[Binds];
     int wsav[Binds];
     int lock; bool excl;
+    HeapState<Cmd> rsp; // TODO add function to execute Cmd from rsp to decr dependees reserved for a done dependee
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0),
-        excl(false) {
+        excl(false),
+        rsp(StackState::comnds) {
         for (int i = 0; i < Binds; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
     }
@@ -704,10 +700,10 @@ struct BindState : public BaseState {
         if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
-    bool push(Bind i, BaseState *buf, BindLoc loc, Req req, SmartState log) {
+    bool push(Bind i, BaseState *buf, BindLoc loc, Req req, Rsp rsp, SmartState log) {
         log << "push " << debug << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        if (!buf->push(psav[i],rsav[i],wsav[i],loc,req,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,req,rsp,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf) {std::cerr << "invalid rinc bind!" << std::endl; exit(-1);}
         bind[i] = buf;
@@ -882,7 +878,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
     int final[Binds];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread),
-        stack{0} {
+        stack{0},
+        buffer{0},
+        first{0},
+        final{0} {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
         for (int i = 0; i < Binds; i++) buffer[i] = 0;
@@ -995,8 +994,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             cmd[i].req.pre = (cmd[i].tag == PDerCmd && final[bnd] == i);
-            if (bind) {if (!bind->push(bnd,dst(bnd),cmd[i].loc,cmd[i].req,log)) lim = i;}
-            else {if (!dst(bnd)->push(0,0,0,cmd[i].loc,cmd[i].req,log)) lim = i;}
+            if (bind) {if (!bind->push(bnd,dst(bnd),cmd[i].loc,cmd[i].req,cmd[i].rsp,log)) lim = i;}
+            else {if (!dst(bnd)->push(0,0,0,0,cmd[i].loc,cmd[i].req,cmd[i].rsp,log)) lim = i;}
             break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
             break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
@@ -1008,12 +1007,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): case (PDerCmd): case (IDerCmd):
             lnk = dst(bnd)->lnk(cmd[i].loc,bas,lst,lnk);
             bas = dst(bnd); lst = cmd[i].loc;}}
-        // prepare buffers
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
-            log << "prepare " << dst(bnd)->debug << " " << bnd << std::endl;
-            switch (cmd[i].tag) {default:
-            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            dst(bnd)->push(bind,cmd[i].loc,cmd[i].rsp,log);}}
+        // TODO push (R/IR/W)DeeCmd to bind->rsp, and save offset into last (/P/I)DerCmd rsp
         // submit buffers
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
             switch (cmd[i].tag) {default:
