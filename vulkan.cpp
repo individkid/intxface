@@ -1713,7 +1713,6 @@ struct ProbeState : public BaseState {
 struct ChainState : public BaseState {
     const VkDevice device;
     const VkQueue present;
-    static int seqloc;
     ChangeState<Configure,Configures> *copy;
     uint32_t imageIndex;
     BindLoc imageLoc;
@@ -1744,13 +1743,15 @@ struct ChainState : public BaseState {
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
         bnd(SwapBnd)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
-        imageLoc = (BindLoc)seqloc; seqloc = (seqloc+1)%BindLocs;
+        imageLoc = (BindLoc)imageIndex;
+        if (imageLoc < 0 || imageLoc >= BindLocs)
+            {std::cerr << "too many images! " << imageIndex << std::endl; exit(-1);}
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
         framebuffer = bnd(SwapBnd)->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
-        VkSemaphore before = sem(lst(loc,imageLoc));
+        VkSemaphore before = sem(lst(loc,(BindLoc)(imageIndex%(uint32_t)BindLocs)));
         if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),imageIndex,before))
         copy->wots(RegisterMask,1<<SizeMsk);}
         return VK_NULL_HANDLE;
@@ -1760,7 +1761,6 @@ struct ChainState : public BaseState {
     }
     static bool presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_t imageIndex, VkSemaphore before);
 };
-int ChainState::seqloc = 0;
 
 struct DrawState : public BaseState {
     const VkDevice device;

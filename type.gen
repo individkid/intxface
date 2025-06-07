@@ -83,6 +83,9 @@ BindLoc = {
 	"BeforeLoc", -- like Acquire
 	"MiddleLoc", -- like Draw
 	"AfterLoc", -- like Present
+	"Image4Loc",
+	-- "Image5Loc",
+	-- "Image6Loc",
 }
 Micro = { -- what runs on gpu
 	"MicroTest", -- for Bringup Plan
