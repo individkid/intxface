@@ -681,7 +681,7 @@ struct BindState : public BaseState {
     int rsav[Binds];
     int wsav[Binds];
     int lock; bool excl;
-    HeapState<Cmd> rsp; // TODO add function to execute Cmd from rsp to decr dependees reserved for a done dependee
+    HeapState<Cmd> rsp;
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0),
@@ -728,9 +728,8 @@ struct BindState : public BaseState {
         for (int i = 0; i < rsp.siz; i++) {
         Bind bnd = this->rsp[rsp.idx+i].bnd;
         switch (this->rsp[rsp.idx+i].tag) {default:
-        break; case (RDeeCmd): rdec(bnd,log);
-        break; case (IRDeeCmd): rdec(bnd,log);
-        break; case (WDeeCmd): wdec(bnd,log);}}
+        break; case (RUDeeCmd): rdec(bnd,log);
+        break; case (WUDeeCmd): wdec(bnd,log);}}
     }
     void done(SmartState log) {
         safe.wait();
@@ -1020,8 +1019,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): if (first[bnd] == i) src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});
-            // TODO perhaps use different commands to push, so when to free is explicit
-            break; case(RDeeCmd): case (IRDeeCmd): case (WDeeCmd): if (bind) bind->push(cmd[i]);}}
+            break; case(RUDeeCmd): case (WUDeeCmd): if (bind) bind->push(cmd[i]);}}
         // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
@@ -1085,9 +1083,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
         Rsp rsp; rsp.idx = dee; rsp.siz = 0;
         for (Iter i(bnd,loc); i(); ++i)
-        if (i.isee()) {dee += 1; rsp.siz += 1;}
-        else if (i.isie()) {dee += 1; rsp.siz += 1;}
-        else if (i.ised()) {dee += 1; rsp.siz += 1;}
+        if (i.isee() || i.isie()) {dee += 1; rsp.siz += 1; cmd<<Cmd{RUDeeCmd,i.bnd,BindLocs};}
+        else if (i.ised()) {dee += 1; rsp.siz += 1; cmd<<Cmd{WUDeeCmd,i.bnd,BindLocs};}
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
         cmd<<Cmd{com,bnd,loc,rsp,req,idx};
         for (Iter i(bnd,loc); i(); ++i) {

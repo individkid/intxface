@@ -118,6 +118,8 @@ Command = { -- TODO eliminate this, or eliminate Dee, or add punctuator and UDee
     "RDeeCmd", -- increment read lock in current, and add to bind
     "IRDeeCmd", -- increment read lock in indexed, and add to bind
     "WDeeCmd", -- increment write lock in current, and add to bind
+    "RUDeeCmd", -- remember to decrement read lock when done
+    "WUDeeCmd", -- remember to decrement write lock when done
 }
 Format = {
 	"VecForm", -- VkFormat
