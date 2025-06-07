@@ -425,10 +425,10 @@ struct Lnk {
     BaseState *ptr = 0; BindLoc loc;
 };
 struct Loc {
-    SizeState siz; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
+    SizeState siz; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; BindLoc loc;
 };
 BindLoc &operator*(Loc &loc) {
-    return loc.rsp.loc;
+    return loc.loc;
 }
 struct BindState;
 struct BaseState {
@@ -469,6 +469,7 @@ struct BaseState {
         if (lock != 0 && lock != ptr) {std::cerr << "invalid set lock! " << debug << " " << plock << " " << lock << " " << ptr << std::endl; exit(-1);}
         lock = ptr;
         ploc[loc].rsp = rsp;
+        ploc[loc].loc = loc;
         return true;
     }
     void done(SmartState log) {
@@ -492,7 +493,7 @@ struct BaseState {
     void recall(Loc &loc, SmartState log) {
         SizeState siz = SizeState(loc.req.ext,loc.req.base,loc.req.size);
         SizeState ini = SizeState(InitExt);
-        int msk = 1<<loc.rsp.loc;
+        int msk = 1<<loc.loc;
         if (loc.siz == siz); else {
         if (loc.siz == ini); else {mask &= ~msk; if (mask == 0) valid = false; unsize(loc,log);}
         loc.siz = siz;
@@ -642,11 +643,12 @@ enum IterEnum {
     Dee,Die,Ded,Deps,
 };
 struct Iter {
-    Rsp rsp;
+    Bind der;
+    BindLoc loc;
     IterEnum seq;
     int sub;
     Bind bnd;
-    Iter(Rsp rsp) : rsp(rsp), seq(Deps), sub(0) {incr(); init();}
+    Iter(Bind bnd, BindLoc loc) : der(bnd), loc(loc), seq(Deps), sub(0) {incr(); init();}
     bool operator()() {return (bnd != Binds);}
     Iter &operator++() {sub++; init(); return *this;}
     bool isee() {return (seq == Dee);}
@@ -663,11 +665,11 @@ struct Iter {
         bnd = Binds;
         while (seq != Deps && bnd == Binds) {
         auto f = Dependee__Bind__BindLoc__Int__Bind(Binds);
-        if (seq == Dee) f = Dependee__Bind__BindLoc__Int__Bind(rsp.bnd);
-        else if (seq == Die) f = Dependie__Bind__BindLoc__Int__Bind(rsp.bnd);
-        else if (seq == Ded) f = Depended__Bind__BindLoc__Int__Bind(rsp.bnd);
+        if (seq == Dee) f = Dependee__Bind__BindLoc__Int__Bind(der);
+        else if (seq == Die) f = Dependie__Bind__BindLoc__Int__Bind(der);
+        else if (seq == Ded) f = Depended__Bind__BindLoc__Int__Bind(der);
         if (f == 0) {incr(); sub = 0; continue;}
-        auto g = f(rsp.loc);
+        auto g = f(loc);
         if (g == 0) {incr(); sub = 0; continue;}
         bnd = g(sub);
         if (bnd == Binds) {incr(); sub = 0; continue;}}
@@ -710,20 +712,25 @@ struct BindState : public BaseState {
         psav[i] += 1;
         return true;
     }
+    void push(Cmd cmd) {
+        rsp<<cmd;
+    }
     void done(Bind i, SmartState log) {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
         log << "done " << debug << " " << bind[i]->debug << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << " lock:" << lock << std::endl;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
-        if (lock == 0) {safe.wait(); excl = false; safe.post();}
+        if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
     void done(Rsp rsp, SmartState log) {
-        for (Iter i(rsp); i(); ++i) {
-        if (i.isee()) rdec(i.bnd,log);
-        else if (i.isie()) rdec(i.bnd,log);
-        else if (i.ised()) wdec(i.bnd,log);}
-        done(rsp.bnd,log);
+        log << "done siz " << rsp.siz << std::endl;
+        for (int i = 0; i < rsp.siz; i++) {
+        Bind bnd = this->rsp[rsp.idx+i].bnd;
+        switch (this->rsp[rsp.idx+i].tag) {default:
+        break; case (RDeeCmd): rdec(bnd,log);
+        break; case (IRDeeCmd): rdec(bnd,log);
+        break; case (WDeeCmd): wdec(bnd,log);}}
     }
     void done(SmartState log) {
         safe.wait();
@@ -773,7 +780,7 @@ BaseState *BaseState::bnd(Bind typ) {
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     log << "unlock " << debug << std::endl;
-    if (lock) lock->done(loc.rsp,log);
+    if (lock) {lock->done(loc.rsp,log); lock->done(bnd(),log);}
 }
 
 struct Push {
@@ -978,7 +985,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool goon = true; while (goon) {goon = false;
         // choose buffers
         int count = 0; // actual number of reservations
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;} final[bnd] = i; count += 1;
             break; case(PDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;} final[bnd] = i; count += 1;
@@ -989,8 +996,17 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
+        // count dependers
+        int idx = 0; int der = 0;
+        for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].bnd;
+            switch (cmd[i].tag) {default:
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
+            cmd[i].rsp.idx = idx; cmd[i].rsp.siz = 0; der = i;
+            break; case(RDeeCmd): idx += 1; cmd[der].rsp.siz += 1;
+            break; case(IRDeeCmd): idx += 1; cmd[der].rsp.siz += 1;
+            break; case(WDeeCmd): idx += 1; cmd[der].rsp.siz += 1;}}
         // reserve chosen
-        for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             cmd[i].req.pre = (cmd[i].tag == PDerCmd && final[bnd] == i);
@@ -1002,20 +1018,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (lim == num) {BaseState *last = 0;
         // link list
         Lnk *lnk = 0; BindLoc lst = BindLocs; BaseState *bas = 0;
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch(cmd[i].tag) {default:
             break; case(DerCmd): case (PDerCmd): case (IDerCmd):
             lnk = dst(bnd)->lnk(cmd[i].loc,bas,lst,lnk);
             bas = dst(bnd); lst = cmd[i].loc;}}
-        // TODO push (R/IR/W)DeeCmd to bind->rsp, and save offset into last (/P/I)DerCmd rsp
         // submit buffers
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): if (first[bnd] == i) src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});}}
+            break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});
+            break; case(RDeeCmd): case (IRDeeCmd): case (WDeeCmd): if (bind) bind->push(cmd[i]);
+        }}
         // clean up
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
             break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
@@ -1025,7 +1042,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (bind) stack[BindBnd]->advance();
         } else {
         // release reserved
-        for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->done(bnd,log);
@@ -1033,7 +1050,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
             break; case(WDeeCmd): bind->wdec(bnd,log);}}
         // clean up
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].rsp.bnd;
+        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
             break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
@@ -1075,13 +1092,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,ext,base,size};
         break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
         break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
-        Rsp rsp = Rsp{bnd,loc};
+        Rsp rsp = Rsp{};
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
-        cmd<<Cmd{com,loc,rsp,req,idx};
-        for (Iter i(rsp); i(); ++i) {
-        if (i.isee()) cmd<<Cmd{RDeeCmd,BindLocs,Rsp{i.bnd,BindLocs}};
-        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,BindLocs,Rsp{i.bnd,BindLocs},Req{},idx};}
-        else if (i.ised()) cmd<<Cmd{WDeeCmd,BindLocs,Rsp{i.bnd,BindLocs}};}}
+        cmd<<Cmd{com,bnd,loc,rsp,req,idx};
+        for (Iter i(bnd,loc); i(); ++i) {
+        if (i.isee()) cmd<<Cmd{RDeeCmd,i.bnd,BindLocs};
+        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,i.bnd,BindLocs,Rsp{},Req{},idx};}
+        else if (i.ised()) cmd<<Cmd{WDeeCmd,i.bnd,BindLocs};}}
         if (count != drw.siz) {slog.clr(); std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
         push(cmd,fnc,ptr,sub,log);
     }
@@ -1225,8 +1242,7 @@ void TestState::call() {
     copy->push(drw,0,0,Fnc{false,0,false,0,false},SmartState());*/
     /*int siz = vertices.size()*copy->src(BringupBnd)->bufsiz();
     HeapState<Cmd> cmd; cmd<<Cmd{.tag=PDerCmd,.loc=MiddleLoc,
-    .rsp=Rsp{.con=MemoryConst,.mic=Micros,.mem=Bringupz,.bnd=BringupBnd,.loc=MiddleLoc},
-    .req=Req{.tag=BothReq,.ptr=(void*)vertices.data(),.idx=0,.lim=siz,.ext=IntExt,.base=0,.size=siz}};
+    .rsp=Rsp{},.req=Req{.tag=BothReq,.ptr=(void*)vertices.data(),.idx=0,.lim=siz,.ext=IntExt,.base=0,.size=siz}};
     copy->push(cmd,Fnc{false,0,false,0,false},0,0,SmartState());*/
     
     //
@@ -1774,7 +1790,7 @@ struct DrawState : public BaseState {
         int matrixIdx = 0;
         int index = 0;
         log << "micro " << debug << " " << siz(loc).micro << std::endl;
-        for (Iter i(Rsp{DrawBnd,MiddleLoc}); i(); ++i) {
+        for (Iter i(DrawBnd,MiddleLoc); i(); ++i) {
         log << "bind " << debug << " " << i.bnd << std::endl;
         if (i.isee() || i.isie()) switch (i.bnd) {
         default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
