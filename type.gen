@@ -1012,7 +1012,7 @@ Req = {
     {"size","Int",{},{}},
     {"pre","Int",{},{}},
 }
-Rsp = { -- TODO perhaps replace by array of Cmd
+Rsp = {
     {"idx","Int",{},{}}, -- offset into bind->rsp
     {"siz","Int",{},{}}, -- number to unreserve of bind->rsp
 }

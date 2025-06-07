@@ -996,15 +996,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
-        // count dependers
-        int idx = 0; int der = 0;
-        for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
-            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            cmd[i].rsp.idx = idx; cmd[i].rsp.siz = 0; der = i;
-            break; case(RDeeCmd): idx += 1; cmd[der].rsp.siz += 1;
-            break; case(IRDeeCmd): idx += 1; cmd[der].rsp.siz += 1;
-            break; case(WDeeCmd): idx += 1; cmd[der].rsp.siz += 1;}}
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
@@ -1029,8 +1020,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): if (first[bnd] == i) src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(RDeeCmd): case (IRDeeCmd): case (WDeeCmd): if (bind) bind->push(cmd[i]);
-        }}
+            // TODO perhaps use different commands to push, so when to free is explicit
+            break; case(RDeeCmd): case (IRDeeCmd): case (WDeeCmd): if (bind) bind->push(cmd[i]);}}
         // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
@@ -1061,7 +1052,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     void push(HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Cmd> cmd(StackState::comnds);
-        for (int k = 0; k < lst.size(); k++) {
+        int dee = 0; for (int k = 0; k < lst.size(); k++) {
         int count = 0; Draw drw = lst[k];
         for (int j = 0; location(drw,j) != BindLocs; j++) {
         BindLoc loc = location(drw,j);
@@ -1092,7 +1083,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,ext,base,size};
         break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
         break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
-        Rsp rsp = Rsp{};
+        Rsp rsp; rsp.idx = dee; rsp.siz = 0;
+        for (Iter i(bnd,loc); i(); ++i)
+        if (i.isee()) {dee += 1; rsp.siz += 1;}
+        else if (i.isie()) {dee += 1; rsp.siz += 1;}
+        else if (i.ised()) {dee += 1; rsp.siz += 1;}
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
         cmd<<Cmd{com,bnd,loc,rsp,req,idx};
         for (Iter i(bnd,loc); i(); ++i) {
