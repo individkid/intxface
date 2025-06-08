@@ -441,6 +441,25 @@ FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
 }
+MemoryCmd = {
+	{"Memory","Texturez","Int","0","Command","IDerCmd"},
+	{"Memory","Texturez","Int","0","Bind","ImageBnd"},
+	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
+	{"Memory","Texturez","Int","0","Request","SizeReq"},
+	{"Memory","Texturez","Int","0","Extent","ExtentExt"},
+	{"Memory","Texturez","Int","0","Format","HighForm"},
+	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
+	{"Memory","Texturez","Int","1","Request","BothReq"},
+	{"Memory","Texturez","Int","1","Extent","FormExt"},
+	{"Memory","Texturez","Int","1","Format","XferForm"},
+	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","2","Extent","ExtentExt"},
+	{"Memory","Texturez","Int","2","Format","HighForm"},
+	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
+	{"Memory","Texturez","Int","3","Extent","FormExt"},
+	{"Memory","Texturez","Int","3","Format","RonlyForm"},
+}
+-- TODO replace below with above
 Memoryrm = { -- built in argument types
 	{"Memory","Indexz","Int","0","Format","BaseForm"},
 	{"Memory","Indexz","Int","1","Format","SizeForm"},
@@ -754,6 +773,7 @@ Depended = { -- winc
 	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bootstrap = {
+	{"Int","0","Int","0"},
 	{"Int","0","Str","Force(num:3"..
 		"cfg[0]:RegisterPlan"..
 		"cfg[1]:RegisterLimit"..

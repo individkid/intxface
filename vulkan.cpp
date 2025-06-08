@@ -1107,6 +1107,100 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(Memory mem, void *val, int base, int size, Center *ptr, int sub, Fnc fnc, SmartState log) {
         push(mem,val,base,0,size,ptr,sub,fnc,log);
     }
+    // TODO replace above with following
+    /*
+    Rsp = {
+        {"idx","Int",{},{}}, -- offset into bind->rsp
+        {"siz","Int",{},{}}, -- number to unreserve of bind->rsp
+    }
+    */
+    Rsp response(Memory mem, int i, int &count) {
+        Rsp rsp = {count,0};
+        for (int j = i+1; MemoryCmd__Memory__Int__Command(mem)(j) != Commands; j++)
+        switch (MemoryCmd__Memory__Int__Command(mem)(j)) {default:
+        break; case (DerCmd): case (IDerCmd): case(PDerCmd): return rsp;
+        break; case (RUDeeCmd): case (WUDeeCmd): count += 1; rsp.siz += 1;}
+        return rsp;
+    }
+    /*
+    Req = {
+        {"tag","Request",{},{}},
+        {"ptr","Dat",{},{}},
+        {"idx","Int",{},{}},
+        {"lim","Int",{},{}},
+        {"ext","Extent",{},{}},
+        {"base","Int",{},{}},
+        {"size","Int",{},{}},
+        {"pre","Int",{},{}},
+    }
+    */
+    /*
+    MemoryCmd = {
+        {"Memory","Texturez","Int","0","Command","IDerCmd"},
+        {"Memory","Texturez","Int","0","Bind","ImageBnd"},
+        {"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
+        {"Memory","Texturez","Int","0","Request","SizeReq"},
+        {"Memory","Texturez","Int","0","Extent","ExtentExt"},
+        {"Memory","Texturez","Int","0","Format","HighForm"},
+    {"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
+    {"Memory","Texturez","Int","1","Request","BothReq"},
+    {"Memory","Texturez","Int","1","Extent","FormExt"},
+    {"Memory","Texturez","Int","1","Format","XferForm"},
+        {"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
+        {"Memory","Texturez","Int","2","Extent","ExtentExt"},
+        {"Memory","Texturez","Int","2","Format","HighForm"},
+    {"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
+    {"Memory","Texturez","Int","3","Extent","FormExt"},
+    {"Memory","Texturez","Int","3","Format","RonlyForm"},
+    */
+    #define REQUEST(A,B,C) (A|(B*Requests)|(C*Requests*Extents))
+    Req request(Request tag, Extent ext, Format frm, void *val, int base, int high, int size, int idx, SmartState log) {
+        Req req; req.tag = tag; req.ext = ext; req.pre = 0;
+        log << "tag:" << tag << "(" << SizeReq << "," << BothReq << ")" << " ext:" << ext << "(" << ExtentExt << "," << FormExt << ")" << " frm:" << frm << "(" << HighForm << "," << XferForm << "," << RonlyForm << ")" << std::endl; slog.clr();
+        switch (REQUEST(tag,ext,frm)) {default: {std::cerr << "invalid request triple!" << std::endl; exit(-1);}
+        break; case (REQUEST(SizeReq,ExtentExt,HighForm)): log << "base:" << base << " high:" << high << std::endl; req.ptr = 0; req.idx = 0; req.lim = 0; req.base = base; req.size = high;
+        break; case (REQUEST(BothReq,FormExt,XferForm)): log << "undefined to dst" << std::endl; req.ptr = 0; req.idx = 0; req.lim = size; req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break; case (REQUEST(BothReq,ExtentExt,HighForm)): log << "idx:0 lim:" << size << " base:" << base << " size:" << size << std::endl; req.ptr = val; req.idx = 0; req.lim = size; req.base = base; req.size = high;
+        break; case (REQUEST(BothReq,FormExt,RonlyForm)): log << "dst to readonly" << std::endl; req.ptr = 0; req.idx = 0; req.lim = size; req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+        return req;
+    }
+    /*
+    Cmd = {
+        {"tag","Command",{},{}},
+        {"bnd","Bind",{},{}},
+        {"loc","BindLoc",{},{}},
+        {"rsp","Rsp",{},{}},
+        {"req","Req",{},{}},
+        {"idx","Int",{},{}},
+    }
+    */
+    struct Arg {
+        Command cmd = Commands; Bind bnd = Binds; BindLoc loc = BindLocs; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
+    };
+    template <class Type> bool push(Type &sav, Type &arg, Type val, Type inv) {
+        arg = val;
+        if (arg == inv) arg = sav; else sav = arg;
+        return (val != inv);
+    }
+    bool push(Memory mem, int i, void *val, int base, int high, int size, int idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
+        Arg arg; bool done = true;
+        if (MemoryCmd__Memory__Int__Command(mem) == 0) {std::cerr << "memory no command!" << std::endl; exit(-1);}
+        if (push(sav.cmd,arg.cmd,MemoryCmd__Memory__Int__Command(mem)(i),Commands)) done = false;
+        if (push(sav.bnd,arg.bnd,MemoryCmd__Memory__Int__Bind(mem)(i),Binds)) done = false;
+        if (push(sav.loc,arg.loc,MemoryCmd__Memory__Int__BindLoc(mem)(i),BindLocs)) done = false;
+        if (push(sav.req,arg.req,MemoryCmd__Memory__Int__Request(mem)(i),Requests)) done = false;
+        if (push(sav.ext,arg.ext,MemoryCmd__Memory__Int__Extent(mem)(i),Extents)) done = false;
+        if (push(sav.fmt,arg.fmt,MemoryCmd__Memory__Int__Format(mem)(i),Formats)) done = false;
+        if (done) return false;
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        return true;
+    }
+    void push(Memory mem, void *val, int base, int high, int size, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        HeapState<Cmd> lst; int count = 0; Cmd cmd; Arg sav;
+        for (int i = 0; push(mem,i,val,base,high,size,idx,count,sav,cmd,log); i++) lst << cmd;
+        push(lst,fnc,ptr,sub,log);
+    }
     void push(Bind bnd, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Draw> drw(StackState::comnds);
         int arg[StackState::comnds]; int siz = 0;
@@ -1142,8 +1236,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
         break; case (Texturez): for (int k = 0; k < center->siz; k++) {
-        push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),
-        center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center,sub,fnc,log);}
+        push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center->idx+k,center,sub,fnc,log);
+        /*push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center,sub,fnc,log);*/}
         break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
         break; case (Trianglez): push(center->mem,(void*)center->tri,idx,siz,center,sub,fnc,log);
