@@ -330,8 +330,8 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         case (NumericBnd): return "NumericBnd";
         case (VertexBnd): return "VertexBnd";
         case (BasisBnd): return "BasisBnd";
-        case (PierceBnd): return "PierceBnd";
-        case (ProbeBnd): return "ProbeBnd";
+        case (PokeBnd): return "PokeBnd";
+        case (PeekBnd): return "PeekBnd";
         case (ChainBnd): return "ChainBnd";
         case (DrawBnd): return "DrawBnd";
         case (BindBnd): return "BindBnd";}
@@ -1528,6 +1528,10 @@ struct BufferState : public BaseState {
 };
 
 struct ImageState : public BaseState {
+    // ResizeLoc create image buffer
+    // BeforeLoc format for writing to image
+    // MiddleLoc write data to buffer
+    // AfterLoc format for use as textue
     const VkDevice device;
     const VkPhysicalDevice physical;
     const VkPhysicalDeviceProperties properties;
@@ -1556,6 +1560,7 @@ struct ImageState : public BaseState {
     VkImageView getImageView() override {return imageView;}
     VkExtent2D getExtent() override {return extent;}
     VkSampler getTextureSampler() override {return textureSampler;}
+    VkFramebuffer getFramebuffer() override {return framebuffer;}
     ImageState() :
         BaseState("ImageState",StackState::self),
         device(StackState::device),
@@ -1576,13 +1581,16 @@ struct ImageState : public BaseState {
         int texHeight = siz(loc).extent.height;
         extent = siz(loc).extent;
         if (*loc == ResizeLoc) {
-        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
+        VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        if (bnd() == ImageBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_SAMPLED_BIT);
+        if (bnd() == PokeBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureSampler = ImageState::createTextureSampler(device,properties);}
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
-        if (0) { // TODO for pierce point
+        if (*loc == ResizeLoc && bnd() == PokeBnd) {
         createImage(device, physical, siz(loc).extent.width, siz(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,siz(loc).extent,renderPass,imageView,depthImageView,framebuffer);}
@@ -1593,7 +1601,7 @@ struct ImageState : public BaseState {
         log << "unsize " << debug << std::endl;
         vkDestroyFence(device, fen(loc), nullptr);
         vkDestroySemaphore(device, sem(loc), nullptr);
-        if (0) { // TODO for pierce point
+        if (*loc == ResizeLoc && bnd() == PokeBnd) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1624,15 +1632,12 @@ struct ImageState : public BaseState {
         int texWidth = siz(loc).extent.width;
         int texHeight = siz(loc).extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
-        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties,
-            stagingBuffer, stagingBufferMemory);
+        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr(loc), static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        // TODO pass fence to copyTextureImage
         copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight, before, after, stagingBuffer, commandBuffer);}
-        if (0) {} // TODO for pierce point
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -1641,7 +1646,6 @@ struct ImageState : public BaseState {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
-        if (0) {} // TODO for pierce point
     }
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics, VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight, VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
@@ -1649,11 +1653,14 @@ struct ImageState : public BaseState {
 };
 
 struct ProbeState : public BaseState {
-    // TODO BeforeLoc PierceBnd writes a single entry
-    // TODO BeforeLoc ProbeBnd reformats bound PierceBnd and provides image view like SwapState/ChainState
-    // TODO MiddleLoc DrawBnd runs MicroDebug to fill in the PierceBnd buffer
-    // TODO AfterLoc ProbeBnd reformats bound PierceBnd
-    // TODO AfterLoc PierceBnd reads a single entry
+    // TODO ResizeLoc PokeBnd creates image and framebuffer with ImageState
+    // TODO BeforeLoc PokeBnd converts format for write
+    // TODO MiddleLoc PokeBnd copies to vector in image
+    // TODO AfterLoc PokeBnd converts format for draw
+    // TODO MiddleLoc DrawBnd runs MicroDebug to fill in the PokeBnd buffer
+    // TODO BeforeLoc PeekBnd converts format of bound PokeBnd image for read
+    // TODO MiddleLoc PeekBnd copies from vector in PokeBnd image
+    // TODO AfterLoc PeekBnd converts format of PokeBnd image
     ProbeState() :
         BaseState("ProbeState",StackState::self) {
     }
@@ -1798,19 +1805,14 @@ struct DrawState : public BaseState {
                 trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
         if (matrixPtr) {
             if (matrixPtr->getBuffer() == VK_NULL_HANDLE) {std::cerr << "null buffer handle!" << std::endl; exit(-1);}
-            updateUniformDescriptor(device,matrixPtr->getBuffer(),
-                matrixPtr->getRange(),matrixIdx,descriptorSet);}
+            updateUniformDescriptor(device,matrixPtr->getBuffer(),matrixPtr->getRange(),matrixIdx,descriptorSet);}
         if (imagePtr) {
-            updateTextureDescriptor(device,imagePtr->getImageView(),
-                imagePtr->getTextureSampler(),imageIdx,descriptorSet);}
+            updateTextureDescriptor(device,imagePtr->getImageView(),imagePtr->getTextureSampler(),imageIdx,descriptorSet);}
         if (pipePtr && framePtr && indexPtr && fetchPtr) {
             VkExtent2D extent = swapPtr->getExtent();
-            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,siz(loc).micro,lim(loc),
-                framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),
-                fetchPtr->getBuffer(),indexPtr->getBuffer());
+            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,siz(loc).micro,lim(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
             VkSemaphore after = sem(get(framePtr->getImageLoc()));
-            drawFrame(commandBuffer, graphics, ptr(loc), idx(loc), lim(loc), siz(loc).micro,
-                sem(lst(loc)),after,fen(loc),VK_NULL_HANDLE);}
+            drawFrame(commandBuffer,graphics,ptr(loc),idx(loc),lim(loc),siz(loc).micro,sem(lst(loc)),after,fen(loc),VK_NULL_HANDLE);}
         else {log << "invalid bind set! " << debug << std::endl; exit(-1);}
         return fen(loc);
     }
@@ -1845,8 +1847,8 @@ struct MainState {
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<BufferState,PierceBnd,StackState::frames> pierceState;
-    ArrayState<ProbeState,ProbeBnd,StackState::frames> probeState;
+    ArrayState<ImageState,PokeBnd,StackState::frames> pokeState;
+    ArrayState<ProbeState,PeekBnd,StackState::frames> probeState;
     ArrayState<ChainState,ChainBnd,StackState::frames> chainState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
@@ -1884,8 +1886,8 @@ struct MainState {
             {NumericBnd,&numericState},
             {VertexBnd,&vertexState},
             {BasisBnd,&basisState},
-            {PierceBnd,&pierceState},
-            {ProbeBnd,&probeState},
+            {PokeBnd,&pokeState},
+            {PeekBnd,&probeState},
             {ChainBnd,&chainState},
             {DrawBnd,&drawState},
             {BindBnd,&bindState},

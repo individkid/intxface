@@ -60,8 +60,8 @@ Bind = { -- per variation of BaseState
 	"NumericBnd",
 	"VertexBnd",
 	"BasisBnd",
-	"PierceBnd",
-	"ProbeBnd",
+	"PokeBnd",
+	"PeekBnd",
 	"ChainBnd",
 	"DrawBnd",
 	"BindBnd",
@@ -407,25 +407,21 @@ Tag = { -- type of data piped between processes
 --HERE Constants
 BindStride = {
 	{"Bind","VertexBnd","Int","48"},
-	{"Bind","PierceBnd","Int","16"},
 }
 BindOffset = {
 	{"Bind","VertexBnd","Int","0","Int","0"},
 	{"Bind","VertexBnd","Int","1","Int","16"},
 	{"Bind","VertexBnd","Int","2","Int","32"},
-	{"Bind","PierceBnd","Int","0","Int","0"},
 }
 BindFormat = {
 	{"Bind","VertexBnd","Int","0","Format","VecForm"},
 	{"Bind","VertexBnd","Int","1","Format","VecForm"},
 	{"Bind","VertexBnd","Int","2","Format","UvecForm"},
-	{"Bind","PierceBnd","Int","0","Format","VecForm"},
 }
 BindElement = {
 	{"Bind","VertexBnd","Int","0","Format","OldForm"},
 	{"Bind","VertexBnd","Int","1","Format","OldForm"},
 	{"Bind","VertexBnd","Int","2","Format","Int32Form"},
-	{"Bind","PierceBnd","Int","0","Format","Int32Form"},
 }
 FormatSize = {
 	{"Format","VecForm","Int","16"},
@@ -584,7 +580,7 @@ Memoryer = { -- work done by separate thread on resources with a location
 	{"Memory","Numericz","Int","0","Bind","NumericBnd"},
 	{"Memory","Vertexz","Int","0","Bind","VertexBnd"},
 	{"Memory","Basisz","Int","0","Bind","BasisBnd"},
-	{"Memory","Piercez","Int","0","Bind","PierceBnd"},
+	{"Memory","Piercez","Int","0","Bind","PokeBnd"},
 }
 Memoryir = { -- which command for location
 	{"Memory","Indexz","Int","0","Command","PDerCmd"},
@@ -713,9 +709,9 @@ Depender = { -- list of dependers
 	{"Micro","MicroTest","Int","0","Bind","ChainBnd"},
 	{"Micro","MicroTest","Int","1","Bind","DrawBnd"},
 	{"Micro","MicroTest","Int","2","Bind","ChainBnd"},
-	{"Micro","MicroDebug","Int","0","Bind","ProbeBnd"},
+	{"Micro","MicroDebug","Int","0","Bind","PokeBnd"},
 	{"Micro","MicroDebug","Int","1","Bind","DrawBnd"},
-	{"Micro","MicroDebug","Int","2","Bind","ProbeBnd"},
+	{"Micro","MicroDebug","Int","2","Bind","PeekBnd"},
 }
 Dependir = { -- aloc
 	{"Micro","MicroTest","Int","0","Command","DerCmd"},
@@ -755,7 +751,7 @@ Dependie = { -- indexed rinc
 	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
 }
 Depended = { -- winc
-	{"Bind","DrawBnd","BindLoc","BeforeLoc","Int","0","Bind","PierceBnd"},
+	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bootstrap = {
 	{"Int","0","Str","Force(num:3"..
