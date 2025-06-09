@@ -65,7 +65,6 @@ Bind = { -- per variation of BaseState
 	"ChainBnd",
 	"DrawBnd",
 	"BindBnd",
-	"SyncBnd",
 }
 BindTyp = {
 	"StorageTyp",
@@ -130,10 +129,12 @@ Format = {
 	"XferForm", -- VkImageLayout
 	"RonlyForm", -- VkImageLayout
 	"RawForm", -- unmapped int
-	"BaseForm", -- base in buffer
+	"BaseForm", -- base only
+	"RangeForm", -- base and size
 	"SizeForm", -- size from Dat
 	"HighForm", -- second base
 	"WholeForm", -- same size
+	"NoneForm", -- no arguments
 }
 Configure = {
 	"IndexBase",
@@ -469,47 +470,30 @@ MemoryCmd = {
 	{"Memory","Basisz","Int","0","Bind","BasisBnd"},
 	{"Memory","Piercez","Int","0","Bind","PokeBnd"},
 }
-Bindrm = { -- built in argument types
-	{"Bind","SwapBnd","Int","0","Format","Formats"},
-	{"Bind","DrawBnd","Int","0","Format","RawForm"},
-	{"Bind","DrawBnd","Int","1","Format","RawForm"},
-	{"Bind","ChainBnd","Int","0","Format","RawForm"},
-}
-Bindrg = { -- built in arguments
-	{"Bind","SwapBnd","Int","0","Int","0"},
-	{"Bind","DrawBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Bind","DrawBnd","Int","1","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Bind","ChainBnd","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
-}
-Bindat = { -- resource sequence to trigger a resource
-	{"Bind","SwapBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","PipelineBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","DrawBnd","Int","0","BindLoc","ResizeLoc"},
-	{"Bind","ChainBnd","Int","0","BindLoc","ResizeLoc"},
-}
-Binder = { -- resources sequenced to trigger a resource
+BindCmd = {
+	{"Bind","SwapBnd","Int","0","Command","Commands"},
 	{"Bind","SwapBnd","Int","0","Bind","SwapBnd"},
-	{"Bind","PipelineBnd","Int","0","Bind","PipelineBnd"},
-	{"Bind","DrawBnd","Int","0","Bind","DrawBnd"},
-	{"Bind","ChainBnd","Int","0","Bind","ChainBnd"},
-}
-Bindir = { -- resource push command
-	{"Bind","SwapBnd","Int","0","Command","DerCmd"},
-	{"Bind","PipelineBnd","Int","0","Command","IDerCmd"},
-	{"Bind","DrawBnd","Int","0","Command","DerCmd"},
-	{"Bind","ChainBnd","Int","0","Command","DerCmd"},
-}
-Bindex = { -- resource push extent
+	{"Bind","SwapBnd","Int","0","BindLoc","BindLocs"},
+	{"Bind","SwapBnd","Int","0","Request","Requests"},
 	{"Bind","SwapBnd","Int","0","Extent","FalseExt"},
-	{"Bind","PipelineBnd","Int","0","Extent","MicroExt"},
-	{"Bind","DrawBnd","Int","0","Extent","MicroExt"},
-	{"Bind","ChainBnd","Int","0","Extent","MicroExt"},
-}
-Bindre = { -- resource request type
-	{"Bind","SwapBnd","Int","0","Request","SizeReq"},
-	{"Bind","PipelineBnd","Int","0","Request","SizeReq"},
-	{"Bind","DrawBnd","Int","0","Request","SizeReq"},
-	{"Bind","ChainBnd","Int","0","Request","SizeReq"},
+	{"Bind","SwapBnd","Int","0","Format","NoneForm"},
+	{"Bind","PipelineBnd","Int","0","Bind","PipelineBnd"},
+	{"Bind","PipelineBnd","Int","0","Format","BaseForm"},
+	{"Bind","IndexBnd","Int","0","Bind","IndexBnd"},
+	{"Bind","BringupBnd","Int","0","Bind","BringupBnd"},
+	{"Bind","ImageBnd","Int","0","Bind","ImageBnd"},
+	{"Bind","UniformBnd","Int","0","Bind","UniformBnd"},
+	{"Bind","MatrixBnd","Int","0","Bind","MatrixBnd"},
+	{"Bind","TriangleBnd","Int","0","Bind","TriangleBnd"},
+	{"Bind","NumericBnd","Int","0","Bind","NumericBnd"},
+	{"Bind","VertexBnd","Int","0","Bind","VertexBnd"},
+	{"Bind","BasisBnd","Int","0","Bind","BasisBnd"},
+	{"Bind","PokeBnd","Int","0","Bind","PokeBnd"},
+	{"Bind","PeekBnd","Int","0","Bind","PeekBnd"},
+	{"Bind","ChainBnd","Int","0","Bind","ChainBnd"},
+	{"Bind","ChainBnd","Int","0","Extent","TrueExt"},
+	{"Bind","ChainBnd","Int","0","Format","NoneForm"},
+	{"Bind","DrawBnd","Int","0","Bind","DrawBnd"},
 }
 ArgForm = { -- built in argument types
 	-- /*BeforeLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0,
@@ -847,7 +831,7 @@ Req = {
     {"tag","Request",{},{}},
     {"ptr","Dat",{},{}},
     {"idx","Int",{},{}},
-    {"lim","Int",{},{}},
+    {"lim","Int",{},{}}, -- TODO rename to siz
     {"ext","Extent",{},{}},
     {"base","Int",{},{}},
     {"size","Int",{},{}},
