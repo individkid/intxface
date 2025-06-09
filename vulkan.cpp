@@ -908,7 +908,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (drw.con) {
         default: {std::cerr << "invalid loc con!" << std::endl; exit(-1);}
         break; case (MicroConst): loc = Location__Micro__Int__BindLoc(drw.drw)(j);
-        break; case (MemoryConst): loc = Memoryat__Memory__Int__BindLoc(drw.mem)(j);
+        // TODO use MemoryDat break; case (MemoryConst): loc = Memoryat__Memory__Int__BindLoc(drw.mem)(j);
         break; case (BindConst): loc = Bindat__Bind__Int__BindLoc(drw.bnd)(j);}
         return loc;
     }
@@ -917,7 +917,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (drw.con) {
         default: {std::cerr << "invalid bnd con!" << std::endl; exit(-1);}
         break; case (MicroConst): bnd = Depender__Micro__Int__Bind(drw.drw)(j);
-        break; case (MemoryConst): bnd = Memoryer__Memory__Int__Bind(drw.mem)(j);
+        // TODO use MemoryDat break; case (MemoryConst): bnd = Memoryer__Memory__Int__Bind(drw.mem)(j);
         break; case (BindConst): bnd = Binder__Bind__Int__Bind(drw.bnd)(j);}
         return bnd;
     }
@@ -926,7 +926,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (drw.con) {
         default: {std::cerr << "invalid cmd con!" << std::endl; exit(-1);}
         break; case (MicroConst): cmd = Dependir__Micro__Int__Command(drw.drw)(j);
-        break; case (MemoryConst): cmd = Memoryir__Memory__Int__Command(drw.mem)(j);
+        // TODO use MemoryDat break; case (MemoryConst): cmd = Memoryir__Memory__Int__Command(drw.mem)(j);
         break; case (BindConst): cmd = Bindir__Bind__Int__Command(drw.bnd)(j);}
         return cmd;
     }
@@ -935,7 +935,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (drw.con) {
         default: {std::cerr << "invalid ext con!" << std::endl; exit(-1);}
         break; case (MicroConst): ext = Dependex__Micro__Int__Extent(drw.drw)(j);
-        break; case (MemoryConst): ext = Memoryex__Memory__Int__Extent(drw.mem)(j);
+        // TODO use MemoryDat break; case (MemoryConst): ext = Memoryex__Memory__Int__Extent(drw.mem)(j);
         break; case (BindConst): ext = Bindex__Bind__Int__Extent(drw.bnd)(j);}
         return ext;
     }
@@ -944,7 +944,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (drw.con) {
         default: {std::cerr << "invalid req con!" << std::endl; exit(-1);}
         break; case (MicroConst): req = Dependre__Micro__Int__Request(drw.drw)(j);
-        break; case (MemoryConst): req = Memoryre__Memory__Int__Request(drw.mem)(j);
+        // TODO use MemoryDat break; case (MemoryConst): req = Memoryre__Memory__Int__Request(drw.mem)(j);
         break; case (BindConst): req = Bindre__Bind__Int__Request(drw.bnd)(j);}
         return req;
     }
@@ -1094,20 +1094,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (count != drw.siz) {slog.clr(); std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
         push(cmd,fnc,ptr,sub,log);
     }
-    void push(Memory mem, void *val, int width, int height, int size, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw(StackState::comnds);
-        int arg[StackState::comnds]; int siz = 0;
-        struct UniDat uni = {.num=-1,.siz=size,.ptr=val};
-        for (int i = 0; Memoryrm__Memory__Int__Format(mem)(i) != Formats; i++) {siz += 1;
-        if (siz >= StackState::comnds) {std::cerr << "too many binds!" << std::endl; exit(-1);}
-        arg[i] = argument(Memoryrm__Memory__Int__Format(mem)(i),Memoryrg__Memory__Int__Int(mem)(i),width,size,height);}
-        drw << Draw{.con=MemoryConst,.mem=mem,.ptr=&uni,.siz=siz,.arg=arg};
-        push(drw,ptr,sub,fnc,log);
-    }
-    void push(Memory mem, void *val, int base, int size, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        push(mem,val,base,0,size,ptr,sub,fnc,log);
-    }
-    // TODO replace above with following
     /*
     Rsp = {
         {"idx","Int",{},{}}, -- offset into bind->rsp
@@ -1116,6 +1102,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     */
     Rsp response(Memory mem, int i, int &count) {
         Rsp rsp = {count,0};
+        if (!MemoryCmd__Memory__Int__Command(mem)) return rsp;
         for (int j = i+1; MemoryCmd__Memory__Int__Command(mem)(j) != Commands; j++)
         switch (MemoryCmd__Memory__Int__Command(mem)(j)) {default:
         break; case (DerCmd): case (IDerCmd): case(PDerCmd): return rsp;
@@ -1162,6 +1149,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (REQUEST(BothReq,FormExt,XferForm)): log << "undefined to dst" << std::endl; req.ptr = 0; req.idx = 0; req.lim = size; req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         break; case (REQUEST(BothReq,ExtentExt,HighForm)): log << "idx:0 lim:" << size << " base:" << base << " size:" << size << std::endl; req.ptr = val; req.idx = 0; req.lim = size; req.base = base; req.size = high;
         break; case (REQUEST(BothReq,FormExt,RonlyForm)): log << "dst to readonly" << std::endl; req.ptr = 0; req.idx = 0; req.lim = size; req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        break; case (REQUEST(BothReq,IntExt,WholeForm)): log << "base: " << base << " size:" << size << std::endl; req.ptr = val; req.idx = base; req.lim = size; req.base = base; req.size = size;
         }
         return req;
     }
@@ -1176,22 +1164,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     */
     struct Arg {
-        Command cmd = Commands; Bind bnd = Binds; BindLoc loc = BindLocs; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
+        Command cmd = PDerCmd; Bind bnd = Binds; BindLoc loc = MiddleLoc; Request req = BothReq; Extent ext = IntExt; Format fmt = WholeForm;
     };
-    template <class Type> bool push(Type &sav, Type &arg, Type val, Type inv) {
+    template <class Type, class Fnc> bool push(Type &sav, Type &arg, Fnc fnc, Memory mem, int i, Type inv) {
+        Type val = (fnc&&fnc(mem)?fnc(mem)(i):inv);
         arg = val;
         if (arg == inv) arg = sav; else sav = arg;
         return (val != inv);
     }
     bool push(Memory mem, int i, void *val, int base, int high, int size, int idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
         Arg arg; bool done = true;
-        if (MemoryCmd__Memory__Int__Command(mem) == 0) {std::cerr << "memory no command!" << std::endl; exit(-1);}
-        if (push(sav.cmd,arg.cmd,MemoryCmd__Memory__Int__Command(mem)(i),Commands)) done = false;
-        if (push(sav.bnd,arg.bnd,MemoryCmd__Memory__Int__Bind(mem)(i),Binds)) done = false;
-        if (push(sav.loc,arg.loc,MemoryCmd__Memory__Int__BindLoc(mem)(i),BindLocs)) done = false;
-        if (push(sav.req,arg.req,MemoryCmd__Memory__Int__Request(mem)(i),Requests)) done = false;
-        if (push(sav.ext,arg.ext,MemoryCmd__Memory__Int__Extent(mem)(i),Extents)) done = false;
-        if (push(sav.fmt,arg.fmt,MemoryCmd__Memory__Int__Format(mem)(i),Formats)) done = false;
+        if (push(sav.cmd,arg.cmd,MemoryCmd__Memory__Int__Command,mem,i,Commands)) done = false;
+        if (push(sav.bnd,arg.bnd,MemoryCmd__Memory__Int__Bind,mem,i,Binds)) done = false;
+        if (push(sav.loc,arg.loc,MemoryCmd__Memory__Int__BindLoc,mem,i,BindLocs)) done = false;
+        if (push(sav.req,arg.req,MemoryCmd__Memory__Int__Request,mem,i,Requests)) done = false;
+        if (push(sav.ext,arg.ext,MemoryCmd__Memory__Int__Extent,mem,i,Extents)) done = false;
+        if (push(sav.fmt,arg.fmt,MemoryCmd__Memory__Int__Format,mem,i,Formats)) done = false;
         if (done) return false;
         cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
         return true;
@@ -1224,7 +1212,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(drw,ptr,sub,fnc,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
-        Bind bnd = Memoryer__Memory__Int__Bind(center->mem)(0);
+        auto f = MemoryCmd__Memory__Int__Bind(center->mem);
+        Bind bnd = (f?f(0):Binds);
         if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         int mod = src(bnd)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
         /*if (base>idx) {
@@ -1233,18 +1222,16 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else {idx = idx-base;}
         if (idx+siz>size) {siz = size-idx;}*/ // TODO for Configure Base and Size
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
-        break; case (Indexz): push(center->mem,(void*)center->ind,idx,siz,center,sub,fnc,log);
-        break; case (Bringupz): push(center->mem,(void*)center->ver,idx,siz,center,sub,fnc,log);
-        break; case (Texturez): for (int k = 0; k < center->siz; k++) {
-        push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center->idx+k,center,sub,fnc,log);
-        /*push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center,sub,fnc,log);*/}
-        break; case (Uniformz): push(center->mem,(void*)center->uni,idx,siz,center,sub,fnc,log);
-        break; case (Matrixz): push(center->mem,(void*)center->mat,idx,siz,center,sub,fnc,log);
-        break; case (Trianglez): push(center->mem,(void*)center->tri,idx,siz,center,sub,fnc,log);
-        break; case (Numericz): push(center->mem,(void*)center->num,idx,siz,center,sub,fnc,log);
-        break; case (Vertexz): push(center->mem,(void*)center->vtx,idx,siz,center,sub,fnc,log);
-        break; case (Basisz): push(center->mem,(void*)center->bas,idx,siz,center,sub,fnc,log);
-        break; case (Piercez): push(center->mem,(void*)center->pie,idx,siz,center,sub,fnc,log);
+        break; case (Indexz): push(center->mem,(void*)center->ind,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Bringupz): push(center->mem,(void*)center->ver,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Texturez): for (int k = 0; k < center->siz; k++) push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),center->tex[k].wid,center->tex[k].hei,datxVoids(center->tex[k].dat),center->idx+k,center,sub,fnc,log);
+        break; case (Uniformz): push(center->mem,(void*)center->uni,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Matrixz): push(center->mem,(void*)center->mat,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Trianglez): push(center->mem,(void*)center->tri,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Numericz): push(center->mem,(void*)center->num,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Vertexz): push(center->mem,(void*)center->vtx,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Basisz): push(center->mem,(void*)center->bas,idx,0,siz,0,center,sub,fnc,log);
+        break; case (Piercez): push(center->mem,(void*)center->pie,idx,0,siz,0,center,sub,fnc,log);
         break; case (Drawz): {HeapState<Draw> drw(StackState::comnds);
         for (int i = 0; i < center->siz; i++) drw<<center->drw[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
