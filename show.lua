@@ -2705,7 +2705,7 @@ function listHere(name,file)
 		if clear then found = false end
 		if found then
 			local match
-			_, _, match = string.find(line,"([A-Za-z0-9]+) = {")
+			_, _, match = string.find(line,"^([A-Za-z0-9]+) = {")
 			if (match) then
 				list[#list+1] = match
 				map[match] = _G[match]

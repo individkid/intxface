@@ -1102,20 +1102,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (count != drw.siz) {slog.clr(); std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
         push(cmd,fnc,ptr,sub,log);
     }
-    Rsp response(Memory mem, int i, int &count) {
+    template <class Type, class Fnc> Rsp response(Fnc fnc, Type mem, int i, int &count) {
         Rsp rsp = {count,0};
-        if (!MemoryCmd__Memory__Int__Command(mem)) return rsp;
-        for (int j = i+1; MemoryCmd__Memory__Int__Command(mem)(j) != Commands; j++)
-        switch (MemoryCmd__Memory__Int__Command(mem)(j)) {default:
-        break; case (DerCmd): case (IDerCmd): case(PDerCmd): return rsp;
-        break; case (RUDeeCmd): case (WUDeeCmd): count += 1; rsp.siz += 1;}
-        return rsp;
-    }
-    Rsp response(Bind mem, int i, int &count) {
-        Rsp rsp = {count,0};
-        if (!BindCmd__Bind__Int__Command(mem)) return rsp;
-        for (int j = i+1; BindCmd__Bind__Int__Command(mem)(j) != Commands; j++)
-        switch (BindCmd__Bind__Int__Command(mem)(j)) {default:
+        if (!fnc(mem)) return rsp;
+        for (int j = i+1; fnc(mem)(j) != Commands; j++)
+        switch (fnc(mem)(j)) {default:
         break; case (DerCmd): case (IDerCmd): case(PDerCmd): return rsp;
         break; case (RUDeeCmd): case (WUDeeCmd): count += 1; rsp.siz += 1;}
         return rsp;
@@ -1150,7 +1141,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (constant(sav.ext,arg.ext,MemoryCmd__Memory__Int__Extent,mem,i,Extents,log)) done = false;
         if (constant(sav.fmt,arg.fmt,MemoryCmd__Memory__Int__Format,mem,i,Formats,log)) done = false;
         if (done) return false;
-        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(MemoryCmd__Memory__Int__Command,mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
         return true;
     }
     bool push(Bind mem, int i, void *val, int base, int high, int size, int idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
@@ -1162,7 +1153,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (constant(sav.ext,arg.ext,BindCmd__Bind__Int__Extent,mem,i,Extents,log)) done = false;
         if (constant(sav.fmt,arg.fmt,BindCmd__Bind__Int__Format,mem,i,Formats,log)) done = false;
         if (done) return false;
-        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(BindCmd__Bind__Int__Command,mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        return true;
+    }
+    bool push(Micro mem, int i, void *val, int base, int high, int size, int idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
+        Arg arg; bool done = true;
+        if (constant(sav.cmd,arg.cmd,MicroCmd__Micro__Int__Command,mem,i,Commands,log)) done = false;
+        if (constant(sav.bnd,arg.bnd,MicroCmd__Micro__Int__Bind,mem,i,Binds,log)) done = false;
+        if (constant(sav.loc,arg.loc,MicroCmd__Micro__Int__BindLoc,mem,i,BindLocs,log)) done = false;
+        if (constant(sav.req,arg.req,MicroCmd__Micro__Int__Request,mem,i,Requests,log)) done = false;
+        if (constant(sav.ext,arg.ext,MicroCmd__Micro__Int__Extent,mem,i,Extents,log)) done = false;
+        if (constant(sav.fmt,arg.fmt,MicroCmd__Micro__Int__Format,mem,i,Formats,log)) done = false;
+        if (done) return false;
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(MicroCmd__Micro__Int__Command,mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
         return true;
     }
     void push(Memory mem, void *val, int base, int high, int size, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
@@ -1171,6 +1174,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(lst,fnc,ptr,sub,log);
     }
     void push(Bind mem, void *val, int base, int high, int size, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        HeapState<Cmd> lst; int count = 0; Cmd cmd; Arg sav = {DerCmd,Binds,ResizeLoc,SizeReq,IntExt,RangeForm};
+        for (int i = 0; push(mem,i,val,base,high,size,idx,count,sav,cmd,log); i++) lst << cmd;
+        push(lst,fnc,ptr,sub,log);
+    }
+    void push(Micro mem, void *val, int base, int high, int size, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Cmd> lst; int count = 0; Cmd cmd; Arg sav = {DerCmd,Binds,ResizeLoc,SizeReq,IntExt,RangeForm};
         for (int i = 0; push(mem,i,val,base,high,size,idx,count,sav,cmd,log); i++) lst << cmd;
         push(lst,fnc,ptr,sub,log);

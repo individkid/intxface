@@ -134,6 +134,8 @@ Format = {
 	"SizeForm", -- size from Dat
 	"HighForm", -- second base
 	"WholeForm", -- same size
+	"IndexForm", -- same as index
+	"ConstForm", -- which builtin
 	"NoneForm", -- no arguments
 }
 Configure = {
@@ -478,7 +480,8 @@ BindCmd = {
 	{"Bind","SwapBnd","Int","0","Extent","FalseExt"},
 	{"Bind","SwapBnd","Int","0","Format","NoneForm"},
 	{"Bind","PipelineBnd","Int","0","Bind","PipelineBnd"},
-	{"Bind","PipelineBnd","Int","0","Format","BaseForm"},
+	{"Bind","PipelineBnd","Int","0","Extent","MicroExt"},
+	{"Bind","PipelineBnd","Int","0","Format","IndexForm"},
 	{"Bind","IndexBnd","Int","0","Bind","IndexBnd"},
 	{"Bind","BringupBnd","Int","0","Bind","BringupBnd"},
 	{"Bind","ImageBnd","Int","0","Bind","ImageBnd"},
@@ -494,6 +497,20 @@ BindCmd = {
 	{"Bind","ChainBnd","Int","0","Extent","TrueExt"},
 	{"Bind","ChainBnd","Int","0","Format","NoneForm"},
 	{"Bind","DrawBnd","Int","0","Bind","DrawBnd"},
+}
+MicroCmd = {
+	{"Micro","MicroTest","Int","%(idx = 0; return idx)","Command","DerCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
+	{"Micro","MicroTest","Int","%(return idx)","BindLoc","BeforeLoc"},
+	{"Micro","MicroTest","Int","%(return idx)","Request","BothReq"},
+	{"Micro","MicroTest","Int","%(return idx)","Extent","MicroExt"},
+	{"Micro","MicroTest","Int","%(return idx)","Format","ConstForm"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Bind","DrawBnd"},
+	{"Micro","MicroTest","Int","%(return idx)","BindLoc","MiddleLoc"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Bind","ChainBnd"},
+	{"Micro","MicroTest","Int","%(return idx)","BindLoc","AfterLoc"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\"}; return idx)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(idx+i-1) else return idx+i-1 end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
 }
 ArgForm = { -- built in argument types
 	-- /*BeforeLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0,
