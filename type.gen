@@ -117,8 +117,6 @@ Command = { -- TODO eliminate this, or eliminate Dee, or add punctuator and UDee
     "RDeeCmd", -- increment read lock in current, and add to bind
     "IRDeeCmd", -- increment read lock in indexed, and add to bind
     "WDeeCmd", -- increment write lock in current, and add to bind
-    "RUDeeCmd", -- remember to decrement read lock when done
-    "WUDeeCmd", -- remember to decrement write lock when done
 }
 Format = {
 	"VecForm", -- VkFormat
@@ -505,12 +503,22 @@ MicroCmd = {
 	{"Micro","MicroTest","Int","%(return idx)","Request","BothReq"},
 	{"Micro","MicroTest","Int","%(return idx)","Extent","MicroExt"},
 	{"Micro","MicroTest","Int","%(return idx)","Format","ConstForm"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Bind","DrawBnd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","DrawBnd"},
 	{"Micro","MicroTest","Int","%(return idx)","BindLoc","MiddleLoc"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Bind","ChainBnd"},
-	{"Micro","MicroTest","Int","%(return idx)","BindLoc","AfterLoc"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\"}; return idx)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; return idx)","Command","RDeeCmd"},
 	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(idx+i-1) else return idx+i-1 end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","PipelineBnd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
+	{"Micro","MicroTest","Int","%(return idx)","BindLoc","AfterLoc"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","PipelineBnd"},
 }
 ArgForm = { -- built in argument types
 	-- /*BeforeLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0,

@@ -1,7 +1,5 @@
 
-Bringup: Eliminate Regex and such from datx. Instead add Fold. Add callbacks to extract and insert fields to Center in datx, so datx builds without any type.c.
-
-Regress: Use indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add coincidence color. Demonstrate depth and coincidence color with irregular triangles.
+Bringup: Finish convert to MicroCmd. Add MicroDebug. Remove type.mk; use typeC.o for all. Remove coroutines from show.lua. Eliminate Regex and such from datx. Instead add Fold.. Add MicroDisplay and MicroPierce, using indexed buffers instead of fetched buffers. Change to depth color. Get pierce point to work. Add coincidence color. Demonstrate depth and coincidence color with irregular triangles.
 
 Builtin: Test each Transfer from planer.lua. Test modes with writes to Configure.
 Mouse transformations include

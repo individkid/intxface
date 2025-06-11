@@ -728,8 +728,8 @@ struct BindState : public BaseState {
         for (int i = 0; i < rsp.siz; i++) {
         Bind bnd = this->rsp[rsp.idx+i].bnd;
         switch (this->rsp[rsp.idx+i].tag) {default:
-        break; case (RUDeeCmd): rdec(bnd,log);
-        break; case (WUDeeCmd): wdec(bnd,log);}}
+        break; case (RDeeCmd): case (IRDeeCmd): rdec(bnd,log);
+        break; case (WDeeCmd): wdec(bnd,log);}}
     }
     void done(SmartState log) {
         safe.wait();
@@ -1027,7 +1027,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(DerCmd): if (first[bnd] == i) src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
             break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(RUDeeCmd): case (WUDeeCmd): if (bind) bind->push(cmd[i]);}}
+            break; case(RDeeCmd): case(IRDeeCmd): case (WDeeCmd): if (bind) bind->push(cmd[i]);}}
         // clean up
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
@@ -1091,8 +1091,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
         Rsp rsp; rsp.idx = dee; rsp.siz = 0;
         for (Iter i(bnd,loc); i(); ++i)
-        if (i.isee() || i.isie()) {dee += 1; rsp.siz += 1; cmd<<Cmd{RUDeeCmd,i.bnd,BindLocs};}
-        else if (i.ised()) {dee += 1; rsp.siz += 1; cmd<<Cmd{WUDeeCmd,i.bnd,BindLocs};}
+        if (i.isee() || i.isie() || i.ised()) {dee += 1; rsp.siz += 1;}
         int idx = (com == IDerCmd ? arg(drw,count) : 0);
         cmd<<Cmd{com,bnd,loc,rsp,req,idx};
         for (Iter i(bnd,loc); i(); ++i) {
@@ -1108,7 +1107,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int j = i+1; fnc(mem)(j) != Commands; j++)
         switch (fnc(mem)(j)) {default:
         break; case (DerCmd): case (IDerCmd): case(PDerCmd): return rsp;
-        break; case (RUDeeCmd): case (WUDeeCmd): count += 1; rsp.siz += 1;}
+        break; case (RDeeCmd): case (IRDeeCmd): case (WDeeCmd): count += 1; rsp.siz += 1;}
         return rsp;
     }
     #define REQUEST(A,B,C) (A+(B*(Requests+1))+(C*(Requests+1)*(Extents+1)))
