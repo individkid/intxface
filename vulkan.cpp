@@ -639,42 +639,6 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-enum IterEnum {
-    Dee,Die,Ded,Deps,
-};
-struct Iter {
-    Bind der;
-    BindLoc loc;
-    IterEnum seq;
-    int sub;
-    Bind bnd;
-    Iter(Bind bnd, BindLoc loc) : der(bnd), loc(loc), seq(Deps), sub(0) {incr(); init();}
-    bool operator()() {return (bnd != Binds);}
-    Iter &operator++() {sub++; init(); return *this;}
-    bool isee() {return (seq == Dee);}
-    bool isie() {return (seq == Die);}
-    bool ised() {return (seq == Ded);}
-    bool iseps() {return (seq == Deps);}
-    void incr() {
-        if (seq == Deps) seq = Dee;
-        else if (seq == Dee) seq = Die;
-        else if (seq == Die) seq = Ded;
-        else if (seq == Ded) seq = Deps;
-    }
-    void init() {
-        bnd = Binds;
-        while (seq != Deps && bnd == Binds) {
-        auto f = Dependee__Bind__BindLoc__Int__Bind(Binds);
-        if (seq == Dee) f = Dependee__Bind__BindLoc__Int__Bind(der);
-        else if (seq == Die) f = Dependie__Bind__BindLoc__Int__Bind(der);
-        else if (seq == Ded) f = Depended__Bind__BindLoc__Int__Bind(der);
-        if (f == 0) {incr(); sub = 0; continue;}
-        auto g = f(loc);
-        if (g == 0) {incr(); sub = 0; continue;}
-        bnd = g(sub);
-        if (bnd == Binds) {incr(); sub = 0; continue;}}
-    }
-};
 struct BindState : public BaseState {
     BaseState *bind[Binds];
     int psav[Binds];
@@ -724,7 +688,7 @@ struct BindState : public BaseState {
         if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
     void done(Rsp rsp, SmartState log) {
-        log << "done siz " << rsp.siz << std::endl;
+        log << "done idx:" << rsp.idx << " siz:" << rsp.siz << std::endl; slog.clr();
         for (int i = 0; i < rsp.siz; i++) {
         Bind bnd = this->rsp[rsp.idx+i].bnd;
         switch (this->rsp[rsp.idx+i].tag) {default:
@@ -906,73 +870,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if ((int)bnd < 0 || (int)bnd >= Binds) {std::cerr << "invalid source bind!" << std::endl; exit(-1);}
         return stack[bnd];
     }
-    static BindLoc location(Draw drw, int j) {
-        BindLoc loc = BindLocs;
-        switch (drw.con) {
-        default: {std::cerr << "invalid loc con!" << std::endl; exit(-1);}
-        break; case (MicroConst): loc = Location__Micro__Int__BindLoc(drw.drw)(j);
-        // TODO use MemoryDat break; case (MemoryConst): loc = Memoryat__Memory__Int__BindLoc(drw.mem)(j);
-        // break; case (BindConst): loc = Bindat__Bind__Int__BindLoc(drw.bnd)(j);
-        }
-        return loc;
-    }
-    static Bind depender(Draw drw, int j) {
-        Bind bnd = Binds;
-        switch (drw.con) {
-        default: {std::cerr << "invalid bnd con!" << std::endl; exit(-1);}
-        break; case (MicroConst): bnd = Depender__Micro__Int__Bind(drw.drw)(j);
-        // TODO use MemoryDat break; case (MemoryConst): bnd = Memoryer__Memory__Int__Bind(drw.mem)(j);
-        // break; case (BindConst): bnd = Binder__Bind__Int__Bind(drw.bnd)(j);
-        }
-        return bnd;
-    }
-    static Command command(Draw drw, int j) {
-        Command cmd = Commands;
-        switch (drw.con) {
-        default: {std::cerr << "invalid cmd con!" << std::endl; exit(-1);}
-        break; case (MicroConst): cmd = Dependir__Micro__Int__Command(drw.drw)(j);
-        // TODO use MemoryDat break; case (MemoryConst): cmd = Memoryir__Memory__Int__Command(drw.mem)(j);
-        // break; case (BindConst): cmd = Bindir__Bind__Int__Command(drw.bnd)(j);
-        }
-        return cmd;
-    }
-    static Extent extent(Draw drw, int j) {
-        Extent ext = Extents;
-        switch (drw.con) {
-        default: {std::cerr << "invalid ext con!" << std::endl; exit(-1);}
-        break; case (MicroConst): ext = Dependex__Micro__Int__Extent(drw.drw)(j);
-        // TODO use MemoryDat break; case (MemoryConst): ext = Memoryex__Memory__Int__Extent(drw.mem)(j);
-        // break; case (BindConst): ext = Bindex__Bind__Int__Extent(drw.bnd)(j);
-        }
-        return ext;
-    }
-    static Request request(Draw drw, int j) {
-        Request req = Requests;
-        switch (drw.con) {
-        default: {std::cerr << "invalid req con!" << std::endl; exit(-1);}
-        break; case (MicroConst): req = Dependre__Micro__Int__Request(drw.drw)(j);
-        // TODO use MemoryDat break; case (MemoryConst): req = Memoryre__Memory__Int__Request(drw.mem)(j);
-        // break; case (BindConst): req = Bindre__Bind__Int__Request(drw.bnd)(j);
-        }
-        return req;
-    }
-    static int argument(Format frm, int raw, int base, int size, int high) {
-        int ret = 0;
-        switch (frm) {
-        default: {std::cerr << "invalid argument format!" << std::endl; exit(-1);}
-        break; case (VecForm): ret = VK_FORMAT_R32G32B32A32_SFLOAT; // VkFormat
-        break; case (UvecForm): ret = VK_FORMAT_R32G32B32A32_UINT; // VkFormat
-        break; case (OldForm): // TODO ret = VK_FORMAT_SFLOAT; // VkFormat
-        break; case (Int32Form): // TODO ret = VK_FORMAT_UINT; // VkFormat
-        break; case (UndefForm): ret = VK_IMAGE_LAYOUT_UNDEFINED; // VkImageLayout
-        break; case (XferForm): ret = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; // VkImageLayout
-        break; case (RonlyForm): ret = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // VkImageLayout
-        break; case (RawForm): ret = raw; // unmapped int
-        break; case (BaseForm): ret = base; // base in buffer
-        break; case (SizeForm): ret = size; // size of Dat
-        break; case (HighForm): ret = high;} // second base in buffer
-        return ret;
-    }
     static int arg(Draw drw, int &count) {
         if (count >= drw.siz) {std::cerr << "wrong arg count!" << std::endl; exit(-1);}
         return drw.arg[count++];
@@ -994,11 +891,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         int count = 0; // actual number of reservations
         for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
             switch (cmd[i].tag) {default:
-            break; case(DerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;} final[bnd] = i; count += 1;
-            break; case(PDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;} final[bnd] = i; count += 1;
-            break; case(IDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(cmd[i].idx); first[bnd] = i;} final[bnd] = i; count += 1;
-            break; case(RDeeCmd): case(WDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); count += 1;
-            break; case(IRDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); count += 1;}}
+            break; case(DerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;} final[bnd] = i; count += 1; log << "DerCmd " << dst(bnd)->debug << std::endl;
+            break; case(PDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;} final[bnd] = i; count += 1; log << "PDerCmd " << dst(bnd)->debug << std::endl;
+            break; case(IDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(cmd[i].idx); first[bnd] = i;} final[bnd] = i; count += 1; log << "IDerCmd " << cmd[i].idx << " " << dst(bnd)->debug << std::endl;
+            break; case(RDeeCmd): case(WDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); count += 1; log << "RWDeeCmd " << dst(bnd)->debug << std::endl;
+            break; case(IRDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); count += 1; log << "IRDeeCmd " << cmd[i].idx << " " << dst(bnd)->debug << std::endl;}}
         // choose binding
         BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
@@ -1056,65 +953,25 @@ struct CopyState : public ChangeState<Configure,Configures> {
         else if (fnc.fail) thread->push({log,BindLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon) goon = true;}}
     }
-    void push(HeapState<Draw> &lst, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Cmd> cmd(StackState::comnds);
-        int dee = 0; for (int k = 0; k < lst.size(); k++) {
-        int count = 0; Draw drw = lst[k];
-        for (int j = 0; location(drw,j) != BindLocs; j++) {
-        BindLoc loc = location(drw,j);
-        Bind bnd = depender(drw,j);
-        Command com = command(drw,j);
-        Request tag = request(drw,j);
-        Extent ext = extent(drw,j);
-        log << "count: " << count << " loc:" << loc << " bnd:" << bnd << " cmd:" << com << " req:" << tag << " ext:" << ext << std::endl;
-        if (drw.con == BindConst && drw.bnd != bnd)
-        {std::cerr << "invalid bind const!" << std::endl; exit(-1);}
-        int base, size; switch (ext) {
-        default: {std::cerr << "invalid draw ext!" << std::endl; exit(-1);}
-        break; case (InitExt): ;
-        break; case (IntExt): base = arg(drw,count); size = arg(drw,count);
-        break; case (FormExt): base = arg(drw,count); size = arg(drw,count);
-        break; case (ExtentExt): base = arg(drw,count); size = arg(drw,count);
-        break; case (MicroExt): base = arg(drw,count);
-        break; case (BindExt): base = arg(drw,count);
-        break; case (TrueExt):
-        break; case (FalseExt): ;}
-        int bas, siz; switch (tag) {
-        default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
-        break; case (BothReq): bas = arg(drw,count); siz = arg(drw,count);
-        break; case (LockReq): bas = arg(drw,count); siz = arg(drw,count);
-        break; case (SizeReq): ;}
-        Req req; switch (tag) {
-        default: {std::cerr << "invalid draw req!" << std::endl; exit(-1);}
-        break; case (BothReq): req = Req{tag,get(drw,siz),bas,siz,ext,base,size};
-        break; case (LockReq): req = Req{tag,get(drw,siz),bas,siz};
-        break; case (SizeReq): req = Req{tag,0,0,0,ext,base,size};}
-        Rsp rsp; rsp.idx = dee; rsp.siz = 0;
-        for (Iter i(bnd,loc); i(); ++i)
-        if (i.isee() || i.isie() || i.ised()) {dee += 1; rsp.siz += 1;}
-        int idx = (com == IDerCmd ? arg(drw,count) : 0);
-        cmd<<Cmd{com,bnd,loc,rsp,req,idx};
-        for (Iter i(bnd,loc); i(); ++i) {
-        if (i.isee()) cmd<<Cmd{RDeeCmd,i.bnd,BindLocs};
-        else if (i.isie()) {int idx = arg(drw,count); cmd<<Cmd{IRDeeCmd,i.bnd,BindLocs,Rsp{},Req{},idx};}
-        else if (i.ised()) cmd<<Cmd{WDeeCmd,i.bnd,BindLocs};}}
-        if (count != drw.siz) {slog.clr(); std::cerr << "invalid draw limit! " << count << " " << drw.siz << std::endl; exit(-1);}}
-        push(cmd,fnc,ptr,sub,log);
-    }
-    template <class Type, class Fnc> Rsp response(Fnc fnc, Type mem, int i, int &count) {
-        Rsp rsp = {count,0};
+    template <class Type, class Fnc> Rsp response(Fnc fnc, Type mem, int i, int &count, SmartState log) {
+        Rsp rsp = {};
         if (!fnc(mem)) return rsp;
+        switch (fnc(mem)(i)) {default:
+        break; case (DerCmd): case (IDerCmd): case(PDerCmd):
+        break; case (RDeeCmd): case (IRDeeCmd): case(WDeeCmd): return rsp;}
+        rsp.idx = count;
         for (int j = i+1; fnc(mem)(j) != Commands; j++)
         switch (fnc(mem)(j)) {default:
-        break; case (DerCmd): case (IDerCmd): case(PDerCmd): return rsp;
+        break; case (DerCmd): case (IDerCmd): case(PDerCmd): log << "response " << j << "/" << rsp.idx << "/" << rsp.siz << std::endl; return rsp;
         break; case (RDeeCmd): case (IRDeeCmd): case (WDeeCmd): count += 1; rsp.siz += 1;}
+        log << "response /" << rsp.idx << "/" << rsp.siz << std::endl;
         return rsp;
     }
     #define REQUEST(A,B,C) (A+(B*(Requests+1))+(C*(Requests+1)*(Extents+1)))
     Req request(Request tag, Extent ext, Format frm, void *val, int base, int high, int size, int idx, SmartState log) {
         Req req; req.tag = tag; req.ext = ext; req.pre = 0;
-        log << "request:" << REQUEST(tag,ext,frm) << "(" << REQUEST(SizeReq,FalseExt,NoneForm) << "," << REQUEST(SizeReq,TrueExt,NoneForm) << ")" << " " << tag << "/" << Requests << "/" << SizeReq << " " << ext << "/" << Extents << "/" << FalseExt << "/" << TrueExt << " " << frm << "/" << Formats << "/" << NoneForm << std::endl; slog.clr();
-        switch (REQUEST(tag,ext,frm)) {default: {std::cerr << "invalid request triple!" << std::endl; exit(-1);}
+        log << "request:" << REQUEST(tag,ext,frm) << "(" << REQUEST(SizeReq,FalseExt,NoneForm) << "," << REQUEST(SizeReq,TrueExt,NoneForm) << ")" << " tag:" << tag << "/" << Requests << "/SizeReq:" << SizeReq << "/BothReq:" << BothReq << " ext:" << ext << "/" << Extents << "/FalseExt:" << FalseExt << "/TrueExt:" << TrueExt << "/MicroExt:" << MicroExt << " frm:" << frm << "/" << Formats << "/NoneForm:" << NoneForm << "/ConstForm:" << ConstForm << std::endl;
+        switch (REQUEST(tag,ext,frm)) {default: {std::cerr << "invalid request triple!" << std::endl; slog.clr(); exit(-1);}
         break; case (REQUEST(SizeReq,ExtentExt,HighForm)): req.ptr = 0; req.idx = 0; req.lim = 0; req.base = base; req.size = high;
         break; case (REQUEST(BothReq,FormExt,XferForm)): req.ptr = 0; req.idx = 0; req.lim = size; req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         break; case (REQUEST(BothReq,ExtentExt,HighForm)): req.ptr = val; req.idx = 0; req.lim = size; req.base = base; req.size = high;
@@ -1122,6 +979,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (REQUEST(BothReq,IntExt,WholeForm)): req.ptr = val; req.idx = base; req.lim = size; req.base = base; req.size = size;
         break; case (REQUEST(SizeReq,FalseExt,NoneForm)): req.ptr = 0; req.idx = 0; req.lim = 0; req.base = 0; req.size = 0;
         break; case (REQUEST(SizeReq,TrueExt,NoneForm)): req.ptr = 0; req.idx = 0; req.lim = 0; req.base = 0; req.size = 0;
+        break; case (REQUEST(BothReq,MicroExt,ConstForm)): req.ptr = 0; req.idx = base; req.lim = size; req.base = idx; req.size = 0;
         }
         return req;
     }
@@ -1140,7 +998,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (constant(sav.ext,arg.ext,MemoryCmd__Memory__Int__Extent,mem,i,Extents,log)) done = false;
         if (constant(sav.fmt,arg.fmt,MemoryCmd__Memory__Int__Format,mem,i,Formats,log)) done = false;
         if (done) return false;
-        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(MemoryCmd__Memory__Int__Command,mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(MemoryCmd__Memory__Int__Command,mem,i,count,log),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
         return true;
     }
     bool push(Bind mem, int i, void *val, int base, int high, int size, int idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
@@ -1152,7 +1010,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (constant(sav.ext,arg.ext,BindCmd__Bind__Int__Extent,mem,i,Extents,log)) done = false;
         if (constant(sav.fmt,arg.fmt,BindCmd__Bind__Int__Format,mem,i,Formats,log)) done = false;
         if (done) return false;
-        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(BindCmd__Bind__Int__Command,mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(BindCmd__Bind__Int__Command,mem,i,count,log),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
         return true;
     }
     bool push(Micro mem, int i, void *val, int base, int high, int size, int idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
@@ -1164,7 +1022,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (constant(sav.ext,arg.ext,MicroCmd__Micro__Int__Extent,mem,i,Extents,log)) done = false;
         if (constant(sav.fmt,arg.fmt,MicroCmd__Micro__Int__Format,mem,i,Formats,log)) done = false;
         if (done) return false;
-        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(MicroCmd__Micro__Int__Command,mem,i,count),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
+        cmd = Cmd{arg.cmd,arg.bnd,arg.loc,response(MicroCmd__Micro__Int__Command,mem,i,count,log),request(arg.req,arg.ext,arg.fmt,val,base,high,size,idx,log),idx};
         return true;
     }
     void push(Memory mem, void *val, int base, int high, int size, int idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
@@ -1181,16 +1039,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         HeapState<Cmd> lst; int count = 0; Cmd cmd; Arg sav = {DerCmd,Binds,ResizeLoc,SizeReq,IntExt,RangeForm};
         for (int i = 0; push(mem,i,val,base,high,size,idx,count,sav,cmd,log); i++) lst << cmd;
         push(lst,fnc,ptr,sub,log);
-    }
-    void push(Micro mic, int count, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Draw> drw(StackState::comnds);
-        int arg[StackState::comnds]; int siz = 0;
-        for (int i = 0; ArgForm__Micro__Int__Format(mic)(i) != Formats; i++) {siz += 1;
-        if (siz >= StackState::comnds) {std::cerr << "too many micros!" << std::endl; exit(-1);}
-        arg[i] = argument(ArgForm__Micro__Int__Format(mic)(i),ArgVal__Micro__Int__Int(mic)(i),0,count,0);
-        log << "arg[" << i << "] " << arg[i] << std::endl;}
-        drw << Draw{.con=MicroConst,.drw=mic,.ptr=0,.siz=siz,.arg=arg};
-        push(drw,ptr,sub,fnc,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         auto f = MemoryCmd__Memory__Int__Bind(center->mem);
@@ -1213,10 +1061,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Vertexz): push(center->mem,(void*)center->vtx,idx,0,siz,0,center,sub,fnc,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,idx,0,siz,0,center,sub,fnc,log);
         break; case (Piercez): push(center->mem,(void*)center->pie,idx,0,siz,0,center,sub,fnc,log);
-        break; case (Drawz): {HeapState<Draw> drw(StackState::comnds);
-        for (int i = 0; i < center->siz; i++) drw<<center->drw[i];
+        break; case (Drawz): {HeapState<Cmd> cmd(StackState::comnds);
+        for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/bnd/drw)
         // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(drw,center,sub,Fnc{true,planePass,true,planeFail,false},log);}
+        push(cmd,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
         break; case (Commandz): {HeapState<Cmd> cmd(StackState::comnds);
         for (int i = 0; i < center->siz; i++) cmd<<center->com[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
@@ -1318,8 +1166,7 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
     //
-    copy->push(MicroTest,static_cast<int>(indices.size()),
-    0,0,Fnc{true,vulkanWake,true,vulkanWake,false},SmartState());}
+    copy->push(MicroTest, 0,0/*TODO start index*/,0,static_cast<int>(indices.size()),MicroTest, 0,0,Fnc{true,vulkanWake,true,vulkanWake,false},SmartState());}
 }
 
 struct ForkState : public DoneState {
@@ -1838,18 +1685,23 @@ struct DrawState : public BaseState {
         int imageIdx = 0;
         int matrixIdx = 0;
         int index = 0;
+        bool middle = false;
         log << "micro " << debug << " " << siz(loc).micro << std::endl;
-        for (Iter i(DrawBnd,MiddleLoc); i(); ++i) {
-        log << "bind " << debug << " " << i.bnd << std::endl;
-        if (i.isee() || i.isie()) switch (i.bnd) {
-        default: {std::cerr << "invalid bind check! " << debug << " " << i.bnd << std::endl; exit(-1);}
-        break; case (PipelineBnd): pipePtr = bnd(i.bnd);
-        break; case (SwapBnd): swapPtr = bnd(i.bnd);
-        break; case (ChainBnd): framePtr = bnd(i.bnd);
-        break; case (IndexBnd): indexPtr = bnd(i.bnd);
-        break; case (BringupBnd): fetchPtr = bnd(i.bnd);
-        break; case (ImageBnd): imagePtr = bnd(i.bnd); imageIdx = index++;
-        break; case (MatrixBnd): matrixPtr = bnd(i.bnd); matrixIdx = index++;}}
+        for (int i = 0; MicroCmd__Micro__Int__Command(siz(loc).micro)(i) != Commands; i++)
+        if (MicroCmd__Micro__Int__BindLoc(siz(loc).micro)(i) == MiddleLoc) middle = true;
+        else if (MicroCmd__Micro__Int__BindLoc(siz(loc).micro)(i) != BindLocs) middle = false;
+        else if (middle && MicroCmd__Micro__Int__Command(siz(loc).micro)(i) == RDeeCmd ||
+        middle && MicroCmd__Micro__Int__Command(siz(loc).micro)(i) == IRDeeCmd ||
+        middle && MicroCmd__Micro__Int__Command(siz(loc).micro)(i) == WDeeCmd)
+        switch (MicroCmd__Micro__Int__Bind(siz(loc).micro)(i)) {
+        default: {std::cerr << "invalid bind check! " << debug << std::endl; exit(-1);}
+        break; case (PipelineBnd): pipePtr = bnd(PipelineBnd);
+        break; case (SwapBnd): swapPtr = bnd(SwapBnd);
+        break; case (ChainBnd): framePtr = bnd(ChainBnd);
+        break; case (IndexBnd): indexPtr = bnd(IndexBnd);
+        break; case (BringupBnd): fetchPtr = bnd(BringupBnd);
+        break; case (ImageBnd): imagePtr = bnd(ImageBnd); imageIdx = index++;
+        break; case (MatrixBnd): matrixPtr = bnd(MatrixBnd); matrixIdx = index++;}
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt

@@ -508,8 +508,8 @@ MicroCmd = {
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","DrawBnd"},
 	{"Micro","MicroTest","Int","%(return idx)","BindLoc","MiddleLoc"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; return idx)","Command","RDeeCmd"},
-	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(idx+i-1) else return idx+i-1 end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
+	{"Micro","MicroTest","Int","%(bidx = idx; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; for i,v in ipairs(dee) do if i~=#dee then idx = idx + 1; coroutine.yield(idx) else idx = idx + 1; return idx end end)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then bidx = bidx + 1; coroutine.yield(bidx) else bidx = bidx + 1; return bidx end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","PipelineBnd"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
@@ -519,90 +519,6 @@ MicroCmd = {
 	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","PipelineBnd"},
-}
-ArgForm = { -- built in argument types
-	-- /*BeforeLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0,
-	{"Micro","MicroTest","Int","0","Format","RawForm"},
-	{"Micro","MicroTest","Int","1","Format","RawForm"},
-	{"Micro","MicroTest","Int","2","Format","RawForm"},
-	-- /*MiddleLoc DrawBnd size,idx,siz,PipelineBnd-array-index*/
-	-- (int)MicroTest,0,static_cast<int>(indices.size()),(int)MicroTest,
-	{"Micro","MicroTest","Int","3","Format","RawForm"},
-	{"Micro","MicroTest","Int","4","Format","RawForm"},
-	{"Micro","MicroTest","Int","5","Format","SizeForm"},
-	{"Micro","MicroTest","Int","6","Format","RawForm"},
-	-- /*AfterLoc ChainBnd size,idx,siz*/(int)MicroTest,0,0};
-	{"Micro","MicroTest","Int","7","Format","RawForm"},
-	{"Micro","MicroTest","Int","8","Format","RawForm"},
-	{"Micro","MicroTest","Int","9","Format","RawForm"},
-}
-ArgVal = { -- built in arguments
-	{"Micro","MicroTest","Int","0","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Micro","MicroTest","Int","1","Int","0"},
-	{"Micro","MicroTest","Int","2","Int","0"},
-	{"Micro","MicroTest","Int","3","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Micro","MicroTest","Int","4","Int","0"},
-	{"Micro","MicroTest","Int","5","Int","0"},
-	{"Micro","MicroTest","Int","6","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Micro","MicroTest","Int","7","Int","%(return castMicro(\"MicroTest\"))"},
-	{"Micro","MicroTest","Int","8","Int","0"},
-	{"Micro","MicroTest","Int","9","Int","0"},
-}
-Location = { -- list of locations
-	{"Micro","MicroTest","Int","0","BindLoc","BeforeLoc"},
-	{"Micro","MicroTest","Int","1","BindLoc","MiddleLoc"},
-	{"Micro","MicroTest","Int","2","BindLoc","AfterLoc"},
-	{"Micro","MicroDebug","Int","0","BindLoc","BeforeLoc"},
-	{"Micro","MicroDebug","Int","1","BindLoc","MiddleLoc"},
-	{"Micro","MicroDebug","Int","2","BindLoc","AfterLoc"},
-}
-Depender = { -- list of dependers
-	{"Micro","MicroTest","Int","0","Bind","ChainBnd"},
-	{"Micro","MicroTest","Int","1","Bind","DrawBnd"},
-	{"Micro","MicroTest","Int","2","Bind","ChainBnd"},
-	{"Micro","MicroDebug","Int","0","Bind","PokeBnd"},
-	{"Micro","MicroDebug","Int","1","Bind","DrawBnd"},
-	{"Micro","MicroDebug","Int","2","Bind","PeekBnd"},
-}
-Dependir = { -- aloc
-	{"Micro","MicroTest","Int","0","Command","DerCmd"},
-	{"Micro","MicroTest","Int","1","Command","DerCmd"},
-	{"Micro","MicroTest","Int","2","Command","DerCmd"},
-	{"Micro","MicroDebug","Int","0","Command","DerCmd"},
-	{"Micro","MicroDebug","Int","1","Command","DerCmd"},
-	{"Micro","MicroDebug","Int","2","Command","DerCmd"},
-}
-Dependex = { -- size
-	{"Micro","MicroTest","Int","0","Extent","MicroExt"},
-	{"Micro","MicroTest","Int","1","Extent","MicroExt"},
-	{"Micro","MicroTest","Int","2","Extent","MicroExt"},
-	{"Micro","MicroDebug","Int","0","Extent","MicroExt"},
-	{"Micro","MicroDebug","Int","1","Extent","MicroExt"},
-	{"Micro","MicroDebug","Int","2","Extent","MicroExt"},
-}
-Dependre = { -- requ
-	{"Micro","MicroTest","Int","0","Request","BothReq"},
-	{"Micro","MicroTest","Int","1","Request","BothReq"},
-	{"Micro","MicroTest","Int","2","Request","BothReq"},
-	{"Micro","MicroDebug","Int","0","Request","BothReq"},
-	{"Micro","MicroDebug","Int","1","Request","BothReq"},
-	{"Micro","MicroDebug","Int","2","Request","BothReq"},
-}
-Dependee = { -- rinc
-	{"Bind","ChainBnd","BindLoc","BeforeLoc","Int","0","Bind","SwapBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","SwapBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","1","Bind","ChainBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","2","Bind","MatrixBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","3","Bind","ImageBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","4","Bind","IndexBnd"},
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","5","Bind","BringupBnd"},
-	{"Bind","ChainBnd","BindLoc","AfterLoc","Int","0","Bind","SwapBnd"},
-}
-Dependie = { -- indexed rinc
-	{"Bind","DrawBnd","BindLoc","MiddleLoc","Int","0","Bind","PipelineBnd"},
-}
-Depended = { -- winc
-	{"Bind","Binds","BindLoc","BindLocs","Int","0","Bind","Binds"},
 }
 Bootstrap = {
 	{"Int","0","Int","0"},
