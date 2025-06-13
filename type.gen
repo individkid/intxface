@@ -772,7 +772,7 @@ Req = {
     {"tag","Request",{},{}},
     {"ptr","Dat",{},{}},
     {"idx","Int",{},{}},
-    {"lim","Int",{},{}}, -- TODO rename to siz
+    {"siz","Int",{},{}},
     {"ext","Extent",{},{}},
     {"base","Int",{},{}},
     {"size","Int",{},{}},
