@@ -50,7 +50,7 @@ Memory = {
 }
 Bind = { -- per variation of BaseState
 	"SwapBnd",
-	"PipelineBnd",
+	"PipeBnd",
 	"IndexBnd",
 	"BringupBnd",
 	"ImageBnd",
@@ -66,16 +66,14 @@ Bind = { -- per variation of BaseState
 	"DrawBnd",
 	"BindBnd",
 }
-BindTyp = {
-	"StorageTyp",
-	"UniformTyp",
-	"TextureTyp",
-	"IndexTyp",
-	"FetchTyp",
-	"PipelineTyp",
-	"SwapTyp",
-	"BeforeTyp",
-	"AfterTyp",
+Micro = { -- what runs on gpu
+	"MicroTest", -- for Bringup Plan
+	"MicroDebug", -- for testing microcode
+}
+Constant = {
+	"MicroCon",
+	"MemoryCon",
+	"BindCon",
 }
 BindLoc = {
 	"ResizeLoc",
@@ -85,10 +83,6 @@ BindLoc = {
 	"Image4Loc",
 	-- "Image5Loc",
 	-- "Image6Loc",
-}
-Micro = { -- what runs on gpu
-	"MicroTest", -- for Bringup Plan
-	"MicroDebug", -- for testing microcode
 }
 Extent = { -- resource initialization done on gpu thread
 	"InitExt", -- leave in initial state; don't resize
@@ -101,22 +95,9 @@ Extent = { -- resource initialization done on gpu thread
 	"FalseExt", -- resize every time for side effects
 }
 Request = {
-    "BothReq",
-    "LockReq",
-    "SizeReq",
-}
-Constant = {
-	"MicroConst",
-	"MemoryConst",
-	"BindConst",
-}
-Command = { -- TODO eliminate this, or eliminate Dee, or add punctuator and UDee for unreserve
-    "DerCmd",  -- use to advance before push to thread to pipeline multiple
-    "PDerCmd", -- use to advance after fence in thread so it is ready after advance
-    "IDerCmd", -- use to process a particular instance of the reasource
-    "RDeeCmd", -- increment read lock in current, and add to bind
-    "IRDeeCmd", -- increment read lock in indexed, and add to bind
-    "WDeeCmd", -- increment write lock in current, and add to bind
+	"BothReq",
+	"LockReq",
+	"SizeReq",
 }
 Format = {
 	"VecForm", -- VkFormat
@@ -135,6 +116,14 @@ Format = {
 	"IndexForm", -- same as index
 	"ConstForm", -- which builtin
 	"NoneForm", -- no arguments
+}
+Command = {
+	"DerCmd",  -- advance before push to thread
+	"PDerCmd", -- advance after fence in thread
+	"IDerCmd", -- process a particular instance
+	"RDeeCmd", -- increment read lock in current
+	"IRDeeCmd", -- increment read lock in indexed
+	"WDeeCmd", -- increment write lock in current
 }
 Configure = {
 	"IndexBase",
@@ -477,9 +466,9 @@ BindCmd = {
 	{"Bind","SwapBnd","Int","0","Request","Requests"},
 	{"Bind","SwapBnd","Int","0","Extent","FalseExt"},
 	{"Bind","SwapBnd","Int","0","Format","NoneForm"},
-	{"Bind","PipelineBnd","Int","0","Bind","PipelineBnd"},
-	{"Bind","PipelineBnd","Int","0","Extent","MicroExt"},
-	{"Bind","PipelineBnd","Int","0","Format","IndexForm"},
+	{"Bind","PipeBnd","Int","0","Bind","PipeBnd"},
+	{"Bind","PipeBnd","Int","0","Extent","MicroExt"},
+	{"Bind","PipeBnd","Int","0","Format","IndexForm"},
 	{"Bind","IndexBnd","Int","0","Bind","IndexBnd"},
 	{"Bind","BringupBnd","Int","0","Bind","BringupBnd"},
 	{"Bind","ImageBnd","Int","0","Bind","ImageBnd"},
@@ -511,14 +500,14 @@ MicroCmd = {
 	{"Micro","MicroTest","Int","%(bidx = idx; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; for i,v in ipairs(dee) do if i~=#dee then idx = idx + 1; coroutine.yield(idx) else idx = idx + 1; return idx end end)","Command","RDeeCmd"},
 	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then bidx = bidx + 1; coroutine.yield(bidx) else bidx = bidx + 1; return bidx end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","PipelineBnd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","PipeBnd"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
 	{"Micro","MicroTest","Int","%(return idx)","BindLoc","AfterLoc"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","RDeeCmd"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","PipelineBnd"},
+	{"Micro","MicroTest","Int","%(return idx)","Bind","PipeBnd"},
 }
 Bootstrap = {
 	{"Int","0","Int","0"},
@@ -768,36 +757,40 @@ Pierce = {
 	{"vec","Int32",{},{3}},
 	{"idx","Int32",{},{}},
 }
+Con = {
+	{"tag","Constant",{},{}},
+	{"mic","Micro",{["tag"]={["MicroCon"]=true}},{}},
+	{"mem","Memory",{["tag"]={["MemoryCon"]=true}},{}},
+	{"bnd","Bind",{["tag"]={["BindCon"]=true}},{}},
+	{"loc","BindLoc",{},{}},
+}
 Req = {
-    {"tag","Request",{},{}},
-    {"ptr","Dat",{},{}},
-    {"idx","Int",{},{}},
-    {"siz","Int",{},{}},
-    {"ext","Extent",{},{}},
-    {"base","Int",{},{}},
-    {"size","Int",{},{}},
-    {"pre","Int",{},{}},
+	{"tag","Request",{},{}},
+	{"ptr","Dat",{},{}},
+	{"idx","Int",{},{}},
+	{"siz","Int",{},{}},
+	{"ext","Extent",{},{}},
+	{"base","Int",{},{}},
+	{"size","Int",{},{}},
+	{"pre","Int",{},{}},
 }
 Rsp = {
-    {"idx","Int",{},{}}, -- offset into bind->rsp
-    {"siz","Int",{},{}}, -- number to unreserve of bind->rsp
-}
-Cmd = {
-	{"tag","Command",{},{}},
-	{"bnd","Bind",{},{}},
-	{"loc","BindLoc",{},{}},
-	{"rsp","Rsp",{},{}},
-	{"req","Req",{},{}},
-	{"idx","Int",{},{}},
+	{"idx","Int",{},{}}, -- offset into bind->rsp
+	{"siz","Int",{},{}}, -- number to unreserve of bind->rsp
 }
 Draw = {
-	{"con","Constant",{},""},
-	{"drw","Micro",{["con"]={["MicroConst"]=true}},{}},
-	{"mem","Memory",{["con"]={["MemoryConst"]=true}},{}},
-	{"bnd","Bind",{["con"]={["BindConst"]=true}},{}},
+	{"con","Con",{},{}},
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
+}
+Cmd = {
+	{"cmd","Command",{},""},
+	{"bnd","Bind",{},{}},
+	{"con","Con",{},{}},
+	{"req","Req",{},{}},
+	{"rsp","Rsp",{},{}},
+	{"idx","Int",{},{}},
 }
 Center = {
 	{"mem","Memory",{},""},

@@ -320,7 +320,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         switch (Type) {
         default: {std::cerr << "unnamed array type!" << std::endl; exit(-1);}
         case (SwapBnd): return "SwapBnd";
-        case (PipelineBnd): return "PipelineBnd";
+        case (PipeBnd): return "PipeBnd";
         case (IndexBnd): return "IndexBnd";
         case (BringupBnd): return "BringupBnd";
         case (ImageBnd): return "ImageBnd";
@@ -425,10 +425,10 @@ struct Lnk {
     BaseState *ptr = 0; BindLoc loc;
 };
 struct Loc {
-    SizeState max; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; BindLoc loc;
+    SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
 };
 BindLoc &operator*(Loc &loc) {
-    return loc.loc;
+    return loc.con.loc;
 }
 struct BindState;
 struct BaseState {
@@ -456,12 +456,13 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, BindLoc loc, Req req, Rsp rsp, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, Con con, Req req, Rsp rsp, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push lock fail " << debug << std::endl;
         safe.post(); return false;}
+        BindLoc loc = con.loc;
         log << "push pass " << debug << " loc:" << loc << " tag:" << req.tag << " plock:" << plock << std::endl;
         ploc[loc].req = req;
         plock += 1;
@@ -469,7 +470,7 @@ struct BaseState {
         if (lock != 0 && lock != ptr) {std::cerr << "invalid set lock! " << debug << " " << plock << " " << lock << " " << ptr << std::endl; exit(-1);}
         lock = ptr;
         ploc[loc].rsp = rsp;
-        ploc[loc].loc = loc;
+        ploc[loc].con = con;
         return true;
     }
     void done(SmartState log) {
@@ -482,7 +483,7 @@ struct BaseState {
         safe.post();
     }
     void setre(BindLoc loc, Extent ext, int base, int size, SmartState log) {
-        push(0,0,0,0,loc,Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
+        push(0,0,0,0,Con{.tag=Constants,.loc=loc},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
         baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
@@ -494,7 +495,7 @@ struct BaseState {
         SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
         SizeState ini = SizeState(InitExt);
         log << "recall " << max << std::endl;
-        int msk = 1<<loc.loc;
+        int msk = 1<<*loc;
         if (loc.max == max); else {
         if (loc.max == ini); else {mask &= ~msk; if (mask == 0) valid = false; unsize(loc,log);}
         loc.max = max;
@@ -669,10 +670,10 @@ struct BindState : public BaseState {
         if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
-    bool push(Bind i, BaseState *buf, BindLoc loc, Req req, Rsp rsp, SmartState log) {
+    bool push(Bind i, BaseState *buf, Con con, Req req, Rsp rsp, SmartState log) {
         log << "push " << debug << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,req,rsp,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],this,con,req,rsp,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf) {std::cerr << "invalid rinc bind!" << std::endl; exit(-1);}
         bind[i] = buf;
@@ -694,7 +695,7 @@ struct BindState : public BaseState {
         log << "done idx:" << rsp.idx << " siz:" << rsp.siz << std::endl; slog.clr();
         for (int i = 0; i < rsp.siz; i++) {
         Bind bnd = this->rsp[rsp.idx+i].bnd;
-        switch (this->rsp[rsp.idx+i].tag) {default:
+        switch (this->rsp[rsp.idx+i].cmd) {default:
         break; case (RDeeCmd): case (IRDeeCmd): rdec(bnd,log);
         break; case (WDeeCmd): wdec(bnd,log);}}
     }
@@ -838,7 +839,7 @@ struct EnumState {
     Bind key = Binds; StackState *val = 0;
 };
 struct Arg {
-    Command cmd = Commands; Bind bnd = Binds; BindLoc loc = BindLocs; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
+    Command cmd = Commands; Bind bnd = Binds; BindLoc loc; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
@@ -892,150 +893,218 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool goon = true; while (goon) {goon = false;
         // choose buffers
         int count = 0; // actual number of reservations
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
-            break; case(DerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;} final[bnd] = i; count += 1; log << "DerCmd " << dst(bnd)->debug << std::endl;
-            break; case(PDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;} final[bnd] = i; count += 1; log << "PDerCmd " << dst(bnd)->debug << std::endl;
-            break; case(IDerCmd): if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(cmd[i].idx); first[bnd] = i;} final[bnd] = i; count += 1; log << "IDerCmd " << cmd[i].idx << " " << dst(bnd)->debug << std::endl;
-            break; case(RDeeCmd): case(WDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer(); count += 1; log << "RWDeeCmd " << dst(bnd)->debug << std::endl;
-            break; case(IRDeeCmd): if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx); count += 1; log << "IRDeeCmd " << cmd[i].idx << " " << dst(bnd)->debug << std::endl;}}
+        for (int i = 0; i < num; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch (cmd[i].cmd) {default:
+            break; case(DerCmd):
+            if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;}
+            final[bnd] = i; count += 1;
+            log << "DerCmd " << dst(bnd)->debug << std::endl;
+            break; case(PDerCmd):
+            if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;}
+            final[bnd] = i; count += 1;
+            log << "PDerCmd " << dst(bnd)->debug << std::endl;
+            break; case(IDerCmd):
+            if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(cmd[i].idx); first[bnd] = i;}
+            final[bnd] = i; count += 1;
+            log << "IDerCmd " << cmd[i].idx << " " << dst(bnd)->debug << std::endl;
+            break; case(RDeeCmd): case(WDeeCmd):
+            if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer();
+            count += 1;
+            log << "RWDeeCmd " << dst(bnd)->debug << std::endl;
+            break; case(IRDeeCmd):
+            if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(cmd[i].idx);
+            count += 1;
+            log << "IRDeeCmd " << cmd[i].idx << " " << dst(bnd)->debug << std::endl;}}
         // choose binding
-        BindState *bind = 0; if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
+        BindState *bind = 0;
+        if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
         // reserve chosen
-        for (int i = 0; i < num && i < lim; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
+        for (int i = 0; i < num && i < lim; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch (cmd[i].cmd) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
-            cmd[i].req.pre = (cmd[i].tag == PDerCmd && final[bnd] == i);
-            if (bind) {if (!bind->push(bnd,dst(bnd),cmd[i].loc,cmd[i].req,cmd[i].rsp,log)) lim = i;}
-            else {if (!dst(bnd)->push(0,0,0,0,cmd[i].loc,cmd[i].req,cmd[i].rsp,log)) lim = i;}
-            break; case(RDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
-            break; case(IRDeeCmd): if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
-            break; case(WDeeCmd): if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
-        if (lim == num) {BaseState *last = 0;
+            cmd[i].req.pre = (cmd[i].cmd == PDerCmd && final[bnd] == i);
+            if (bind) {if (!bind->push(bnd,dst(bnd),cmd[i].con,cmd[i].req,cmd[i].rsp,log)) lim = i;}
+            else {if (!dst(bnd)->push(0,0,0,0,cmd[i].con,cmd[i].req,cmd[i].rsp,log)) lim = i;}
+            break; case(RDeeCmd):
+            if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
+            break; case(IRDeeCmd):
+            if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
+            break; case(WDeeCmd):
+            if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
+        if (lim == num) {
+        BaseState *last = 0;
         // link list
         Lnk *lnk = 0; BindLoc lst = BindLocs; BaseState *bas = 0;
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
-            switch(cmd[i].tag) {default:
+        for (int i = 0; i < num; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch(cmd[i].cmd) {default:
             break; case(DerCmd): case (PDerCmd): case (IDerCmd):
-            lnk = dst(bnd)->lnk(cmd[i].loc,bas,lst,lnk);
-            bas = dst(bnd); lst = cmd[i].loc;}}
+            lnk = dst(bnd)->lnk(cmd[i].con.loc,bas,lst,lnk);
+            bas = dst(bnd); lst = cmd[i].con.loc;}}
         // submit buffers
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
-            break; case(DerCmd): if (first[bnd] == i) src(bnd)->advance(); thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(PDerCmd): thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(IDerCmd): if (first[bnd] == i) src(bnd)->advance(cmd[i].idx); thread->push({log,cmd[i].loc,dst(bnd)});
-            break; case(RDeeCmd): case(IRDeeCmd): case (WDeeCmd): if (bind) bind->push(cmd[i]);}}
+        for (int i = 0; i < num; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch (cmd[i].cmd) {default:
+            break; case(DerCmd):
+            if (first[bnd] == i) src(bnd)->advance();
+            thread->push({log,cmd[i].con.loc,dst(bnd)});
+            break; case(PDerCmd):
+            thread->push({log,cmd[i].con.loc,dst(bnd)});
+            break; case(IDerCmd):
+            if (first[bnd] == i) src(bnd)->advance(cmd[i].idx);
+            thread->push({log,cmd[i].con.loc,dst(bnd)});
+            break; case(RDeeCmd): case(IRDeeCmd): case (WDeeCmd):
+            if (bind) bind->push(cmd[i]);}}
         // clean up
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
-            break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
-            break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
+        for (int i = 0; i < num; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch (cmd[i].cmd) {default:
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
+            dst(bnd) = 0;
+            break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd):
+            dst(bnd) = 0;}}
         // notify pass
         if (fnc.pnow && fnc.pass) fnc.pass(ptr,sub);
         else if (fnc.pass) thread->push({log,BindLocs,0,ptr,sub,fnc.pass});
         if (bind) stack[BindBnd]->advance();
         } else {
         // release reserved
-        for (int i = 0; i < lim; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
+        for (int i = 0; i < lim; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch (cmd[i].cmd) {default:
             break; case(DerCmd): case(PDerCmd): case(IDerCmd):
             if (bind) bind->done(bnd,log);
             dst(bnd)->done(log);
-            break; case(RDeeCmd): case(IRDeeCmd): bind->rdec(bnd,log);
-            break; case(WDeeCmd): bind->wdec(bnd,log);}}
+            break; case(RDeeCmd): case(IRDeeCmd):
+            bind->rdec(bnd,log);
+            break; case(WDeeCmd):
+            bind->wdec(bnd,log);}}
         // clean up
-        for (int i = 0; i < num; i++) {Bind bnd = cmd[i].bnd;
-            switch (cmd[i].tag) {default:
-            break; case(DerCmd): case(PDerCmd): case(IDerCmd): dst(bnd) = 0;
-            break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd): dst(bnd) = 0;}}
+        for (int i = 0; i < num; i++) {
+            Bind bnd = cmd[i].bnd;
+            switch (cmd[i].cmd) {default:
+            break; case(DerCmd): case(PDerCmd): case(IDerCmd):
+            dst(bnd) = 0;
+            break; case(RDeeCmd): case(WDeeCmd): case(IRDeeCmd):
+            dst(bnd) = 0;}}
         // notify fail
         if (fnc.fnow && fnc.fail) fnc.fail(ptr,sub);
         else if (fnc.fail) thread->push({log,BindLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon) goon = true;}}
     }
-    template <class Type, class Fnc> Rsp response(Fnc fnc, Type mem, int i, int &count, SmartState log) {
+    template <class Type, class Fnc> static Rsp response(Fnc fnc, Type mem, int i, int &count, SmartState log) {
         Rsp rsp = {};
         if (!fnc(mem)) return rsp;
         switch (fnc(mem)(i)) {default:
         break; case (DerCmd): case (IDerCmd): case(PDerCmd):
-        break; case (RDeeCmd): case (IRDeeCmd): case(WDeeCmd): return rsp;}
+        break; case (RDeeCmd): case (IRDeeCmd): case(WDeeCmd):
+        return rsp;}
         rsp.idx = count;
         for (int j = i+1; fnc(mem)(j) != Commands; j++)
         switch (fnc(mem)(j)) {default:
-        break; case (DerCmd): case (IDerCmd): case(PDerCmd): log << "response " << j << "/" << rsp.idx << "/" << rsp.siz << std::endl; return rsp;
-        break; case (RDeeCmd): case (IRDeeCmd): case (WDeeCmd): count += 1; rsp.siz += 1;}
+        break; case (DerCmd): case (IDerCmd): case(PDerCmd):
+        log << "response " << j << "/" << rsp.idx << "/" << rsp.siz << std::endl;
+        return rsp;
+        break; case (RDeeCmd): case (IRDeeCmd): case (WDeeCmd):
+        count += 1; rsp.siz += 1;}
         log << "response /" << rsp.idx << "/" << rsp.siz << std::endl;
         return rsp;
     }
     #define REQUEST(A,B,C) (A+(B*(Requests+1))+(C*(Requests+1)*(Extents+1)))
-    Req request(Request tag, Extent ext, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
-        Req req = {tag,0,0,0,ext,0,0,0};
-        switch (REQUEST(tag,ext,frm)) {default: {std::cerr << "invalid request triple!" << std::endl; slog.clr(); exit(-1);}
-        break; case (REQUEST(SizeReq,ExtentExt,HighForm)): log << "SizeReq,ExtentExt,HighForm" << std::endl; req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (REQUEST(BothReq,FormExt,XferForm)): log << "BothReq,FormExt,XferForm" << std::endl; req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        break; case (REQUEST(BothReq,ExtentExt,HighForm)): log << "BothReq,ExtentExt,HighForm" << std::endl; req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (REQUEST(BothReq,FormExt,RonlyForm)): log << "BothReq,FormExt,RonlyForm" << std::endl; req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break; case (REQUEST(BothReq,IntExt,WholeForm)): log << "BothReq,IntExt,WholeForm" << std::endl; req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
-        break; case (REQUEST(SizeReq,FalseExt,NoneForm)): log << "SizeReq,FalseExt,NoneForm" << std::endl;
-        break; case (REQUEST(SizeReq,TrueExt,NoneForm)): log << "SizeReq,TrueExt,NoneForm" << std::endl;
-        break; case (REQUEST(BothReq,MicroExt,ConstForm)): log << "BothReq,MicroExt,ConstForm" << std::endl; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
+    Req request(Command cmd, Request tag, Extent ext, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+        Req req = {Requests,0,0,0,Extents,0,0,0};
+        if (cmd != DerCmd && cmd != IDerCmd && cmd != PDerCmd) return req;
+        req.tag = tag; req.ext = ext;
+        switch (REQUEST(tag,ext,frm)) {default:
+        {std::cerr << "invalid request triple!" << std::endl; slog.clr(); exit(-1);}
+        break; case (REQUEST(SizeReq,ExtentExt,HighForm)):
+        log << "SizeReq,ExtentExt,HighForm" << std::endl;
+        req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        break; case (REQUEST(BothReq,FormExt,XferForm)):
+        log << "BothReq,FormExt,XferForm" << std::endl;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break; case (REQUEST(BothReq,ExtentExt,HighForm)):
+        log << "BothReq,ExtentExt,HighForm" << std::endl;
+        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        break; case (REQUEST(BothReq,FormExt,RonlyForm)):
+        log << "BothReq,FormExt,RonlyForm" << std::endl;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        break; case (REQUEST(BothReq,IntExt,WholeForm)):
+        log << "BothReq,IntExt,WholeForm" << std::endl;
+        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
+        break; case (REQUEST(SizeReq,FalseExt,NoneForm)):
+        log << "SizeReq,FalseExt,NoneForm" << std::endl;
+        break; case (REQUEST(SizeReq,TrueExt,NoneForm)):
+        log << "SizeReq,TrueExt,NoneForm" << std::endl;
+        break; case (REQUEST(BothReq,MicroExt,ConstForm)):
+        log << "BothReq,MicroExt,ConstForm" << std::endl;
+        req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
         }
         return req;
     }
-    template <class Type, class Fnc, class Arg> static bool constant(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
+    static Con constant(Command cmd, Micro typ, BindLoc loc, SmartState log) {
+        return Con{.tag = MicroCon, .mic = typ, .loc = loc};
+    }
+    static Con constant(Command cmd, Memory typ, BindLoc loc, SmartState log) {
+        return Con{.tag = MemoryCon, .mem = typ, .loc = loc};
+    }
+    static Con constant(Command cmd, Bind typ, BindLoc loc, SmartState log) {
+        return Con{.tag = BindCon, .bnd = typ, .loc = loc};
+    }
+    template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
         Type val = (fnc&&fnc(typ)?fnc(typ)(i):inv);
         arg = val;
         if (arg == inv) arg = sav; else sav = arg;
         return (val != inv);
     }
-    bool push(Memory typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
-        Arg dot; bool done = true;
+    template <class Type, class Fnc> Cmd command(Arg dot, Fnc fnc, Type typ, int sub, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         log << "before " << idx << "/" << siz << std::endl;
-        if (constant(sav.cmd,dot.cmd,MemoryCmd__Memory__Int__Command,typ,sub,Commands,log)) done = false;
-        if (constant(sav.bnd,dot.bnd,MemoryCmd__Memory__Int__Bind,typ,sub,Binds,log)) done = false;
-        if (constant(sav.loc,dot.loc,MemoryCmd__Memory__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
-        if (constant(sav.req,dot.req,MemoryCmd__Memory__Int__Request,typ,sub,Requests,log)) done = false;
-        if (constant(sav.ext,dot.ext,MemoryCmd__Memory__Int__Extent,typ,sub,Extents,log)) done = false;
-        if (constant(sav.fmt,dot.fmt,MemoryCmd__Memory__Int__Format,typ,sub,Formats,log)) done = false;
-        if (done) return false;
         int pre = (dot.cmd == IDerCmd || dot.cmd == IRDeeCmd ? get(arg,siz,idx) : 0);
         log << "between " << idx << "/" << siz << std::endl;
-        cmd = Cmd{dot.cmd,dot.bnd,dot.loc,response(MemoryCmd__Memory__Int__Command,typ,sub,count,log),request(dot.req,dot.ext,dot.fmt,val,arg,siz,idx,log),pre};
+        Con con = constant(dot.cmd,typ,dot.loc,log);
+        Req req = request(dot.cmd,dot.req,dot.ext,dot.fmt,val,arg,siz,idx,log);
+        Rsp rsp = response(fnc,typ,sub,count,log);
         log << "after " << idx << "/" << siz << std::endl;
+        return Cmd{dot.cmd,dot.bnd,con,req,rsp,pre};
+    }
+    bool push(Memory typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
+        Arg dot; bool done = true;
+        if (builtin(sav.cmd,dot.cmd,MemoryCmd__Memory__Int__Command,typ,sub,Commands,log)) done = false;
+        if (builtin(sav.bnd,dot.bnd,MemoryCmd__Memory__Int__Bind,typ,sub,Binds,log)) done = false;
+        if (builtin(sav.loc,dot.loc,MemoryCmd__Memory__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
+        if (builtin(sav.req,dot.req,MemoryCmd__Memory__Int__Request,typ,sub,Requests,log)) done = false;
+        if (builtin(sav.ext,dot.ext,MemoryCmd__Memory__Int__Extent,typ,sub,Extents,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,MemoryCmd__Memory__Int__Format,typ,sub,Formats,log)) done = false;
+        if (done) return false;
+        cmd = command(dot,MemoryCmd__Memory__Int__Command,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     bool push(Bind typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
         Arg dot; bool done = true;
-        if (constant(sav.cmd,dot.cmd,BindCmd__Bind__Int__Command,typ,sub,Commands,log)) done = false;
-        if (constant(sav.bnd,dot.bnd,BindCmd__Bind__Int__Bind,typ,sub,Binds,log)) done = false;
-        if (constant(sav.loc,dot.loc,BindCmd__Bind__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
-        if (constant(sav.req,dot.req,BindCmd__Bind__Int__Request,typ,sub,Requests,log)) done = false;
-        if (constant(sav.ext,dot.ext,BindCmd__Bind__Int__Extent,typ,sub,Extents,log)) done = false;
-        if (constant(sav.fmt,dot.fmt,BindCmd__Bind__Int__Format,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.cmd,dot.cmd,BindCmd__Bind__Int__Command,typ,sub,Commands,log)) done = false;
+        if (builtin(sav.bnd,dot.bnd,BindCmd__Bind__Int__Bind,typ,sub,Binds,log)) done = false;
+        if (builtin(sav.loc,dot.loc,BindCmd__Bind__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
+        if (builtin(sav.req,dot.req,BindCmd__Bind__Int__Request,typ,sub,Requests,log)) done = false;
+        if (builtin(sav.ext,dot.ext,BindCmd__Bind__Int__Extent,typ,sub,Extents,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,BindCmd__Bind__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        int pre = (dot.cmd == IDerCmd || dot.cmd == IRDeeCmd ? get(arg,siz,idx) : 0);
-        cmd = Cmd{dot.cmd,dot.bnd,dot.loc,response(BindCmd__Bind__Int__Command,typ,sub,count,log),request(dot.req,dot.ext,dot.fmt,val,arg,siz,idx,log),pre};
+        cmd = command(dot,BindCmd__Bind__Int__Command,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     bool push(Micro typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Cmd &cmd, SmartState log) {
         Arg dot; bool done = true;
-        log << "before " << idx << "/" << siz << std::endl;
-        if (constant(sav.cmd,dot.cmd,MicroCmd__Micro__Int__Command,typ,sub,Commands,log)) done = false;
-        if (constant(sav.bnd,dot.bnd,MicroCmd__Micro__Int__Bind,typ,sub,Binds,log)) done = false;
-        if (constant(sav.loc,dot.loc,MicroCmd__Micro__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
-        if (constant(sav.req,dot.req,MicroCmd__Micro__Int__Request,typ,sub,Requests,log)) done = false;
-        if (constant(sav.ext,dot.ext,MicroCmd__Micro__Int__Extent,typ,sub,Extents,log)) done = false;
-        if (constant(sav.fmt,dot.fmt,MicroCmd__Micro__Int__Format,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.cmd,dot.cmd,MicroCmd__Micro__Int__Command,typ,sub,Commands,log)) done = false;
+        if (builtin(sav.bnd,dot.bnd,MicroCmd__Micro__Int__Bind,typ,sub,Binds,log)) done = false;
+        if (builtin(sav.loc,dot.loc,MicroCmd__Micro__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
+        if (builtin(sav.req,dot.req,MicroCmd__Micro__Int__Request,typ,sub,Requests,log)) done = false;
+        if (builtin(sav.ext,dot.ext,MicroCmd__Micro__Int__Extent,typ,sub,Extents,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,MicroCmd__Micro__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        int pre = (dot.cmd == IDerCmd || dot.cmd == IRDeeCmd ? get(arg,siz,idx) : 0);
-        log << "between " << dot.cmd << " " << idx << "/" << siz << std::endl;
-        Req req = {.tag=Requests,.ext=Extents};
-        if (dot.cmd == DerCmd || dot.cmd == IDerCmd || dot.cmd == PDerCmd) req = request(dot.req,dot.ext,dot.fmt,val,arg,siz,idx,log);
-        cmd = Cmd{dot.cmd,dot.bnd,dot.loc,response(MicroCmd__Micro__Int__Command,typ,sub,count,log),req,pre};
-        log << "after " << idx << "/" << siz << std::endl;
+        cmd = command(dot,MicroCmd__Micro__Int__Command,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     void push(Memory typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
@@ -1173,9 +1242,9 @@ void TestState::call() {
     int arg[] = {
     /*DerCmd ChainBnd*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
     /*DerCmd DrawBnd*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
-    /*IDeeCmd PipelineBnd*//*cmd.idx*/MicroTest,
+    /*IDeeCmd PipeBnd*//*cmd.idx*/MicroTest,
     /*DerCmd ChainBnd*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
-    /*IDeeCmd PipelineBnd*//*cmd.idx*/MicroTest};
+    /*IDeeCmd PipeBnd*//*cmd.idx*/MicroTest};
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
@@ -1683,9 +1752,9 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << bnd(PipelineBnd)->debug << std::endl; slog.clr();
-        descriptorPool = bnd(PipelineBnd)->getDescriptorPool();
-        descriptorLayout = bnd(PipelineBnd)->getDescriptorSetLayout();
+        log << "resize " << debug << " " << bnd(PipeBnd)->debug << std::endl; slog.clr();
+        descriptorPool = bnd(PipeBnd)->getDescriptorPool();
+        descriptorLayout = bnd(PipeBnd)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
         for (int i = 0; i < BindLocs; i++) sem(get((BindLoc)i)) = createSemaphore(device);
@@ -1724,7 +1793,7 @@ struct DrawState : public BaseState {
         middle && MicroCmd__Micro__Int__Command(max(loc).micro)(i) == WDeeCmd)
         switch (MicroCmd__Micro__Int__Bind(max(loc).micro)(i)) {
         default: {std::cerr << "invalid bind check! " << debug << std::endl; exit(-1);}
-        break; case (PipelineBnd): pipePtr = bnd(PipelineBnd);
+        break; case (PipeBnd): pipePtr = bnd(PipeBnd);
         break; case (SwapBnd): swapPtr = bnd(SwapBnd);
         break; case (ChainBnd): framePtr = bnd(ChainBnd);
         break; case (IndexBnd): indexPtr = bnd(IndexBnd);
@@ -1768,7 +1837,7 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapBnd,1> swapState;
-    ArrayState<PipeState,PipelineBnd,Micros> pipelineState;
+    ArrayState<PipeState,PipeBnd,Micros> pipelineState;
     ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
     ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
     ArrayState<ImageState,ImageBnd,StackState::images> imageState;
@@ -1807,7 +1876,7 @@ struct MainState {
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         enumState{
             {SwapBnd,&swapState},
-            {PipelineBnd,&pipelineState},
+            {PipeBnd,&pipelineState},
             {IndexBnd,&indexState},
             {BringupBnd,&bringupState},
             {ImageBnd,&imageState},
