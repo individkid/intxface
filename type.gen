@@ -43,28 +43,28 @@ Memory = {
 	"Peekz", -- per fragment read
 	"Pokez", -- per fragment write
 	"Drawz", -- draw range info
-	"Instructz", -- little vulkan language
+	"Instrz", -- little vulkan language
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
-Bind = { -- per variation of BaseState
-	"SwapBnd",
-	"PipeBnd",
-	"IndexBnd",
-	"BringupBnd",
-	"ImageBnd",
-	"UniformBnd",
-	"MatrixBnd",
-	"TriangleBnd",
-	"NumericBnd",
-	"VertexBnd",
-	"BasisBnd",
-	"PierceBnd",
-	"ChainBnd",
-	"DrawBnd",
-	"BindBnd",
+Resrc = { -- per variation of BaseState
+	"SwapRes",
+	"PipeRes",
+	"IndexRes",
+	"BringupRes",
+	"ImageRes",
+	"UniformRes",
+	"MatrixRes",
+	"TriangleRes",
+	"NumericRes",
+	"VertexRes",
+	"BasisRes",
+	"PierceRes",
+	"ChainRes",
+	"DrawRes",
+	"BindRes",
 }
 Micro = { -- what runs on gpu
 	"MicroTest", -- for Bringup Plan
@@ -73,9 +73,9 @@ Micro = { -- what runs on gpu
 Constant = {
 	"MicroCon",
 	"MemoryCon",
-	"BindCon",
+	"ResrcCon",
 }
-BindLoc = {
+ResrcLoc = {
 	"ResizeLoc",
 	"BeforeLoc", -- like Acquire
 	"MiddleLoc", -- like Draw
@@ -90,7 +90,7 @@ Extent = { -- resource initialization done on gpu thread
 	"FormExt", -- reform to format
 	"ExtentExt", -- resize to 2d vk extent
 	"MicroExt", -- resize to micro enum
-	"BindExt", -- resize to bind enum
+	"ResrcExt", -- resize to bind enum
 	"TrueExt", -- resize once for side effects
 	"FalseExt", -- resize every time for side effects
 }
@@ -117,7 +117,7 @@ Format = {
 	"ConstForm", -- which builtin
 	"NoneForm", -- no arguments
 }
-Instruct = {
+Instr = {
 	"DerIns",  -- advance before push to thread
 	"PDerIns", -- advance after fence in thread
 	"IDerIns", -- process a particular instance
@@ -396,23 +396,23 @@ Tag = { -- type of data piped between processes
 	-- video little language -- frame
 }
 --HERE Constants
-BindStride = {
-	{"Bind","VertexBnd","Int","48"},
+ResrcStride = {
+	{"Resrc","VertexRes","Int","48"},
 }
-BindOffset = {
-	{"Bind","VertexBnd","Int","0","Int","0"},
-	{"Bind","VertexBnd","Int","1","Int","16"},
-	{"Bind","VertexBnd","Int","2","Int","32"},
+ResrcOffset = {
+	{"Resrc","VertexRes","Int","0","Int","0"},
+	{"Resrc","VertexRes","Int","1","Int","16"},
+	{"Resrc","VertexRes","Int","2","Int","32"},
 }
-BindFormat = {
-	{"Bind","VertexBnd","Int","0","Format","VecForm"},
-	{"Bind","VertexBnd","Int","1","Format","VecForm"},
-	{"Bind","VertexBnd","Int","2","Format","UvecForm"},
+ResrcFormat = {
+	{"Resrc","VertexRes","Int","0","Format","VecForm"},
+	{"Resrc","VertexRes","Int","1","Format","VecForm"},
+	{"Resrc","VertexRes","Int","2","Format","UvecForm"},
 }
-BindElement = {
-	{"Bind","VertexBnd","Int","0","Format","OldForm"},
-	{"Bind","VertexBnd","Int","1","Format","OldForm"},
-	{"Bind","VertexBnd","Int","2","Format","Int32Form"},
+ResrcElement = {
+	{"Resrc","VertexRes","Int","0","Format","OldForm"},
+	{"Resrc","VertexRes","Int","1","Format","OldForm"},
+	{"Resrc","VertexRes","Int","2","Format","Int32Form"},
 }
 FormatSize = {
 	{"Format","VecForm","Int","16"},
@@ -420,9 +420,9 @@ FormatSize = {
 	{"Format","OldForm","Int","4"},
 	{"Format","Int32Form","Int","4"},
 }
-VertexBind = {
-	{"Micro","MicroTest","Int","0","Bind","VertexBnd"},
-	{"Micro","MicroDebug","Int","0","Bind","VertexBnd"},
+VertexResrc = {
+	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
+	{"Micro","MicroDebug","Int","0","Resrc","VertexRes"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},
@@ -433,79 +433,79 @@ FragmentFile = {
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
 }
 MemoryIns = {
-	{"Memory","Indexz","Int","0","Bind","IndexBnd"},
-	{"Memory","Bringupz","Int","0","Bind","BringupBnd"},
-	{"Memory","Texturez","Int","0","Instruct","IDerIns"},
-	{"Memory","Texturez","Int","0","Bind","ImageBnd"},
-	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
+	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
+	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
+	{"Memory","Texturez","Int","0","Instr","IDerIns"},
+	{"Memory","Texturez","Int","0","Resrc","ImageRes"},
+	{"Memory","Texturez","Int","0","ResrcLoc","ResizeLoc"},
 	{"Memory","Texturez","Int","0","Request","SizeReq"},
 	{"Memory","Texturez","Int","0","Extent","ExtentExt"},
 	{"Memory","Texturez","Int","0","Format","HighForm"},
-	{"Memory","Texturez","Int","1","BindLoc","BeforeLoc"},
+	{"Memory","Texturez","Int","1","ResrcLoc","BeforeLoc"},
 	{"Memory","Texturez","Int","1","Request","BothReq"},
 	{"Memory","Texturez","Int","1","Extent","FormExt"},
 	{"Memory","Texturez","Int","1","Format","XferForm"},
-	{"Memory","Texturez","Int","2","BindLoc","MiddleLoc"},
+	{"Memory","Texturez","Int","2","ResrcLoc","MiddleLoc"},
 	{"Memory","Texturez","Int","2","Extent","ExtentExt"},
 	{"Memory","Texturez","Int","2","Format","HighForm"},
-	{"Memory","Texturez","Int","3","BindLoc","AfterLoc"},
+	{"Memory","Texturez","Int","3","ResrcLoc","AfterLoc"},
 	{"Memory","Texturez","Int","3","Extent","FormExt"},
 	{"Memory","Texturez","Int","3","Format","RonlyForm"},
-	{"Memory","Uniformz","Int","0","Bind","UniformBnd"},
-	{"Memory","Matrixz","Int","0","Bind","MatrixBnd"},
-	{"Memory","Trianglez","Int","0","Bind","TriangleBnd"},
-	{"Memory","Numericz","Int","0","Bind","NumericBnd"},
-	{"Memory","Vertexz","Int","0","Bind","VertexBnd"},
-	{"Memory","Basisz","Int","0","Bind","BasisBnd"},
+	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
+	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
+	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
+	{"Memory","Numericz","Int","0","Resrc","NumericRes"},
+	{"Memory","Vertexz","Int","0","Resrc","VertexRes"},
+	{"Memory","Basisz","Int","0","Resrc","BasisRes"},
 }
-BindIns = {
-	{"Bind","SwapBnd","Int","0","Instruct","Instructs"},
-	{"Bind","SwapBnd","Int","0","Bind","SwapBnd"},
-	{"Bind","SwapBnd","Int","0","BindLoc","BindLocs"},
-	{"Bind","SwapBnd","Int","0","Request","Requests"},
-	{"Bind","SwapBnd","Int","0","Extent","FalseExt"},
-	{"Bind","SwapBnd","Int","0","Format","NoneForm"},
-	{"Bind","PipeBnd","Int","0","Bind","PipeBnd"},
-	{"Bind","PipeBnd","Int","0","Extent","MicroExt"},
-	{"Bind","PipeBnd","Int","0","Format","IndexForm"},
-	{"Bind","IndexBnd","Int","0","Bind","IndexBnd"},
-	{"Bind","BringupBnd","Int","0","Bind","BringupBnd"},
-	{"Bind","ImageBnd","Int","0","Bind","ImageBnd"},
-	{"Bind","UniformBnd","Int","0","Bind","UniformBnd"},
-	{"Bind","MatrixBnd","Int","0","Bind","MatrixBnd"},
-	{"Bind","TriangleBnd","Int","0","Bind","TriangleBnd"},
-	{"Bind","NumericBnd","Int","0","Bind","NumericBnd"},
-	{"Bind","VertexBnd","Int","0","Bind","VertexBnd"},
-	{"Bind","BasisBnd","Int","0","Bind","BasisBnd"},
-	{"Bind","PierceBnd","Int","0","Bind","PierceBnd"},
-	{"Bind","ChainBnd","Int","0","Bind","ChainBnd"},
-	{"Bind","ChainBnd","Int","0","Extent","TrueExt"},
-	{"Bind","ChainBnd","Int","0","Format","NoneForm"},
-	{"Bind","DrawBnd","Int","0","Bind","DrawBnd"},
+ResrcIns = {
+	{"Resrc","SwapRes","Int","0","Instr","Instrs"},
+	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
+	{"Resrc","SwapRes","Int","0","ResrcLoc","ResrcLocs"},
+	{"Resrc","SwapRes","Int","0","Request","Requests"},
+	{"Resrc","SwapRes","Int","0","Extent","FalseExt"},
+	{"Resrc","SwapRes","Int","0","Format","NoneForm"},
+	{"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
+	{"Resrc","PipeRes","Int","0","Extent","MicroExt"},
+	{"Resrc","PipeRes","Int","0","Format","IndexForm"},
+	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
+	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
+	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
+	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
+	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
+	{"Resrc","TriangleRes","Int","0","Resrc","TriangleRes"},
+	{"Resrc","NumericRes","Int","0","Resrc","NumericRes"},
+	{"Resrc","VertexRes","Int","0","Resrc","VertexRes"},
+	{"Resrc","BasisRes","Int","0","Resrc","BasisRes"},
+	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
+	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
+	{"Resrc","ChainRes","Int","0","Extent","TrueExt"},
+	{"Resrc","ChainRes","Int","0","Format","NoneForm"},
+	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
 }
 MicroIns = {
-	{"Micro","MicroTest","Int","%(idx = 0; return idx)","Instruct","DerIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
-	{"Micro","MicroTest","Int","%(return idx)","BindLoc","BeforeLoc"},
+	{"Micro","MicroTest","Int","%(idx = 0; return idx)","Instr","DerIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","ChainRes"},
+	{"Micro","MicroTest","Int","%(return idx)","ResrcLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","%(return idx)","Request","BothReq"},
 	{"Micro","MicroTest","Int","%(return idx)","Extent","MicroExt"},
 	{"Micro","MicroTest","Int","%(return idx)","Format","ConstForm"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","RDeeIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","DerIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","DrawBnd"},
-	{"Micro","MicroTest","Int","%(return idx)","BindLoc","MiddleLoc"},
-	{"Micro","MicroTest","Int","%(bidx = idx; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; for i,v in ipairs(dee) do if i~=#dee then idx = idx + 1; coroutine.yield(idx) else idx = idx + 1; return idx end end)","Instruct","RDeeIns"},
-	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then bidx = bidx + 1; coroutine.yield(bidx) else bidx = bidx + 1; return bidx end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","IRDeeIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","PipeBnd"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","DerIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
-	{"Micro","MicroTest","Int","%(return idx)","BindLoc","AfterLoc"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","RDeeIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","IRDeeIns"},
-	{"Micro","MicroTest","Int","%(return idx)","Bind","PipeBnd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","RDeeIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","SwapRes"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","DerIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","DrawRes"},
+	{"Micro","MicroTest","Int","%(return idx)","ResrcLoc","MiddleLoc"},
+	{"Micro","MicroTest","Int","%(bidx = idx; dee = {\"SwapRes\",\"ChainRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}; for i,v in ipairs(dee) do if i~=#dee then idx = idx + 1; coroutine.yield(idx) else idx = idx + 1; return idx end end)","Instr","RDeeIns"},
+	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then bidx = bidx + 1; coroutine.yield(bidx) else bidx = bidx + 1; return bidx end end)","Resrc","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","IRDeeIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","PipeRes"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","DerIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","ChainRes"},
+	{"Micro","MicroTest","Int","%(return idx)","ResrcLoc","AfterLoc"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","RDeeIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","SwapRes"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","IRDeeIns"},
+	{"Micro","MicroTest","Int","%(return idx)","Resrc","PipeRes"},
 }
 Bootstrap = {
 	{"Int","0","Int","0"},
@@ -759,8 +759,8 @@ Con = {
 	{"tag","Constant",{},{}},
 	{"mic","Micro",{["tag"]={["MicroCon"]=true}},{}},
 	{"mem","Memory",{["tag"]={["MemoryCon"]=true}},{}},
-	{"bnd","Bind",{["tag"]={["BindCon"]=true}},{}},
-	{"loc","BindLoc",{},{}},
+	{"res","Resrc",{["tag"]={["ResrcCon"]=true}},{}},
+	{"loc","ResrcLoc",{},{}},
 }
 Req = {
 	{"tag","Request",{},{}},
@@ -783,8 +783,8 @@ Draw = {
 	{"arg","Int",{},"siz"},
 }
 Ins = {
-	{"ins","Instruct",{},""},
-	{"bnd","Bind",{},{}},
+	{"ins","Instr",{},""},
+	{"res","Resrc",{},{}},
 	{"con","Con",{},{}},
 	{"req","Req",{},{}},
 	{"rsp","Rsp",{},{}},
@@ -806,7 +806,7 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	-- TODO peek and poke
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
-	{"com","Ins",{["mem"]={["Instructz"]=true}},"siz"},
+	{"com","Ins",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},

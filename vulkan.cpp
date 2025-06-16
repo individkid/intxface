@@ -162,7 +162,7 @@ struct StackState {
     virtual BaseState *prebuf(int i) = 0;
     virtual void advance() = 0;
     virtual void advance(int i) = 0;
-    virtual Bind buftyp() = 0;
+    virtual Resrc buftyp() = 0;
     virtual int bufsiz() = 0;
     virtual const char *bufnam() = 0;
     static StackState* self;
@@ -259,7 +259,7 @@ VkQueue StackState::graphics;
 VkQueue StackState::present;
 VkBufferUsageFlags StackState::flags;
 
-template <class State, Bind Type, int Size> struct ArrayState : public StackState {
+template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx;
     State state[Size];
@@ -314,26 +314,26 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
     void advance(int i) override {
         if (i < 0 || i >= Size) {std::cerr << "cannot advance!" << std::endl; exit(-1);}
         safe.wait(); idx = i; safe.post();}
-    Bind buftyp() override {return Type;}
+    Resrc buftyp() override {return Type;}
     int bufsiz() override {return sizeof(State);}
     const char *bufnam() override {
         switch (Type) {
         default: {std::cerr << "unnamed array type!" << std::endl; exit(-1);}
-        case (SwapBnd): return "SwapBnd";
-        case (PipeBnd): return "PipeBnd";
-        case (IndexBnd): return "IndexBnd";
-        case (BringupBnd): return "BringupBnd";
-        case (ImageBnd): return "ImageBnd";
-        case (UniformBnd): return "UniformBnd";
-        case (MatrixBnd): return "MatrixBnd";
-        case (TriangleBnd): return "TriangleBnd";
-        case (NumericBnd): return "NumericBnd";
-        case (VertexBnd): return "VertexBnd";
-        case (BasisBnd): return "BasisBnd";
-        case (PierceBnd): return "PierceBnd";
-        case (ChainBnd): return "ChainBnd";
-        case (DrawBnd): return "DrawBnd";
-        case (BindBnd): return "BindBnd";}
+        case (SwapRes): return "SwapRes";
+        case (PipeRes): return "PipeRes";
+        case (IndexRes): return "IndexRes";
+        case (BringupRes): return "BringupRes";
+        case (ImageRes): return "ImageRes";
+        case (UniformRes): return "UniformRes";
+        case (MatrixRes): return "MatrixRes";
+        case (TriangleRes): return "TriangleRes";
+        case (NumericRes): return "NumericRes";
+        case (VertexRes): return "VertexRes";
+        case (BasisRes): return "BasisRes";
+        case (PierceRes): return "PierceRes";
+        case (ChainRes): return "ChainRes";
+        case (DrawRes): return "DrawRes";
+        case (BindRes): return "BindRes";}
         return 0;
     }
 };
@@ -345,7 +345,7 @@ struct SizeState {
     struct {VkImageLayout src,dst;};
     VkExtent2D extent;
     Micro micro;
-    Bind bind;};
+    Resrc resrc;};
     SizeState() {
         tag = InitExt;
     }
@@ -357,7 +357,7 @@ struct SizeState {
         break; case (FormExt): src = (VkImageLayout)base; dst = (VkImageLayout)size;
         break; case (ExtentExt): extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
         break; case (MicroExt): micro = (Micro)base;
-        break; case (BindExt): bind = (Bind)base;
+        break; case (ResrcExt): resrc = (Resrc)base;
         break; case (TrueExt):
         break; case (FalseExt):;}
     }
@@ -379,9 +379,9 @@ struct SizeState {
         tag = MicroExt;
         this->micro = micro;
     }
-    SizeState(Bind bind) {
-        tag = BindExt;
-        this->bind = bind;
+    SizeState(Resrc resrc) {
+        tag = ResrcExt;
+        this->resrc = resrc;
     }
     SizeState(Extent tag) {
         this->tag = tag;
@@ -397,8 +397,8 @@ struct SizeState {
         extent.height == other.extent.height) return true;
         if (tag == MicroExt && other.tag == MicroExt &&
         micro == other.micro) return true;
-        if (tag == BindExt && other.tag == BindExt &&
-        bind == other.bind) return true;
+        if (tag == ResrcExt && other.tag == ResrcExt &&
+        resrc == other.resrc) return true;
         if (tag == TrueExt && other.tag == TrueExt) return true;
         return false;
     }
@@ -410,7 +410,7 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     case (FormExt): os << "FormSize(" << size.src << "," << size.dst << ")"; break;
     case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
     case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
-    case (BindExt): os << "BindSize(" << size.bind << ")"; break;
+    case (ResrcExt): os << "ResrcSize(" << size.resrc << ")"; break;
     case (TrueExt): os << "TrueSize()"; break;
     case (FalseExt): os << "FalseSize()"; break;}
     return os;
@@ -421,12 +421,12 @@ struct Syn {
 };
 struct BaseState;
 struct Lnk {
-    BaseState *ptr = 0; BindLoc loc;
+    BaseState *ptr = 0; ResrcLoc loc;
 };
 struct Loc {
     SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
 };
-BindLoc &operator*(Loc &loc) {
+ResrcLoc &operator*(Loc &loc) {
     return loc.con.loc;
 }
 struct BindState;
@@ -436,7 +436,7 @@ struct BaseState {
     bool valid;
     int plock, rlock, wlock;
     BindState *lock;
-    Loc ploc[BindLocs];
+    Loc ploc[ResrcLocs];
     int mask;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
@@ -461,7 +461,7 @@ struct BaseState {
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push lock fail " << debug << std::endl;
         safe.post(); return false;}
-        BindLoc loc = con.loc;
+        ResrcLoc loc = con.loc;
         log << "push pass " << debug << " loc:" << loc << " tag:" << req.tag << " plock:" << plock << std::endl;
         ploc[loc].req = req;
         plock += 1;
@@ -481,12 +481,12 @@ struct BaseState {
         log << "done " << debug << " " << plock << std::endl;
         safe.post();
     }
-    void setre(BindLoc loc, Extent ext, int base, int size, SmartState log) {
+    void setre(ResrcLoc loc, Extent ext, int base, int size, SmartState log) {
         push(0,0,0,0,Con{.tag=Constants,.loc=loc},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
         baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
-        for (int i = 0; i < BindLocs; i++)
+        for (int i = 0; i < ResrcLocs; i++)
         if (ploc[i].max == SizeState(InitExt));
         else unsize(ploc[i],log);
     }
@@ -500,7 +500,7 @@ struct BaseState {
         loc.max = max;
         if (loc.max == ini); else {resize(loc,log); if (mask == 0) valid = true; mask |= msk;}}
     }
-    VkFence basesiz(BindLoc loc, SmartState log) {
+    VkFence basesiz(ResrcLoc loc, SmartState log) {
         // resize and setup
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != BothReq) {std::cerr << "basesiz invalid state!" << std::endl; exit(-1);}
@@ -509,14 +509,14 @@ struct BaseState {
         log << "basesiz " << ploc[loc].req.idx << "/" << ploc[loc].req.siz << std::endl;
         return setup(ploc[loc],log);
     }
-    void baseres(BindLoc loc, SmartState log) {
+    void baseres(ResrcLoc loc, SmartState log) {
         // resize only
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != SizeReq) {std::cerr << "baseres invalid state! " << debug << std::endl; exit(-1);}
         safe.post();
         recall(ploc[loc],log);
     }
-    VkFence basesup(BindLoc loc, SmartState log) {
+    VkFence basesup(ResrcLoc loc, SmartState log) {
         // setup only
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != LockReq) {std::cerr << "basesup invalid state! " << debug << std::endl; exit(-1);}
@@ -525,7 +525,7 @@ struct BaseState {
         return setup(ploc[loc],log);
     }
     void unlock(Loc &loc, SmartState log);
-    void baseups(BindLoc loc, SmartState log) {
+    void baseups(ResrcLoc loc, SmartState log) {
         // after fence triggered
         safe.wait();
         if (plock <= 0) {std::cerr << "upset invalid state!" << std::endl; exit(-1);}
@@ -552,22 +552,22 @@ struct BaseState {
         (elock ? wlock : rlock) -= 1;
         safe.post();
     }
-    Request tag(BindLoc loc) {
+    Request tag(ResrcLoc loc) {
         return ploc[loc].req.tag;
     }
-    Bind bnd() {
+    Resrc res() {
         return item->buftyp();
     }
-    BaseState *bnd(Bind typ);
-    Lnk *lnk(BindLoc loc, BaseState *ptr, BindLoc lst, Lnk *lnk) {
-        if ((int)loc < 0 || (int)loc >= BindLocs) {std::cerr << "invalid lnk loc!" << std::endl; exit(-1);}
+    BaseState *res(Resrc typ);
+    Lnk *lnk(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
+        if ((int)loc < 0 || (int)loc >= ResrcLocs) {std::cerr << "invalid lnk loc!" << std::endl; exit(-1);}
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ploc[loc].lst.ptr = ptr; ploc[loc].lst.loc = lst;
-        ploc[loc].nxt.ptr = 0; ploc[loc].nxt.loc = BindLocs;
+        ploc[loc].nxt.ptr = 0; ploc[loc].nxt.loc = ResrcLocs;
         return &ploc[loc].nxt;
     }
-    Loc &get(BindLoc loc) {
-        if ((int)loc < 0 || (int)loc >= BindLocs) {std::cerr << "invalid bind loc!" << std::endl; exit(-1);}
+    Loc &get(ResrcLoc loc) {
+        if ((int)loc < 0 || (int)loc >= ResrcLocs) {std::cerr << "invalid bind loc!" << std::endl; exit(-1);}
         return ploc[loc];
     }
     int msk() {
@@ -579,10 +579,10 @@ struct BaseState {
     static Loc &nxt(Loc &loc) {
         return loc.nxt.ptr->get(loc.nxt.loc);
     }
-    static Loc &lst(Loc &loc, BindLoc idx) {
+    static Loc &lst(Loc &loc, ResrcLoc idx) {
         return loc.lst.ptr->get(idx);
     }
-    static Loc &nxt(Loc &loc, BindLoc idx) {
+    static Loc &nxt(Loc &loc, ResrcLoc idx) {
         return loc.nxt.ptr->get(idx);
     }
     static VkSemaphore &sem(Loc &loc) {
@@ -620,7 +620,7 @@ struct BaseState {
     virtual VkImage getImage() {std::cerr << "BaseState::getImage" << std::endl; exit(-1);}
     virtual VkSwapchainKHR getSwapChain() {std::cerr << "BaseState::swapChain" << std::endl; exit(-1);}
     virtual uint32_t getImageIndex() {std::cerr << "BaseState::getImageIndex" << std::endl; exit(-1);}
-    virtual BindLoc getImageLoc() {std::cerr << "BaseState::getImageLoc" << std::endl; exit(-1);}
+    virtual ResrcLoc getImageLoc() {std::cerr << "BaseState::getImageLoc" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer() {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
     virtual VkFramebuffer getFramebuffer(int i) {std::cerr << "BaseState::framebuffer" << std::endl; exit(-1);}
     virtual VkPipeline getPipeline() {std::cerr << "BaseState::pipeline" << std::endl; exit(-1);}
@@ -644,10 +644,10 @@ struct BaseState {
 };
 
 struct BindState : public BaseState {
-    BaseState *bind[Binds];
-    int psav[Binds];
-    int rsav[Binds];
-    int wsav[Binds];
+    BaseState *bind[Resrcs];
+    int psav[Resrcs];
+    int rsav[Resrcs];
+    int wsav[Resrcs];
     int lock; bool excl;
     HeapState<Ins> rsp;
     BindState() :
@@ -655,7 +655,7 @@ struct BindState : public BaseState {
         lock(0),
         excl(false),
         rsp(StackState::comnds) {
-        for (int i = 0; i < Binds; i++) {
+        for (int i = 0; i < Resrcs; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
     }
     BindState *getBind() override {
@@ -666,11 +666,11 @@ struct BindState : public BaseState {
         safe.post();
         return this;
     }
-    BaseState *get(Bind i) {
+    BaseState *get(Resrc i) {
         if (bind[i] == 0) {std::cerr << "invalid get bind! " << i << std::endl; exit(-1);}
         return bind[i];
     }
-    bool push(Bind i, BaseState *buf, Con con, Req req, Rsp rsp, SmartState log) {
+    bool push(Resrc i, BaseState *buf, Con con, Req req, Rsp rsp, SmartState log) {
         log << "push " << debug << " lock:" << lock << std::endl;
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
         if (!buf->push(psav[i],rsav[i],wsav[i],this,con,req,rsp,log)) return false;
@@ -683,7 +683,7 @@ struct BindState : public BaseState {
     void push(Ins ins) {
         rsp<<ins;
     }
-    void done(Bind i, SmartState log) {
+    void done(Resrc i, SmartState log) {
         if (!excl) {std::cerr << "invalid excl unpush!" << std::endl; exit(-1);}
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
@@ -694,10 +694,10 @@ struct BindState : public BaseState {
     void done(Rsp rsp, SmartState log) {
         log << "done idx:" << rsp.idx << " siz:" << rsp.siz << std::endl; slog.clr();
         for (int i = 0; i < rsp.siz; i++) {
-        Bind bnd = this->rsp[rsp.idx+i].bnd;
+        Resrc res = this->rsp[rsp.idx+i].res;
         switch (this->rsp[rsp.idx+i].ins) {default:
-        break; case (RDeeIns): case (IRDeeIns): rdec(bnd,log);
-        break; case (WDeeIns): wdec(bnd,log);}}
+        break; case (RDeeIns): case (IRDeeIns): rdec(res,log);
+        break; case (WDeeIns): wdec(res,log);}}
     }
     void done(SmartState log) {
         safe.wait();
@@ -705,7 +705,7 @@ struct BindState : public BaseState {
         excl = false;
         safe.post();
     }
-    bool incr(Bind i, BaseState *buf, bool elock, SmartState log) {
+    bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid incr excl!" << std::endl; exit(-1);}
         if (bind[i] != 0 && bind[i] != buf) {std::cerr << "invalid incr bind!" << std::endl; exit(-1);}
         if (!buf->incr(elock,psav[i],rsav[i],wsav[i])) {
@@ -718,7 +718,7 @@ struct BindState : public BaseState {
         log << "incr pass " << buf << " " << buf->debug << " lock:" << lock-1 << std::endl;
         return true;
     }
-    void decr(Bind i, bool elock, SmartState log) {
+    void decr(Resrc i, bool elock, SmartState log) {
         if (!excl) {std::cerr << "invalid decr excl!" << std::endl; exit(-1);}
         if (lock <= 0 || bind[i] == 0) {std::cerr << "invalid decr bind! " << i << std::endl; exit(-1);}
         bind[i]->decr(elock);
@@ -728,31 +728,31 @@ struct BindState : public BaseState {
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
     }
-    bool rinc(Bind i, BaseState *buf, SmartState log) {
+    bool rinc(Resrc i, BaseState *buf, SmartState log) {
         return incr(i,buf,false,log);
     }
-    bool winc(Bind i, BaseState *buf, SmartState log) {
+    bool winc(Resrc i, BaseState *buf, SmartState log) {
         return incr(i,buf,true,log);
     }
-    void rdec(Bind i, SmartState log) {
+    void rdec(Resrc i, SmartState log) {
         decr(i,false,log);
     }
-    void wdec(Bind i, SmartState log) {
+    void wdec(Resrc i, SmartState log) {
         decr(i,true,log);
     }
 };
-BaseState *BaseState::bnd(Bind typ) {
+BaseState *BaseState::res(Resrc typ) {
     if (lock == 0) {std::cerr << "invalid get lock! " << debug << std::endl; exit(-1);}
     return lock->get(typ);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     log << "unlock " << debug << std::endl;
-    if (lock) {lock->done(loc.rsp,log); lock->done(bnd(),log);}
+    if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
 }
 
 struct Push {
     SmartState log;
-    BindLoc loc;
+    ResrcLoc loc;
     BaseState *base;
     Center *ptr;
     int sub;
@@ -836,10 +836,10 @@ int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 struct EnumState {
-    Bind key = Binds; StackState *val = 0;
+    Resrc key = Resrcs; StackState *val = 0;
 };
 struct Arg {
-    Instruct ins = Instructs; Bind bnd = Binds; BindLoc loc; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
+    Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
@@ -849,10 +849,10 @@ struct Fnc {
 void vulkanForce(Center *ptr, int sub);
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
-    StackState *stack[Binds];
-    BaseState *buffer[Binds];
-    int first[Binds];
-    int final[Binds];
+    StackState *stack[Resrcs];
+    BaseState *buffer[Resrcs];
+    int first[Resrcs];
+    int final[Resrcs];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread),
         stack{0},
@@ -860,19 +860,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         first{0},
         final{0} {
         std::cout << "CopyState" << std::endl;
-        for (EnumState *i = stack; i->key != Binds; i++) this->stack[i->key] = i->val;
-        for (int i = 0; i < Binds; i++) buffer[i] = 0;
+        for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
+        for (int i = 0; i < Resrcs; i++) buffer[i] = 0;
     }
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
     }
-    BaseState *&dst(Bind bnd) {
-        if ((int)bnd < 0 || (int)bnd >= Binds) {std::cerr << "invalid buff bind!" << std::endl; exit(-1);}
-        return buffer[bnd];
+    BaseState *&dst(Resrc res) {
+        if ((int)res < 0 || (int)res >= Resrcs) {std::cerr << "invalid buff bind!" << std::endl; exit(-1);}
+        return buffer[res];
     }
-    StackState *src(Bind bnd) {
-        if ((int)bnd < 0 || (int)bnd >= Binds) {std::cerr << "invalid source bind!" << std::endl; exit(-1);}
-        return stack[bnd];
+    StackState *src(Resrc res) {
+        if ((int)res < 0 || (int)res >= Resrcs) {std::cerr << "invalid source bind!" << std::endl; exit(-1);}
+        return stack[res];
     }
     static int get(int *arg, int siz, int &idx) {
         if (idx >= siz) {slog.clr(); std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; *(int*)0=0; exit(-1);}
@@ -894,106 +894,106 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // choose buffers
         int count = 0; // actual number of reservations
         for (int i = 0; i < num; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns):
-            if (dst(bnd) == 0) {dst(bnd) = src(bnd)->buffer(); first[bnd] = i;}
-            final[bnd] = i; count += 1;
-            log << "DerIns " << dst(bnd)->debug << std::endl;
+            if (dst(res) == 0) {dst(res) = src(res)->buffer(); first[res] = i;}
+            final[res] = i; count += 1;
+            log << "DerIns " << dst(res)->debug << std::endl;
             break; case(PDerIns):
-            if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(); first[bnd] = i;}
-            final[bnd] = i; count += 1;
-            log << "PDerIns " << dst(bnd)->debug << std::endl;
+            if (dst(res) == 0) {dst(res) = src(res)->prebuf(); first[res] = i;}
+            final[res] = i; count += 1;
+            log << "PDerIns " << dst(res)->debug << std::endl;
             break; case(IDerIns):
-            if (dst(bnd) == 0) {dst(bnd) = src(bnd)->prebuf(ins[i].idx); first[bnd] = i;}
-            final[bnd] = i; count += 1;
-            log << "IDerIns " << ins[i].idx << " " << dst(bnd)->debug << std::endl;
+            if (dst(res) == 0) {dst(res) = src(res)->prebuf(ins[i].idx); first[res] = i;}
+            final[res] = i; count += 1;
+            log << "IDerIns " << ins[i].idx << " " << dst(res)->debug << std::endl;
             break; case(RDeeIns): case(WDeeIns):
-            if (dst(bnd) == 0) dst(bnd) = src(bnd)->buffer();
+            if (dst(res) == 0) dst(res) = src(res)->buffer();
             count += 1;
-            log << "RWDeeIns " << dst(bnd)->debug << std::endl;
+            log << "RWDeeIns " << dst(res)->debug << std::endl;
             break; case(IRDeeIns):
-            if (dst(bnd) == 0) dst(bnd) = src(bnd)->prebuf(ins[i].idx);
+            if (dst(res) == 0) dst(res) = src(res)->prebuf(ins[i].idx);
             count += 1;
-            log << "IRDeeIns " << ins[i].idx << " " << dst(bnd)->debug << std::endl;}}
+            log << "IRDeeIns " << ins[i].idx << " " << dst(res)->debug << std::endl;}}
         // choose binding
         BindState *bind = 0;
-        if (count > 1) bind = stack[BindBnd]->buffer()->getBind();
+        if (count > 1) bind = stack[BindRes]->buffer()->getBind();
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
         // reserve chosen
         for (int i = 0; i < num && i < lim; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
-            ins[i].req.pre = (ins[i].ins == PDerIns && final[bnd] == i);
-            if (bind) {if (!bind->push(bnd,dst(bnd),ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
-            else {if (!dst(bnd)->push(0,0,0,0,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            ins[i].req.pre = (ins[i].ins == PDerIns && final[res] == i);
+            if (bind) {if (!bind->push(res,dst(res),ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            else {if (!dst(res)->push(0,0,0,0,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
             break; case(RDeeIns):
-            if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
+            if (!bind->rinc(res,dst(res),log)) lim = i;
             break; case(IRDeeIns):
-            if (!bind->rinc(bnd,dst(bnd),log)) lim = i;
+            if (!bind->rinc(res,dst(res),log)) lim = i;
             break; case(WDeeIns):
-            if (!bind->winc(bnd,dst(bnd),log)) lim = i;}}
+            if (!bind->winc(res,dst(res),log)) lim = i;}}
         if (lim == num) {
         BaseState *last = 0;
         // link list
-        Lnk *lnk = 0; BindLoc lst = BindLocs; BaseState *bas = 0;
+        Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch(ins[i].ins) {default:
             break; case(DerIns): case (PDerIns): case (IDerIns):
-            lnk = dst(bnd)->lnk(ins[i].con.loc,bas,lst,lnk);
-            bas = dst(bnd); lst = ins[i].con.loc;}}
+            lnk = dst(res)->lnk(ins[i].con.loc,bas,lst,lnk);
+            bas = dst(res); lst = ins[i].con.loc;}}
         // submit buffers
         for (int i = 0; i < num; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns):
-            if (first[bnd] == i) src(bnd)->advance();
-            thread->push({log,ins[i].con.loc,dst(bnd)});
+            if (first[res] == i) src(res)->advance();
+            thread->push({log,ins[i].con.loc,dst(res)});
             break; case(PDerIns):
-            thread->push({log,ins[i].con.loc,dst(bnd)});
+            thread->push({log,ins[i].con.loc,dst(res)});
             break; case(IDerIns):
-            if (first[bnd] == i) src(bnd)->advance(ins[i].idx);
-            thread->push({log,ins[i].con.loc,dst(bnd)});
+            if (first[res] == i) src(res)->advance(ins[i].idx);
+            thread->push({log,ins[i].con.loc,dst(res)});
             break; case(RDeeIns): case(IRDeeIns): case (WDeeIns):
             if (bind) bind->push(ins[i]);}}
         // clean up
         for (int i = 0; i < num; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
-            dst(bnd) = 0;
+            dst(res) = 0;
             break; case(RDeeIns): case(WDeeIns): case(IRDeeIns):
-            dst(bnd) = 0;}}
+            dst(res) = 0;}}
         // notify pass
         if (fnc.pnow && fnc.pass) fnc.pass(ptr,sub);
-        else if (fnc.pass) thread->push({log,BindLocs,0,ptr,sub,fnc.pass});
-        if (bind) stack[BindBnd]->advance();
+        else if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
+        if (bind) stack[BindRes]->advance();
         } else {
         // release reserved
         for (int i = 0; i < lim; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
-            if (bind) bind->done(bnd,log);
-            dst(bnd)->done(log);
+            if (bind) bind->done(res,log);
+            dst(res)->done(log);
             break; case(RDeeIns): case(IRDeeIns):
-            bind->rdec(bnd,log);
+            bind->rdec(res,log);
             break; case(WDeeIns):
-            bind->wdec(bnd,log);}}
+            bind->wdec(res,log);}}
         // clean up
         for (int i = 0; i < num; i++) {
-            Bind bnd = ins[i].bnd;
+            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
-            dst(bnd) = 0;
+            dst(res) = 0;
             break; case(RDeeIns): case(WDeeIns): case(IRDeeIns):
-            dst(bnd) = 0;}}
+            dst(res) = 0;}}
         // notify fail
         if (fnc.fnow && fnc.fail) fnc.fail(ptr,sub);
-        else if (fnc.fail) thread->push({log,BindLocs,0,ptr,sub,fnc.fail});
+        else if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon) goon = true;}}
     }
     template <class Type, class Fnc> static Rsp response(Fnc fnc, Type mem, int i, int &count, SmartState log) {
@@ -1004,7 +1004,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (RDeeIns): case (IRDeeIns): case(WDeeIns):
         return rsp;}
         rsp.idx = count;
-        for (int j = i+1; fnc(mem)(j) != Instructs; j++)
+        for (int j = i+1; fnc(mem)(j) != Instrs; j++)
         switch (fnc(mem)(j)) {default:
         break; case (DerIns): case (IDerIns): case(PDerIns):
         log << "response " << j << "/" << rsp.idx << "/" << rsp.siz << std::endl;
@@ -1015,7 +1015,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return rsp;
     }
     #define REQUEST(A,B,C) (A+(B*(Requests+1))+(C*(Requests+1)*(Extents+1)))
-    Req request(Instruct ins, Request tag, Extent ext, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+    Req request(Instr ins, Request tag, Extent ext, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         req.tag = tag; req.ext = ext;
@@ -1046,14 +1046,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         }
         return req;
     }
-    static Con constant(Instruct ins, Micro typ, BindLoc loc, SmartState log) {
+    static Con constant(Instr ins, Micro typ, ResrcLoc loc, SmartState log) {
         return Con{.tag = MicroCon, .mic = typ, .loc = loc};
     }
-    static Con constant(Instruct ins, Memory typ, BindLoc loc, SmartState log) {
+    static Con constant(Instr ins, Memory typ, ResrcLoc loc, SmartState log) {
         return Con{.tag = MemoryCon, .mem = typ, .loc = loc};
     }
-    static Con constant(Instruct ins, Bind typ, BindLoc loc, SmartState log) {
-        return Con{.tag = BindCon, .bnd = typ, .loc = loc};
+    static Con constant(Instr ins, Resrc typ, ResrcLoc loc, SmartState log) {
+        return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
         Type val = (fnc&&fnc(typ)?fnc(typ)(i):inv);
@@ -1069,67 +1069,67 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Req req = request(dot.ins,dot.req,dot.ext,dot.fmt,val,arg,siz,idx,log);
         Rsp rsp = response(fnc,typ,sub,count,log);
         log << "after " << idx << "/" << siz << std::endl;
-        return Ins{dot.ins,dot.bnd,con,req,rsp,pre};
+        return Ins{dot.ins,dot.res,con,req,rsp,pre};
     }
     bool push(Memory typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Ins &ins, SmartState log) {
         Arg dot; bool done = true;
-        if (builtin(sav.ins,dot.ins,MemoryIns__Memory__Int__Instruct,typ,sub,Instructs,log)) done = false;
-        if (builtin(sav.bnd,dot.bnd,MemoryIns__Memory__Int__Bind,typ,sub,Binds,log)) done = false;
-        if (builtin(sav.loc,dot.loc,MemoryIns__Memory__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
+        if (builtin(sav.ins,dot.ins,MemoryIns__Memory__Int__Instr,typ,sub,Instrs,log)) done = false;
+        if (builtin(sav.res,dot.res,MemoryIns__Memory__Int__Resrc,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,MemoryIns__Memory__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.req,dot.req,MemoryIns__Memory__Int__Request,typ,sub,Requests,log)) done = false;
         if (builtin(sav.ext,dot.ext,MemoryIns__Memory__Int__Extent,typ,sub,Extents,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,MemoryIns__Memory__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        ins = command(dot,MemoryIns__Memory__Int__Instruct,typ,sub,val,arg,siz,idx,count,log);
+        ins = command(dot,MemoryIns__Memory__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
-    bool push(Bind typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Ins &ins, SmartState log) {
+    bool push(Resrc typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Ins &ins, SmartState log) {
         Arg dot; bool done = true;
-        if (builtin(sav.ins,dot.ins,BindIns__Bind__Int__Instruct,typ,sub,Instructs,log)) done = false;
-        if (builtin(sav.bnd,dot.bnd,BindIns__Bind__Int__Bind,typ,sub,Binds,log)) done = false;
-        if (builtin(sav.loc,dot.loc,BindIns__Bind__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
-        if (builtin(sav.req,dot.req,BindIns__Bind__Int__Request,typ,sub,Requests,log)) done = false;
-        if (builtin(sav.ext,dot.ext,BindIns__Bind__Int__Extent,typ,sub,Extents,log)) done = false;
-        if (builtin(sav.fmt,dot.fmt,BindIns__Bind__Int__Format,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.ins,dot.ins,ResrcIns__Resrc__Int__Instr,typ,sub,Instrs,log)) done = false;
+        if (builtin(sav.res,dot.res,ResrcIns__Resrc__Int__Resrc,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ResrcIns__Resrc__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.req,dot.req,ResrcIns__Resrc__Int__Request,typ,sub,Requests,log)) done = false;
+        if (builtin(sav.ext,dot.ext,ResrcIns__Resrc__Int__Extent,typ,sub,Extents,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,ResrcIns__Resrc__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        ins = command(dot,BindIns__Bind__Int__Instruct,typ,sub,val,arg,siz,idx,count,log);
+        ins = command(dot,ResrcIns__Resrc__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     bool push(Micro typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Ins &ins, SmartState log) {
         Arg dot; bool done = true;
-        if (builtin(sav.ins,dot.ins,MicroIns__Micro__Int__Instruct,typ,sub,Instructs,log)) done = false;
-        if (builtin(sav.bnd,dot.bnd,MicroIns__Micro__Int__Bind,typ,sub,Binds,log)) done = false;
-        if (builtin(sav.loc,dot.loc,MicroIns__Micro__Int__BindLoc,typ,sub,BindLocs,log)) done = false;
+        if (builtin(sav.ins,dot.ins,MicroIns__Micro__Int__Instr,typ,sub,Instrs,log)) done = false;
+        if (builtin(sav.res,dot.res,MicroIns__Micro__Int__Resrc,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,MicroIns__Micro__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.req,dot.req,MicroIns__Micro__Int__Request,typ,sub,Requests,log)) done = false;
         if (builtin(sav.ext,dot.ext,MicroIns__Micro__Int__Extent,typ,sub,Extents,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,MicroIns__Micro__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        ins = command(dot,MicroIns__Micro__Int__Instruct,typ,sub,val,arg,siz,idx,count,log);
+        ins = command(dot,MicroIns__Micro__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     void push(Memory typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {PDerIns,Binds,MiddleLoc,BothReq,IntExt,WholeForm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {PDerIns,Resrcs,MiddleLoc,BothReq,IntExt,WholeForm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
-    void push(Bind typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Binds,ResizeLoc,SizeReq,IntExt,RangeForm};
+    void push(Resrc typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeForm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Micro typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Binds,ResizeLoc,SizeReq,IntExt,RangeForm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeForm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
-        auto f = MemoryIns__Memory__Int__Bind(center->mem);
-        Bind bnd = (f?f(0):Binds);
-        if (bnd == Binds) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
-        int mod = src(bnd)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
+        auto f = MemoryIns__Memory__Int__Resrc(center->mem);
+        Resrc res = (f?f(0):Resrcs);
+        if (res == Resrcs) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
+        int mod = src(res)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
         int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
         /*if (base>idx) {
         ptr = (void*)((char*)ptr+base-idx);
@@ -1152,19 +1152,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
         break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Peekz): ; // TODO read from a PierceBnd
-        break; case (Pokez): ; // TODO write to a PierceBnd
+        break; case (Peekz): ; // TODO read from a PierceRes
+        break; case (Pokez): ; // TODO write to a PierceRes
         break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
-        for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/bnd/drw)
+        for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/res/drw)
         // TODO use Configure or Draw fields to decide between registered Fnc structs
         push(ins,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
-        break; case (Instructz): {HeapState<Ins> ins(StackState::comnds);
+        break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
         push(ins,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push({log,BindLocs,0,center,0,fnc.pass});}
+        if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});}
     }
 };
 
@@ -1219,10 +1219,10 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(SwapBnd,0,0,0,idx,0,0,fnc,SmartState());
+    copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
-    copy->push(ChainBnd,0,0,0,idx,0,0,fnc,SmartState());
+    copy->push(ChainRes,0,0,0,idx,0,0,fnc,SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -1241,11 +1241,11 @@ void TestState::call() {
     copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     int arg[] = {
-    /*DerIns ChainBnd*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
-    /*DerIns DrawBnd*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
-    /*IDeeIns PipeBnd*//*ins.idx*/MicroTest,
-    /*DerIns ChainBnd*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
-    /*IDeeIns PipeBnd*//*ins.idx*/MicroTest};
+    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
+    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
+    /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
+    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
+    /*IDeeIns PipeRes*//*ins.idx*/MicroTest};
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
@@ -1253,10 +1253,10 @@ void TestState::call() {
     BindState *bptr = bind->buffer()->getBind();
     if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
     BaseState *sptr = swap->buffer();
-    if (!bptr->rinc(SwapBnd,sptr,mlog)) {
+    if (!bptr->rinc(SwapRes,sptr,mlog)) {
     mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
     testUpdate(sptr->getExtent(),model,view,proj,debug);
-    bptr->rdec(SwapBnd,mlog);
+    bptr->rdec(SwapRes,mlog);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     memcpy(&mat->mat[0],&model,sizeof(Matrix));
@@ -1578,15 +1578,15 @@ struct ImageState : public BaseState {
         extent = max(loc).extent;
         if (*loc == ResizeLoc) {
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        if (bnd() == ImageBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_SAMPLED_BIT);
-        if (bnd() == PierceBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_SAMPLED_BIT);
+        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureSampler = ImageState::createTextureSampler(device,properties);}
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
-        if (*loc == ResizeLoc && bnd() == PierceBnd) {
+        if (*loc == ResizeLoc && res() == PierceRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}
@@ -1597,7 +1597,7 @@ struct ImageState : public BaseState {
         log << "unsize " << debug << std::endl;
         vkDestroyFence(device, fen(loc), nullptr);
         vkDestroySemaphore(device, sem(loc), nullptr);
-        if (*loc == ResizeLoc && bnd() == PierceBnd) {
+        if (*loc == ResizeLoc && res() == PierceRes) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1620,10 +1620,10 @@ struct ImageState : public BaseState {
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBefore, bnd(ImageBnd)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandBefore, res(ImageRes)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandAfter, bnd(ImageBnd)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandAfter, res(ImageRes)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc && (mem(loc) == Pokez || mem(loc) == Texturez)) {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
@@ -1633,7 +1633,7 @@ struct ImageState : public BaseState {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr(loc), static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight, before, after, stagingBuffer, commandBuffer);}
+        copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), texWidth, texHeight, before, after, stagingBuffer, commandBuffer);}
         if (*loc == MiddleLoc && mem(loc) == Peekz) {
             // TODO copy texture to mapped
         }
@@ -1659,7 +1659,7 @@ struct ChainState : public BaseState {
     const VkQueue present;
     ChangeState<Configure,Configures> *copy;
     uint32_t imageIndex;
-    BindLoc imageLoc;
+    ResrcLoc imageLoc;
     VkFramebuffer framebuffer;
     ChainState() :
         BaseState("ChainState",StackState::self),
@@ -1670,7 +1670,7 @@ struct ChainState : public BaseState {
         reset(SmartState());
     }
     uint32_t getImageIndex() override {return imageIndex;}
-    BindLoc getImageLoc() override {return imageLoc;}
+    ResrcLoc getImageLoc() override {return imageLoc;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
@@ -1686,15 +1686,15 @@ struct ChainState : public BaseState {
         log << "setup " << debug << std::endl;
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
-        bnd(SwapBnd)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
-        imageLoc = (BindLoc)imageIndex;
-        if (imageLoc < 0 || imageLoc >= BindLocs) {std::cerr << "too many images! " << imageIndex << std::endl; exit(-1);}
+        res(SwapRes)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
+        imageLoc = (ResrcLoc)imageIndex;
+        if (imageLoc < 0 || imageLoc >= ResrcLocs) {std::cerr << "too many images! " << imageIndex << std::endl; exit(-1);}
         if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {std::cerr << "failed to acquire swap chain image!" << std::endl; exit(-1);}
-        framebuffer = bnd(SwapBnd)->getFramebuffer(imageIndex);}
+        framebuffer = res(SwapRes)->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
-        VkSemaphore before = sem(lst(loc,(BindLoc)(imageIndex%(uint32_t)BindLocs)));
-        if (!presentFrame(present,bnd(SwapBnd)->getSwapChain(),imageIndex,before))
+        VkSemaphore before = sem(lst(loc,(ResrcLoc)(imageIndex%(uint32_t)ResrcLocs)));
+        if (!presentFrame(present,res(SwapRes)->getSwapChain(),imageIndex,before))
         copy->wots(RegisterMask,1<<SizeMsk);}
         return VK_NULL_HANDLE;
     }
@@ -1730,17 +1730,17 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << bnd(PipeBnd)->debug << std::endl; slog.clr();
-        descriptorPool = bnd(PipeBnd)->getDescriptorPool();
-        descriptorLayout = bnd(PipeBnd)->getDescriptorSetLayout();
+        log << "resize " << debug << " " << res(PipeRes)->debug << std::endl; slog.clr();
+        descriptorPool = res(PipeRes)->getDescriptorPool();
+        descriptorLayout = res(PipeRes)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
-        for (int i = 0; i < BindLocs; i++) sem(get((BindLoc)i)) = createSemaphore(device);
+        for (int i = 0; i < ResrcLocs; i++) sem(get((ResrcLoc)i)) = createSemaphore(device);
         fen(loc) = createFence(device);
     }
     void unsize(Loc &loc, SmartState log) override {
         vkWaitForFences(device, 1, &fen(loc), VK_TRUE, UINT64_MAX);
-        for (int i = 0; i < BindLocs; i++) vkDestroySemaphore(device, sem(get((BindLoc)i)), nullptr);
+        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, sem(get((ResrcLoc)i)), nullptr);
         vkDestroyFence(device, fen(loc), nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
@@ -1763,21 +1763,21 @@ struct DrawState : public BaseState {
         int index = 0;
         bool middle = false;
         log << "micro " << debug << " " << max(loc).micro << std::endl;
-        for (int i = 0; MicroIns__Micro__Int__Instruct(max(loc).micro)(i) != Instructs; i++)
-        if (MicroIns__Micro__Int__BindLoc(max(loc).micro)(i) == MiddleLoc) middle = true;
-        else if (MicroIns__Micro__Int__BindLoc(max(loc).micro)(i) != BindLocs) middle = false;
-        else if (middle && MicroIns__Micro__Int__Instruct(max(loc).micro)(i) == RDeeIns ||
-        middle && MicroIns__Micro__Int__Instruct(max(loc).micro)(i) == IRDeeIns ||
-        middle && MicroIns__Micro__Int__Instruct(max(loc).micro)(i) == WDeeIns)
-        switch (MicroIns__Micro__Int__Bind(max(loc).micro)(i)) {
+        for (int i = 0; MicroIns__Micro__Int__Instr(max(loc).micro)(i) != Instrs; i++)
+        if (MicroIns__Micro__Int__ResrcLoc(max(loc).micro)(i) == MiddleLoc) middle = true;
+        else if (MicroIns__Micro__Int__ResrcLoc(max(loc).micro)(i) != ResrcLocs) middle = false;
+        else if (middle && MicroIns__Micro__Int__Instr(max(loc).micro)(i) == RDeeIns ||
+        middle && MicroIns__Micro__Int__Instr(max(loc).micro)(i) == IRDeeIns ||
+        middle && MicroIns__Micro__Int__Instr(max(loc).micro)(i) == WDeeIns)
+        switch (MicroIns__Micro__Int__Resrc(max(loc).micro)(i)) {
         default: {std::cerr << "invalid bind check! " << debug << std::endl; exit(-1);}
-        break; case (PipeBnd): pipePtr = bnd(PipeBnd);
-        break; case (SwapBnd): swapPtr = bnd(SwapBnd);
-        break; case (ChainBnd): framePtr = bnd(ChainBnd);
-        break; case (IndexBnd): indexPtr = bnd(IndexBnd);
-        break; case (BringupBnd): fetchPtr = bnd(BringupBnd);
-        break; case (ImageBnd): imagePtr = bnd(ImageBnd); imageIdx = index++;
-        break; case (MatrixBnd): matrixPtr = bnd(MatrixBnd); matrixIdx = index++;}
+        break; case (PipeRes): pipePtr = res(PipeRes);
+        break; case (SwapRes): swapPtr = res(SwapRes);
+        break; case (ChainRes): framePtr = res(ChainRes);
+        break; case (IndexRes): indexPtr = res(IndexRes);
+        break; case (BringupRes): fetchPtr = res(BringupRes);
+        break; case (ImageRes): imagePtr = res(ImageRes); imageIdx = index++;
+        break; case (MatrixRes): matrixPtr = res(MatrixRes); matrixIdx = index++;}
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
@@ -1814,22 +1814,22 @@ struct MainState {
     VulkanState vulkanState;
     PhysicalState physicalState;
     LogicalState logicalState;
-    ArrayState<SwapState,SwapBnd,1> swapState;
-    ArrayState<PipeState,PipeBnd,Micros> pipelineState;
-    ArrayState<BufferState,IndexBnd,StackState::frames> indexState;
-    ArrayState<BufferState,BringupBnd,StackState::frames> bringupState;
-    ArrayState<ImageState,ImageBnd,StackState::images> imageState;
-    ArrayState<UniformState,UniformBnd,StackState::frames> uniformState;
-    ArrayState<UniformState,MatrixBnd,StackState::frames> matrixState;
-    ArrayState<BufferState,TriangleBnd,StackState::frames> triangleState;
-    ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
-    ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
-    ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<ImageState,PierceBnd,StackState::frames> pierceState;
-    ArrayState<ChainState,ChainBnd,StackState::frames> chainState;
-    ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
-    ArrayState<BindState,BindBnd,StackState::frames> bindState;
-    EnumState enumState[Binds+1];
+    ArrayState<SwapState,SwapRes,1> swapState;
+    ArrayState<PipeState,PipeRes,Micros> pipelineState;
+    ArrayState<BufferState,IndexRes,StackState::frames> indexState;
+    ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
+    ArrayState<ImageState,ImageRes,StackState::images> imageState;
+    ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
+    ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
+    ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
+    ArrayState<BufferState,NumericRes,StackState::frames> numericState;
+    ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
+    ArrayState<BufferState,BasisRes,StackState::frames> basisState;
+    ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
+    ArrayState<ChainState,ChainRes,StackState::frames> chainState;
+    ArrayState<DrawState,DrawRes,StackState::frames> drawState;
+    ArrayState<BindState,BindRes,StackState::frames> bindState;
+    EnumState enumState[Resrcs+1];
     ThreadState threadState;
     CopyState copyState;
     TestState testState;
@@ -1852,22 +1852,22 @@ struct MainState {
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         enumState{
-            {SwapBnd,&swapState},
-            {PipeBnd,&pipelineState},
-            {IndexBnd,&indexState},
-            {BringupBnd,&bringupState},
-            {ImageBnd,&imageState},
-            {UniformBnd,&uniformState},
-            {MatrixBnd,&matrixState},
-            {TriangleBnd,&triangleState},
-            {NumericBnd,&numericState},
-            {VertexBnd,&vertexState},
-            {BasisBnd,&basisState},
-            {PierceBnd,&pierceState},
-            {ChainBnd,&chainState},
-            {DrawBnd,&drawState},
-            {BindBnd,&bindState},
-            {Binds,0}},
+            {SwapRes,&swapState},
+            {PipeRes,&pipelineState},
+            {IndexRes,&indexState},
+            {BringupRes,&bringupState},
+            {ImageRes,&imageState},
+            {UniformRes,&uniformState},
+            {MatrixRes,&matrixState},
+            {TriangleRes,&triangleState},
+            {NumericRes,&numericState},
+            {VertexRes,&vertexState},
+            {BasisRes,&basisState},
+            {PierceRes,&pierceState},
+            {ChainRes,&chainState},
+            {DrawRes,&drawState},
+            {BindRes,&bindState},
+            {Resrcs,0}},
         threadState(logicalState.device,&copyState),
         copyState(&threadState,enumState),
         testState(&copyState,&swapState,&bindState) {
@@ -2497,23 +2497,23 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     std::vector<VkVertexInputBindingDescription> bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    if (VertexBind__Micro__Int__Bind(micro))
-    for (int i = 0; VertexBind__Micro__Int__Bind(micro)(i) != Binds; i++) {
-        Bind bind = VertexBind__Micro__Int__Bind(micro)(i);
+    if (VertexResrc__Micro__Int__Resrc(micro))
+    for (int i = 0; VertexResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+        Resrc res = VertexResrc__Micro__Int__Resrc(micro)(i);
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = i;
-        bindingDescription.stride = BindStride__Bind__Int(bind);
+        bindingDescription.stride = ResrcStride__Resrc__Int(res);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; BindFormat__Bind__Int__Format(bind)(j) != Formats; j++) {
+    for (int j = 0; ResrcFormat__Resrc__Int__Format(res)(j) != Formats; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
         attributeDescription.binding = i;
         attributeDescription.location = j;
-        switch (BindFormat__Bind__Int__Format(bind)(j)) {
+        switch (ResrcFormat__Resrc__Int__Format(res)(j)) {
         default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
         case (VecForm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecForm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
-        attributeDescription.offset = BindOffset__Bind__Int__Int(bind)(j);
+        attributeDescription.offset = ResrcOffset__Resrc__Int__Int(res)(j);
         attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
