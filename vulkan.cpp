@@ -330,8 +330,7 @@ template <class State, Bind Type, int Size> struct ArrayState : public StackStat
         case (NumericBnd): return "NumericBnd";
         case (VertexBnd): return "VertexBnd";
         case (BasisBnd): return "BasisBnd";
-        case (PokeBnd): return "PokeBnd";
-        case (PeekBnd): return "PeekBnd";
+        case (PierceBnd): return "PierceBnd";
         case (ChainBnd): return "ChainBnd";
         case (DrawBnd): return "DrawBnd";
         case (BindBnd): return "BindBnd";}
@@ -636,10 +635,8 @@ struct BaseState {
     static VkFence createFence(VkDevice device);
     static VkSemaphore createSemaphore(VkDevice device);
     static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-    static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
-        VkBuffer& buffer, VkDeviceMemory& memory);
-    static void createImage(VkDevice device, VkPhysicalDevice physical,
-        uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageLayout layout, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
+    static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkBuffer& buffer, VkDeviceMemory& memory);
+    static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageLayout layout, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
@@ -1152,7 +1149,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
         break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Piercez): push(center->mem,(void*)center->pie,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Peekz): ; // TODO read from a PierceBnd
+        break; case (Pokez): ; // TODO write to a PierceBnd
         break; case (Drawz): {HeapState<Cmd> cmd(StackState::comnds);
         for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/bnd/drw)
         // TODO use Configure or Draw fields to decide between registered Fnc structs
@@ -1578,14 +1576,14 @@ struct ImageState : public BaseState {
         if (*loc == ResizeLoc) {
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         if (bnd() == ImageBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_SAMPLED_BIT);
-        if (bnd() == PokeBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        if (bnd() == PierceBnd) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         textureSampler = ImageState::createTextureSampler(device,properties);}
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
-        if (*loc == ResizeLoc && bnd() == PokeBnd) {
+        if (*loc == ResizeLoc && bnd() == PierceBnd) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}
@@ -1596,7 +1594,7 @@ struct ImageState : public BaseState {
         log << "unsize " << debug << std::endl;
         vkDestroyFence(device, fen(loc), nullptr);
         vkDestroySemaphore(device, sem(loc), nullptr);
-        if (*loc == ResizeLoc && bnd() == PokeBnd) {
+        if (*loc == ResizeLoc && bnd() == PierceBnd) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1623,7 +1621,7 @@ struct ImageState : public BaseState {
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, bnd(ImageBnd)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
-        if (*loc == MiddleLoc) {
+        if (*loc == MiddleLoc) { // TODO depend on mem(loc)
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -1637,7 +1635,7 @@ struct ImageState : public BaseState {
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << " " << *loc << "(" << ResizeLoc << "," << BeforeLoc << "," << MiddleLoc << "," << AfterLoc << ")" << std::endl;
-        if (*loc == MiddleLoc) {
+        if (*loc == MiddleLoc) { // TODO depend on mem(loc)
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
@@ -1645,35 +1643,6 @@ struct ImageState : public BaseState {
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics, VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int texWidth, int texHeight, VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkBuffer stagingBuffer, VkCommandBuffer commandBuffer);
     static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image, VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-};
-
-struct ProbeState : public BaseState {
-    // TODO ResizeLoc PokeBnd creates image and framebuffer with ImageState
-    // TODO BeforeLoc PokeBnd converts format for write
-    // TODO MiddleLoc PokeBnd copies to vector in image
-    // TODO AfterLoc PokeBnd converts format for draw
-    // TODO MiddleLoc DrawBnd runs MicroDebug to fill in the PokeBnd buffer
-    // TODO BeforeLoc PeekBnd converts format of bound PokeBnd image for read
-    // TODO MiddleLoc PeekBnd copies from vector in PokeBnd image
-    // TODO AfterLoc PeekBnd converts format of PokeBnd image
-    ProbeState() :
-        BaseState("ProbeState",StackState::self) {
-    }
-    ~ProbeState() {
-    }
-    void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << std::endl;
-    }
-    void unsize(Loc &loc, SmartState log) override {
-        log << "usize " << debug << std::endl;
-    }
-    VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << std::endl;
-        return VK_NULL_HANDLE;
-    }
-    void upset(Loc &loc, SmartState log) override {
-        log << "upset" << std::endl;
-    }
 };
 
 struct ChainState : public BaseState {
@@ -1847,8 +1816,7 @@ struct MainState {
     ArrayState<BufferState,NumericBnd,StackState::frames> numericState;
     ArrayState<BufferState,VertexBnd,StackState::frames> vertexState;
     ArrayState<BufferState,BasisBnd,StackState::frames> basisState;
-    ArrayState<ImageState,PokeBnd,StackState::frames> pokeState;
-    ArrayState<ProbeState,PeekBnd,StackState::frames> probeState;
+    ArrayState<ImageState,PierceBnd,StackState::frames> pierceState;
     ArrayState<ChainState,ChainBnd,StackState::frames> chainState;
     ArrayState<DrawState,DrawBnd,StackState::frames> drawState;
     ArrayState<BindState,BindBnd,StackState::frames> bindState;
@@ -1886,8 +1854,7 @@ struct MainState {
             {NumericBnd,&numericState},
             {VertexBnd,&vertexState},
             {BasisBnd,&basisState},
-            {PokeBnd,&pokeState},
-            {PeekBnd,&probeState},
+            {PierceBnd,&pierceState},
             {ChainBnd,&chainState},
             {DrawBnd,&drawState},
             {BindBnd,&bindState},

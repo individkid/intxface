@@ -40,7 +40,8 @@ Memory = {
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
 	"Basisz", -- base for each dimension
-	"Piercez", -- per fragment info
+	"Peekz", -- per fragment read
+	"Pokez", -- per fragment write
 	"Drawz", -- draw range info
 	"Commandz", -- little vulkan language
 	"Stringz", -- string memory
@@ -60,8 +61,7 @@ Bind = { -- per variation of BaseState
 	"NumericBnd",
 	"VertexBnd",
 	"BasisBnd",
-	"PokeBnd",
-	"PeekBnd",
+	"PierceBnd",
 	"ChainBnd",
 	"DrawBnd",
 	"BindBnd",
@@ -457,7 +457,6 @@ MemoryCmd = {
 	{"Memory","Numericz","Int","0","Bind","NumericBnd"},
 	{"Memory","Vertexz","Int","0","Bind","VertexBnd"},
 	{"Memory","Basisz","Int","0","Bind","BasisBnd"},
-	{"Memory","Piercez","Int","0","Bind","PokeBnd"},
 }
 BindCmd = {
 	{"Bind","SwapBnd","Int","0","Command","Commands"},
@@ -478,8 +477,7 @@ BindCmd = {
 	{"Bind","NumericBnd","Int","0","Bind","NumericBnd"},
 	{"Bind","VertexBnd","Int","0","Bind","VertexBnd"},
 	{"Bind","BasisBnd","Int","0","Bind","BasisBnd"},
-	{"Bind","PokeBnd","Int","0","Bind","PokeBnd"},
-	{"Bind","PeekBnd","Int","0","Bind","PeekBnd"},
+	{"Bind","PierceBnd","Int","0","Bind","PierceBnd"},
 	{"Bind","ChainBnd","Int","0","Bind","ChainBnd"},
 	{"Bind","ChainBnd","Int","0","Extent","TrueExt"},
 	{"Bind","ChainBnd","Int","0","Format","NoneForm"},
@@ -806,7 +804,7 @@ Center = {
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"pie","Pierce",{["mem"]={["Piercez"]=true}},"siz"},
+	-- TODO peek and poke
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"com","Cmd",{["mem"]={["Commandz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
