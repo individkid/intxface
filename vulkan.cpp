@@ -609,6 +609,9 @@ struct BaseState {
     static Extent &ext(Loc &loc) {
         return loc.max.tag;
     }
+    static Memory mem(Loc &loc) {
+        return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);
+    }
     virtual void unsize(Loc &loc, SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
     virtual void resize(Loc &loc, SmartState log) {std::cerr << "resize not base!" << std::endl; exit(-1);}
     virtual VkFence setup(Loc &loc, SmartState log) {std::cerr << "setup not base!" << std::endl; exit(-1);}
@@ -1621,7 +1624,7 @@ struct ImageState : public BaseState {
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, bnd(ImageBnd)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
-        if (*loc == MiddleLoc) { // TODO depend on mem(loc)
+        if (*loc == MiddleLoc && (mem(loc) == Pokez || mem(loc) == Texturez)) {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
@@ -1631,11 +1634,17 @@ struct ImageState : public BaseState {
         memcpy(data, ptr(loc), static_cast<size_t>(imageSize));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, bnd(ImageBnd)->getImage(), texWidth, texHeight, before, after, stagingBuffer, commandBuffer);}
+        if (*loc == MiddleLoc && mem(loc) == Peekz) {
+            // TODO copy texture to mapped
+        }
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << " " << *loc << "(" << ResizeLoc << "," << BeforeLoc << "," << MiddleLoc << "," << AfterLoc << ")" << std::endl;
-        if (*loc == MiddleLoc) { // TODO depend on mem(loc)
+        if (*loc == MiddleLoc && mem(loc) == Peekz) {
+            // TODO copy from mapped to ptr(loc)
+        }
+        if (*loc == MiddleLoc) {
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
