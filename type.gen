@@ -43,7 +43,7 @@ Memory = {
 	"Peekz", -- per fragment read
 	"Pokez", -- per fragment write
 	"Drawz", -- draw range info
-	"Commandz", -- little vulkan language
+	"Instructz", -- little vulkan language
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
 	"Kernelz", -- inflight transformations
@@ -117,13 +117,13 @@ Format = {
 	"ConstForm", -- which builtin
 	"NoneForm", -- no arguments
 }
-Command = {
-	"DerCmd",  -- advance before push to thread
-	"PDerCmd", -- advance after fence in thread
-	"IDerCmd", -- process a particular instance
-	"RDeeCmd", -- increment read lock in current
-	"IRDeeCmd", -- increment read lock in indexed
-	"WDeeCmd", -- increment write lock in current
+Instruct = {
+	"DerIns",  -- advance before push to thread
+	"PDerIns", -- advance after fence in thread
+	"IDerIns", -- process a particular instance
+	"RDeeIns", -- increment read lock in current
+	"IRDeeIns", -- increment read lock in indexed
+	"WDeeIns", -- increment write lock in current
 }
 Configure = {
 	"IndexBase",
@@ -432,10 +432,10 @@ FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentFlattenG"},
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
 }
-MemoryCmd = {
+MemoryIns = {
 	{"Memory","Indexz","Int","0","Bind","IndexBnd"},
 	{"Memory","Bringupz","Int","0","Bind","BringupBnd"},
-	{"Memory","Texturez","Int","0","Command","IDerCmd"},
+	{"Memory","Texturez","Int","0","Instruct","IDerIns"},
 	{"Memory","Texturez","Int","0","Bind","ImageBnd"},
 	{"Memory","Texturez","Int","0","BindLoc","ResizeLoc"},
 	{"Memory","Texturez","Int","0","Request","SizeReq"},
@@ -458,8 +458,8 @@ MemoryCmd = {
 	{"Memory","Vertexz","Int","0","Bind","VertexBnd"},
 	{"Memory","Basisz","Int","0","Bind","BasisBnd"},
 }
-BindCmd = {
-	{"Bind","SwapBnd","Int","0","Command","Commands"},
+BindIns = {
+	{"Bind","SwapBnd","Int","0","Instruct","Instructs"},
 	{"Bind","SwapBnd","Int","0","Bind","SwapBnd"},
 	{"Bind","SwapBnd","Int","0","BindLoc","BindLocs"},
 	{"Bind","SwapBnd","Int","0","Request","Requests"},
@@ -483,28 +483,28 @@ BindCmd = {
 	{"Bind","ChainBnd","Int","0","Format","NoneForm"},
 	{"Bind","DrawBnd","Int","0","Bind","DrawBnd"},
 }
-MicroCmd = {
-	{"Micro","MicroTest","Int","%(idx = 0; return idx)","Command","DerCmd"},
+MicroIns = {
+	{"Micro","MicroTest","Int","%(idx = 0; return idx)","Instruct","DerIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
 	{"Micro","MicroTest","Int","%(return idx)","BindLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","%(return idx)","Request","BothReq"},
 	{"Micro","MicroTest","Int","%(return idx)","Extent","MicroExt"},
 	{"Micro","MicroTest","Int","%(return idx)","Format","ConstForm"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","RDeeIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","DerIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","DrawBnd"},
 	{"Micro","MicroTest","Int","%(return idx)","BindLoc","MiddleLoc"},
-	{"Micro","MicroTest","Int","%(bidx = idx; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; for i,v in ipairs(dee) do if i~=#dee then idx = idx + 1; coroutine.yield(idx) else idx = idx + 1; return idx end end)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(bidx = idx; dee = {\"SwapBnd\",\"ChainBnd\",\"MatrixBnd\",\"ImageBnd\",\"IndexBnd\",\"BringupBnd\"}; for i,v in ipairs(dee) do if i~=#dee then idx = idx + 1; coroutine.yield(idx) else idx = idx + 1; return idx end end)","Instruct","RDeeIns"},
 	{"Micro","MicroTest","Int","%(for i,v in ipairs(dee) do if i~=#dee then bidx = bidx + 1; coroutine.yield(bidx) else bidx = bidx + 1; return bidx end end)","Bind","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","IRDeeIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","PipeBnd"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","DerCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","DerIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","ChainBnd"},
 	{"Micro","MicroTest","Int","%(return idx)","BindLoc","AfterLoc"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","RDeeCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","RDeeIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","SwapBnd"},
-	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Command","IRDeeCmd"},
+	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instruct","IRDeeIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Bind","PipeBnd"},
 }
 Bootstrap = {
@@ -782,8 +782,8 @@ Draw = {
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
 }
-Cmd = {
-	{"cmd","Command",{},""},
+Ins = {
+	{"ins","Instruct",{},""},
 	{"bnd","Bind",{},{}},
 	{"con","Con",{},{}},
 	{"req","Req",{},{}},
@@ -806,7 +806,7 @@ Center = {
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	-- TODO peek and poke
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
-	{"com","Cmd",{["mem"]={["Commandz"]=true}},"siz"},
+	{"com","Ins",{["mem"]={["Instructz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
