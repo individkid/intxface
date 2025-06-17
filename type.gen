@@ -33,7 +33,7 @@ Flow = {
 Memory = {
 	"Indexz", -- fetch buffer indices
 	"Bringupz", -- fetch buffer verticse
-	"Texturez", -- facet decorations
+	"Imagez", -- facet decorations
 	"Uniformz", -- references into arrays
 	"Matrixz", -- transformations
 	"Trianglez", -- indices of vertices of facet
@@ -130,8 +130,8 @@ Configure = {
 	"IndexSize",
 	"BringupBase",
 	"BringupSize",
-	"TextureBase",
-	"TextureSize",
+	"ImageBase",
+	"ImageSize",
 	"UniformBase",
 	"UniformSize",
 	"MatrixBase",
@@ -435,22 +435,22 @@ FragmentFile = {
 MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
-	{"Memory","Texturez","Int","0","Instr","IDerIns"},
-	{"Memory","Texturez","Int","0","Resrc","ImageRes"},
-	{"Memory","Texturez","Int","0","ResrcLoc","ResizeLoc"},
-	{"Memory","Texturez","Int","0","Request","SizeReq"},
-	{"Memory","Texturez","Int","0","Extent","ExtentExt"},
-	{"Memory","Texturez","Int","0","Format","HighForm"},
-	{"Memory","Texturez","Int","1","ResrcLoc","BeforeLoc"},
-	{"Memory","Texturez","Int","1","Request","BothReq"},
-	{"Memory","Texturez","Int","1","Extent","FormExt"},
-	{"Memory","Texturez","Int","1","Format","XferForm"},
-	{"Memory","Texturez","Int","2","ResrcLoc","MiddleLoc"},
-	{"Memory","Texturez","Int","2","Extent","ExtentExt"},
-	{"Memory","Texturez","Int","2","Format","HighForm"},
-	{"Memory","Texturez","Int","3","ResrcLoc","AfterLoc"},
-	{"Memory","Texturez","Int","3","Extent","FormExt"},
-	{"Memory","Texturez","Int","3","Format","RonlyForm"},
+	{"Memory","Imagez","Int","0","Instr","IDerIns"},
+	{"Memory","Imagez","Int","0","Resrc","ImageRes"},
+	{"Memory","Imagez","Int","0","ResrcLoc","ResizeLoc"},
+	{"Memory","Imagez","Int","0","Request","SizeReq"},
+	{"Memory","Imagez","Int","0","Extent","ExtentExt"},
+	{"Memory","Imagez","Int","0","Format","HighForm"},
+	{"Memory","Imagez","Int","1","ResrcLoc","BeforeLoc"},
+	{"Memory","Imagez","Int","1","Request","BothReq"},
+	{"Memory","Imagez","Int","1","Extent","FormExt"},
+	{"Memory","Imagez","Int","1","Format","XferForm"},
+	{"Memory","Imagez","Int","2","ResrcLoc","MiddleLoc"},
+	{"Memory","Imagez","Int","2","Extent","ExtentExt"},
+	{"Memory","Imagez","Int","2","Format","HighForm"},
+	{"Memory","Imagez","Int","3","ResrcLoc","AfterLoc"},
+	{"Memory","Imagez","Int","3","Extent","FormExt"},
+	{"Memory","Imagez","Int","3","Format","RonlyForm"},
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
@@ -745,7 +745,7 @@ Kernel = {
 Basis = {
 	{"mat","Old",{},{36}},
 }
-Texture = {
+Image = {
 	{"dat","Dat",{},{}},
 	{"wid","Int32",{},{}},
 	{"hei","Int32",{},{}},
@@ -797,14 +797,15 @@ Center = {
 	{"slf","Int",{},{}},
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"ver","Vertex",{["mem"]={["Bringupz"]=true}},"siz"},
-	{"tex","Texture",{["mem"]={["Texturez"]=true}},"siz"},
+	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	-- TODO peek and poke
+	{"eek","Image",{["mem"]={["Imagez"]=true}},"siz"},
+	{"oke","Image",{["mem"]={["Imagez"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"com","Ins",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},

@@ -1139,13 +1139,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Texturez): for (int k = 0; k < center->siz; k++) {
-            int trg[] = {center->idx+k,center->tex[k].wid,center->tex[k].hei,
-            center->idx+k,datxVoids(center->tex[k].dat),
-            center->idx+k,0,datxVoids(center->tex[k].dat),center->tex[k].wid,center->tex[k].hei,
-            center->idx+k,datxVoids(center->tex[k].dat)};
+        break; case (Imagez): for (int k = 0; k < center->siz; k++) {
+            int trg[] = {center->idx+k,center->img[k].wid,center->img[k].hei,
+            center->idx+k,datxVoids(center->img[k].dat),
+            center->idx+k,0,datxVoids(center->img[k].dat),center->img[k].wid,center->img[k].hei,
+            center->idx+k,datxVoids(center->img[k].dat)};
             int tiz = sizeof(trg)/sizeof(int); int tdx = 0;
-            push(center->mem,(void*)datxVoidz(0,center->tex[k].dat),trg,tiz,tdx,center,sub,fnc,log);}
+            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),trg,tiz,tdx,center,sub,fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,arg,aiz,adx,center,sub,fnc,log);
         break; case (Trianglez): push(center->mem,(void*)center->tri,arg,aiz,adx,center,sub,fnc,log);
@@ -1235,10 +1235,10 @@ void TestState::call() {
     memcpy(ind->ind,indices.data(),isiz);
     copy->push(ind,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
-    Center *tex = 0; allocCenter(&tex,1);
-    tex->mem = Texturez; tex->siz = 1; allocTexture(&tex->tex,tex->siz);
-    fmtxStbi(&tex->tex[0].dat,&tex->tex[0].wid,&tex->tex[0].hei,&tex->tex[0].cha,"texture.jpg");
-    copy->push(tex,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
+    Center *img = 0; allocCenter(&img,1);
+    img->mem = Imagez; img->siz = 1; allocImage(&img->img,img->siz);
+    fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
+    copy->push(img,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
@@ -1624,7 +1624,7 @@ struct ImageState : public BaseState {
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(ImageRes)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
-        if (*loc == MiddleLoc && (mem(loc) == Pokez || mem(loc) == Texturez)) {
+        if (*loc == MiddleLoc && (mem(loc) == Pokez || mem(loc) == Imagez)) {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
