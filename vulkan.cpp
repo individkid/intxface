@@ -552,12 +552,6 @@ struct BaseState {
         (elock ? wlock : rlock) -= 1;
         safe.post();
     }
-    Request tag(ResrcLoc loc) {
-        return ploc[loc].req.tag;
-    }
-    Resrc res() {
-        return item->buftyp();
-    }
     BaseState *res(Resrc typ);
     Lnk *lnk(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) {std::cerr << "invalid lnk loc!" << std::endl; exit(-1);}
@@ -570,48 +564,26 @@ struct BaseState {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) {std::cerr << "invalid bind loc!" << std::endl; exit(-1);}
         return ploc[loc];
     }
-    int msk() {
-        return mask;
+    Request tag(ResrcLoc loc) {
+        if ((int)loc < 0 || (int)loc >= ResrcLocs) {std::cerr << "invalid bind loc!" << std::endl; exit(-1);}
+        return ploc[loc].req.tag;
     }
-    static Loc &lst(Loc &loc) {
-        return loc.lst.ptr->get(loc.lst.loc);
+    Resrc res() {
+        return item->buftyp();
     }
-    static Loc &nxt(Loc &loc) {
-        return loc.nxt.ptr->get(loc.nxt.loc);
-    }
-    static Loc &lst(Loc &loc, ResrcLoc idx) {
-        return loc.lst.ptr->get(idx);
-    }
-    static Loc &nxt(Loc &loc, ResrcLoc idx) {
-        return loc.nxt.ptr->get(idx);
-    }
-    static VkSemaphore &sem(Loc &loc) {
-        return loc.syn.sem;
-    }
-    static VkFence &fen(Loc &loc) {
-        return loc.syn.fen;
-    }
-    static Request &tag(Loc &loc) {
-        return loc.req.tag;
-    }
-    static void *&ptr(Loc &loc) {
-        return loc.req.ptr;
-    }
-    static int &idx(Loc &loc) {
-        return loc.req.idx;
-    }
-    static int &siz(Loc &loc) {
-        return loc.req.siz;
-    }
-    static SizeState &max(Loc &loc) {
-        return loc.max;
-    }
-    static Extent &ext(Loc &loc) {
-        return loc.max.tag;
-    }
-    static Memory mem(Loc &loc) {
-        return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);
-    }
+    static Loc &lst(Loc &loc) {return loc.lst.ptr->get(loc.lst.loc);}
+    static Loc &nxt(Loc &loc) {return loc.nxt.ptr->get(loc.nxt.loc);}
+    static Loc &lst(Loc &loc, ResrcLoc idx) {return loc.lst.ptr->get(idx);}
+    static Loc &nxt(Loc &loc, ResrcLoc idx) {return loc.nxt.ptr->get(idx);}
+    static VkSemaphore &sem(Loc &loc) {return loc.syn.sem;}
+    static VkFence &fen(Loc &loc) {return loc.syn.fen;}
+    static Request &tag(Loc &loc) {return loc.req.tag;}
+    static void *&ptr(Loc &loc) {return loc.req.ptr;}
+    static int &idx(Loc &loc) {return loc.req.idx;}
+    static int &siz(Loc &loc) {return loc.req.siz;}
+    static SizeState &max(Loc &loc) {return loc.max;}
+    static Extent &ext(Loc &loc) {return loc.max.tag;}
+    static Memory mem(Loc &loc) {return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);}
     virtual void unsize(Loc &loc, SmartState log) {std::cerr << "unsize not base!" << std::endl; exit(-1);}
     virtual void resize(Loc &loc, SmartState log) {std::cerr << "resize not base!" << std::endl; exit(-1);}
     virtual VkFence setup(Loc &loc, SmartState log) {std::cerr << "setup not base!" << std::endl; exit(-1);}
@@ -1573,40 +1545,42 @@ struct ImageState : public BaseState {
     }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
+        if (*loc == ResizeLoc) {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
-        if (*loc == ResizeLoc) {
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_SAMPLED_BIT);
         if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-        textureSampler = ImageState::createTextureSampler(device,properties);}
+        if (res() == ImageRes) {
+        textureSampler = createTextureSampler(device,properties);}
+        if (res() == PierceRes) {
+        createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
-        if (*loc == ResizeLoc && res() == PierceRes) {
-        createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
-        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}
-        sem(loc) = createSemaphore(device);
-        fen(loc) = createFence(device);
+        sem(loc) = createSemaphore(device); // TODO as needed
+        fen(loc) = createFence(device); // TODO as needed
     }
     void unsize(Loc &loc, SmartState log) override {
         log << "unsize " << debug << std::endl;
         vkDestroyFence(device, fen(loc), nullptr);
         vkDestroySemaphore(device, sem(loc), nullptr);
-        if (*loc == ResizeLoc && res() == PierceRes) {
+        if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
+        if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
+        if (*loc == ResizeLoc) {
+        if (res() == PierceRes) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
-        if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
-        if (*loc == ResizeLoc) {
-        vkDestroySampler(device, textureSampler, nullptr);
+        if (res() == ImageRes) {
+        vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);}
@@ -1624,27 +1598,37 @@ struct ImageState : public BaseState {
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(ImageRes)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
-        if (*loc == MiddleLoc && (mem(loc) == Pokez || mem(loc) == Imagez)) {
-        int texWidth = max(loc).extent.width;
-        int texHeight = max(loc).extent.height;
+        if (*loc == MiddleLoc) {
+        if (max(get(ResizeLoc)).tag != ExtentExt) {std::cerr << "invalid resize tag!" << std::endl; exit(-1);}
+        int texWidth = max(get(ResizeLoc)).extent.width;
+        int texHeight = max(get(ResizeLoc)).extent.height;
         VkDeviceSize imageSize = texWidth * texHeight * 4;
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
+        if (mem(loc) == Imagez && (idx(loc) != 0 || siz(loc) != imageSize)) {std::cerr << "invalid image siz!" << std::endl; exit(-1);}
+        if (mem(loc) == Pokez && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid poke siz!" << std::endl; exit(-1);}
+        if (mem(loc) == Peekz && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid peek siz!" << std::endl; exit(-1);}
+        if (mem(loc) == Pokez || mem(loc) == Imagez) {
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        memcpy(data, ptr(loc), static_cast<size_t>(imageSize));
+        memcpy(data, ptr(loc), siz(loc));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), texWidth, texHeight, before, after, stagingBuffer, commandBuffer);}
-        if (*loc == MiddleLoc && mem(loc) == Peekz) {
-            // TODO copy texture to mapped
-        }
+        if (mem(loc) == Peekz) { // TODO
+        // vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        // copyImageTexture(device, graphics, memProperties, res(ImageRes)->getImage(), texWidth, texHeight, before, after, stagingBuffer, commandBuffer);
+        }}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << " " << *loc << "(" << ResizeLoc << "," << BeforeLoc << "," << MiddleLoc << "," << AfterLoc << ")" << std::endl;
-        if (*loc == MiddleLoc && mem(loc) == Peekz) {
-            // TODO copy from mapped to ptr(loc)
-        }
         if (*loc == MiddleLoc) {
+        if (mem(loc) == Peekz) { // TODO
+        int texWidth = max(get(ResizeLoc)).extent.width;
+        int texHeight = max(get(ResizeLoc)).extent.height;
+        VkDeviceSize imageSize = texWidth * texHeight * 4;
+        // vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        // memcpy(ptr(loc), data, siz(loc));
+        }
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
