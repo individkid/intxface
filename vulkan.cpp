@@ -1206,7 +1206,7 @@ void TestState::call() {
     //
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();/*unsafe if SwapRes is changing*/
     int parg[] = {/*req.base*/(int)ext.width,/*req.size*/(int)ext.height}; int pidx = 0;
-    // TODO copy->push(PierceRes, 0, parg, sizeof(parg)/sizeof(int), pidx, 0, 0, fnc, SmartState());
+    copy->push(PierceRes, 0, parg, sizeof(parg)/sizeof(int), pidx, 0, 0, fnc, SmartState());
     // TODO push Pokez to initialize cursor location in PierceRes without changing its size
     //
     int arg[] = {
@@ -1550,7 +1550,7 @@ struct ImageState : public BaseState {
         extent = max(loc).extent;
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_SAMPLED_BIT);
-        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)flags | (int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
         createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
         if (res() == ImageRes) {
@@ -2081,7 +2081,7 @@ VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkSurfaceKHR surface, 
     std::vector<VkSurfaceFormatKHR> formats(count);
     if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
     for (const auto& format : formats) {
-    if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    if (format.format == /*VK_FORMAT_B8G8R8A8_SRGB*/VK_FORMAT_R8G8B8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
     return format;}}
     return formats[0];
 }
