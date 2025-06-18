@@ -1200,12 +1200,12 @@ void TestState::call() {
     copy->push(ind,0,cfnc,SmartState());
     //
     Center *img = 0; allocCenter(&img,1);
-    img->mem = Imagez; img->siz = 1; allocImage(&img->img,img->siz);
+    img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     copy->push(img,0,cfnc,SmartState());
     //
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();/*unsafe if SwapRes is changing*/
-    int parg[] = {/*req.base*/(int)ext.width,/*req.size*/(int)ext.height}; int pidx = 0;
+    int parg[] = {/*pierce-index*/0,/*req.base*/(int)ext.width,/*req.size*/(int)ext.height}; int pidx = 0;
     copy->push(PierceRes, 0, parg, sizeof(parg)/sizeof(int), pidx, 0, 0, fnc, SmartState());
     // TODO push Pokez to initialize cursor location in PierceRes without changing its size
     //
