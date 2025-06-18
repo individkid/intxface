@@ -1202,6 +1202,9 @@ void TestState::call() {
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     copy->push(img,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
     //
+    // TODO push PierceRes to resize to same size as SwapRes
+    // TODO push Pokez to initialize cursor location in PierceRes without changing its size
+    //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
@@ -1227,6 +1230,8 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
     //
+    // TODO periodically push Peekz that fills a Dat in a center from PierceRes without changing its size
+    // TODO periodically push MicroDebug that writes to the entire PierceRes
     int idx = 0; copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{true,vulkanWake,true,vulkanWake,false},SmartState());}
 }
 
@@ -1603,9 +1608,10 @@ struct ImageState : public BaseState {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr(loc), siz(loc));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        int x = 0; int y = 0; int w = texWidth; int h = texHeight;
+        int x = 0; int y = 0; int w = texWidth; int h = texHeight; bool write = false;
         if (mem(loc) == Peekz || mem(loc) == Pokez) {x = (idx(loc)/4)%texWidth; y = (idx(loc)/4)/texWidth; w = siz(loc)/4; h = 1;}
-        copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
+        if (mem(loc) == Peekz) write = true;
+        copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, write);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
