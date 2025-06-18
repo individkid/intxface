@@ -134,8 +134,7 @@ struct LogicalState {
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
         imageFormat(surfaceFormat.format),
-        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat),
-            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
+        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL/*TODO stbi_load Peekz and Pokez require LINEAR*/, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
         renderPass(createRenderPass(device,imageFormat,depthFormat)) {
         std::cout << "LogicalState" << std::endl;
     }
@@ -641,9 +640,7 @@ struct BindState : public BaseState {
         return bind[i];
     }
     bool push(Resrc i, BaseState *buf, Con con, Req req, Rsp rsp, SmartState log) {
-        safe.wait();
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        safe.post();
         log << "push " << debug << " lock:" << lock << std::endl;
         if (!buf->push(psav[i],rsav[i],wsav[i],this,con,req,rsp,log)) return false;
         if (bind[i] == 0) lock += 1;
@@ -653,15 +650,11 @@ struct BindState : public BaseState {
         return true;
     }
     void push(Ins ins, SmartState log) {
-        safe.wait();
         if (!excl) {std::cerr << "invalid excl push!" << std::endl; exit(-1);}
-        safe.post();
         rsp<<ins;
     }
     void done(Resrc i, SmartState log) {
-        safe.wait();
         if (!excl) {std::cerr << "invalid excl done!" << std::endl; exit(-1);}
-        safe.post();
         if (psav[i] <= 0) {std::cerr << "invalid push sav!" << std::endl; exit(-1);}
         psav[i] -= 1;
         log << "done " << debug << " " << bind[i]->debug << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << " lock:" << lock << std::endl;
@@ -669,9 +662,7 @@ struct BindState : public BaseState {
         if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
     void done(Rsp rsp, SmartState log) {
-        safe.wait();
         if (!excl) {std::cerr << "invalid excl done!" << std::endl; exit(-1);}
-        safe.post();
         log << "done idx:" << rsp.idx << " siz:" << rsp.siz << "/" << this->rsp.size() << std::endl;
         if (rsp.siz > this->rsp.size()) {slog.clr(); std::cerr << "invalid rsp siz!" << std::endl; exit(-1);}
         for (int i = 0; i < rsp.siz; i++) {
@@ -681,8 +672,8 @@ struct BindState : public BaseState {
         break; case (WDeeIns): wdec(res,log);}}
     }
     void done(SmartState log) {
-        safe.wait();
         if (!excl || lock != 0) {std::cerr << "invalid push done!" << std::endl; exit(-1);}
+        safe.wait();
         excl = false;
         safe.post();
     }
@@ -1606,15 +1597,15 @@ struct ImageState : public BaseState {
         if (mem(loc) == Imagez && (idx(loc) != 0 || siz(loc) != imageSize)) {std::cerr << "invalid image siz!" << std::endl; exit(-1);}
         if (mem(loc) == Pokez && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid poke siz!" << std::endl; exit(-1);}
         if (mem(loc) == Peekz && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid peek siz!" << std::endl; exit(-1);}
-        if (mem(loc) == Pokez || mem(loc) == Imagez) {
+        if (mem(loc) == Peekz && idx(loc) + siz(loc) > texWidth  * 4) {std::cerr << "image peek wrap!" << std::endl; exit(-1);}
+        if (mem(loc) == Pokez && idx(loc) + siz(loc) > texWidth  * 4) {std::cerr << "image poke wrap!" << std::endl; exit(-1);}
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         memcpy(data, ptr(loc), siz(loc));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), 0/*TODO*/, 0/*TODO*/, texWidth/*TODO*/, texHeight/*TODO*/, before, after, stagingBuffer, commandBuffer, false);}
-        if (mem(loc) == Peekz) {
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), 0/*TODO*/, 0/*TODO*/, texWidth/*TODO*/, texHeight/*TODO*/, before, after, stagingBuffer, commandBuffer, true);}}
+        int x = 0; int y = 0; int w = texWidth; int h = texHeight;
+        if (mem(loc) == Peekz || mem(loc) == Pokez) {x = (idx(loc)/4)%texWidth; y = (idx(loc)/4)/texWidth; w = siz(loc)/4; h = 1;}
+        copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
