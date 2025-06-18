@@ -1177,11 +1177,13 @@ void TestState::call() {
     //
     int xsiz = 800; int ysiz = 600; int idx = 0;
     Fnc fnc = Fnc{false,0,true,vulkanForce,false};
+    Fnc wfnc = Fnc{false,0,true,vulkanForce,true};
+    Fnc cfnc = Fnc{false,vulkanPass,false,vulkanForce,false};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
+    copy->push(SwapRes,0,0,0,idx,0,0,wfnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(ChainRes,0,0,0,idx,0,0,fnc,SmartState());
@@ -1189,20 +1191,22 @@ void TestState::call() {
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    copy->push(vtx,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());    
+    copy->push(vtx,0,cfnc,SmartState());
     //
     Center *ind = 0; allocCenter(&ind,1);
     int isiz = indices.size()*sizeof(uint16_t);
     ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices.data(),isiz);
-    copy->push(ind,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
+    copy->push(ind,0,cfnc,SmartState());
     //
     Center *img = 0; allocCenter(&img,1);
     img->mem = Imagez; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
-    copy->push(img,0,Fnc{false,vulkanPass,false,vulkanForce,false},SmartState());
+    copy->push(img,0,cfnc,SmartState());
     //
-    // TODO push PierceRes to resize to same size as SwapRes
+    VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();/*unsafe if SwapRes is changing*/
+    int parg[] = {/*req.base*/(int)ext.width,/*req.size*/(int)ext.height}; int pidx = 0;
+    // TODO copy->push(PierceRes, 0, parg, sizeof(parg)/sizeof(int), pidx, 0, 0, fnc, SmartState());
     // TODO push Pokez to initialize cursor location in PierceRes without changing its size
     //
     int arg[] = {
