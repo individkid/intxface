@@ -114,6 +114,7 @@ Format = {
 	"HighForm", -- second base
 	"WholeForm", -- same size
 	"IndexForm", -- same as index
+	"CastForm", -- element count
 	"ConstForm", -- which builtin
 	"NoneForm", -- no arguments
 }
@@ -435,22 +436,22 @@ FragmentFile = {
 MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
-	{"Memory","Imagez","Int","0","Instr","IDerIns"},
-	{"Memory","Imagez","Int","0","Resrc","ImageRes"},
-	{"Memory","Imagez","Int","0","ResrcLoc","ResizeLoc"},
-	{"Memory","Imagez","Int","0","Request","SizeReq"},
-	{"Memory","Imagez","Int","0","Extent","ExtentExt"},
-	{"Memory","Imagez","Int","0","Format","HighForm"},
-	{"Memory","Imagez","Int","1","ResrcLoc","BeforeLoc"},
-	{"Memory","Imagez","Int","1","Request","BothReq"},
-	{"Memory","Imagez","Int","1","Extent","FormExt"},
-	{"Memory","Imagez","Int","1","Format","XferForm"},
-	{"Memory","Imagez","Int","2","ResrcLoc","MiddleLoc"},
-	{"Memory","Imagez","Int","2","Extent","ExtentExt"},
-	{"Memory","Imagez","Int","2","Format","HighForm"},
-	{"Memory","Imagez","Int","3","ResrcLoc","AfterLoc"},
-	{"Memory","Imagez","Int","3","Extent","FormExt"},
-	{"Memory","Imagez","Int","3","Format","RonlyForm"},
+	{"Memory","%(mem = {\"Imagez\",\"Pokez\",\"Peekz\"}; function image () for i,v in ipairs(mem) do if i ~= #mem then coroutine.yield(v) else return v end end end return image())","Int","0","Instr","IDerIns"},
+	{"Memory","%(return image())","Int","0","Resrc","%(res = {\"ImageRes\",\"PierceRes\",\"PierceRes\"}; for i,v in ipairs(res) do if i ~= #res then coroutine.yield(v) else return v end end)"},
+	{"Memory","%(return image())","Int","0","ResrcLoc","ResizeLoc"},
+	{"Memory","%(return image())","Int","0","Request","SizeReq"},
+	{"Memory","%(return image())","Int","0","Extent","ExtentExt"},
+	{"Memory","%(return image())","Int","0","Format","HighForm"},
+	{"Memory","%(return image())","Int","1","ResrcLoc","BeforeLoc"},
+	{"Memory","%(return image())","Int","1","Request","BothReq"},
+	{"Memory","%(return image())","Int","1","Extent","FormExt"},
+	{"Memory","%(return image())","Int","1","Format","XferForm"},
+	{"Memory","%(return image())","Int","2","ResrcLoc","MiddleLoc"},
+	{"Memory","%(return image())","Int","2","Extent","ExtentExt"},
+	{"Memory","%(return image())","Int","2","Format","%(frm = {\"HighForm\",\"CastForm\",\"CastForm\"}; for i,v in ipairs(frm) do if i ~= #frm then coroutine.yield(v) else return v end end)"},
+	{"Memory","%(return image())","Int","3","ResrcLoc","AfterLoc"},
+	{"Memory","%(return image())","Int","3","Extent","FormExt"},
+	{"Memory","%(return image())","Int","3","Format","RonlyForm"},
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
@@ -755,13 +756,15 @@ Basis = {
 }
 Image = {
 	{"dat","Dat",{},{}},
-	{"wid","Int32",{},{}},
-	{"hei","Int32",{},{}},
-	{"cha","Int32",{},{}},
+	{"wid","Int",{},{}},
+	{"hei","Int",{},{}},
+	{"cha","Int",{},{}},
 }
 Pierce = {
-	{"vec","Int32",{},{3}},
+	{"wid","Int32",{},{}},
+	{"hei","Int32",{},{}},
 	{"idx","Int32",{},{}},
+	{"val","Int32",{},{}},
 }
 Con = {
 	{"tag","Constant",{},{}},
@@ -812,8 +815,8 @@ Center = {
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"eek","Image",{["mem"]={["Imagez"]=true}},"siz"},
-	{"oke","Image",{["mem"]={["Imagez"]=true}},"siz"},
+	{"eek","Pierce",{["mem"]={["Imagez"]=true}},"siz"},
+	{"oke","Pierce",{["mem"]={["Imagez"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"com","Ins",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},

@@ -1093,29 +1093,31 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (res == Resrcs) {std::cerr << "cannot map memory!" << std::endl; exit(-1);}
         int mod = src(res)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
         int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
-        /*if (base>idx) {
-        ptr = (void*)((char*)ptr+base-idx);
-        siz -= base-idx; idx = 0;}
-        else {idx = idx-base;}
-        if (idx+siz>size) {siz = size-idx;}*/ // TODO for Configure Base and Size
+        // TODO allow for Configure Base and Size
         switch (center->mem) {default: {std::cerr << "cannot copy center!" << std::endl; exit(-1);}
         break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
         break; case (Imagez): for (int k = 0; k < center->siz; k++) {
-            int trg[] = {center->idx+k,center->img[k].wid,center->img[k].hei,
+            int marg[] = {center->idx+k,center->img[k].wid,center->img[k].hei,
             center->idx+k,datxVoids(center->img[k].dat),
             center->idx+k,0,datxVoids(center->img[k].dat),center->img[k].wid,center->img[k].hei,
             center->idx+k,datxVoids(center->img[k].dat)};
-            int tiz = sizeof(trg)/sizeof(int); int tdx = 0;
-            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),trg,tiz,tdx,center,sub,fnc,log);}
+            int msiz = sizeof(marg)/sizeof(int); int midx = 0;
+            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,log);
         break; case (Matrixz): push(center->mem,(void*)center->mat,arg,aiz,adx,center,sub,fnc,log);
         break; case (Trianglez): push(center->mem,(void*)center->tri,arg,aiz,adx,center,sub,fnc,log);
         break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
         break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Peekz): ; // TODO read from a PierceRes
-        break; case (Pokez): ; // TODO write to a PierceRes
+        break; case (Peekz): {
+            int marg[] = {/*PierceRes index*/center->idx,/*number of Pierce structs*/center->siz};
+            int msiz = sizeof(marg)/sizeof(int); int midx = 0;
+            push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,log);}
+        break; case (Pokez): {
+            int marg[] = {/*PierceRes index*/center->idx,/*number of Pierce structs*/center->siz};
+            int msiz = sizeof(marg)/sizeof(int); int midx = 0;
+            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}
         break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/res/drw)
         // TODO use Configure or Draw fields to decide between registered Fnc structs
@@ -1608,11 +1610,14 @@ struct ImageState : public BaseState {
         if (mem(loc) == Peekz && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid peek siz!" << std::endl; exit(-1);}
         if (mem(loc) == Peekz && idx(loc) + siz(loc) > texWidth  * 4) {std::cerr << "image peek wrap!" << std::endl; exit(-1);}
         if (mem(loc) == Pokez && idx(loc) + siz(loc) > texWidth  * 4) {std::cerr << "image poke wrap!" << std::endl; exit(-1);}
+        // TODO only memcpy here for Imagez and Pokez
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        // TODO for Pokez use siz(loc) as the number of Pierce to memcpy
         memcpy(data, ptr(loc), siz(loc));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         int x = 0; int y = 0; int w = texWidth; int h = texHeight; bool write = false;
+        // TODO copy from minimum to maximum of memcpy above (Imagez or Pokez) or below (Peekz)
         if (mem(loc) == Peekz || mem(loc) == Pokez) {x = (idx(loc)/4)%texWidth; y = (idx(loc)/4)/texWidth; w = siz(loc)/4; h = 1;}
         if (mem(loc) == Peekz) write = true;
         copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, write);}
@@ -1627,6 +1632,7 @@ struct ImageState : public BaseState {
         VkDeviceSize imageSize = texWidth * texHeight * 4;
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        // TODO use siz(loc) as the number of Pierce to memcpy
         memcpy(ptr(loc), data, siz(loc));}
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
