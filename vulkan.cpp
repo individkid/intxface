@@ -994,19 +994,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         req.tag = tag; req.ext = ext;
         switch (REQUEST(tag,ext,frm)) {default:
         {std::cerr << "invalid request triple!" << std::endl; slog.clr(); exit(-1);}
-        break; case (REQUEST(SizeReq,ExtentExt,HighForm)):
+        break; case (REQUEST(SizeReq,ExtentExt,HighFrm)):
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (REQUEST(BothReq,FormExt,XferForm)):
+        break; case (REQUEST(BothReq,FormExt,XferFrm)):
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        break; case (REQUEST(BothReq,ExtentExt,HighForm)):
+        break; case (REQUEST(BothReq,ExtentExt,HighFrm)):
         req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (REQUEST(BothReq,FormExt,RonlyForm)):
+        break; case (REQUEST(BothReq,FormExt,RonlyFrm)):
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break; case (REQUEST(BothReq,IntExt,WholeForm)):
+        break; case (REQUEST(BothReq,IntExt,WholeFrm)):
         req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
-        break; case (REQUEST(SizeReq,FalseExt,NoneForm)):
-        break; case (REQUEST(SizeReq,TrueExt,NoneForm)):
-        break; case (REQUEST(BothReq,MicroExt,ConstForm)):
+        break; case (REQUEST(SizeReq,FalseExt,NoneFrm)):
+        break; case (REQUEST(SizeReq,TrueExt,NoneFrm)):
+        break; case (REQUEST(BothReq,MicroExt,ConstFrm)):
         req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
         }
         return req;
@@ -1070,19 +1070,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return true;
     }
     void push(Memory typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {PDerIns,Resrcs,MiddleLoc,BothReq,IntExt,WholeForm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {PDerIns,Resrcs,MiddleLoc,BothReq,IntExt,WholeFrm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Resrc typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeForm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeFrm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Micro typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeForm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeFrm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
@@ -2500,8 +2500,8 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
         attributeDescription.location = j;
         switch (ResrcFormat__Resrc__Int__Format(res)(j)) {
         default: {std::cerr << "invalid vertex format!" << std::endl; exit(-1);}
-        case (VecForm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
-        case (UvecForm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
+        case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
+        case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
         attributeDescription.offset = ResrcOffset__Resrc__Int__Int(res)(j);
         attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());

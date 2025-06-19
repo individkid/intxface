@@ -100,23 +100,23 @@ Request = {
 	"SizeReq",
 }
 Format = {
-	"VecForm", -- VkFormat
-	"UvecForm", -- VkFormat
-	"OldForm", -- VkFormat
-	"Int32Form", -- VkFormat
-	"UndefForm", -- VkImageLayout
-	"XferForm", -- VkImageLayout
-	"RonlyForm", -- VkImageLayout
-	"RawForm", -- unmapped int
-	"BaseForm", -- base only
-	"RangeForm", -- base and size
-	"SizeForm", -- size from Dat
-	"HighForm", -- second base
-	"WholeForm", -- same size
-	"IndexForm", -- same as index
-	"CastForm", -- element count
-	"ConstForm", -- which builtin
-	"NoneForm", -- no arguments
+	"VecFrm", -- VkFormat
+	"UvecFrm", -- VkFormat
+	"OldFrm", -- VkFormat
+	"Int32Frm", -- VkFormat
+	"UndefFrm", -- VkImageLayout
+	"XferFrm", -- VkImageLayout
+	"RonlyFrm", -- VkImageLayout
+	"RawFrm", -- unmapped int
+	"BaseFrm", -- base only
+	"RangeFrm", -- base and size
+	"SizeFrm", -- size from Dat
+	"HighFrm", -- second base
+	"WholeFrm", -- same size
+	"IndexFrm", -- same as index
+	"CastFrm", -- element count
+	"ConstFrm", -- which builtin
+	"NoneFrm", -- no arguments
 }
 Instr = {
 	"DerIns",  -- advance before push to thread
@@ -406,20 +406,20 @@ ResrcOffset = {
 	{"Resrc","VertexRes","Int","2","Int","32"},
 }
 ResrcFormat = {
-	{"Resrc","VertexRes","Int","0","Format","VecForm"},
-	{"Resrc","VertexRes","Int","1","Format","VecForm"},
-	{"Resrc","VertexRes","Int","2","Format","UvecForm"},
+	{"Resrc","VertexRes","Int","0","Format","VecFrm"},
+	{"Resrc","VertexRes","Int","1","Format","VecFrm"},
+	{"Resrc","VertexRes","Int","2","Format","UvecFrm"},
 }
 ResrcElement = {
-	{"Resrc","VertexRes","Int","0","Format","OldForm"},
-	{"Resrc","VertexRes","Int","1","Format","OldForm"},
-	{"Resrc","VertexRes","Int","2","Format","Int32Form"},
+	{"Resrc","VertexRes","Int","0","Format","OldFrm"},
+	{"Resrc","VertexRes","Int","1","Format","OldFrm"},
+	{"Resrc","VertexRes","Int","2","Format","Int32Frm"},
 }
 FormatSize = {
-	{"Format","VecForm","Int","16"},
-	{"Format","UvecForm","Int","16"},
-	{"Format","OldForm","Int","4"},
-	{"Format","Int32Form","Int","4"},
+	{"Format","VecFrm","Int","16"},
+	{"Format","UvecFrm","Int","16"},
+	{"Format","OldFrm","Int","4"},
+	{"Format","Int32Frm","Int","4"},
 }
 VertexResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
@@ -441,17 +441,17 @@ MemoryIns = {
 	{"Memory","%(return image())","Int","0","ResrcLoc","ResizeLoc"},
 	{"Memory","%(return image())","Int","0","Request","SizeReq"},
 	{"Memory","%(return image())","Int","0","Extent","ExtentExt"},
-	{"Memory","%(return image())","Int","0","Format","HighForm"},
+	{"Memory","%(return image())","Int","0","Format","HighFrm"},
 	{"Memory","%(return image())","Int","1","ResrcLoc","BeforeLoc"},
 	{"Memory","%(return image())","Int","1","Request","BothReq"},
 	{"Memory","%(return image())","Int","1","Extent","FormExt"},
-	{"Memory","%(return image())","Int","1","Format","XferForm"},
+	{"Memory","%(return image())","Int","1","Format","XferFrm"},
 	{"Memory","%(return image())","Int","2","ResrcLoc","MiddleLoc"},
 	{"Memory","%(return image())","Int","2","Extent","ExtentExt"},
-	{"Memory","%(return image())","Int","2","Format","%(frm = {\"HighForm\",\"CastForm\",\"CastForm\"}; for i,v in ipairs(frm) do if i ~= #frm then coroutine.yield(v) else return v end end)"},
+	{"Memory","%(return image())","Int","2","Format","%(frm = {\"HighFrm\",\"CastFrm\",\"CastFrm\"}; for i,v in ipairs(frm) do if i ~= #frm then coroutine.yield(v) else return v end end)"},
 	{"Memory","%(return image())","Int","3","ResrcLoc","AfterLoc"},
 	{"Memory","%(return image())","Int","3","Extent","FormExt"},
-	{"Memory","%(return image())","Int","3","Format","RonlyForm"},
+	{"Memory","%(return image())","Int","3","Format","RonlyFrm"},
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
@@ -465,17 +465,17 @@ ResrcIns = {
 	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	{"Resrc","SwapRes","Int","0","Request","SizeReq"},
 	{"Resrc","SwapRes","Int","0","Extent","FalseExt"},
-	{"Resrc","SwapRes","Int","0","Format","NoneForm"},
+	{"Resrc","SwapRes","Int","0","Format","NoneFrm"},
 	{"Resrc","PipeRes","Int","0","Instr","IDerIns"},
 	{"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	{"Resrc","PipeRes","Int","0","Extent","MicroExt"},
-	{"Resrc","PipeRes","Int","0","Format","IndexForm"},
+	{"Resrc","PipeRes","Int","0","Format","IndexFrm"},
 	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
 	{"Resrc","ImageRes","Int","0","Instr","IDerIns"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
 	{"Resrc","ImageRes","Int","0","Extent","ExtentExt"},
-	{"Resrc","ImageRes","Int","0","Format","HighForm"},
+	{"Resrc","ImageRes","Int","0","Format","HighFrm"},
 	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
 	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
 	{"Resrc","TriangleRes","Int","0","Resrc","TriangleRes"},
@@ -485,10 +485,10 @@ ResrcIns = {
 	{"Resrc","PierceRes","Int","0","Instr","IDerIns"},
 	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
 	{"Resrc","PierceRes","Int","0","Extent","ExtentExt"},
-	{"Resrc","PierceRes","Int","0","Format","HighForm"},
+	{"Resrc","PierceRes","Int","0","Format","HighFrm"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
 	{"Resrc","ChainRes","Int","0","Extent","TrueExt"},
-	{"Resrc","ChainRes","Int","0","Format","NoneForm"},
+	{"Resrc","ChainRes","Int","0","Format","NoneFrm"},
 	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
 	{"Resrc","DrawRes","Int","0","Extent","MicroExt"},
 }
@@ -498,7 +498,7 @@ MicroIns = {
 	{"Micro","MicroTest","Int","%(return idx)","ResrcLoc","BeforeLoc"},
 	{"Micro","MicroTest","Int","%(return idx)","Request","BothReq"},
 	{"Micro","MicroTest","Int","%(return idx)","Extent","MicroExt"},
-	{"Micro","MicroTest","Int","%(return idx)","Format","ConstForm"},
+	{"Micro","MicroTest","Int","%(return idx)","Format","ConstFrm"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","RDeeIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Resrc","SwapRes"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","DerIns"},
