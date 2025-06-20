@@ -107,16 +107,17 @@ Format = {
 	"UndefFrm", -- VkImageLayout
 	"XferFrm", -- VkImageLayout
 	"RonlyFrm", -- VkImageLayout
-	"RawFrm", -- unmapped int
-	"BaseFrm", -- base only
+	"ExtentFrm", -- extent resize
 	"RangeFrm", -- base and size
 	"SizeFrm", -- size from Dat
 	"HighFrm", -- second base
 	"WholeFrm", -- same size
 	"IndexFrm", -- same as index
 	"CastFrm", -- element count
+	"MicroFrm", -- micro code
 	"ConstFrm", -- which builtin
-	"NoneFrm", -- no arguments
+	"FalseFrm", -- no arguments
+	"TrueFrm", -- always resize
 }
 Instr = {
 	"DerIns",  -- advance before push to thread
@@ -439,18 +440,12 @@ MemoryIns = {
 	{"Memory","%(mem = {\"Imagez\",\"Pokez\",\"Peekz\"}; function image () for i,v in ipairs(mem) do if i ~= #mem then coroutine.yield(v) else return v end end end return image())","Int","0","Instr","IDerIns"},
 	{"Memory","%(return image())","Int","0","Resrc","%(res = {\"ImageRes\",\"PierceRes\",\"PierceRes\"}; for i,v in ipairs(res) do if i ~= #res then coroutine.yield(v) else return v end end)"},
 	{"Memory","%(return image())","Int","0","ResrcLoc","ResizeLoc"},
-	{"Memory","%(return image())","Int","0","Request","SizeReq"},
-	{"Memory","%(return image())","Int","0","Extent","ExtentExt"},
-	{"Memory","%(return image())","Int","0","Format","HighFrm"},
+	{"Memory","%(return image())","Int","0","Format","ExtentFrm"},
 	{"Memory","%(return image())","Int","1","ResrcLoc","BeforeLoc"},
-	{"Memory","%(return image())","Int","1","Request","BothReq"},
-	{"Memory","%(return image())","Int","1","Extent","FormExt"},
 	{"Memory","%(return image())","Int","1","Format","XferFrm"},
 	{"Memory","%(return image())","Int","2","ResrcLoc","MiddleLoc"},
-	{"Memory","%(return image())","Int","2","Extent","ExtentExt"},
 	{"Memory","%(return image())","Int","2","Format","%(frm = {\"HighFrm\",\"CastFrm\",\"CastFrm\"}; for i,v in ipairs(frm) do if i ~= #frm then coroutine.yield(v) else return v end end)"},
 	{"Memory","%(return image())","Int","3","ResrcLoc","AfterLoc"},
-	{"Memory","%(return image())","Int","3","Extent","FormExt"},
 	{"Memory","%(return image())","Int","3","Format","RonlyFrm"},
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
@@ -463,19 +458,14 @@ ResrcIns = {
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
 	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
-	{"Resrc","SwapRes","Int","0","Request","SizeReq"},
-	{"Resrc","SwapRes","Int","0","Extent","FalseExt"},
-	{"Resrc","SwapRes","Int","0","Format","NoneFrm"},
+	{"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	{"Resrc","PipeRes","Int","0","Instr","IDerIns"},
-	{"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
-	{"Resrc","PipeRes","Int","0","Extent","MicroExt"},
 	{"Resrc","PipeRes","Int","0","Format","IndexFrm"},
 	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
 	{"Resrc","ImageRes","Int","0","Instr","IDerIns"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
-	{"Resrc","ImageRes","Int","0","Extent","ExtentExt"},
-	{"Resrc","ImageRes","Int","0","Format","HighFrm"},
+	{"Resrc","ImageRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
 	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
 	{"Resrc","TriangleRes","Int","0","Resrc","TriangleRes"},
@@ -484,21 +474,17 @@ ResrcIns = {
 	{"Resrc","BasisRes","Int","0","Resrc","BasisRes"},
 	{"Resrc","PierceRes","Int","0","Instr","IDerIns"},
 	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
-	{"Resrc","PierceRes","Int","0","Extent","ExtentExt"},
-	{"Resrc","PierceRes","Int","0","Format","HighFrm"},
+	{"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
-	{"Resrc","ChainRes","Int","0","Extent","TrueExt"},
-	{"Resrc","ChainRes","Int","0","Format","NoneFrm"},
+	{"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
-	{"Resrc","DrawRes","Int","0","Extent","MicroExt"},
+	{"Resrc","DrawRes","Int","0","Format","ConstFrm"},
 }
 MicroIns = {
 	{"Micro","MicroTest","Int","%(idx = 0; return idx)","Instr","DerIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Resrc","ChainRes"},
 	{"Micro","MicroTest","Int","%(return idx)","ResrcLoc","BeforeLoc"},
-	{"Micro","MicroTest","Int","%(return idx)","Request","BothReq"},
-	{"Micro","MicroTest","Int","%(return idx)","Extent","MicroExt"},
-	{"Micro","MicroTest","Int","%(return idx)","Format","ConstFrm"},
+	{"Micro","MicroTest","Int","%(return idx)","Format","MicroFrm"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","RDeeIns"},
 	{"Micro","MicroTest","Int","%(return idx)","Resrc","SwapRes"},
 	{"Micro","MicroTest","Int","%(idx = idx + 1; return idx)","Instr","DerIns"},

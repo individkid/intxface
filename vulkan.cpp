@@ -811,7 +811,7 @@ struct EnumState {
     Resrc key = Resrcs; StackState *val = 0;
 };
 struct Arg {
-    Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Request req = Requests; Extent ext = Extents; Format fmt = Formats;
+    Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Format fmt = Formats;
 };
 struct Fnc {
     bool pnow = false; void (*pass)(Center*,int) = 0;
@@ -987,27 +987,47 @@ struct CopyState : public ChangeState<Configure,Configures> {
         count += 1; rsp.siz += 1;}
         return rsp;
     }
-    #define REQUEST(A,B,C) (A+(B*(Requests+1))+(C*(Requests+1)*(Extents+1)))
-    Req request(Instr ins, Request tag, Extent ext, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+    Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
-        req.tag = tag; req.ext = ext;
-        switch (REQUEST(tag,ext,frm)) {default:
+        switch (frm) {default:
         {std::cerr << "invalid request triple!" << std::endl; slog.clr(); exit(-1);}
-        break; case (REQUEST(SizeReq,ExtentExt,HighFrm)):
-        req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (REQUEST(BothReq,FormExt,XferFrm)):
+        break; case (UndefFrm):
+        // TODO
+        break; case (XferFrm):
+        req.tag = BothReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        break; case (REQUEST(BothReq,ExtentExt,HighFrm)):
-        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (REQUEST(BothReq,FormExt,RonlyFrm)):
+        break; case (RonlyFrm):
+        req.tag = BothReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break; case (REQUEST(BothReq,IntExt,WholeFrm)):
+        break; case (ExtentFrm):
+        req.tag = SizeReq; req.ext = ExtentExt;
+        req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        break; case (RangeFrm):
+        // TODO
+        break; case (SizeFrm):
+        req.tag = SizeReq; req.ext = IntExt;
+        req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        break; case (HighFrm):
+        req.tag = BothReq; req.ext = ExtentExt;
+        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        break; case (WholeFrm):
+        req.tag = BothReq; req.ext = IntExt;
         req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
-        break; case (REQUEST(SizeReq,FalseExt,NoneFrm)):
-        break; case (REQUEST(SizeReq,TrueExt,NoneFrm)):
-        break; case (REQUEST(BothReq,MicroExt,ConstFrm)):
+        break; case (IndexFrm):
+        // TODO
+        break; case (CastFrm):
+        // TODO
+        break; case (MicroFrm):
+        req.tag = BothReq; req.ext = MicroExt;
         req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
+        break; case (ConstFrm):
+        req.tag = SizeReq; req.ext = MicroExt;
+        req.base = get(arg,siz,idx);
+        break; case (FalseFrm):
+        req.tag = SizeReq; req.ext = FalseExt;
+        break; case (TrueFrm):
+        req.tag = SizeReq; req.ext = TrueExt;
         }
         return req;
     }
@@ -1026,10 +1046,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (arg == inv) arg = sav; else sav = arg;
         return (val != inv);
     }
-    template <class Type, class Fnc> Ins command(Arg dot, Fnc fnc, Type typ, int sub, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type, class Fnc> Ins instruct(Arg dot, Fnc fnc, Type typ, int sub, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         int pre = (dot.ins == IDerIns || dot.ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot.ins,typ,dot.loc,log);
-        Req req = request(dot.ins,dot.req,dot.ext,dot.fmt,val,arg,siz,idx,log);
+        Req req = request(dot.ins,dot.fmt,val,arg,siz,idx,log);
         Rsp rsp = response(fnc,typ,sub,count,log);
         return Ins{dot.ins,dot.res,con,req,rsp,pre};
     }
@@ -1038,11 +1058,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (builtin(sav.ins,dot.ins,MemoryIns__Memory__Int__Instr,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.res,dot.res,MemoryIns__Memory__Int__Resrc,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,MemoryIns__Memory__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
-        if (builtin(sav.req,dot.req,MemoryIns__Memory__Int__Request,typ,sub,Requests,log)) done = false;
-        if (builtin(sav.ext,dot.ext,MemoryIns__Memory__Int__Extent,typ,sub,Extents,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,MemoryIns__Memory__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        ins = command(dot,MemoryIns__Memory__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
+        ins = instruct(dot,MemoryIns__Memory__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     bool push(Resrc typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Ins &ins, SmartState log) {
@@ -1050,11 +1068,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (builtin(sav.ins,dot.ins,ResrcIns__Resrc__Int__Instr,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.res,dot.res,ResrcIns__Resrc__Int__Resrc,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ResrcIns__Resrc__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
-        if (builtin(sav.req,dot.req,ResrcIns__Resrc__Int__Request,typ,sub,Requests,log)) done = false;
-        if (builtin(sav.ext,dot.ext,ResrcIns__Resrc__Int__Extent,typ,sub,Extents,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ResrcIns__Resrc__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        ins = command(dot,ResrcIns__Resrc__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
+        ins = instruct(dot,ResrcIns__Resrc__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     bool push(Micro typ, int sub, void *val, int *arg, int siz, int &idx, int &count, Arg &sav, Ins &ins, SmartState log) {
@@ -1062,27 +1078,25 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (builtin(sav.ins,dot.ins,MicroIns__Micro__Int__Instr,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.res,dot.res,MicroIns__Micro__Int__Resrc,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,MicroIns__Micro__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
-        if (builtin(sav.req,dot.req,MicroIns__Micro__Int__Request,typ,sub,Requests,log)) done = false;
-        if (builtin(sav.ext,dot.ext,MicroIns__Micro__Int__Extent,typ,sub,Extents,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,MicroIns__Micro__Int__Format,typ,sub,Formats,log)) done = false;
         if (done) return false;
-        ins = command(dot,MicroIns__Micro__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
+        ins = instruct(dot,MicroIns__Micro__Int__Instr,typ,sub,val,arg,siz,idx,count,log);
         return true;
     }
     void push(Memory typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {PDerIns,Resrcs,MiddleLoc,BothReq,IntExt,WholeFrm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {PDerIns,Resrcs,MiddleLoc,WholeFrm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Resrc typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeFrm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,RangeFrm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Micro typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,SizeReq,IntExt,RangeFrm};
+        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav = {DerIns,Resrcs,ResizeLoc,RangeFrm};
         for (int i = 0; push(typ,i,val,arg,siz,idx,count,sav,ins,log); i++) lst << ins;
         if (idx != siz) {std::cerr << "invalid get siz! " << idx << "/" << siz << std::endl; slog.clr(); exit(-1);}
         push(lst,fnc,ptr,sub,log);
