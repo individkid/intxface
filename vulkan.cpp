@@ -1558,6 +1558,28 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
+    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, bool &wr, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got) {
+        if (max(got).tag != ExtentExt) {std::cerr << "invalid resize tag!" << std::endl; exit(-1);}
+        tw = max(loc).extent.width;
+        th = max(loc).extent.height;
+        is = tw * th * 4;
+        pie = 0; x = 0; y = 0; w = tw; h = th; wr = false;
+        if (idx(loc) != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
+        if (mem(loc) == Pokez || mem(loc) == Peekz) {
+        pie = (Pierce*)ptr(loc); x = tw; y = th; w = 0; h = 0;
+        if (siz(loc) == 0) {x = 0; y = 0;}
+        for (int i = 0; i < siz(loc); i++) {
+        if (pie[i].wid < x) x = pie[i].wid;
+        if (pie[i].hei < y) y = pie[i].hei;
+        if (pie[i].wid > w) w = pie[i].wid;
+        if (pie[i].hei > h) h = pie[i].hei;}}
+        if (mem(loc) == Peekz) wr = true;
+        if (x > w || y > h) {std::cerr << "invalid image range!" << std::endl; exit(-1);}
+        if (x < 0 || x + w < 0 || x + w > tw) {std::cerr << "image image width!" << std::endl; exit(-1);}
+        if (y < 0 || y + h < 0 || y + h > th) {std::cerr << "image image height!" << std::endl; exit(-1);}
+        if (idx(loc) != 0) {std::cerr << "invalid image idx!" << std::endl; exit(-1);}
+        if (mem(loc) == Imagez && siz(loc) != is) {std::cerr << "invalid image siz!" << std::endl; exit(-1);}
+    }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << std::endl;
         if (*loc == ResizeLoc) {
@@ -1605,7 +1627,6 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=BeforeLoc?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        if (idx(loc) != 0) {std::cerr << "unsupported texture loc!" << std::endl; exit(-1);}
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
@@ -1614,26 +1635,13 @@ struct ImageState : public BaseState {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(ImageRes)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
-        if (max(get(ResizeLoc)).tag != ExtentExt) {std::cerr << "invalid resize tag!" << std::endl; exit(-1);}
-        int texWidth = max(get(ResizeLoc)).extent.width;
-        int texHeight = max(get(ResizeLoc)).extent.height;
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
+        Pierce *pie; int x, y, w, h, texWidth, texHeight; bool write; VkDeviceSize imageSize;
+        range(x,y,w,h,texWidth,texHeight,write,imageSize,pie,loc,get(ResizeLoc));
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        if (mem(loc) == Imagez && (idx(loc) != 0 || siz(loc) != imageSize)) {std::cerr << "invalid image siz!" << std::endl; exit(-1);}
-        if (mem(loc) == Pokez && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid poke siz!" << std::endl; exit(-1);}
-        if (mem(loc) == Peekz && (idx(loc) < 0 || siz(loc) < 0 || idx(loc) + siz(loc) > imageSize)) {std::cerr << "invalid peek siz!" << std::endl; exit(-1);}
-        if (mem(loc) == Peekz && idx(loc) + siz(loc) > texWidth  * 4) {std::cerr << "image peek wrap!" << std::endl; exit(-1);}
-        if (mem(loc) == Pokez && idx(loc) + siz(loc) > texWidth  * 4) {std::cerr << "image poke wrap!" << std::endl; exit(-1);}
-        // TODO only memcpy here for Imagez and Pokez
-        void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        // TODO for Pokez use siz(loc) as the number of Pierce to memcpy
-        memcpy(data, ptr(loc), siz(loc));
+        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
+        if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
+        if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val)); // TODO do Pierce::idx too
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        int x = 0; int y = 0; int w = texWidth; int h = texHeight; bool write = false;
-        // TODO copy from minimum to maximum of memcpy above (Imagez or Pokez) or below (Peekz)
-        if (mem(loc) == Peekz || mem(loc) == Pokez) {x = (idx(loc)/4)%texWidth; y = (idx(loc)/4)/texWidth; w = siz(loc)/4; h = 1;}
-        if (mem(loc) == Peekz) write = true;
         copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, write);}
         return fence;
     }
@@ -1641,13 +1649,10 @@ struct ImageState : public BaseState {
         log << "upset " << debug << " " << *loc << "(" << ResizeLoc << "," << BeforeLoc << "," << MiddleLoc << "," << AfterLoc << ")" << std::endl;
         if (*loc == MiddleLoc) {
         if (mem(loc) == Peekz) {
-        int texWidth = max(get(ResizeLoc)).extent.width;
-        int texHeight = max(get(ResizeLoc)).extent.height;
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
-        void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        // TODO use siz(loc) as the number of Pierce to memcpy
-        memcpy(ptr(loc), data, siz(loc));}
+        Pierce *pie; int x, y, w, h, texWidth, texHeight; bool write; VkDeviceSize imageSize;
+        range(x,y,w,h,texWidth,texHeight,write,imageSize,pie,loc,get(ResizeLoc));
+        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x + y*texWidth), sizeof(pie[i].val));} // TODO do Pierce::idx too
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
