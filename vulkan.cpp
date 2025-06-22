@@ -987,7 +987,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         count += 1; rsp.siz += 1;}
         return rsp;
     }
-    Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+    static Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default:
@@ -1040,7 +1040,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     static Con constant(Instr ins, Resrc typ, ResrcLoc loc, SmartState log) {
         return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
-    template <class Type> Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,dot[i].loc,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
