@@ -1097,7 +1097,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (center->mem) {default: exit(-1);
         break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Imagez): for (int k = 0; k < center->siz; k++) {
+        break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int marg[] = {center->idx+k,center->img[k].wid,center->img[k].hei,
             center->idx+k,datxVoids(center->img[k].dat),
             center->idx+k,datxVoids(center->img[k].dat),center->img[k].wid,center->img[k].hei,
@@ -1110,12 +1110,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
         break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Peekz): {
-            int marg[] = {/*PierceRes index*/center->idx,/*number of Pierce structs*/center->siz};
+        break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
+            VkExtent2D ext = src(SwapRes)->buffer()->getExtent();/*unsafe if SwapRes is changing*/
+            int wid = ext.width; int hei = ext.height;
+            int marg[] = {center->idx,wid,hei,
+            center->idx,wid*hei*4,
+            center->idx,center->siz,wid,hei,
+            center->idx,wid*hei*4};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,log);}
-        break; case (Pokez): {
-            int marg[] = {/*PierceRes index*/center->idx,/*number of Pierce structs*/center->siz};
+        break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
+            VkExtent2D ext = src(SwapRes)->buffer()->getExtent();/*unsafe if SwapRes is changing*/
+            int wid = ext.width; int hei = ext.height;
+            int marg[] = {center->idx,wid,hei,
+            center->idx,wid*hei*4,
+            center->idx,center->siz,wid,hei,
+            center->idx,wid*hei*4};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}
         break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
