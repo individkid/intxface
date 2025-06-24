@@ -993,7 +993,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (frm) {default:
         {slog.clr(); exit(-1);}
         break; case (UndefFrm):
-        // TODO
+        exit(-1); // TODO
         break; case (XferFrm):
         req.tag = BothReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -1003,21 +1003,20 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (RangeFrm):
-        // TODO
         break; case (SizeFrm):
         req.tag = SizeReq; req.ext = IntExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
         break; case (HighFrm):
         req.tag = BothReq; req.ext = ExtentExt;
-        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        req.ptr = val; req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
         break; case (WholeFrm):
         req.tag = BothReq; req.ext = IntExt;
         req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
         break; case (IndexFrm):
-        // TODO
+        req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx);
         break; case (CastFrm):
-        // TODO
+        req.tag = BothReq; req.ext = ExtentExt;
+        req.ptr = val; req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
         break; case (MicroFrm):
         req.tag = BothReq; req.ext = MicroExt;
         req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
@@ -1041,6 +1040,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+        log << "instruct " << dot[i].ins << " " << idx << std::endl;
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,dot[i].loc,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1064,7 +1064,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     static bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,RangeFrm};
+        if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
         if (builtin(sav.ins,dot.ins,ResrcIns__Resrc__Int__Instr,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.res,dot.res,ResrcIns__Resrc__Int__Resrc,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ResrcIns__Resrc__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
@@ -1073,7 +1073,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     static bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,RangeFrm};
+        if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
         if (builtin(sav.ins,dot.ins,MicroIns__Micro__Int__Instr,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.res,dot.res,MicroIns__Micro__Int__Resrc,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,MicroIns__Micro__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
@@ -1084,7 +1084,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         HeapState<Ins> lst; int count = 0; Ins ins; Arg sav; Arg tmp; HeapState<Arg> dot;
         for (int i = 0; iterate(typ,i,sav,tmp,log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) lst << instruct(dot,i,typ,val,arg,siz,idx,count,log);
-        if (idx != siz) {slog.clr(); exit(-1);}
+        if (idx != siz) exit(-1);
         push(lst,fnc,ptr,sub,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
@@ -1100,7 +1100,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Imagez): for (int k = 0; k < center->siz; k++) {
             int marg[] = {center->idx+k,center->img[k].wid,center->img[k].hei,
             center->idx+k,datxVoids(center->img[k].dat),
-            center->idx+k,0,datxVoids(center->img[k].dat),center->img[k].wid,center->img[k].hei,
+            center->idx+k,datxVoids(center->img[k].dat),center->img[k].wid,center->img[k].hei,
             center->idx+k,datxVoids(center->img[k].dat)};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,log);}
@@ -1563,7 +1563,6 @@ struct ImageState : public BaseState {
         if (x > w || y > h) exit(-1);
         if (x < 0 || x + w < 0 || x + w > tw) exit(-1);
         if (y < 0 || y + h < 0 || y + h > th) exit(-1);
-        if (idx(loc) != 0) exit(-1);
         if (mem(loc) == Imagez && siz(loc) != is) exit(-1);
     }
     void resize(Loc &loc, SmartState log) override {
@@ -1626,7 +1625,7 @@ struct ImageState : public BaseState {
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
-        if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val)); // TODO do Pierce::idx too
+        if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, res(ImageRes)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, write);}
         return fence;
@@ -1926,7 +1925,7 @@ void vulkanBack(Configure cfg, int sav, int val) {
 
 extern "C" {
 void whereIsExit(int val, void *arg) {
-
+    slog.clr();
     if (val < 0) *(int*)0=0;
 }
 };

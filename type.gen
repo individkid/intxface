@@ -104,20 +104,19 @@ Format = {
 	"UvecFrm", -- VkFormat
 	"OldFrm", -- VkFormat
 	"Int32Frm", -- VkFormat
-	"UndefFrm", -- VkImageLayout
-	"XferFrm", -- VkImageLayout
-	"RonlyFrm", -- VkImageLayout
-	"ExtentFrm", -- extent resize
-	"RangeFrm", -- base and size
-	"SizeFrm", -- size from Dat
-	"HighFrm", -- second base
-	"WholeFrm", -- same size
-	"IndexFrm", -- same as index
-	"CastFrm", -- element count
-	"MicroFrm", -- micro code
-	"ConstFrm", -- which builtin
-	"FalseFrm", -- no arguments
-	"TrueFrm", -- always resize
+	"UndefFrm", -- TODO like XferFrm and RonlyFrm
+	"XferFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst)
+	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst)
+	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
+	"SizeFrm", -- SizeReq IntExt base size
+	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
+	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(identifier of first in buffer) siz(buffer size) base(implied: same as idx) size(implied: same as siz)
+	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
+	"CastFrm", -- BothReq ExtentExt ptr(elements) siz(number of elements) base(width) size(height)
+	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
+	"ConstFrm", -- SizeReq MicroExt base(which shader set)
+	"FalseFrm", -- SizeReq FalseExt(always resize)
+	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
 Instr = {
 	"DerIns",  -- advance before push to thread
