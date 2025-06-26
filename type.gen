@@ -95,18 +95,23 @@ Extent = { -- resource initialization done on gpu thread
 	"FalseExt", -- resize every time for side effects
 }
 Request = {
-	"BothReq",
-	"LockReq",
-	"SizeReq",
+	"BothReq", -- call resize if changed, and call setup
+	"LockReq", -- call setup
+	"SizeReq", -- call resize if changed
+	"ExclReq", -- call resize and setup if changed
 }
 Format = {
 	"VecFrm", -- VkFormat
 	"UvecFrm", -- VkFormat
 	"OldFrm", -- VkFormat
 	"Int32Frm", -- VkFormat
-	"UndefFrm", -- TODO like XferFrm and RonlyFrm
-	"XferFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst)
-	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst)
+	"ExclFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
+	"TestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to dst)
+	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
+	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
+	"PierceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
+	"SourceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to src)
+	"ColorFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
 	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
 	"SizeFrm", -- SizeReq IntExt base size
 	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
@@ -441,7 +446,7 @@ MemoryIns = {
 	{"Memory","%(return image())","Int","0","ResrcLoc","ResizeLoc"},
 	{"Memory","%(return image())","Int","0","Format","ExtentFrm"},
 	{"Memory","%(return image())","Int","1","ResrcLoc","BeforeLoc"},
-	{"Memory","%(return image())","Int","1","Format","XferFrm"},
+	{"Memory","%(return image())","Int","1","Format","TestFrm"},
 	{"Memory","%(return image())","Int","2","ResrcLoc","MiddleLoc"},
 	{"Memory","%(return image())","Int","2","Format","%(frm = {\"HighFrm\",\"CastFrm\",\"CastFrm\"}; for i,v in ipairs(frm) do if i ~= #frm then coroutine.yield(v) else return v end end)"},
 	{"Memory","%(return image())","Int","3","ResrcLoc","AfterLoc"},
