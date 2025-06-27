@@ -677,7 +677,7 @@ struct BindState : public BaseState {
     void done(Rsp rsp, SmartState log) {
         if (!excl) exit(-1);
         log << "done idx:" << rsp.idx << " siz:" << rsp.siz << "/" << this->rsp.size() << std::endl;
-        if (rsp.siz > this->rsp.size()) {slog.clr(); exit(-1);}
+        if (rsp.siz > this->rsp.size()) exit(-1);
         for (int i = 0; i < rsp.siz; i++) {
         Resrc res = this->rsp[rsp.idx+i].res;
         switch (this->rsp[rsp.idx+i].ins) {default:
@@ -861,7 +861,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return stack[res];
     }
     static int get(int *arg, int siz, int &idx) {
-        if (idx >= siz) {slog.clr(); *(int*)0=0; exit(-1);}
+        if (idx >= siz) exit(-1);
         return arg[idx++];
     }
     static void *get(void *ptr, int siz) {
@@ -1004,8 +1004,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     static Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
-        switch (frm) {default:
-        {slog.clr(); exit(-1);}
+        switch (frm) {default: exit(-1);
         break; case (ImageFrm):
         req.tag = ExclReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1664,15 +1663,15 @@ struct ImageState : public BaseState {
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
-        log << "reform " << max(loc).src << max(loc).dst << std::endl; slog.clr();
+        log << "reform " << max(loc).src << max(loc).dst << std::endl;
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
-        log << "before " << max(loc).src << max(loc).dst << std::endl; slog.clr();
+        log << "before " << max(loc).src << max(loc).dst << std::endl;
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
-        log << "after " << max(loc).src << max(loc).dst << std::endl; slog.clr();
+        log << "after " << max(loc).src << max(loc).dst << std::endl;
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
@@ -1682,6 +1681,7 @@ struct ImageState : public BaseState {
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val));
+        log << "middle " << max(loc).src << max(loc).dst << std::endl;
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, write);}
         return fence;
@@ -1777,7 +1777,7 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << res(PipeRes)->debug << std::endl; slog.clr();
+        log << "resize " << debug << " " << res(PipeRes)->debug << std::endl;
         descriptorPool = res(PipeRes)->getDescriptorPool();
         descriptorLayout = res(PipeRes)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
@@ -2829,8 +2829,7 @@ VkDescriptorSet DrawState::createDescriptorSet(VkDevice device, VkDescriptorPool
     allocInfo.descriptorPool = descriptorPool;
     allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
     allocInfo.pSetLayouts = layouts.data();
-    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS)
-    {slog.clr(); exit(-1);}
+    if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS) exit(-1);
     return descriptorSet;
 }
 void DrawState::updateStorageDescriptor(VkDevice device, VkBuffer buffer,
