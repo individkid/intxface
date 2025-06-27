@@ -1556,6 +1556,7 @@ struct ImageState : public BaseState {
     VkImageView depthImageView;
     VkFramebuffer framebuffer;
     VkSampler textureSampler;
+    VkCommandBuffer commandResize;
     VkCommandBuffer commandBefore;
     VkCommandBuffer commandBuffer;
     VkCommandBuffer commandAfter;
@@ -1620,7 +1621,7 @@ struct ImageState : public BaseState {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
-        // TODO command buffer for ResizeLoc
+        if (*loc == ResizeLoc) commandResize = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
@@ -1634,7 +1635,7 @@ struct ImageState : public BaseState {
         if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
         if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
-        // TODO command buffer for ResizeLoc
+        if (*loc == ResizeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandResize);
         if (*loc == ResizeLoc) {
         if (res() == PierceRes) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -1654,7 +1655,9 @@ struct ImageState : public BaseState {
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
-        // TODO transition for ResizeLoc
+        if (*loc == ResizeLoc) {
+        vkResetCommandBuffer(commandResize, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, commandResize, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
@@ -2698,17 +2701,38 @@ void ImageState::transitionImageLayout(VkDevice device, VkQueue graphics, VkComm
     barrier.subresourceRange.layerCount = 1;
     VkPipelineStageFlags sourceStage;
     VkPipelineStageFlags destinationStage;
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else exit(-1);
+    switch (oldLayout) {default: exit(-1);
+    break; case (VK_IMAGE_LAYOUT_UNDEFINED):
+    barrier.srcAccessMask = 0;
+    sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    break; case (VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL):
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL):
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    break; case (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL):
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    break; case (VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL):
+    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;}
+    switch (newLayout) {default: exit(-1);
+    break; case (VK_IMAGE_LAYOUT_UNDEFINED):
+    barrier.dstAccessMask = 0;
+    destinationStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    break; case (VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL):
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL):
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    break; case (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL):
+    barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    break; case (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL):
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;}
     vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage,
         0, 0, nullptr, 0, nullptr, 1, &barrier);
     vkEndCommandBuffer(commandBuffer);

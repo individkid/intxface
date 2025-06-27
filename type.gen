@@ -106,7 +106,7 @@ Format = {
 	"OldFrm", -- VkFormat
 	"Int32Frm", -- VkFormat
 	"ExclFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
-	"TestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to dst)
+	"TestFrm", -- TODO remove BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to dst)
 	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
 	"PierceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
