@@ -1009,9 +1009,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (ExclFrm):
         req.tag = ExclReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break; case (TestFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         break; case (DestFrm):
         req.tag = BothReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;

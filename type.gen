@@ -106,7 +106,6 @@ Format = {
 	"OldFrm", -- VkFormat
 	"Int32Frm", -- VkFormat
 	"ExclFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
-	"TestFrm", -- TODO remove BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to dst)
 	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
 	"PierceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
@@ -441,18 +440,24 @@ FragmentFile = {
 MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
-	{"Memory","%(mem = {\"Imagez\",\"Pokez\",\"Peekz\"}; function image () for i,v in ipairs(mem) do if i ~= #mem then coroutine.yield(v) else return v end end end return image())","Int","0","Instr","IDerIns"},
-	{"Memory","%(return image())","Int","0","Resrc","%(res = {\"ImageRes\",\"PierceRes\",\"PierceRes\"}; for i,v in ipairs(res) do if i ~= #res then coroutine.yield(v) else return v end end)"},
-	{"Memory","%(return image())","Int","0","ResrcLoc","ResizeLoc"},
-	{"Memory","%(return image())","Int","0","Format","ExtentFrm"},
-	{"Memory","%(return image())","Int","1","ResrcLoc","ReformLoc"},
-	{"Memory","%(return image())","Int","1","Format","ExclFrm"},
-	{"Memory","%(return image())","Int","2","ResrcLoc","BeforeLoc"},
-	{"Memory","%(return image())","Int","2","Format","DestFrm"},
-	{"Memory","%(return image())","Int","3","ResrcLoc","MiddleLoc"},
-	{"Memory","%(return image())","Int","3","Format","%(frm = {\"HighFrm\",\"CastFrm\",\"CastFrm\"}; for i,v in ipairs(frm) do if i ~= #frm then coroutine.yield(v) else return v end end)"},
-	{"Memory","%(return image())","Int","4","ResrcLoc","AfterLoc"},
-	{"Memory","%(return image())","Int","4","Format","RonlyFrm"},
+	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
+	"ref={\"ExclFrm\",\"ExclFrm\",\"ExclFrm\"}"..
+	"bef={\"DestFrm\",\"DestFrm\",\"DestFrm\"}"..
+	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
+	"aft={\"RonlyFrm\",\"RonlyFrm\",\"RonlyFrm\"}"..
+	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #mem then coroutine.yield(v) else return v end end end;"..
+	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","IDerIns"},
+	{"Memory","%(return fnc(mem))","Int","0","Resrc","ImageRes"},
+	{"Memory","%(return fnc(mem))","Int","0","ResrcLoc","ResizeLoc"},
+	{"Memory","%(return fnc(mem))","Int","0","Format","ExtentFrm"},
+	{"Memory","%(return fnc(mem))","Int","1","ResrcLoc","ReformLoc"},
+	{"Memory","%(return fnc(mem))","Int","1","Format","%(return fnc(ref))"},
+	{"Memory","%(return fnc(mem))","Int","2","ResrcLoc","BeforeLoc"},
+	{"Memory","%(return fnc(mem))","Int","2","Format","%(return fnc(bef))"},
+	{"Memory","%(return fnc(mem))","Int","3","ResrcLoc","MiddleLoc"},
+	{"Memory","%(return fnc(mem))","Int","3","Format","%(return fnc(mid))"},
+	{"Memory","%(return fnc(mem))","Int","4","ResrcLoc","AfterLoc"},
+	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(aft))"},
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
