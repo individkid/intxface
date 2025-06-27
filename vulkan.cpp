@@ -1006,6 +1006,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default:
         {slog.clr(); exit(-1);}
+        // ImageFrm undefined to readonly
+        // WonlyFrm readonly to dst
+        // RonlyFrm dst to readonly
+        // PierceFrm undefined to color
+        // PeekFrm color to src
+        // SourceFrm src to color
+        // PokeFrm color to dst
+        // DestFrm dst to color
         break; case (ImageFrm):
         req.tag = ExclReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1024,6 +1032,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (SourceFrm):
         req.tag = BothReq; req.ext = FormExt;
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        break; case (PokeFrm):
+        req.tag = BothReq; req.ext = FormExt;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break; case (DestFrm):
+        req.tag = BothReq; req.ext = FormExt;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
