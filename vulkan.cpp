@@ -1069,7 +1069,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        log << "instruct " << dot[i].ins << " " << dot[i].fmt << " " << idx << std::endl;
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,dot[i].loc,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1148,6 +1147,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int tot = wid*hei*4; int marg[] = {
             idx,wid,hei,
             idx,tot,
+            idx,tot,
             idx,siz,wid,hei,
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
@@ -1157,6 +1157,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
             idx,wid,hei,
+            idx,tot,
             idx,tot,
             idx,siz,wid,hei,
             idx,tot};
@@ -1250,11 +1251,11 @@ void TestState::call() {
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     copy->push(img,0,cfnc,SmartState());
     //
-    /*VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
+    VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
     Center *pie = 0; allocCenter(&pie,1);
     pie->mem = Pokez; pie->idx = 0; pie->siz = 1; allocPierce(&pie->oke,pie->siz);
     pie->oke[0].wid = ext.width/2; pie->oke[0].hei = ext.height/2; pie->oke[0].val = 0x600dbeef;
-    copy->push(pie,0,cfnc,SmartState());*/
+    copy->push(pie,0,cfnc,SmartState());
     //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,

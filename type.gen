@@ -443,13 +443,14 @@ MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
+	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
 	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
 	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
 	"aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #mem then coroutine.yield(v) else return v end end end;"..
 	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","IDerIns"},
-	{"Memory","%(return fnc(mem))","Int","0","Resrc","ImageRes"},
+	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
 	{"Memory","%(return fnc(mem))","Int","0","ResrcLoc","ResizeLoc"},
 	{"Memory","%(return fnc(mem))","Int","0","Format","ExtentFrm"},
 	{"Memory","%(return fnc(mem))","Int","1","ResrcLoc","ReformLoc"},
