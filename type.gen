@@ -105,12 +105,14 @@ Format = {
 	"UvecFrm", -- VkFormat
 	"OldFrm", -- VkFormat
 	"Int32Frm", -- VkFormat
-	"ExclFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
-	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
+	"ImageFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
+	"WonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
-	"PierceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
-	"SourceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to src)
-	"ColorFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
+	"PierceFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
+	"PeekFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to src)
+	"SourceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
+	"PokeFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to dst)
+	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to color)
 	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
 	"SizeFrm", -- SizeReq IntExt base size
 	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
@@ -441,10 +443,10 @@ MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
-	"ref={\"ExclFrm\",\"ExclFrm\",\"ExclFrm\"}"..
-	"bef={\"DestFrm\",\"DestFrm\",\"DestFrm\"}"..
+	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
+	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
 	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
-	"aft={\"RonlyFrm\",\"RonlyFrm\",\"RonlyFrm\"}"..
+	"aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #mem then coroutine.yield(v) else return v end end end;"..
 	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","IDerIns"},
 	{"Memory","%(return fnc(mem))","Int","0","Resrc","ImageRes"},
