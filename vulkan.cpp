@@ -529,7 +529,7 @@ struct BaseState {
     VkFence basexor(ResrcLoc loc, SmartState log) {
         // resize and maybe setup
         safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != BothReq) exit(-1);
+        if (plock <= 0 || ploc[loc].req.tag != ExclReq) exit(-1);
         safe.post();
         if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
         return setup(ploc[loc],log);        
@@ -1067,7 +1067,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        log << "instruct " << dot[i].ins << " " << idx << std::endl;
+        log << "instruct " << dot[i].ins << " " << dot[i].fmt << " " << idx << std::endl;
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,dot[i].loc,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1125,10 +1125,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
-            int marg[] = {center->idx+k,center->img[k].wid,center->img[k].hei,
-            center->idx+k,datxVoids(center->img[k].dat),
-            center->idx+k,datxVoids(center->img[k].dat),center->img[k].wid,center->img[k].hei,
-            center->idx+k,datxVoids(center->img[k].dat)};
+            int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
+            int tot = datxVoids(center->img[k].dat); int marg[] = {
+            idx,wid,hei,
+            idx,tot,
+            idx,tot,
+            idx,tot,wid,hei,
+            idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,log);}
         break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,log);
@@ -1139,20 +1142,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
-            int wid = ext.width; int hei = ext.height; int tot = wid*hei*4; int marg[] = {
-            center->idx,wid,hei,
-            center->idx,tot,
-            center->idx,center->siz,wid,hei,
-            center->idx,tot};
+            int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
+            int tot = wid*hei*4; int marg[] = {
+            idx,wid,hei,
+            idx,tot,
+            idx,siz,wid,hei,
+            idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
-            int wid = ext.width; int hei = ext.height; int tot = wid*hei*4; int marg[] = {
-            center->idx,wid,hei,
-            center->idx,tot,
-            center->idx,center->siz,wid,hei,
-            center->idx,tot};
+            int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
+            int tot = wid*hei*4; int marg[] = {
+            idx,wid,hei,
+            idx,tot,
+            idx,siz,wid,hei,
+            idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}
         break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
@@ -1556,7 +1561,7 @@ struct ImageState : public BaseState {
     VkImageView depthImageView;
     VkFramebuffer framebuffer;
     VkSampler textureSampler;
-    VkCommandBuffer commandResize;
+    VkCommandBuffer commandReform;
     VkCommandBuffer commandBefore;
     VkCommandBuffer commandBuffer;
     VkCommandBuffer commandAfter;
@@ -1621,7 +1626,7 @@ struct ImageState : public BaseState {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
-        if (*loc == ResizeLoc) commandResize = createCommandBuffer(device,commandPool); 
+        if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
@@ -1635,7 +1640,7 @@ struct ImageState : public BaseState {
         if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
         if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
-        if (*loc == ResizeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandResize);
+        if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
         if (*loc == ResizeLoc) {
         if (res() == PierceRes) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -1651,17 +1656,20 @@ struct ImageState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
-        VkSemaphore before = (*loc!=BeforeLoc?sem(lst(loc)):VK_NULL_HANDLE); // TODO if ResizeLoc check nsk() for whether there is a before
+        VkSemaphore before = (*loc!=ReformLoc?sem(lst(loc)):VK_NULL_HANDLE); // TODO if ReformLoc check nsk() for whether there is a before
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
-        if (*loc == ResizeLoc) {
-        vkResetCommandBuffer(commandResize, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandResize, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
+        if (*loc == ReformLoc) {
+        log << "reform " << max(loc).src << max(loc).dst << std::endl; slog.clr();
+        vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
+        log << "before " << max(loc).src << max(loc).dst << std::endl; slog.clr();
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
+        log << "after " << max(loc).src << max(loc).dst << std::endl; slog.clr();
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
@@ -2714,7 +2722,7 @@ void ImageState::transitionImageLayout(VkDevice device, VkQueue graphics, VkComm
     break; case (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL):
     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    break; case (VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL):
+    break; case (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL):
     barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
     sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;}
     switch (newLayout) {default: exit(-1);
