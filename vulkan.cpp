@@ -1263,8 +1263,8 @@ void TestState::call() {
     //
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 0xbaadbeef;
-    copy->push(eek,0,wfnc,SmartState("peek"));
+    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 0xdeadbeef;
+    copy->push(eek,0,wfnc,SmartState());
     // TODO use pass function that checks its 600d
     //
     int arg[] = {
@@ -1688,7 +1688,7 @@ struct ImageState : public BaseState {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
         createBuffer(device, physical, imageSize, (mem(loc) == Peekz ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
+        void* data; if (mem(loc) == Imagez || mem(loc) == Pokez) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val));
         log << "middle " << max(loc) << std::endl;
