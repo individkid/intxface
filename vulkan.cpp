@@ -581,8 +581,8 @@ struct BaseState {
         return ploc[loc].req.tag;
     }
     Resrc res() {return item->buftyp();}
-    int msk() {return mask;}
-    int nsk() {return nask;}
+    bool msk(ResrcLoc loc) {return ((mask&(1<<loc)) != 0);}
+    bool nsk(ResrcLoc loc) {return ((nask&(1<<loc)) != 0);}
     static Loc &lst(Loc &loc) {return loc.lst.ptr->get(loc.lst.loc);}
     static Loc &nxt(Loc &loc) {return loc.nxt.ptr->get(loc.nxt.loc);}
     static Loc &lst(Loc &loc, ResrcLoc idx) {return loc.lst.ptr->get(idx);}
@@ -1605,12 +1605,12 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, bool &wr, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got) {
+    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got) {
         if (max(got).tag != ExtentExt) exit(-1);
         tw = max(loc).extent.width;
         th = max(loc).extent.height;
         is = tw * th * 4;
-        pie = 0; x = 0; y = 0; w = tw; h = th; wr = false;
+        pie = 0; x = 0; y = 0; w = tw; h = th;
         if (idx(loc) != 0) exit(-1);
         if (mem(loc) == Pokez || mem(loc) == Peekz) {
         pie = (Pierce*)ptr(loc); x = tw; y = th; w = 0; h = 0;
@@ -1621,7 +1621,6 @@ struct ImageState : public BaseState {
         if (pie[i].wid > w) w = pie[i].wid+pie[i].wid;
         if (pie[i].hei > h) h = pie[i].hei+pie[i].hei;}
         w = w-x; h = h-y;}
-        if (mem(loc) == Peekz) wr = true;
         if (x < 0 || w < 0 || x + w > tw) exit(-1);
         if (y < 0 || h < 0 || y + h > th) exit(-1);
         if (mem(loc) == Imagez && siz(loc) != is) exit(-1);
@@ -1652,8 +1651,8 @@ struct ImageState : public BaseState {
     }
     void unsize(Loc &loc, SmartState log) override {
         log << "unsize " << debug << " " << *loc << std::endl;
-        vkDestroyFence(device, fen(loc), nullptr);
-        vkDestroySemaphore(device, sem(loc), nullptr);
+        vkDestroyFence(device, fen(loc), nullptr); // TODO as needed
+        vkDestroySemaphore(device, sem(loc), nullptr); // TODO as needed
         if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
         if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
@@ -1673,7 +1672,7 @@ struct ImageState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << " " << *loc << std::endl;
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
-        VkSemaphore before = (*loc!=ReformLoc?sem(lst(loc)):VK_NULL_HANDLE); // TODO if ReformLoc check nsk() for whether there is a before
+        VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
@@ -1690,23 +1689,23 @@ struct ImageState : public BaseState {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
-        Pierce *pie; int x, y, w, h, texWidth, texHeight; bool write; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,write,imageSize,pie,loc,get(ResizeLoc));
-        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
+        Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
+        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
+        createBuffer(device, physical, imageSize, (mem(loc) == Peekz ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val));
         log << "middle " << max(loc).src << max(loc).dst << std::endl;
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, write);}
+        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << " " << *loc << "(" << ResizeLoc << "," << ReformLoc << "," << BeforeLoc << "," << MiddleLoc << "," << AfterLoc << ")" << std::endl;
         if (*loc == MiddleLoc) {
         if (mem(loc) == Peekz) {
-        Pierce *pie; int x, y, w, h, texWidth, texHeight; bool write; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,write,imageSize,pie,loc,get(ResizeLoc));
+        Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
+        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x + y*texWidth), sizeof(pie[i].val));} // TODO do Pierce::idx too
         vkUnmapMemory(device, stagingBufferMemory);
