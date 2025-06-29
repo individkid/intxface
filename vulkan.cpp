@@ -832,8 +832,8 @@ struct Arg {
     Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Format fmt = Formats;
 };
 struct Fnc {
-    bool pnow = false; void (*pass)(Center*,int) = 0;
-    bool fnow = false; void (*fail)(Center*,int) = 0;
+    void (*pnow)(Center*,int) = 0; void (*pass)(Center*,int) = 0;
+    void (*fnow)(Center*,int) = 0; void (*fail)(Center*,int) = 0;
     bool goon = false;
 };
 void vulkanForce(Center *ptr, int sub);
@@ -963,8 +963,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeIns): case(WDeeIns): case(IRDeeIns):
             dst(res) = 0;}}
         // notify pass
-        if (fnc.pnow && fnc.pass) fnc.pass(ptr,sub);
-        else if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
+        if (fnc.pnow) fnc.pnow(ptr,sub);
+        if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
         if (bind) stack[BindRes]->advance();
         log << "copy pass" << std::endl; slog.clr();
         } else {
@@ -989,8 +989,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(RDeeIns): case(WDeeIns): case(IRDeeIns):
             dst(res) = 0;}}
         // notify fail
-        if (fnc.fnow && fnc.fail) fnc.fail(ptr,sub);
-        else if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
+        if (fnc.fnow) fnc.fnow(ptr,sub);
+        if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon) {goon = true; log << "goon" << std::endl; slog.clr();}
         }}
     }
@@ -1174,11 +1174,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/res/drw)
         // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(ins,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
+        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(ins,Fnc{true,planePass,true,planeFail,false},center,sub,log);}
+        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});}
@@ -1231,9 +1231,9 @@ void TestState::call() {
     };
     //
     int xsiz = 800; int ysiz = 600; int idx = 0;
-    Fnc fnc = Fnc{false,0,true,vulkanForce,false};
-    Fnc wfnc = Fnc{false,vulkanPass,false,0,true};
-    Fnc cfnc = Fnc{false,vulkanPass,true,vulkanForce,false};
+    Fnc fnc = Fnc{0,0,0,vulkanForce,false};
+    Fnc wfnc = Fnc{0,vulkanPass,0,0,true};
+    Fnc cfnc = Fnc{0,vulkanPass,vulkanForce,0,false};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
@@ -1294,11 +1294,11 @@ void TestState::call() {
     memcpy(&mat->mat[1],&view,sizeof(Matrix));
     memcpy(&mat->mat[2],&proj,sizeof(Matrix));
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
-    copy->push(mat,0,Fnc{false,vulkanPass,false,vulkanPass,false},mlog);
+    copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
     // TODO periodically push Peekz that fills a Dat in a center from PierceRes without changing its size
     // TODO periodically push MicroDebug that writes to the entire PierceRes
-    int idx = 0; copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{true,vulkanWake,true,vulkanWake,false},SmartState());}
+    int idx = 0; copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
 }
 
 struct ForkState : public DoneState {
@@ -1956,7 +1956,7 @@ void vulkanForce(Center *ptr, int sub) {
 }
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide between registered Fnc structs
-    mptr->copyState.push(ptr,sub,Fnc{false,planePass,false,planeFail,false},SmartState());
+    mptr->copyState.push(ptr,sub,Fnc{0,planePass,0,planeFail,false},SmartState());
 }
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
