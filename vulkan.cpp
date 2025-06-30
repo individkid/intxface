@@ -816,6 +816,9 @@ struct ThreadState : public DoneState {
         wake.wake();
     }
     void heap() override {}
+    void noop() override {
+        wake.wake();
+    }
 };
 
 extern "C" {
@@ -1203,8 +1206,12 @@ struct TestState : public DoneState {
         wake.wake();
     }
     void heap() override {}
+    void noop() override {
+        wake.wake();
+    }
     static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
 };
+void vulkanCheck(Center *ptr, int sub);
 void vulkanWake(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
@@ -1228,8 +1235,8 @@ void TestState::call() {
     //
     int xsiz = 800; int ysiz = 600; int idx = 0;
     Fnc fnc = Fnc{0,0,0,vulkanForce,false};
-    Fnc wfnc = Fnc{0,vulkanPass,0,0,true};
     Fnc cfnc = Fnc{0,vulkanPass,vulkanForce,0,false};
+    Fnc pfnc = Fnc{0,vulkanCheck,0,0,true};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
@@ -1264,8 +1271,7 @@ void TestState::call() {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 0xdeadbeef;
-    copy->push(eek,0,wfnc,SmartState());
-    // TODO use pass function that checks its 600d
+    copy->push(eek,0,pfnc,SmartState());
     //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
@@ -1306,6 +1312,7 @@ struct ForkState : public DoneState {
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
     void heap() override {delete this;}
+    void noop() override {}
 };
 
 struct SwapState : public BaseState {
@@ -1418,10 +1425,8 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    void resize(Loc &loc, SmartState log) override {
-    }
-    void unsize(Loc &loc, SmartState log) override {
-    }
+    void resize(Loc &loc, SmartState log) override {}
+    void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         return VK_NULL_HANDLE; // return null fence for no wait
@@ -1703,7 +1708,7 @@ struct ImageState : public BaseState {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x + y*texWidth), sizeof(pie[i].val));} // TODO do Pierce::idx too
+        for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x + y*texWidth), sizeof(pie[i].val));}
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
@@ -1938,8 +1943,14 @@ MainState *mptr = 0;
 
 // TODO define glfw callbacks
 
+void vulkanCheck(Center *ptr, int sub) {
+    if (ptr->mem != Peekz) exit(-1);
+    for (int i = 0; i < ptr->siz; i++)
+    std::cout << "check:0x" << std::hex << ptr->eek[i].val << std::dec << std::endl;
+    freeCenter(ptr); allocCenter(&ptr,0);
+}
 void vulkanWake(Center *ptr, int sub) {
-    mptr->testState.wake.wait();
+    mptr->testState.noop();
 }
 void vulkanWait(Center *ptr, int sub) {
     glfwWaitEventsTimeout(0.001); // TODO move to WindowState
@@ -1969,44 +1980,34 @@ int vulkanJnfo(Configure cfg, int val, yftype fnc) {
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.knfo(cfg,val,fnc);
 }
-std::vector<const char *> cfg;
+HeapState<const char *> cfg;
 const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
 void vulkanBack(Configure cfg, int sav, int val) {
-    if (cfg == RegisterOpen && (val & (1<<TestThd)) && !(sav & (1<<TestThd)))
-    mptr->callState.push(&mptr->testState);
-    if (cfg == RegisterOpen && !(val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    mptr->callState.stop(&mptr->testState);
-    if (cfg == RegisterOpen && (val & (1<<TestThd)) && (sav & (1<<TestThd)))
-    mptr->testState.wake.wake();
-    if (cfg == RegisterOpen && (val & (1<<FenceThd)) && !(sav & (1<<FenceThd)))
-    mptr->callState.push(&mptr->threadState);
-    if (cfg == RegisterOpen && !(val & (1<<FenceThd)) && (sav & (1<<FenceThd)))
-    mptr->callState.stop(&mptr->threadState);
+    if (cfg == RegisterOpen) mptr->callState.back(sav,val);
 }
-
-extern "C" {
 void whereIsExit(int val, void *arg) {
-   
     if (val < 0) *(int*)0=0;
 }
-};
 
 int main(int argc, const char **argv) {
     on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg
-    for (int i = 1; i < argc; i++) cfg.push_back(argv[i]);
+    for (int i = 1; i < argc; i++) cfg << argv[i];
     // TODO pass parsed arguments to main
     MainState main;
     mptr = &main;
     main.copyState.call(RegisterOpen,vulkanBack);
+    main.callState.back(&main.testState,TestThd);
+    main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     // TODO move glfw functions to WindowState
-    while (!glfwWindowShouldClose(main.windowState.window) && main.copyState.read(RegisterOpen) != 0) {
-    glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
-    planeLoop();}
+    while (!glfwWindowShouldClose(main.windowState.window)) {
+    planeLoop();
+    if (main.copyState.read(RegisterOpen) == 0) break;
+    glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);}
     planeDone();
     return 0;
 }

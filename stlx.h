@@ -177,12 +177,15 @@ struct DoneState {
     virtual void call() = 0;
     virtual void done() = 0;
     virtual void heap() = 0;
+    virtual void noop() = 0;
 };
 struct CallState {
     // TODO use queues to start and stop in order
     std::set<DoneState*> todo;
     std::deque<DoneState*> doto;
     std::deque<bool> fall;
+    std::deque<DoneState*> done;
+    std::deque<int> mask;
     bool lock;
     SafeState safe;
     CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
@@ -229,6 +232,16 @@ struct CallState {
         call->fall.push_back(true);
         call->todo.erase(done);}
         call->safe.post(); return 0;
+    }
+    void back(DoneState *ptr, int thd) {
+        done.push_back(ptr);
+        mask.push_back(1<<thd);
+    }
+    void back(int sav, int val) {
+        for (int i = 0; i < done.size(); i++) {
+        if ((val & mask[i]) && !(sav & mask[i])) push(done[i]);
+        if (!(val & mask[i]) && (sav & mask[i])) stop(done[i]);
+        if ((val & mask[i]) && (sav & mask[i])) done[i]->noop();}
     }
 };
 
