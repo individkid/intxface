@@ -101,7 +101,7 @@ struct PhysicalState {
         surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
-        std::cout << "PhysicalState" << std::endl;
+        std::cout << "PhysicalState " << properties.deviceName << std::endl;
     }
     ~PhysicalState() {
         std::cout << "~PhysicalState" << std::endl;
@@ -1410,9 +1410,7 @@ struct PipeState : public BaseState {
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
-        std::cout << debug << " " << this <<  std::endl;
         setre(ResizeLoc,MicroExt,micro,0,SmartState());
-        std::cout << "after " << debug << std::endl;
     }
     ~PipeState() {
         vkDestroyPipeline(device, pipeline, nullptr);
