@@ -63,9 +63,9 @@ sharer.log:
 	ln -f $< $@
 
 %C: %C.o
-	$(CXX) -fmax-errors=5 -g -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	$(CXX) -fmax-errors=5 -g -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
 	$(GHC) -o $@ $(filter %.hs %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 %Lua: %.lua
@@ -75,24 +75,24 @@ sharer.log:
 
 ifeq ($(UNAME),Linux)
 %.so: %C.o
-	$(CXX) -fmax-errors=5 -g -o $@ -shared $(filter %C.o %Cpp.o,$^)
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -shared $(filter %C.o %Cpp.o,$^)
 endif
 ifeq ($(UNAME),Darwin)
 %.so: %C.o
-	$(CXX) -fmax-errors=5 -g -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 endif
 
 %C.o: %.c
-	$(CC) -g -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
+	$(CC) -g -rdynamic -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
 ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
-	$(CXX) -fmax-errors=5 -g -o $@ -c -fPIC $< ${INCLUDEPATH}
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC $< ${INCLUDEPATH}
 %Cpp.o: %Cpp.mk
-	$(CXX) -fmax-errors=5 -g -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
 endif
 ifeq ($(UNAME),Darwin)
 %Cpp.o: %.cpp
-	$(CXX) -fmax-errors=5 -g -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
+	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 endif
