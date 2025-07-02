@@ -31,7 +31,7 @@ extern "C" {
 #include "stlx.h"
 
 void vulkanExit();
-#define EXIT {/*vulkanExit();*/*(int*)0=0;exit(-1);}
+#define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
 
 // TODO declare glfw callbacks
 
@@ -1078,6 +1078,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+        {char *ins = 0; char *res = 0; char *loc = 0; char *fmt = 0; showInstr(dot[i].ins,&ins); showResrc(dot[i].res,&res); showResrcLoc(dot[i].loc,&loc); showFormat(dot[i].fmt,&fmt); log << "instruct " << ins << " " << res << " " << loc << " " << fmt << " idx:" << idx << "/" << siz << std::endl; free(ins); free(res); free(loc); free(fmt);}
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,dot[i].loc,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
