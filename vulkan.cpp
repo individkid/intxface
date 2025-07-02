@@ -1078,7 +1078,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ, .loc = loc};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        {char *ins = 0; char *res = 0; char *loc = 0; char *fmt = 0; showInstr(dot[i].ins,&ins); showResrc(dot[i].res,&res); showResrcLoc(dot[i].loc,&loc); showFormat(dot[i].fmt,&fmt); log << "instruct " << ins << " " << res << " " << loc << " " << fmt << " idx:" << idx << "/" << siz << std::endl; free(ins); free(res); free(loc); free(fmt);}
+        // {char *ins = 0; char *res = 0; char *loc = 0; char *fmt = 0; showInstr(dot[i].ins,&ins); showResrc(dot[i].res,&res); showResrcLoc(dot[i].loc,&loc); showFormat(dot[i].fmt,&fmt); log << "instruct " << ins << " " << res << " " << loc << " " << fmt << " idx:" << idx << "/" << siz << std::endl; free(ins); free(res); free(loc); free(fmt);}
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,dot[i].loc,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1306,9 +1306,9 @@ void TestState::call() {
     //
     // TODO periodically push Peekz that fills a Dat in a center from PierceRes without changing its size
     // TODO periodically push MicroDebug that writes to the entire PierceRes
-    int idx = 0; if (1 || (count++ % 1000) != 0)
+    int idx = 0; if ((count++ % 1000) != 0)
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState()); else
-    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState("debug"));}
+    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
 }
 
 struct ForkState : public DoneState {
@@ -1794,8 +1794,10 @@ struct DrawState : public BaseState {
         commandPool(StackState::commandPool),
         frames(StackState::frames),
         copy(StackState::copy) {
+        for (int i = 0; i < ResrcLocs; i++) sem(get((ResrcLoc)i)) = createSemaphore(device);
     }
     ~DrawState() {
+        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, sem(get((ResrcLoc)i)), nullptr);
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
@@ -1804,12 +1806,10 @@ struct DrawState : public BaseState {
         descriptorLayout = res(PipeRes)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
-        for (int i = 0; i < ResrcLocs; i++) sem(get((ResrcLoc)i)) = createSemaphore(device);
         fen(loc) = createFence(device);
     }
     void unsize(Loc &loc, SmartState log) override {
         vkWaitForFences(device, 1, &fen(loc), VK_TRUE, UINT64_MAX);
-        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, sem(get((ResrcLoc)i)), nullptr);
         vkDestroyFence(device, fen(loc), nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
@@ -1859,8 +1859,9 @@ struct DrawState : public BaseState {
         if (pipePtr && swapPtr && framePtr && indexPtr && fetchPtr) {
             VkExtent2D extent = swapPtr->getExtent();
             recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
-            VkSemaphore after = sem(get(framePtr->getImageLoc()));
-            drawFrame(commandBuffer,graphics,ptr(loc),idx(loc),siz(loc),max(loc).micro,sem(lst(loc)),after,fen(loc),VK_NULL_HANDLE);}
+            VkSemaphore before = VK_NULL_HANDLE; VkSemaphore after = VK_NULL_HANDLE;
+            if (framePtr != swapPtr) {before = sem(lst(loc)); after = sem(get(framePtr->getImageLoc()));}
+            drawFrame(commandBuffer,graphics,ptr(loc),idx(loc),siz(loc),max(loc).micro,before,after,fen(loc),VK_NULL_HANDLE);}
         else EXIT
         return fen(loc);
     }
@@ -2959,14 +2960,14 @@ void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void 
     VkPipelineStageFlags waitStages[] = {
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
     VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
-    submitInfo.waitSemaphoreCount = (before == VK_NULL_HANDLE ? 1 : 2);
+    submitInfo.waitSemaphoreCount = (acquire == VK_NULL_HANDLE ? 0 : (before == VK_NULL_HANDLE ? 1 : 2));
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     VkCommandBuffer commandBuffers[] = {commandBuffer};
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
     VkSemaphore signalSemaphores[] = {after};
-    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.signalSemaphoreCount = (after == VK_NULL_HANDLE ? 0 : 1);
     submitInfo.pSignalSemaphores = signalSemaphores;
     if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
     EXIT
