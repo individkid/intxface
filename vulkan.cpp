@@ -597,27 +597,27 @@ struct BaseState {
     static SizeState &max(Loc &loc) {return loc.max;}
     static Extent &ext(Loc &loc) {return loc.max.tag;}
     static Memory mem(Loc &loc) {return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);}
-    virtual void unsize(Loc &loc, SmartState log) {EXIT}
-    virtual void resize(Loc &loc, SmartState log) {EXIT}
-    virtual VkFence setup(Loc &loc, SmartState log) {EXIT}
-    virtual void upset(Loc &loc, SmartState log) {EXIT}
-    virtual BindState *getBind(SmartState log) {EXIT}
-    virtual VkImage getImage() {EXIT}
-    virtual VkSwapchainKHR getSwapChain() {EXIT}
-    virtual uint32_t getImageIndex() {EXIT}
-    virtual ResrcLoc getImageLoc() {EXIT}
-    virtual VkFramebuffer getFramebuffer() {EXIT}
-    virtual VkFramebuffer getFramebuffer(int i) {EXIT}
-    virtual VkPipeline getPipeline() {EXIT}
-    virtual VkPipelineLayout getPipelineLayout() {EXIT}
-    virtual VkBuffer getBuffer() {EXIT}
-    virtual VkDeviceMemory getMemory() {EXIT}
-    virtual int getRange() {EXIT}
-    virtual VkImageView getImageView() {EXIT}
-    virtual VkSampler getTextureSampler() {EXIT}
-    virtual VkDescriptorPool getDescriptorPool() {EXIT}
-    virtual VkDescriptorSetLayout getDescriptorSetLayout() {EXIT}
-    virtual VkExtent2D getExtent() {EXIT}
+    virtual void unsize(Loc &loc, SmartState log) EXIT
+    virtual void resize(Loc &loc, SmartState log) EXIT
+    virtual VkFence setup(Loc &loc, SmartState log) EXIT
+    virtual void upset(Loc &loc, SmartState log) EXIT
+    virtual BindState *getBind(SmartState log) EXIT
+    virtual VkImage getImage() EXIT
+    virtual VkSwapchainKHR getSwapChain() EXIT
+    virtual uint32_t getImageIndex() EXIT
+    virtual ResrcLoc getImageLoc() EXIT
+    virtual VkFramebuffer getFramebuffer() EXIT
+    virtual VkFramebuffer getFramebuffer(int i) EXIT
+    virtual VkPipeline getPipeline() EXIT
+    virtual VkPipelineLayout getPipelineLayout() EXIT
+    virtual VkBuffer getBuffer() EXIT
+    virtual VkDeviceMemory getMemory() EXIT
+    virtual int getRange() EXIT
+    virtual VkImageView getImageView() EXIT
+    virtual VkSampler getTextureSampler() EXIT
+    virtual VkDescriptorPool getDescriptorPool() EXIT
+    virtual VkDescriptorSetLayout getDescriptorSetLayout() EXIT
+    virtual VkExtent2D getExtent() EXIT
     static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags, VkPhysicalDeviceMemoryProperties memProperties);
     static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool);
     static VkFence createFence(VkDevice device);
