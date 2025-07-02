@@ -1809,7 +1809,6 @@ struct DrawState : public BaseState {
         fen(loc) = createFence(device);
     }
     void unsize(Loc &loc, SmartState log) override {
-        vkWaitForFences(device, 1, &fen(loc), VK_TRUE, UINT64_MAX);
         vkDestroyFence(device, fen(loc), nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
