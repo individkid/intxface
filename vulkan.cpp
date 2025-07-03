@@ -1025,19 +1025,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         break; case (PierceFrm):
         req.tag = ExclReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         break; case (PeekFrm):
         req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         break; case (SourceFrm):
         req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         break; case (PokeFrm):
         req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         break; case (DestFrm):
         req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
@@ -1304,11 +1304,15 @@ void TestState::call() {
     memcpy(&mat->mat[3],&debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
-    // TODO periodically push Peekz that fills a Dat in a center from PierceRes without changing its size
-    // TODO periodically push MicroDebug that writes to the entire PierceRes
-    int idx = 0; if ((count++ % 1000) != 0)
-    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState()); else
+    int idx = 0; if ((count % 1000) == 0) {
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
+    else if ((count % 1000) == 500) {
+    Center *eek = 0; allocCenter(&eek,1);
+    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
+    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 0xdeadbeef;
+    copy->push(eek,0,pfnc,SmartState());} else
+    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());
+    count++;}
 }
 
 struct ForkState : public DoneState {
@@ -1689,11 +1693,11 @@ struct ImageState : public BaseState {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
-        log << "before " << max(loc) << std::endl;
+        log << "before " << max(loc) << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << std::endl;
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
-        log << "after " << max(loc) << std::endl;
+        log << "after " << max(loc) << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << std::endl;
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
@@ -2746,7 +2750,7 @@ void ImageState::transitionImageLayout(VkDevice device, VkQueue graphics, VkComm
     break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL):
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    break; case (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL):
+    break; case (VK_IMAGE_LAYOUT_PRESENT_SRC_KHR):
     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     break; case (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL):
@@ -2762,7 +2766,7 @@ void ImageState::transitionImageLayout(VkDevice device, VkQueue graphics, VkComm
     break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL):
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    break; case (VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL):
+    break; case (VK_IMAGE_LAYOUT_PRESENT_SRC_KHR):
     barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     break; case (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL):
