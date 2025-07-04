@@ -1305,13 +1305,13 @@ void TestState::call() {
     copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
     int idx = 0; if ((count % 1000) == 0) {
-    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
-    else if ((count % 1000) == 500) {
+    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());} else {
+    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
+    if ((count % 1000) == 500) {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 0xdeadbeef;
-    copy->push(eek,0,pfnc,SmartState());} else
-    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());
+    eek->eek[0].wid = 0.3*ext.width; eek->eek[0].hei = 0.3*ext.height; eek->eek[0].val = 0xdeadbeef;
+    copy->push(eek,0,pfnc,SmartState());}
     count++;}
 }
 
