@@ -127,7 +127,9 @@ struct LogicalState {
     VkCommandPool commandPool;
     VkFormat imageFormat;
     VkFormat depthFormat;
+    VkFormat debugFormat;
     VkRenderPass renderPass;
+    VkRenderPass debugPass;
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, VkSurfaceFormatKHR surfaceFormat,
         const char **validationLayers, const char **deviceExtensions) :
@@ -137,7 +139,9 @@ struct LogicalState {
         commandPool(createCommandPool(device,graphicsFamily)),
         imageFormat(surfaceFormat.format),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL/*TODO stbi_load Peekz and Pokez require LINEAR*/, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
-        renderPass(createRenderPass(device,imageFormat,depthFormat)) {
+        debugFormat(VK_FORMAT_R8G8B8A8_SRGB),
+        renderPass(createRenderPass(device,imageFormat,depthFormat)),
+        debugPass(createRenderPass(device,debugFormat,depthFormat)) {
         std::cout << "LogicalState" << std::endl;
     }
     ~LogicalState() {
@@ -182,6 +186,7 @@ struct StackState {
     static VkDevice device;
     static VkCommandPool commandPool;
     static VkRenderPass renderPass;
+    static VkRenderPass debugPass;
     static VkFormat imageFormat;
     static VkFormat depthFormat;
     static VkQueue graphics;
@@ -201,6 +206,7 @@ struct StackState {
         VkDevice device,
         VkCommandPool commandPool,
         VkRenderPass renderPass,
+        VkRenderPass debugPass,
         VkFormat imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
@@ -221,6 +227,7 @@ struct StackState {
         StackState::device = device;
         StackState::commandPool = commandPool;
         StackState::renderPass = renderPass;
+        StackState::debugPass = debugPass;
         StackState::imageFormat = imageFormat;
         StackState::depthFormat = depthFormat;
         StackState::graphics = graphics;
@@ -254,6 +261,7 @@ VkPhysicalDeviceMemoryProperties StackState::memProperties;
 VkDevice StackState::device;
 VkCommandPool StackState::commandPool;
 VkRenderPass StackState::renderPass;
+VkRenderPass StackState::debugPass;
 VkFormat StackState::imageFormat;
 VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
@@ -278,6 +286,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkDevice device,
         VkCommandPool commandPool,
         VkRenderPass renderPass,
+        VkRenderPass debugPass,
         VkFormat imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
@@ -296,6 +305,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         device,
         commandPool,
         renderPass,
+        debugPass,
         imageFormat,
         depthFormat,
         graphics,
@@ -617,6 +627,7 @@ struct BaseState {
     virtual VkSampler getTextureSampler() EXIT
     virtual VkDescriptorPool getDescriptorPool() EXIT
     virtual VkDescriptorSetLayout getDescriptorSetLayout() EXIT
+    virtual VkRenderPass getRenderPass() EXIT
     virtual VkExtent2D getExtent() EXIT
     static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags, VkPhysicalDeviceMemoryProperties memProperties);
     static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool);
@@ -1410,6 +1421,8 @@ struct SwapState : public BaseState {
 
 struct PipeState : public BaseState {
     const VkDevice device;
+    const VkRenderPass renderPass;
+    const VkRenderPass debugPass;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -1418,11 +1431,13 @@ struct PipeState : public BaseState {
     PipeState() :
         BaseState("PipeState",StackState::self),
         device(StackState::device),
+        renderPass(StackState::renderPass),
+        debugPass(StackState::debugPass),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
-        pipeline(createGraphicsPipeline(StackState::device,StackState::renderPass,pipelineLayout,micro)) {
+        pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro)) {
         setre(ResizeLoc,MicroExt,micro,0,SmartState());
     }
     ~PipeState() {
@@ -1436,6 +1451,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
+    VkRenderPass getRenderPass() override {return (micro == MicroDebug ? debugPass : renderPass);}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1781,7 +1797,6 @@ struct ChainState : public BaseState {
 
 struct DrawState : public BaseState {
     const VkDevice device;
-    const VkRenderPass renderPass;
     const VkQueue graphics;
     const VkCommandPool commandPool;
     const int frames;
@@ -1793,7 +1808,6 @@ struct DrawState : public BaseState {
     DrawState() :
         BaseState("DrawState",StackState::self),
         device(StackState::device),
-        renderPass(StackState::renderPass),
         graphics(StackState::graphics),
         commandPool(StackState::commandPool),
         frames(StackState::frames),
@@ -1861,7 +1875,7 @@ struct DrawState : public BaseState {
             updateTextureDescriptor(device,imagePtr->getImageView(),imagePtr->getTextureSampler(),imageIdx,descriptorSet);}
         if (pipePtr && swapPtr && framePtr && indexPtr && fetchPtr) {
             VkExtent2D extent = swapPtr->getExtent();
-            recordCommandBuffer(commandBuffer,renderPass,descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
+            recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
             VkSemaphore before = VK_NULL_HANDLE; VkSemaphore after = VK_NULL_HANDLE;
             if (framePtr != swapPtr) {before = sem(lst(loc)); after = sem(get(framePtr->getImageLoc()));}
             drawFrame(commandBuffer,graphics,ptr(loc),idx(loc),siz(loc),max(loc).micro,before,after,fen(loc),VK_NULL_HANDLE);}
@@ -1920,7 +1934,7 @@ struct MainState {
             physicalState.graphicsFamily,physicalState.presentFamily,
             physicalState.properties,physicalState.memProperties,
             logicalState.device,logicalState.commandPool,logicalState.renderPass,
-            logicalState.imageFormat,logicalState.depthFormat,
+            logicalState.debugPass,logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
