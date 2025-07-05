@@ -139,7 +139,7 @@ struct LogicalState {
         commandPool(createCommandPool(device,graphicsFamily)),
         imageFormat(surfaceFormat.format),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL/*TODO stbi_load Peekz and Pokez require LINEAR*/, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
-        debugFormat(VK_FORMAT_R8G8B8A8_SRGB),
+        debugFormat(VK_FORMAT_R32_SINT),
         renderPass(createRenderPass(device,imageFormat,depthFormat)),
         debugPass(createRenderPass(device,debugFormat,depthFormat)) {
         std::cout << "LogicalState" << std::endl;
@@ -1597,7 +1597,7 @@ struct ImageState : public BaseState {
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkFormat depthFormat;
-    const VkRenderPass renderPass;
+    const VkRenderPass debugPass;
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
@@ -1629,12 +1629,12 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass) {
+        debugPass(StackState::debugPass) {
     }
     ~ImageState() {
         reset(SmartState());
     }
-    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got) {
+    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {
         if (max(got).tag != ExtentExt) EXIT
         tw = max(got).extent.width;
         th = max(got).extent.height;
@@ -1653,6 +1653,7 @@ struct ImageState : public BaseState {
         if (x < 0 || w < 0 || x + w > tw) EXIT
         if (y < 0 || h < 0 || y + h > th) EXIT
         if (mem(loc) == Imagez && siz(loc) != is) EXIT
+        log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << std::endl;
     }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " location:" << *loc << std::endl;
@@ -1660,17 +1661,19 @@ struct ImageState : public BaseState {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
-        VkImageUsageFlagBits flags;
-        if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-        createImage(device, physical, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
-        imageView = createImageView(device, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+        VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        VkFormat forms = VK_FORMAT_R8G8B8A8_SRGB;
+        if (res() == PierceRes) forms = VK_FORMAT_R32_SINT;
+        if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
+        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
+        createImage(device, physical, texWidth, texHeight, forms, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
+        imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         if (res() == ImageRes) {
         textureSampler = createTextureSampler(device,properties);}
         if (res() == PierceRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,max(loc).extent,debugPass,imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -1704,23 +1707,24 @@ struct ImageState : public BaseState {
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
+        VkFormat forms = VK_FORMAT_R8G8B8A8_SRGB;
+        if (res() == PierceRes) forms = VK_FORMAT_R32_SINT;
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         log << "reform " << max(loc) << std::endl;
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
         log << "before " << max(loc) << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << std::endl;
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
         log << "after " << max(loc) << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << std::endl;
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, VK_FORMAT_R8G8B8A8_SRGB, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
-        log << "range " << x << "/" << w << "," << y << "/" << h << " " << texWidth << "," << texHeight << " " << x*4 + y*texWidth*4 << "/" << imageSize << std::endl;
+        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
         createBuffer(device, physical, imageSize, (mem(loc) == Peekz ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data; if (mem(loc) == Imagez || mem(loc) == Pokez) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
@@ -1735,7 +1739,7 @@ struct ImageState : public BaseState {
         if (*loc == MiddleLoc) {
         if (mem(loc) == Peekz) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
+        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x*4 + y*texWidth*4), sizeof(pie[i].val));}
         vkUnmapMemory(device, stagingBufferMemory);
