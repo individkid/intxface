@@ -145,6 +145,7 @@ struct LogicalState {
         std::cout << "LogicalState" << std::endl;
     }
     ~LogicalState() {
+        vkDestroyRenderPass(device, debugPass, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -1321,7 +1322,7 @@ void TestState::call() {
     if ((count % 1000) == 500) {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.3*ext.width; eek->eek[0].hei = 0.3*ext.height; eek->eek[0].val = 0xdeadbeef;
+    eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 0xdeadbeef;
     copy->push(eek,0,pfnc,SmartState());}
     count++;}
 }
@@ -1635,8 +1636,8 @@ struct ImageState : public BaseState {
     }
     static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got) {
         if (max(got).tag != ExtentExt) EXIT
-        tw = max(loc).extent.width;
-        th = max(loc).extent.height;
+        tw = max(got).extent.width;
+        th = max(got).extent.height;
         is = tw * th * 4;
         pie = 0; x = 0; y = 0; w = tw; h = th;
         if (idx(loc) != 0) EXIT
@@ -1646,9 +1647,9 @@ struct ImageState : public BaseState {
         for (int i = 0; i < siz(loc); i++) {
         if (pie[i].wid < x) x = pie[i].wid;
         if (pie[i].hei < y) y = pie[i].hei;
-        if (pie[i].wid > w) w = pie[i].wid+pie[i].wid;
-        if (pie[i].hei > h) h = pie[i].hei+pie[i].hei;}
-        w = w-x; h = h-y;}
+        if (pie[i].wid > w) w = pie[i].wid;
+        if (pie[i].hei > h) h = pie[i].hei;}
+        w = w-x+1; h = h-y+1;}
         if (x < 0 || w < 0 || x + w > tw) EXIT
         if (y < 0 || h < 0 || y + h > th) EXIT
         if (mem(loc) == Imagez && siz(loc) != is) EXIT
@@ -1719,13 +1720,14 @@ struct ImageState : public BaseState {
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
+        log << "range " << x << "/" << w << "," << y << "/" << h << " " << texWidth << "," << texHeight << " " << x*4 + y*texWidth*4 << "/" << imageSize << std::endl;
         createBuffer(device, physical, imageSize, (mem(loc) == Peekz ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data; if (mem(loc) == Imagez || mem(loc) == Pokez) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
-        if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x + y*texWidth), &pie[i].val, sizeof(pie[i].val));
+        if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
         log << "middle " << max(loc) << std::endl;
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), x, y, w, h, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
+        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -1735,7 +1737,7 @@ struct ImageState : public BaseState {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc));
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x + y*texWidth), sizeof(pie[i].val));}
+        for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x*4 + y*texWidth*4), sizeof(pie[i].val));}
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
