@@ -103,8 +103,9 @@ Request = {
 Format = {
 	"VecFrm", -- VkFormat
 	"UvecFrm", -- VkFormat
-	"OldFrm", -- VkFormat
-	"Int32Frm", -- VkFormat
+	"UintFrm", -- VkFormat
+	"SintFrm", -- VkFormat
+	"SfloatFrm", -- VkFormat
 	"ImageFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
 	"WonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
@@ -417,19 +418,25 @@ ResrcFormat = {
 	{"Resrc","VertexRes","Int","2","Format","UvecFrm"},
 }
 ResrcElement = {
-	{"Resrc","VertexRes","Int","0","Format","OldFrm"},
-	{"Resrc","VertexRes","Int","1","Format","OldFrm"},
-	{"Resrc","VertexRes","Int","2","Format","Int32Frm"},
+	{"Resrc","VertexRes","Int","0","Int","4"},
+	{"Resrc","VertexRes","Int","1","Int","4"},
+	{"Resrc","VertexRes","Int","2","Int","4"},
 }
-FormatSize = {
-	{"Format","VecFrm","Int","16"},
-	{"Format","UvecFrm","Int","16"},
-	{"Format","OldFrm","Int","4"},
-	{"Format","Int32Frm","Int","4"},
-}
-VertexResrc = {
+FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","VertexRes"},
+}
+UniformResrc = {
+	{"Micro","MicroTest","Int","0","Resrc","MatrixRes"},
+	{"Micro","MicroDebug","Int","0","Resrc","MatrixRes"},
+}
+StorageResrc = {
+	{"Micro","MicroTest","Int","0","Resrc","Resrcs"},
+	{"Micro","MicroDebug","Int","0","Resrc","Resrcs"},
+}
+SamplerResrc = {
+	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
+	{"Micro","MicroDebug","Int","0","Resrc","ImageRes"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexFlattenG"},

@@ -2525,21 +2525,34 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
 }
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
     VkDescriptorSetLayout descriptorSetLayout;
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    if (UniformResrc__Micro__Int__Resrc(micro))
+    for (int i = 0; UniformResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.binding = bindings.size();
     uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings.push_back(uboLayoutBinding);}
+    if (StorageResrc__Micro__Int__Resrc(micro))
+    for (int i = 0; StorageResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = bindings.size();
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings.push_back(uboLayoutBinding);}
+    if (SamplerResrc__Micro__Int__Resrc(micro))
+    for (int i = 0; SamplerResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.binding = bindings.size();
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    //  TODO number and type of bindings depends on micro
-    //  TODO change array to vector
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+    bindings.push_back(samplerLayoutBinding);}
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -2600,9 +2613,9 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     std::vector<VkVertexInputBindingDescription> bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    if (VertexResrc__Micro__Int__Resrc(micro))
-    for (int i = 0; VertexResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
-        Resrc res = VertexResrc__Micro__Int__Resrc(micro)(i);
+    if (FetchResrc__Micro__Int__Resrc(micro))
+    for (int i = 0; FetchResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+        Resrc res = FetchResrc__Micro__Int__Resrc(micro)(i);
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = i;
         bindingDescription.stride = ResrcStride__Resrc__Int(res);
