@@ -106,6 +106,7 @@ Format = {
 	"UintFrm", -- VkFormat
 	"SintFrm", -- VkFormat
 	"SfloatFrm", -- VkFormat
+	"SrgbFrm", -- VkFormat
 	"ImageFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
 	"WonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
@@ -405,7 +406,7 @@ Tag = { -- type of data piped between processes
 }
 --HERE Constants
 ResrcStride = {
-	{"Resrc","VertexRes","Int","48"},
+	{"Resrc","VertexRes","Int","0","Int","48"},
 }
 ResrcOffset = {
 	{"Resrc","VertexRes","Int","0","Int","0"},
@@ -416,11 +417,17 @@ ResrcFormat = {
 	{"Resrc","VertexRes","Int","0","Format","VecFrm"},
 	{"Resrc","VertexRes","Int","1","Format","VecFrm"},
 	{"Resrc","VertexRes","Int","2","Format","UvecFrm"},
+	{"Resrc","SwapRes","Int","0","Format","SrgbFrm"},
+	{"Resrc","PierceRes","Int","0","Format","SintFrm"},
 }
 ResrcElement = {
 	{"Resrc","VertexRes","Int","0","Int","4"},
 	{"Resrc","VertexRes","Int","1","Int","4"},
 	{"Resrc","VertexRes","Int","2","Int","4"},
+}
+ResrcIndex = {
+	{"Resrc","SwapRes","Int","0","Int","0"},
+	{"Resrc","PierceRes","Int","0","Int","1"},
 }
 FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
@@ -438,13 +445,17 @@ SamplerResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","ImageRes"},
 }
+RenderResrc = {
+	{"Micro","MicroTest","Int","0","Resrc","SwapRes"},
+	{"Micro","MicroDebug","Int","0","Resrc","PierceRes"},
+}
 VertexFile = {
-	{"Micro","MicroTest","Str","vertexFlattenG"},
-	{"Micro","MicroDebug","Str","vertexDebugG"},
+	{"Micro","MicroTest","Int","0","Str","vertexFlattenG"},
+	{"Micro","MicroDebug","Int","0","Str","vertexDebugG"},
 }
 FragmentFile = {
-	{"Micro","MicroTest","Str","fragmentFlattenG"},
-	{"Micro","MicroDebug","Str","fragmentDebugG"},
+	{"Micro","MicroTest","Int","0","Str","fragmentFlattenG"},
+	{"Micro","MicroDebug","Int","0","Str","fragmentDebugG"},
 }
 MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},

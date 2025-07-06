@@ -32,6 +32,10 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
+#define RI(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
+#define RF(NAME,RES,SUB) (NAME##__Resrc__Int__Format(RES)?(NAME##__Resrc__Int__Format(RES)(SUB)):Formats)
+#define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
+#define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
 
 // TODO declare glfw callbacks
 
@@ -100,7 +104,7 @@ struct PhysicalState {
         graphicsFamily(findGraphicsFamily(surface,device)),
         presentFamily(findPresentFamily(surface,device)),
         properties(findProperties(device)),
-        surfaceFormat(chooseSwapSurfaceFormat(surface,device)),
+        surfaceFormat(chooseSwapSurfaceFormat(RF(ResrcFormat,SwapRes,0),surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
         std::cout << "PhysicalState " << properties.deviceName << std::endl;
@@ -114,7 +118,7 @@ struct PhysicalState {
     static uint32_t findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
     static uint32_t findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDeviceProperties findProperties(VkPhysicalDevice device);
-    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(Format format, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
 };
@@ -125,11 +129,11 @@ struct LogicalState {
     VkQueue graphics;
     VkQueue present;
     VkCommandPool commandPool;
-    VkFormat imageFormat;
+    VkFormat imageFormat; // TODO [StackState::passes]
     VkFormat depthFormat;
-    VkFormat debugFormat;
-    VkRenderPass renderPass;
-    VkRenderPass debugPass;
+    VkFormat debugFormat; // TODO imageFormat[SintFmt]
+    VkRenderPass renderPass; // TODO [StackState::passes]
+    VkRenderPass debugPass; // TODO renderPass[SintFmt]
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, VkSurfaceFormatKHR surfaceFormat,
         const char **validationLayers, const char **deviceExtensions) :
@@ -163,6 +167,7 @@ struct StackState {
     static const int frames = 2;
     static const int images = 2;
     static const int comnds = 20;
+    static const int passes = 4;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
@@ -186,9 +191,9 @@ struct StackState {
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkDevice device;
     static VkCommandPool commandPool;
-    static VkRenderPass renderPass;
-    static VkRenderPass debugPass;
-    static VkFormat imageFormat;
+    static VkRenderPass renderPass; // TODO [StackState::passes]
+    static VkRenderPass debugPass; // TODO renderPass[SintFmt]
+    static VkFormat imageFormat; // TODO [StackState::passes]
     static VkFormat depthFormat;
     static VkQueue graphics;
     static VkQueue present;
@@ -1432,7 +1437,7 @@ struct PipeState : public BaseState {
     PipeState() :
         BaseState("PipeState",StackState::self),
         device(StackState::device),
-        renderPass(StackState::renderPass),
+        renderPass(StackState::renderPass/*TODO[MI(MicroPass,(Micro)StackState::micro,0)]*/),
         debugPass(StackState::debugPass),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
@@ -1452,7 +1457,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return (micro == MicroDebug ? debugPass : renderPass);}
+    VkRenderPass getRenderPass() override {return (micro == MicroDebug ? debugPass : renderPass);} // TODO renderPass[RI(ResrcIndex,MR(RenderResrc,micro,0),0)]
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1597,7 +1602,7 @@ struct ImageState : public BaseState {
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkFormat depthFormat;
-    const VkRenderPass debugPass;
+    const VkRenderPass renderPass;
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
@@ -1629,7 +1634,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        debugPass(StackState::debugPass) {
+        renderPass(StackState::debugPass/*TODO[RI(ResrcIndex,res(),0)]*/) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -1673,7 +1678,7 @@ struct ImageState : public BaseState {
         if (res() == PierceRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,debugPass,imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -1939,8 +1944,9 @@ struct MainState {
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,
             physicalState.properties,physicalState.memProperties,
-            logicalState.device,logicalState.commandPool,logicalState.renderPass,
-            logicalState.debugPass,logicalState.imageFormat,logicalState.depthFormat,
+            logicalState.device,logicalState.commandPool,
+            logicalState.renderPass,logicalState.debugPass,
+            logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
@@ -2196,13 +2202,14 @@ VkPhysicalDeviceProperties PhysicalState::findProperties(VkPhysicalDevice device
     vkGetPhysicalDeviceProperties(device, &properties);
     return properties;
 }
-VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkSurfaceKHR surface, VkPhysicalDevice device) {
+VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(Format format, VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(count);
     if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
-    for (const auto& format : formats) {
-    if (format.format == /*VK_FORMAT_B8G8R8A8_SRGB*/VK_FORMAT_R8G8B8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-    return format;}}
+    for (const auto& retval : formats) {
+    switch (format) {default: EXIT
+    break; case (SrgbFrm): if (retval.format == /*VK_FORMAT_B8G8R8A8_SRGB*/VK_FORMAT_R8G8B8A8_SRGB && retval.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    return retval;}}}
     return formats[0];
 }
 VkPresentModeKHR PhysicalState::chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device) {
@@ -2526,8 +2533,7 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
     VkDescriptorSetLayout descriptorSetLayout;
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    if (UniformResrc__Micro__Int__Resrc(micro))
-    for (int i = 0; UniformResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+    for (int i = 0; MR(UniformResrc,micro,i) != Resrcs; i++) {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = bindings.size();
     uboLayoutBinding.descriptorCount = 1;
@@ -2535,8 +2541,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     uboLayoutBinding.pImmutableSamplers = nullptr;
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     bindings.push_back(uboLayoutBinding);}
-    if (StorageResrc__Micro__Int__Resrc(micro))
-    for (int i = 0; StorageResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+    for (int i = 0; MR(StorageResrc,micro,i) != Resrcs; i++) {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
     uboLayoutBinding.binding = bindings.size();
     uboLayoutBinding.descriptorCount = 1;
@@ -2544,8 +2549,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     uboLayoutBinding.pImmutableSamplers = nullptr;
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     bindings.push_back(uboLayoutBinding);}
-    if (SamplerResrc__Micro__Int__Resrc(micro))
-    for (int i = 0; SamplerResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+    for (int i = 0; MR(SamplerResrc,micro,i) != Resrcs; i++) {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     samplerLayoutBinding.binding = bindings.size();
     samplerLayoutBinding.descriptorCount = 1;
@@ -2594,8 +2598,8 @@ VkShaderModule PipeState::createShaderModule(VkDevice device, const std::vector<
 VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
     VkPipelineLayout pipelineLayout, Micro micro) {
     VkPipeline pipeline;
-    auto vertShaderCode = readFile(VertexFile__Micro__Str(micro));
-    auto fragShaderCode = readFile(FragmentFile__Micro__Str(micro));
+    auto vertShaderCode = readFile(MS(VertexFile,micro,0));
+    auto fragShaderCode = readFile(MS(FragmentFile,micro,0));
     VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
@@ -2613,23 +2617,22 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     std::vector<VkVertexInputBindingDescription> bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    if (FetchResrc__Micro__Int__Resrc(micro))
-    for (int i = 0; FetchResrc__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
-        Resrc res = FetchResrc__Micro__Int__Resrc(micro)(i);
+    for (int i = 0; MR(FetchResrc,micro,i) != Resrcs; i++) {
+        Resrc res = MR(FetchResrc,micro,i);
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = i;
-        bindingDescription.stride = ResrcStride__Resrc__Int(res);
+        bindingDescription.stride = RI(ResrcStride,res,0);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; ResrcFormat__Resrc__Int__Format(res)(j) != Formats; j++) {
+    for (int j = 0; RF(ResrcFormat,res,j) != Formats; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
         attributeDescription.binding = i;
         attributeDescription.location = j;
-        switch (ResrcFormat__Resrc__Int__Format(res)(j)) {
+        switch (RF(ResrcFormat,res,j)) {
         default: EXIT
         case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
-        attributeDescription.offset = ResrcOffset__Resrc__Int__Int(res)(j);
+        attributeDescription.offset = RI(ResrcOffset,res,j);
         attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
