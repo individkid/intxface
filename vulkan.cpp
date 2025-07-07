@@ -135,11 +135,15 @@ struct LogicalState {
     VkFormat depthFormat;
     std::array<VkRenderPass,passes> arrayPass;
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
-    static VkFormat vulkanFormat(int i) {
-        switch (RF(ResrcFormat,IR(IndexResrc,i,0),0)) {default: EXIT
+    static VkFormat vulkanFormat(Resrc i) {
+        switch (RF(ResrcFormat,i,0)) {default: return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;}
-        return VK_FORMAT_R8G8B8A8_SRGB;}
+        return VK_FORMAT_R8G8B8A8_SRGB;
+    }
+    static VkFormat vulkanFormat(int i) {
+        return vulkanFormat(IR(IndexResrc,i,0));
+    }
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
         device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
@@ -637,7 +641,7 @@ struct BaseState {
     static VkSemaphore createSemaphore(VkDevice device);
     static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
     static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkBuffer& buffer, VkDeviceMemory& memory);
-    static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageLayout layout, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
+    static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
@@ -1391,7 +1395,7 @@ struct SwapState : public BaseState {
         swapChainImageViews.resize(swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-        createImage(device, physical, getExtent().width, getExtent().height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthImageMemory);
+        createImage(device, physical, getExtent().width, getExtent().height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthImageMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffers(device,getExtent(),renderPass,swapChainImageViews,depthImageView,framebuffers);
     }
@@ -1661,16 +1665,15 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        VkFormat forms = VK_FORMAT_R8G8B8A8_SRGB;
-        if (res() == PierceRes) forms = VK_FORMAT_R32_SINT;
+        VkFormat forms = LogicalState::vulkanFormat(res());
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
         if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
-        createImage(device, physical, texWidth, texHeight, forms, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, /*output*/ image, imageMemory);
+        createImage(device, physical, /*TODO:*/texWidth, texHeight, forms/*:TODO*/, /*TODO:*/flags/*:TODO*/, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         if (res() == ImageRes) {
         textureSampler = createTextureSampler(device,properties);}
         if (res() == PierceRes) {
-        createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties,/*output*/ depthImage, depthMemory);
+        createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
@@ -2362,10 +2365,7 @@ VkSemaphore BaseState::createSemaphore(VkDevice device) {
     EXIT
     return semaphore;
 }
-void BaseState::createImage(VkDevice device, VkPhysicalDevice physical,
-    uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageLayout layout,
-    VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties,
-    VkImage& image, VkDeviceMemory& imageMemory) {
+void BaseState::createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory) {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -2375,8 +2375,8 @@ void BaseState::createImage(VkDevice device, VkPhysicalDevice physical,
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;
-    imageInfo.tiling = tiling;
-    imageInfo.initialLayout = layout;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usage;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -2387,7 +2387,7 @@ void BaseState::createImage(VkDevice device, VkPhysicalDevice physical,
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, properties, memProperties);
+    allocInfo.memoryTypeIndex = findMemoryType(physical, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties);
     if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
     EXIT
     vkBindImageMemory(device, image, imageMemory, 0);
