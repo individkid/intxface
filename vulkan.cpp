@@ -150,7 +150,7 @@ struct LogicalState {
         graphics(createQueue(device,graphicsFamily)),
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
-        imageFormat({PhysicalState::vulkanFormat(0),PhysicalState::vulkanFormat(1)}),
+        imageFormat{PhysicalState::vulkanFormat(0),PhysicalState::vulkanFormat(1)},
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))),
         arrayPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
         std::cout << "LogicalState" << std::endl;
