@@ -93,6 +93,15 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 
 struct PhysicalState {
     static const char *deviceExtensions[];
+    static VkFormat vulkanFormat(Resrc i) {
+        switch (RF(ResrcFormat,i,0)) {default: return VK_FORMAT_R8G8B8A8_SRGB;
+        break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
+        break; case (SintFrm): return VK_FORMAT_R32_SINT;}
+        return VK_FORMAT_R8G8B8A8_SRGB;
+    }
+    static VkFormat vulkanFormat(int i) {
+        return vulkanFormat(IR(IndexResrc,i,0));
+    }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
     uint32_t presentFamily;
@@ -105,7 +114,7 @@ struct PhysicalState {
         graphicsFamily(findGraphicsFamily(surface,device)),
         presentFamily(findPresentFamily(surface,device)),
         properties(findProperties(device)),
-        surfaceFormat(chooseSwapSurfaceFormat(RF(ResrcFormat,IR(IndexResrc,0,0),0),surface,device)),
+        surfaceFormat(chooseSwapSurfaceFormat(vulkanFormat(0),VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
         std::cout << "PhysicalState " << properties.deviceName << std::endl;
@@ -119,7 +128,7 @@ struct PhysicalState {
     static uint32_t findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
     static uint32_t findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDeviceProperties findProperties(VkPhysicalDevice device);
-    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(Format format, VkSurfaceKHR surface, VkPhysicalDevice device);
+    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkFormat format, VkColorSpaceKHR space, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPresentModeKHR chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkPhysicalDeviceMemoryProperties findMemoryProperties(VkPhysicalDevice device);
 };
@@ -135,22 +144,13 @@ struct LogicalState {
     VkFormat depthFormat;
     std::array<VkRenderPass,passes> arrayPass;
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
-    static VkFormat vulkanFormat(Resrc i) {
-        switch (RF(ResrcFormat,i,0)) {default: return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (SintFrm): return VK_FORMAT_R32_SINT;}
-        return VK_FORMAT_R8G8B8A8_SRGB;
-    }
-    static VkFormat vulkanFormat(int i) {
-        return vulkanFormat(IR(IndexResrc,i,0));
-    }
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
         device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
         graphics(createQueue(device,graphicsFamily)),
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
-        imageFormat({vulkanFormat(0),vulkanFormat(1)}),
+        imageFormat({PhysicalState::vulkanFormat(0),PhysicalState::vulkanFormat(1)}),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
         arrayPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
         std::cout << "LogicalState" << std::endl;
@@ -1665,7 +1665,7 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        VkFormat forms = LogicalState::vulkanFormat(res());
+        VkFormat forms = PhysicalState::vulkanFormat(res());
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
         if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
         createImage(device, physical, /*TODO:*/texWidth, texHeight, forms/*:TODO*/, /*TODO:*/flags/*:TODO*/, memProperties, /*output*/ image, imageMemory);
@@ -1709,8 +1709,7 @@ struct ImageState : public BaseState {
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
-        VkFormat forms = VK_FORMAT_R8G8B8A8_SRGB;
-        if (res() == PierceRes) forms = VK_FORMAT_R32_SINT;
+        VkFormat forms = PhysicalState::vulkanFormat(res());
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         log << "reform " << max(loc) << std::endl;
@@ -2198,14 +2197,13 @@ VkPhysicalDeviceProperties PhysicalState::findProperties(VkPhysicalDevice device
     vkGetPhysicalDeviceProperties(device, &properties);
     return properties;
 }
-VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(Format format, VkSurfaceKHR surface, VkPhysicalDevice device) {
+VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkFormat format, VkColorSpaceKHR space, VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(count);
     if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
-    for (const auto& retval : formats) {
-    switch (format) {default: EXIT
-    break; case (SrgbFrm): if (retval.format == /*VK_FORMAT_B8G8R8A8_SRGB*/VK_FORMAT_R8G8B8A8_SRGB && retval.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-    return retval;}}}
+    for (const auto& retval : formats)
+    if (retval.format == format && retval.colorSpace == space)
+    return retval;
     return formats[0];
 }
 VkPresentModeKHR PhysicalState::chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device) {
