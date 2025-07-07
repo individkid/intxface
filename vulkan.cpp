@@ -151,7 +151,7 @@ struct LogicalState {
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
         imageFormat({PhysicalState::vulkanFormat(0),PhysicalState::vulkanFormat(1)}),
-        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
+        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))),
         arrayPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
         std::cout << "LogicalState" << std::endl;
     }
@@ -165,7 +165,7 @@ struct LogicalState {
     static VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, const char **validationLayers, const char **deviceExtensions);
     static VkQueue createQueue(VkDevice device, uint32_t family);
     static VkCommandPool createCommandPool(VkDevice device, uint32_t family);
-    static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size, VkImageTiling tiling, VkFormatFeatureFlags features);
+    static VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size);
     static VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
 };
 
@@ -2268,8 +2268,9 @@ VkCommandPool LogicalState::createCommandPool(VkDevice device, uint32_t family) 
     EXIT
     return pool;
 }
-VkFormat LogicalState::findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size,
-    VkImageTiling tiling, VkFormatFeatureFlags features) {
+VkFormat LogicalState::findSupportedFormat(VkPhysicalDevice physicalDevice, const VkFormat candidates[], int size) {
+    VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+    VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
     for (int i = 0; i < size; i++) {
     VkFormatProperties props;
     vkGetPhysicalDeviceFormatProperties(physicalDevice, candidates[i], &props);
