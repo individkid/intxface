@@ -429,6 +429,10 @@ ResrcIndex = {
 	{"Resrc","SwapRes","Int","0","Int","0"},
 	{"Resrc","PierceRes","Int","0","Int","1"},
 }
+IndexResrc = {
+	{"Int","0","Int","0","Resrc","SwapRes"},
+	{"Int","1","Int","0","Resrc","PierceRes"},
+}
 FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","VertexRes"},

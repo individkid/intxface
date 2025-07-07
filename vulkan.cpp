@@ -36,6 +36,7 @@ void vulkanExit();
 #define RF(NAME,RES,SUB) (NAME##__Resrc__Int__Format(RES)?(NAME##__Resrc__Int__Format(RES)(SUB)):Formats)
 #define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
 #define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
+#define IR(NAME,IDX,SUB) (NAME##__Int__Int__Resrc(IDX)?(NAME##__Int__Int__Resrc(IDX)(SUB)):Resrcs)
 
 // TODO declare glfw callbacks
 
@@ -104,7 +105,7 @@ struct PhysicalState {
         graphicsFamily(findGraphicsFamily(surface,device)),
         presentFamily(findPresentFamily(surface,device)),
         properties(findProperties(device)),
-        surfaceFormat(chooseSwapSurfaceFormat(RF(ResrcFormat,SwapRes,0),surface,device)),
+        surfaceFormat(chooseSwapSurfaceFormat(RF(ResrcFormat,IR(IndexResrc,0,0),0),surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
         std::cout << "PhysicalState " << properties.deviceName << std::endl;
@@ -125,25 +126,29 @@ struct PhysicalState {
 const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
 struct LogicalState {
+    static const int passes = 2;
     VkDevice device;
     VkQueue graphics;
     VkQueue present;
     VkCommandPool commandPool;
-    VkFormat imageFormat; // TODO [StackState::passes]
+    std::array<VkFormat,passes> imageFormat;
     VkFormat depthFormat;
-    VkFormat debugFormat; // TODO imageFormat[SintFmt]
-    std::array<VkRenderPass,4/*StackState::passes*/> arrayPass;
+    std::array<VkRenderPass,passes> arrayPass;
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
-    LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, VkSurfaceFormatKHR surfaceFormat,
+    static VkFormat vulkanFormat(int i) {
+        switch (RF(ResrcFormat,IR(IndexResrc,i,0),0)) {default: EXIT
+        break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
+        break; case (SintFrm): return VK_FORMAT_R32_SINT;}
+        return VK_FORMAT_R8G8B8A8_SRGB;}
+    LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
         device(createDevice(physicalDevice,graphicsFamily,presentFamily,validationLayers,deviceExtensions)),
         graphics(createQueue(device,graphicsFamily)),
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
-        imageFormat(surfaceFormat.format),
-        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL/*TODO stbi_load Peekz and Pokez require LINEAR*/, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
-        debugFormat(VK_FORMAT_R32_SINT), // TODO map from index to format
-        arrayPass{createRenderPass(device,imageFormat,depthFormat),createRenderPass(device,debugFormat,depthFormat)} {
+        imageFormat({vulkanFormat(0),vulkanFormat(1)}),
+        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)),
+        arrayPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
         std::cout << "LogicalState" << std::endl;
     }
     ~LogicalState() {
@@ -165,7 +170,6 @@ struct StackState {
     static const int frames = 2;
     static const int images = 2;
     static const int comnds = 20;
-    static const int passes = 4;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
@@ -189,8 +193,8 @@ struct StackState {
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkDevice device;
     static VkCommandPool commandPool;
-    static std::array<VkRenderPass,passes> arrayPass;
-    static VkFormat imageFormat; // TODO [StackState::passes]
+    static std::array<VkRenderPass,LogicalState::passes> arrayPass;
+    static std::array<VkFormat,LogicalState::passes> imageFormat;
     static VkFormat depthFormat;
     static VkQueue graphics;
     static VkQueue present;
@@ -208,8 +212,8 @@ struct StackState {
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,passes> arrayPass,
-        VkFormat imageFormat,
+        std::array<VkRenderPass,LogicalState::passes> arrayPass,
+        std::array<VkFormat,LogicalState::passes> imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) {
@@ -261,8 +265,8 @@ VkPhysicalDeviceProperties StackState::properties;
 VkPhysicalDeviceMemoryProperties StackState::memProperties;
 VkDevice StackState::device;
 VkCommandPool StackState::commandPool;
-std::array<VkRenderPass,StackState::passes> StackState::arrayPass;
-VkFormat StackState::imageFormat;
+std::array<VkRenderPass,LogicalState::passes> StackState::arrayPass;
+std::array<VkFormat,LogicalState::passes> StackState::imageFormat;
 VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
@@ -285,8 +289,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,StackState::passes> arrayPass,
-        VkFormat imageFormat,
+        std::array<VkRenderPass,LogicalState::passes> arrayPass,
+        std::array<VkFormat,LogicalState::passes> imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) :
@@ -1368,9 +1372,9 @@ struct SwapState : public BaseState {
         presentMode(StackState::presentMode),
         graphicsFamily(StackState::graphicsFamily),
         presentFamily(StackState::presentFamily),
-        imageFormat(StackState::imageFormat),
+        imageFormat(StackState::imageFormat[RI(ResrcIndex,res(),0)]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::arrayPass[0]),
+        renderPass(StackState::arrayPass[RI(ResrcIndex,res(),0)]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1419,7 +1423,7 @@ struct SwapState : public BaseState {
 
 struct PipeState : public BaseState {
     const VkDevice device;
-    const std::array<VkRenderPass,StackState::passes> arrayPass;
+    const std::array<VkRenderPass,LogicalState::passes> arrayPass;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -1447,7 +1451,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return (micro == MicroDebug ? arrayPass[1] : arrayPass[0]);} // TODO renderPass[RI(ResrcIndex,MR(RenderResrc,micro,0),0)]
+    VkRenderPass getRenderPass() override {return arrayPass[RI(ResrcIndex,MR(RenderResrc,micro,0),0)];}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1624,7 +1628,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::arrayPass[1]) {
+        renderPass(StackState::arrayPass[RI(ResrcIndex,res(),0)]) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -1927,8 +1931,8 @@ struct MainState {
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
         logicalState(physicalState.device,physicalState.graphicsFamily,
-            physicalState.presentFamily,physicalState.surfaceFormat,
-            vulkanState.validationLayers,physicalState.deviceExtensions),
+            physicalState.presentFamily,vulkanState.validationLayers,
+            physicalState.deviceExtensions),
         swapState(&copyState,
             windowState.window,vulkanState.surface,physicalState.device,
             physicalState.surfaceFormat,physicalState.presentMode,
