@@ -280,7 +280,9 @@ float *planeMatrix(float *mat)
 }
 float *planeWindow(float *mat)
 {
-    return identmat(mat,4); // TODO
+    identmat(mat,4);
+    return mat;
+    // TODO
     float domain[16]; float range[16];
     float focal = callInfo(FocalLength,0,planeRcfg); float depth = callInfo(FocalDepth,0,planeRcfg);
     *matrc(domain,0,0,4) = callInfo(WindowLeft,0,planeRcfg);
