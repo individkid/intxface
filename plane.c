@@ -206,6 +206,17 @@ float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *
     invmat(copymat(inv,src,4),4);
     return jumpmat(mat,timesmat(dst,inv,4),4);
 }
+float *planeSolve(float *mat, float *domain, float *range, int dim)
+{
+    float inv[dim*dim];
+    if (invmat(copymat(inv,domain,dim),dim) == 0) {
+    fprintf(stderr,"domain\n");
+    for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(domain,r,c,dim)); fprintf(stderr,"\n");}
+    fprintf(stderr,"range\n");
+    for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(range,r,c,dim)); fprintf(stderr,"\n");}
+    exit(-1);}
+    return timesmat(copymat(mat,range,dim),inv,dim);
+}
 // Rotate functions find 2 fixed and 2 rotated, put all but 1 rotated in the 1.0 space,
 // and put 1 rotated in the 0.0 space by subtracting one of the fixed.
 float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
@@ -267,19 +278,9 @@ float *planeMatrix(float *mat)
     vectorTwo(org,ClickLeft,ClickBase),
     vectorTwo(cur,ManipLeft,ManipBase));
 }
-float *planeSolve(float *mat, float *domain, float *range, int dim)
-{
-    float inv[dim*dim];
-    if (invmat(copymat(inv,domain,dim),dim) == 0) {
-    fprintf(stderr,"domain\n");
-    for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(domain,r,c,dim)); fprintf(stderr,"\n");}
-    fprintf(stderr,"range\n");
-    for (int r = 0; r < dim; r++) {for (int c = 0; c < dim; c++) fprintf(stderr," %d",(int)*matrc(range,r,c,dim)); fprintf(stderr,"\n");}
-    exit(-1);}
-    return timesmat(copymat(mat,range,dim),inv,dim);
-}
 float *planeWindow(float *mat)
 {
+    return identmat(mat,4); // TODO
     float domain[16]; float range[16];
     float focal = callInfo(FocalLength,0,planeRcfg); float depth = callInfo(FocalDepth,0,planeRcfg);
     *matrc(domain,0,0,4) = callInfo(WindowLeft,0,planeRcfg);

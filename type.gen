@@ -418,7 +418,7 @@ ResrcFormat = {
 	{"Resrc","VertexRes","Int","1","Format","VecFrm"},
 	{"Resrc","VertexRes","Int","2","Format","UvecFrm"},
 	{"Resrc","SwapRes","Int","0","Format","SrgbFrm"},
-	{"Resrc","PierceRes","Int","0","Format","SintFrm"},
+	{"Resrc","PierceRes","Int","0","Format","SfloatFrm"},
 }
 ResrcElement = {
 	{"Resrc","VertexRes","Int","0","Int","4"},
@@ -796,7 +796,7 @@ Pierce = {
 	{"wid","Int32",{},{}},
 	{"hei","Int32",{},{}},
 	{"idx","Int32",{},{}},
-	{"val","Int32",{},{}},
+	{"val","Old",{},{}},
 }
 Con = {
 	{"tag","Constant",{},{}},

@@ -96,7 +96,8 @@ struct PhysicalState {
     static VkFormat vulkanFormat(Resrc i) {
         switch (RF(ResrcFormat,i,0)) {default: return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (SintFrm): return VK_FORMAT_R32_SINT;}
+        break; case (SintFrm): return VK_FORMAT_R32_SINT;
+        break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
     }
     static VkFormat vulkanFormat(int i) {
@@ -142,7 +143,7 @@ struct LogicalState {
     VkCommandPool commandPool;
     std::array<VkFormat,passes> imageFormat;
     VkFormat depthFormat;
-    std::array<VkRenderPass,passes> arrayPass;
+    std::array<VkRenderPass,passes> renderPass;
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
@@ -152,12 +153,12 @@ struct LogicalState {
         commandPool(createCommandPool(device,graphicsFamily)),
         imageFormat{PhysicalState::vulkanFormat(0),PhysicalState::vulkanFormat(1)},
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))),
-        arrayPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
+        renderPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
         std::cout << "LogicalState" << std::endl;
     }
     ~LogicalState() {
-        vkDestroyRenderPass(device, arrayPass[1], nullptr);
-        vkDestroyRenderPass(device, arrayPass[0], nullptr);
+        vkDestroyRenderPass(device, renderPass[1], nullptr);
+        vkDestroyRenderPass(device, renderPass[0], nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
         std::cout << "~LogicalState" << std::endl;
@@ -197,7 +198,7 @@ struct StackState {
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkDevice device;
     static VkCommandPool commandPool;
-    static std::array<VkRenderPass,LogicalState::passes> arrayPass;
+    static std::array<VkRenderPass,LogicalState::passes> renderPass;
     static std::array<VkFormat,LogicalState::passes> imageFormat;
     static VkFormat depthFormat;
     static VkQueue graphics;
@@ -216,7 +217,7 @@ struct StackState {
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> arrayPass,
+        std::array<VkRenderPass,LogicalState::passes> renderPass,
         std::array<VkFormat,LogicalState::passes> imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
@@ -236,7 +237,7 @@ struct StackState {
         StackState::memProperties = memProperties;
         StackState::device = device;
         StackState::commandPool = commandPool;
-        StackState::arrayPass = arrayPass;
+        StackState::renderPass = renderPass;
         StackState::imageFormat = imageFormat;
         StackState::depthFormat = depthFormat;
         StackState::graphics = graphics;
@@ -269,7 +270,7 @@ VkPhysicalDeviceProperties StackState::properties;
 VkPhysicalDeviceMemoryProperties StackState::memProperties;
 VkDevice StackState::device;
 VkCommandPool StackState::commandPool;
-std::array<VkRenderPass,LogicalState::passes> StackState::arrayPass;
+std::array<VkRenderPass,LogicalState::passes> StackState::renderPass;
 std::array<VkFormat,LogicalState::passes> StackState::imageFormat;
 VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
@@ -293,7 +294,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> arrayPass,
+        std::array<VkRenderPass,LogicalState::passes> renderPass,
         std::array<VkFormat,LogicalState::passes> imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
@@ -311,7 +312,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         memProperties,
         device,
         commandPool,
-        arrayPass,
+        renderPass,
         imageFormat,
         depthFormat,
         graphics,
@@ -1205,6 +1206,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
 };
 
 extern "C" {
+float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1, float *src2, float *dst2, float *src3, float *dst3);
 float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
 }
@@ -1285,12 +1287,12 @@ void TestState::call() {
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
     Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->idx = 0; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
-    oke->oke[0].wid = ext.width/2; oke->oke[0].hei = ext.height/2; oke->oke[0].val = 0x600dbeef;
+    oke->oke[0].wid = ext.width/2; oke->oke[0].hei = ext.height/2; oke->oke[0].val = 1.5;
     copy->push(oke,0,cfnc,SmartState());
     //
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 0xdeadbeef;
+    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());
     //
     int arg[] = {
@@ -1327,7 +1329,7 @@ void TestState::call() {
     if ((count % 1000) == 500) {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 0xdeadbeef;
+    eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());}
     count++;}
 }
@@ -1378,7 +1380,7 @@ struct SwapState : public BaseState {
         presentFamily(StackState::presentFamily),
         imageFormat(StackState::imageFormat[RI(ResrcIndex,res(),0)]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::arrayPass[RI(ResrcIndex,res(),0)]),
+        renderPass(StackState::renderPass[RI(ResrcIndex,res(),0)]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1427,7 +1429,7 @@ struct SwapState : public BaseState {
 
 struct PipeState : public BaseState {
     const VkDevice device;
-    const std::array<VkRenderPass,LogicalState::passes> arrayPass;
+    const std::array<VkRenderPass,LogicalState::passes> renderPass;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -1436,7 +1438,7 @@ struct PipeState : public BaseState {
     PipeState() :
         BaseState("PipeState",StackState::self),
         device(StackState::device),
-        arrayPass(StackState::arrayPass),
+        renderPass(StackState::renderPass),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
@@ -1455,7 +1457,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return arrayPass[RI(ResrcIndex,MR(RenderResrc,micro,0),0)];}
+    VkRenderPass getRenderPass() override {return renderPass[RI(ResrcIndex,MR(RenderResrc,micro,0),0)];}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1632,7 +1634,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::arrayPass[RI(ResrcIndex,res(),0)]) {
+        renderPass(StackState::renderPass[RI(ResrcIndex,res(),0)]) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -1940,7 +1942,7 @@ struct MainState {
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,
             physicalState.properties,physicalState.memProperties,
-            logicalState.device,logicalState.commandPool,logicalState.arrayPass,
+            logicalState.device,logicalState.commandPool,logicalState.renderPass,
             logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
@@ -1979,7 +1981,7 @@ MainState *mptr = 0;
 void vulkanCheck(Center *ptr, int sub) {
     if (ptr->mem != Peekz) EXIT
     for (int i = 0; i < ptr->siz; i++)
-    std::cout << "check:0x" << std::hex << ptr->eek[i].val << std::dec << std::endl;
+    std::cout << "check:" << std::hex << ptr->eek[i].val << std::dec << std::endl;
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanWake(Center *ptr, int sub) {
@@ -2644,7 +2646,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = VK_CULL_MODE_NONE; // VK_CULL_MODE_BACK_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -3008,9 +3010,9 @@ void TestState::testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::ma
     static auto startTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-    proj[1][1] *= -1;
+    model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); model = glm::mat4(1.0f);
+    view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); view = glm::mat4(1.0f);
+    proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f); proj = glm::mat4(1.0f);
+    // proj[1][1] *= -1;
     float mat[16]; planeWindow(mat); for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) debug[r][c] = *matrc(mat,r,c,4);
 }
