@@ -9,7 +9,7 @@ layout(location = 1) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 void fragmentFlatten() {
-    outColor = texture(texSampler, fragTexCoord);
+    outColor = vec4(fragColor,1.0); // texture(texSampler, fragTexCoord);
 }
 #endif
 
@@ -23,9 +23,7 @@ layout(location = 2) in vec4 test;
 layout(location = 0) out float outColor;
 
 void fragmentDebug() {
-    // outColor = 0xabcde;
-    // outColor = 2.5;
-    outColor = test.w;
+    outColor = test.z;
 }
 #endif
 
@@ -40,8 +38,10 @@ layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
 void vertexFlatten() {
-    gl_Position = inMat.buf[2] * inMat.buf[1] * inMat.buf[0] * inPosition; // vec4(inPosition.xyz, 1.0);
-    fragColor = inOrdClr.xyz;
+    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2] * inPosition;
+    else gl_Position = inMat.buf[2] * inMat.buf[3] * inPosition;
+    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
+    else fragColor = vec3(1.0,0.0,0.0); // red
     fragTexCoord = inOrdClr.xy;
 }
 #endif
@@ -58,9 +58,9 @@ layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec4 test;
 
 void vertexDebug() {
-    gl_Position = inMat.buf[2] * inMat.buf[1] * inMat.buf[0] * inPosition; // vec4(inPosition.xyz, 1.0);
+    gl_Position = inMat.buf[2] * inPosition;
     fragColor = inOrdClr.xyz;
     fragTexCoord = inOrdClr.xy;
-    test = gl_Position; // inMat.buf[3] * vec4(2.5, 2.5, 2.5, 1.0);
+    test = inMat.buf[3] * vec4(-0.5,-0.5,0.2,1.0);
 }
 #endif
