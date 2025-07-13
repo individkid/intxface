@@ -1293,7 +1293,7 @@ void TestState::call() {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
     float start = processTime(); int tested = 0;
-    int count = 0; bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
+    bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
     float model[16]; float view[16]; float proj[16]; float debug[16];
@@ -1321,9 +1321,7 @@ void TestState::call() {
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());}
-    else {tested = test;}
-    if ((processTime()-start)*1000 > 10.0) {
-    start = processTime(); count++;}}
+    else tested = test;}
 }
 
 struct ForkState : public DoneState {
