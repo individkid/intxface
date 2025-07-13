@@ -1218,7 +1218,7 @@ struct TestState : public DoneState {
     void noop() override {
         wake.wake();
     }
-    static void testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug);
+    static int testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug);
 };
 void vulkanCheck(Center *ptr, int sub);
 void vulkanWake(Center *ptr, int sub);
@@ -1292,6 +1292,7 @@ void TestState::call() {
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
+    float start = processTime(); int tested = 0;
     int count = 0; bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
@@ -1301,7 +1302,7 @@ void TestState::call() {
     BaseState *sptr = swap->buffer();
     if (!bptr->rinc(SwapRes,sptr,mlog)) {
     mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
-    testUpdate(sptr->getExtent(),model,view,proj,debug);
+    int test = testUpdate(sptr->getExtent(),model,view,proj,debug);
     bptr->rdec(SwapRes,mlog);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
@@ -1311,15 +1312,18 @@ void TestState::call() {
     memcpy(&mat->mat[3],debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
-    int idx = 0; if ((count % 10000) == 0) {
-    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());} else {
+    int idx = 0; if (test == tested) {
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
-    if ((count % 10000) == 5000) {
+    else if (test%8 == 1 || test%8 == 5) {tested = test;
+    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
+    else if (test%8 == 2 || test%8 == 6) {tested = test;
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());}
-    count++;}
+    else {tested = test;}
+    if ((processTime()-start)*1000 > 10.0) {
+    start = processTime(); count++;}}
 }
 
 struct ForkState : public DoneState {
@@ -3000,17 +3004,17 @@ float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
 float *identmat(float *u, int n);
 }
-void TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug) {
+int TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug) {
     static int count = 0; static float time = 0.0;
     if (time == 0.0) time = processTime();
-    if (processTime()-time > 1.0) {time = processTime(); count += 1;}
+    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     identmat(model,4);
     identmat(view,4);
     identmat(proj,4);
     *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
     identmat(debug,4);
-    if (count % 2) {
+    if (count%8 < 4) {
     float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
     float dst0[] = {-0.5f, -0.5f, 0.60f, 1.0f};
     float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
@@ -3020,4 +3024,5 @@ void TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view
     float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
+    return count;
 }

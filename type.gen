@@ -555,7 +555,7 @@ Bootstrap = {
 		"cfg[1]:RegisterLimit"..
 		"cfg[2]:RegisterPoll"..
 		"val[0]:%(return castPlan(\"Bringup\"))"..
-		"val[1]:5000"..
+		"val[1]:2000"..
 		"val[2]:1)"},
 }
 Execname = {
