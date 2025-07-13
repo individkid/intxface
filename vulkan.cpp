@@ -3,13 +3,6 @@
 #define _GLFW_WAYLAND
 #include <GLFW/glfw3.h>
 
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -1226,7 +1219,7 @@ struct TestState : public DoneState {
     void noop() override {
         wake.wake();
     }
-    static void testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug);
+    static void testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug);
 };
 void vulkanCheck(Center *ptr, int sub);
 void vulkanWake(Center *ptr, int sub);
@@ -1303,7 +1296,7 @@ void TestState::call() {
     int count = 0; bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
-    glm::mat4 model, view, proj, debug;
+    float model[16]; float view[16]; float proj[16]; float debug[16];
     BindState *bptr = bind->buffer()->getBind(mlog);
     if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
     BaseState *sptr = swap->buffer();
@@ -1313,16 +1306,16 @@ void TestState::call() {
     bptr->rdec(SwapRes,mlog);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
-    memcpy(&mat->mat[0],&model,sizeof(Matrix));
-    memcpy(&mat->mat[1],&view,sizeof(Matrix));
-    memcpy(&mat->mat[2],&proj,sizeof(Matrix));
-    memcpy(&mat->mat[3],&debug,sizeof(Matrix));
+    memcpy(&mat->mat[0],model,sizeof(Matrix));
+    memcpy(&mat->mat[1],view,sizeof(Matrix));
+    memcpy(&mat->mat[2],proj,sizeof(Matrix));
+    memcpy(&mat->mat[3],debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
-    int idx = 0; if ((count % 1000) == 0) {
+    int idx = 0; if ((count % 10000) == 0) {
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());} else {
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
-    if ((count % 1000) == 500) {
+    if ((count % 10000) == 5000) {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 1.0;
@@ -3006,17 +2999,21 @@ extern "C" {
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1, float *src2, float *dst2, float *src3, float *dst3);
 float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
+float *identmat(float *u, int n);
 }
-void TestState::testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::mat4 &view, glm::mat4 &proj, glm::mat4 &debug) {
+void TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug) {
     static auto startTime = std::chrono::high_resolution_clock::now();
+    static int count = 0;
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); model = glm::mat4(1.0f);
-    view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); view = glm::mat4(1.0f);
-    proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f); proj = glm::mat4(1.0f);
-    proj[2][3] = 0.83; // b; // row major; row number 3; column number 2
-    proj[3][3] = 0.58; // a; // w = a + bz
-    float mat[16]; for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) *matrc(mat,r,c,4) = (r==c?1.0:0.0);
+    if (time > 1.0) {startTime = currentTime; count += 1;}
+    identmat(model,4);
+    identmat(view,4);
+    identmat(proj,4);
+    *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
+    *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
+    identmat(debug,4);
+    if (count % 2) {
     float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
     float dst0[] = {-0.5f, -0.5f, 0.60f, 1.0f};
     float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
@@ -3025,6 +3022,5 @@ void TestState::testUpdate(VkExtent2D swapChainExtent, glm::mat4 &model, glm::ma
     float dst2[] = {0.5f, -0.5f, 0.40f, 0.0f};
     float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
-    planeTransform(mat, src0, dst0, src1, dst1, src2, dst2, src3, dst3);
-    for (int r = 0; r < 4; r++) for (int c = 0; c < 4; c++) debug[c][r] = *matrc(mat,r,c,4);
+    planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
 }

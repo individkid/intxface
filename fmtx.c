@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 void datxVoid(void **dat, int siz);
 void *datxVoidz(int num, void *dat);
