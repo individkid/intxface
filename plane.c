@@ -39,6 +39,7 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
+float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(char *,Strq)
@@ -784,6 +785,7 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
+    start = processTime();
     wrapPlane();
     initSafe();
     initBoot();
@@ -793,7 +795,7 @@ void planeLoop()
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): {
-    if (callJnfo(RegisterCount,1,planeRmw) < callInfo(RegisterLimit,0,planeRcfg))
+    if ((processTime()-start)*1000 < callInfo(RegisterLimit,0,planeRcfg))
     {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}

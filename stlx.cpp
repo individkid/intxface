@@ -1,5 +1,6 @@
 #include "stlx.h"
 #include <iomanip>
+#include <chrono>
 
 SlogState slog; // TODO qualify with NDEBUG
 int SmartState::seqnum = 0;
@@ -93,4 +94,12 @@ void freeDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     delete que;
+}
+
+float processTime()
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    return time;
 }

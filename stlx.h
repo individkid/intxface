@@ -323,6 +323,8 @@ int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
 
+float processTime();
+
 #ifdef __cplusplus
 };
 #endif

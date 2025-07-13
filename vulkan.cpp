@@ -6,7 +6,6 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <chrono>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
@@ -3002,11 +3001,9 @@ float *matrc(float *u, int r, int c, int n);
 float *identmat(float *u, int n);
 }
 void TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug) {
-    static auto startTime = std::chrono::high_resolution_clock::now();
-    static int count = 0;
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    if (time > 1.0) {startTime = currentTime; count += 1;}
+    static int count = 0; static float time = 0.0;
+    if (time == 0.0) time = processTime();
+    if (processTime()-time > 1.0) {time = processTime(); count += 1;}
     identmat(model,4);
     identmat(view,4);
     identmat(proj,4);
