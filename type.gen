@@ -69,6 +69,7 @@ Resrc = { -- per variation of BaseState
 Micro = { -- what runs on gpu
 	"MicroTest", -- for Bringup Plan
 	"MicroDebug", -- for testing microcode
+	"MicroCode", -- indexed storage
 }
 Constant = {
 	"MicroCon",
@@ -276,9 +277,9 @@ QopyArg = {
 }
 Plan = { -- which test to run
 	"Bringup", -- reproduce the tutorial
-	"Regress", -- test each transformation with Configure values; send and receive Matrixz with planer.lua
-	"Builtin", -- test each interaction with space with shader indexed Memory buffers and depth color
-	"Release", -- complete user mouse and roller modes and make persistent through share to file
+	"Builtin", -- test each transformation with indexed buffers through planra.lua
+	"Regress", -- test each interaction with user space file through planer.lua
+	"Release", -- complete user and remote modes and actions
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
@@ -440,10 +441,16 @@ FetchResrc = {
 UniformResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","MatrixRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","MatrixRes"},
+	{"Micro","MicroCode","Int","0","Resrc","UniformRes"},
+	{"Micro","MicroCode","Int","1","Resrc","MatrixRes"},
+	{"Micro","MicroCode","Int","2","Resrc","BasisRes"},
 }
 StorageResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","Resrcs"},
 	{"Micro","MicroDebug","Int","0","Resrc","Resrcs"},
+	{"Micro","MicroCode","Int","0","Resrc","TriangleRes"},
+	{"Micro","MicroCode","Int","1","Resrc","NumericRes"},
+	{"Micro","MicroCode","Int","2","Resrc","VertexRes"},
 }
 SamplerResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
@@ -452,14 +459,17 @@ SamplerResrc = {
 RenderResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","SwapRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","PierceRes"},
+	{"Micro","MicroCode","Int","0","Resrc","SwapRes"},
 }
 VertexFile = {
-	{"Micro","MicroTest","Int","0","Str","vertexFlattenG"},
+	{"Micro","MicroTest","Int","0","Str","vertexTestG"},
 	{"Micro","MicroDebug","Int","0","Str","vertexDebugG"},
+	{"Micro","MicroCode","Int","0","Str","vertexCodeG"},
 }
 FragmentFile = {
-	{"Micro","MicroTest","Int","0","Str","fragmentFlattenG"},
+	{"Micro","MicroTest","Int","0","Str","fragmentTestG"},
 	{"Micro","MicroDebug","Int","0","Str","fragmentDebugG"},
+	{"Micro","MicroCode","Int","0","Str","fragmentCodeG"},
 }
 MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},

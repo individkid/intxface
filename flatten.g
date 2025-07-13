@@ -1,6 +1,11 @@
 #version 450
 
-#if defined(fragmentFlatten)
+#if defined(fragmentCode)
+void fragmentCode() {
+}
+#endif
+
+#if defined(fragmentTest)
 layout(binding = 1) uniform sampler2D texSampler;
 
 layout(location = 0) in vec3 fragColor;
@@ -8,7 +13,7 @@ layout(location = 1) in vec2 fragTexCoord;
 
 layout(location = 0) out vec4 outColor;
 
-void fragmentFlatten() {
+void fragmentTest() {
     outColor = texture(texSampler, fragTexCoord); // vec4(fragColor,1.0);
 }
 #endif
@@ -27,7 +32,12 @@ void fragmentDebug() {
 }
 #endif
 
-#if defined(vertexFlatten)
+#if defined(vertexCode)
+void vertexCode() {
+}
+#endif
+
+#if defined(vertexTest)
 layout(binding = 0) uniform Matrix {mat4 buf[];} inMat;
 
 layout(location = 0) in vec4 inPosition;
@@ -37,7 +47,7 @@ layout(location = 2) in uvec4 inRefer;
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
-void vertexFlatten() {
+void vertexTest() {
     if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2] * inPosition;
     else gl_Position = inMat.buf[2] * inMat.buf[3] * inPosition;
     if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue

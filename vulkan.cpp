@@ -1319,7 +1319,7 @@ void TestState::call() {
     else if (test%8 == 2 || test%8 == 6) {tested = test;
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.64*ext.width; eek->eek[0].hei = 0.64*ext.height; eek->eek[0].val = 1.0;
+    eek->eek[0].wid = 0.5*ext.width; eek->eek[0].hei = 0.5*ext.height; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());}
     else tested = test;}
 }
