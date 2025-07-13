@@ -1312,9 +1312,9 @@ void TestState::call() {
     memcpy(&mat->mat[3],debug,sizeof(Matrix));
     copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
-    int idx = 0; if (test == tested) {
+    if (test == tested) {int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
-    else if (test%8 == 1 || test%8 == 5) {tested = test;
+    else if (test%8 == 1 || test%8 == 5) {tested = test; int idx = 0;
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
     else if (test%8 == 2 || test%8 == 6) {tested = test;
     Center *eek = 0; allocCenter(&eek,1);
