@@ -69,7 +69,7 @@ Resrc = { -- per variation of BaseState
 Micro = { -- what runs on gpu
 	"MicroTest", -- for Bringup Plan
 	"MicroDebug", -- for testing microcode
-	"MicroCode", -- indexed storage
+	"MicroDisplay", -- indexed storage
 }
 Constant = {
 	"MicroCon",
@@ -441,16 +441,16 @@ FetchResrc = {
 UniformResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","MatrixRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroCode","Int","0","Resrc","UniformRes"},
-	{"Micro","MicroCode","Int","1","Resrc","MatrixRes"},
-	{"Micro","MicroCode","Int","2","Resrc","BasisRes"},
+	{"Micro","MicroDisplay","Int","0","Resrc","UniformRes"},
 }
 StorageResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","Resrcs"},
 	{"Micro","MicroDebug","Int","0","Resrc","Resrcs"},
-	{"Micro","MicroCode","Int","0","Resrc","TriangleRes"},
-	{"Micro","MicroCode","Int","1","Resrc","NumericRes"},
-	{"Micro","MicroCode","Int","2","Resrc","VertexRes"},
+	{"Micro","MicroDisplay","Int","0","Resrc","MatrixRes"},
+	{"Micro","MicroDisplay","Int","1","Resrc","BasisRes"},
+	{"Micro","MicroDisplay","Int","2","Resrc","TriangleRes"},
+	{"Micro","MicroDisplay","Int","3","Resrc","NumericRes"},
+	{"Micro","MicroDisplay","Int","4","Resrc","VertexRes"},
 }
 SamplerResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
@@ -459,17 +459,17 @@ SamplerResrc = {
 RenderResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","SwapRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","PierceRes"},
-	{"Micro","MicroCode","Int","0","Resrc","SwapRes"},
+	{"Micro","MicroDisplay","Int","0","Resrc","SwapRes"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Int","0","Str","vertexTestG"},
 	{"Micro","MicroDebug","Int","0","Str","vertexDebugG"},
-	{"Micro","MicroCode","Int","0","Str","vertexCodeG"},
+	{"Micro","MicroDisplay","Int","0","Str","vertexDisplayG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Int","0","Str","fragmentTestG"},
 	{"Micro","MicroDebug","Int","0","Str","fragmentDebugG"},
-	{"Micro","MicroCode","Int","0","Str","fragmentCodeG"},
+	{"Micro","MicroDisplay","Int","0","Str","fragmentDisplayG"},
 }
 MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
@@ -748,11 +748,6 @@ Machine = {
 Uniform = {
 	{"all","Int32",{},{}}, -- which subject to use
 	{"one","Int32",{},{}}, -- which element to use
-	{"pro","Int32",{},{}}, -- which projection to use
-	{"win","Int32",{},{}}, -- which window to use
-
-	{"lon","Int32",{},{}}, -- horizontal axis of cursor
-	{"lat","Int32",{},{}}, -- vertical axis of cursor
 	{"idx","Int32",{},{}}, -- which plane to manipulate
 	{"use","Int32",{},{}}, -- which basis to use
 
