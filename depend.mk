@@ -32,7 +32,8 @@ luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
 planeCpp.o: datx.h plane.cpp proto.h wrap.h
-planra.log: fragmentDebugG fragmentDisplayG fragmentTestG planraC texture.jpg vertexDebugG vertexDisplayG vertexTestG vulkanCpp
+planra.log: planraC
+vulkan.log: fragmentDebugG fragmentDisplayG fragmentTestG texture.jpg vertexDebugG vertexDisplayG vertexTestG vulkanCpp
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o wrapCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen

@@ -1,7 +1,12 @@
 #version 450
 
+#if defined(fragmentDisplay) || defined(fragmentCosplay) || defined(fragmentCopoint) || defined(fragmentCoplane) || defined(fragmentPierce) || defined(fragmentDepth)
+layout(location = 0) in vec4 fragOrd;
+layout(location = 0) out vec4 outColor;
+#endif
 #if defined(fragmentDisplay)
 void fragmentDisplay() {
+    outColor = fragOrd;
 }
 #endif
 
@@ -47,7 +52,7 @@ struct Matrix {
     mat4 buf;
 };
 struct Basis {
-    mat3 buf[3];
+    float buf[48];
 };
 struct Triangle {
     uvec4 vtx; // points of triangle
@@ -84,9 +89,8 @@ layout (binding = 5) buffer Vertexs {
     Vertex buf[];
 } inVer;
 layout(location = 0) out vec4 fragOrd;
-#endif
-#if defined(vertexDisplay)
-void vertexDisplay() {
+void display()
+{
     uint tri = gl_VertexIndex/3;
     uint cnr = gl_VertexIndex%3;
     uint vtx = inTri.buf[tri].vtx[cnr];
@@ -98,6 +102,11 @@ void vertexDisplay() {
     if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * inVer.buf[vtx].vec;
     else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * inVer.buf[vtx].vec;
     fragOrd = inVer.buf[vtx].ord;
+}
+#endif
+#if defined(vertexDisplay)
+void vertexDisplay() {
+    display();
 }
 #endif
 

@@ -276,10 +276,10 @@ QopyArg = {
 	"QopySrc",
 }
 Plan = { -- which test to run
-	"Bringup", -- reproduce the tutorial
+	"Bringup", -- reproduce the tutorial through vulkanCpp
 	"Builtin", -- test each transformation with indexed buffers through planra.lua
 	"Regress", -- test each interaction with user space file through planer.lua
-	"Release", -- complete user and remote modes and actions
+	"Release", -- complete user and remote modes and actions through plane.lua
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
@@ -789,7 +789,7 @@ Kernel = {
 	{"copy","Matrix",{},{}},
 }
 Basis = {
-	{"mat","Old",{},{36}},
+	{"mat","Old",{},{48}},
 }
 Image = {
 	{"dat","Dat",{},{}},
