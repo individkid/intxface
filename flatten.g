@@ -33,6 +33,60 @@ void fragmentDebug() {
 #endif
 
 #if defined(vertexCode)
+struct Uniform {
+    int all; // which subject to use
+    int one; // which element to use
+    int pro; // which projection to use
+    int win; // which window to use
+    int lon; // horizontal axis of cursor
+    int lat; // vertical axis of cursor
+    int idx; // which plane to manipulate
+    int use; // which basis to use
+    int tri; // base of triangles
+    int num; // base of numerics
+    int vtx; // base of vertices
+    int mat; // base of matrices
+};
+struct Matrix {
+    mat4 buf;
+};
+struct Basis {
+    mat3 buf[3];
+};
+struct Triangle {
+    ivec4 vtx; // points of triangle
+    int num; // plane of points
+    int pol; // polytope triangle is in
+    int tex; // texture selector
+    int rot; // texture rotation
+};
+struct Numeric {
+    vec4 vec; // distances above basis
+    ivec4 bas; // basis selector
+};
+struct Vertex {
+    vec4 vec; // intersection of planes
+    vec4 ord; // coordinate or color
+    ivec4 ref; // backreference to planes
+};
+layout (binding = 0) uniform Uniforms {
+    Uniform buf[];
+} inUni;
+layout (binding = 1) uniform Matrixs {
+    Matrix buf[];
+} inMat;
+layout (binding = 2) uniform Basiss {
+    Basis buf[];
+} inBas;
+layout (binding = 3) buffer Triangles {
+    Triangle buf[];
+} inTri;
+layout (binding = 4) buffer Numerics {
+    Numeric buf[];
+} inNum;
+layout (binding = 5) buffer Vertexs {
+    Vertex buf[];
+} inVer;
 void vertexCode() {
 }
 #endif
