@@ -750,11 +750,11 @@ void initSafe()
 void initBoot()
 {
     int size = 0;
-    for (int i = 0; callCmnd(i); i++) size++;
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
+    for (int i = 0; callCmnd(i); i++) size++;
     const char **boot = malloc(size*sizeof(const char *)); size = 0;
-    for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
     for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
+    for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
     for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0}; char *str = 0;
     if (hideArgument(&arg, boot[i], &asiz)) {
