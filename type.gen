@@ -166,6 +166,7 @@ Configure = {
 	"MachineIndex", -- running machine
 	"MachineLast", -- reset vector
 	"RegisterOpen", -- thread mask
+        "RegisterShow", -- commandline mask
 	"RegisterPlan", -- testing plan
 	"RegisterCount", -- test progress
 	"RegisterLimit", -- progress limit
@@ -564,7 +565,7 @@ Bootstrap = {
 		"cfg[0]:RegisterPlan"..
 		"cfg[1]:RegisterLimit"..
 		"cfg[2]:RegisterPoll"..
-		"val[0]:%(return castPlan(\"Bringup\"))"..
+		"val[0]:%(return castPlan(\"Bringup\"))".. -- use RegisterShow in expression to choose between Bringup Builtin Regress
 		"val[1]:2000"..
 		"val[2]:1)"},
 }

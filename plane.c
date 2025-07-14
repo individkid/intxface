@@ -749,22 +749,27 @@ void initSafe()
 }
 void initBoot()
 {
-    int size = 0;
+    // Bootstrap is after Cmnd so it can elaborate on Cmnd and Cmnd can configure Bootstrap
+    int size = 0; int cmnds = 0;
+    for (int i = 0; callCmnd(i); i++) {size++; cmnds++;}
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
-    for (int i = 0; callCmnd(i); i++) size++;
     const char **boot = malloc(size*sizeof(const char *)); size = 0;
-    for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
     for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
+    for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
     for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0}; char *str = 0;
     if (hideArgument(&arg, boot[i], &asiz)) {
-    copyArgument(&argument,&arg); freeArgument(&arg);}
+    copyArgument(&argument,&arg); freeArgument(&arg);
+    if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
     else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
-    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);}
+    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);
+    if (i < cmnds) callInfo(RegisterShow,2,planeWots);}
     else if (hideMachine(&mchn, boot[i], &msiz)) {
-    machineSwitch(&mchn); freeMachine(&mchn);}
+    machineSwitch(&mchn); freeMachine(&mchn);
+    if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
     else if (hideStr(&str,boot[i],&ssiz)) {
-    planePutstr(str); freeStr(&str,1);}
+    planePutstr(str); freeStr(&str,1);
+    if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
 }
 void initPlan()
