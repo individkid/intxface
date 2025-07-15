@@ -101,7 +101,7 @@ struct Matrix {
     mat4 buf;
 };
 struct Basis {
-    float buf[48];
+    vec4 buf[9];
 };
 struct Triangle {
     uvec4 vtx; // points of triangle
@@ -141,7 +141,7 @@ layout (location = 0) out vec4 fragOrd;
 layout (location = 1) out uint fragIdx;
 layout (location = 2) out vec4 fragVec;
 layout (location = 3) out uvec4 fragRef;
-void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint all, out uint idx, out uint one)
+void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint all, out uint idx, out uint one, out uint use)
 {
     tri = gl_VertexIndex/3-inUni.buf.tri;
     cnr = gl_VertexIndex%3;
@@ -151,6 +151,7 @@ void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num,
     all = inUni.buf.all-inUni.buf.mat;
     idx = inUni.buf.idx-inUni.buf.num;
     one = inUni.buf.one-inUni.buf.mat;
+    use = inUni.buf.use;
 }
 void display(uint tri, uint idx, uint num, uint one, uint pol, uint all, uint vtx, vec4 vec)
 {
@@ -159,25 +160,31 @@ void display(uint tri, uint idx, uint num, uint one, uint pol, uint all, uint vt
     fragOrd = inVer.buf[vtx].ord;
     fragIdx = tri;
 }
-vec4 intersect(Numeric num0, Numeric num1, Numeric num2)
+vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
 {
     return vec4(0.0,0.0,0.0,1.0);
+}
+void expand(out vec4 res[3], uint vtx, uint ref, uint use)
+{
+    uint bas = inNum.buf[inVer.buf[vtx].ref[ref]].bas[0];
+    vec4 vec = inNum.buf[inVer.buf[vtx].ref[ref]].vec;
+    for (int i = 0; i < 3; i++) res[i] = inBas.buf[use].buf[bas*3+i]*vec[i];
 }
 #endif
 #if defined(vertexDisplay)
 void vertexDisplay() {
-    uint tri,cnr,vtx,pol,num,all,idx,one;
-    index(tri,cnr,vtx,pol,num,all,idx,one);
+    uint tri,cnr,vtx,pol,num,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,all,idx,one,use);
     vec4 vec = inVer.buf[vtx].vec;
     display(tri,idx,num,one,pol,all,vtx,vec);
 }
 #endif
 #if defined(vertexCosplay)
 void vertexCosplay() {
-    uint tri,cnr,vtx,pol,num,all,idx,one;
-    index(tri,cnr,vtx,pol,num,all,idx,one);
-    Numeric num[3]; for (int i = 0; i < 3; i++)
-    num[i] = inNum.buf[inVer.buf[vtx].ref[i]];
+    uint tri,cnr,vtx,pol,num,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,all,idx,one,use);
+    vec4 num[3/*plane*/][3/*tangent*/];
+    for (int i = 0; i < 3; i++) expand(num[i],vtx,i,use);
     vec4 vec = intersect(num[0],num[1],num[2]);
     display(tri,idx,num,one,pol,all,vtx,vec);
 }
