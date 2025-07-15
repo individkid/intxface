@@ -160,8 +160,36 @@ void display(uint tri, uint idx, uint num, uint one, uint pol, uint all, uint vt
     fragOrd = inVer.buf[vtx].ord;
     fragIdx = tri;
 }
+vec4 cross(out float acu, vec4 vec0, vec4 vec1)
+{
+    // acu is magnitude of cross over product of leg magnitudes
+    vec3 lft = vec0.xyz; vec3 rgt = vec1.xyz;
+    vec3 vec = cross(lft,rgt);
+    vec4 res = vec4(vec,1.0);
+    acu = length(res)/(length(vec0)*length(vec1));
+    return res;
+}
+vec4 proj(out float acu, vec4 vec0, vec4 vec1, vec4 num[3])
+{
+    // ratio of dot of segment with cross onto segment
+    // acu is cross acu times projection magnitude squared over segment magnitude squared
+    acu = 0.0; vec4 res; for (int i = 0; i < 3; i++) {
+    float tmp; vec4 vec = cross(tmp,num[(i+1)%3],num[(i+2)%3]);
+    vec4 dif0 = vec0-num[i]; vec4 dif1 = vec1-num[i];
+    float num = dot(vec,dif0); float den = dot(vec,dif1);
+    tmp = tmp * (num+den)/length(vec);
+    if (tmp > acu) {acu = tmp; res = (vec0*num+vec1*den)/(num+den);}}
+    return res;
+}
+vec4 sect(out float acu, vec4 num0[3], vec4 num1[3], vec4 num2[3])
+{
+    // ratio of project of segment of num0/num1 onto num2
+    // acu is product of projection acus
+    return vec4(0.0,0.0,0.0,1.0);
+}
 vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
 {
+    // return sect with best acu
     return vec4(0.0,0.0,0.0,1.0);
 }
 void expand(out vec4 res[3], uint vtx, uint ref, uint use)
