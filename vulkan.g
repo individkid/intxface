@@ -166,7 +166,7 @@ vec4 cross(out float acu, vec4 vec0, vec4 vec1)
     vec3 lft = vec0.xyz; vec3 rgt = vec1.xyz;
     vec3 vec = cross(lft,rgt);
     vec4 res = vec4(vec,1.0);
-    acu = length(res)/(length(vec0)*length(vec1));
+    acu = dot(res,res)/(dot(vec0,vec0)+dot(vec1,vec1));
     return res;
 }
 vec4 proj(out float acu, vec4 vec0, vec4 vec1, vec4 num[3])
@@ -177,20 +177,31 @@ vec4 proj(out float acu, vec4 vec0, vec4 vec1, vec4 num[3])
     float tmp; vec4 vec = cross(tmp,num[(i+1)%3],num[(i+2)%3]);
     vec4 dif0 = vec0-num[i]; vec4 dif1 = vec1-num[i];
     float num = dot(vec,dif0); float den = dot(vec,dif1);
-    tmp = tmp * (num+den)/length(vec);
-    if (tmp > acu) {acu = tmp; res = (vec0*num+vec1*den)/(num+den);}}
+    tmp = tmp * (num-den)/dot(vec,vec);
+    if (tmp > acu) {acu = tmp; res = (vec0*num-vec1*den)/(num-den);}}
     return res;
 }
 vec4 sect(out float acu, vec4 num0[3], vec4 num1[3], vec4 num2[3])
 {
     // ratio of project of segment of num0/num1 onto num2
-    // acu is product of projection acus
-    return vec4(0.0,0.0,0.0,1.0);
+    // acu is product of projection acu
+    acu = 0.0; vec4 res; for (int i = 0; i < 3; i++) {
+    float tmp0; vec4 vec0 = proj(tmp0,num0[i],num0[(i+1)%3],num1);
+    float tmp1; vec4 vec1 = proj(tmp1,num0[i],num0[(i+2)%3],num1);
+    float tmp2; vec4 vec = proj(tmp2,vec0,vec1,num2);
+    float tmp = tmp0*tmp1*tmp2;
+    if (tmp > acu) {acu = tmp; res = vec;}}
+    return res;
 }
 vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
 {
     // return sect with best acu
-    return vec4(0.0,0.0,0.0,1.0);
+    float tmp0; vec4 vec0 = sect(tmp0,num0,num1,num2);
+    float tmp1; vec4 vec1 = sect(tmp1,num1,num2,num0);
+    float tmp; vec4 vec = sect(tmp,num2,num0,num1);
+    if (tmp0 < tmp1 && tmp0 < tmp) return vec0;
+    if (tmp1 < tmp && tmp1 < tmp0) return vec1;
+    return vec;
 }
 void expand(out vec4 res[3], uint vtx, uint ref, uint use)
 {
