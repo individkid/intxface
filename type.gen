@@ -756,6 +756,9 @@ Uniform = {
 	{"num","Int32",{},{}}, -- base of numerics
 	{"vtx","Int32",{},{}}, -- base of vertices
 	{"mat","Int32",{},{}}, -- base of matrices
+
+	{"mod","Int32",{},{}}, -- vertices or planes
+	{"pad","Int32",{},{3}},
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle

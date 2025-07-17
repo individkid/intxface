@@ -1,6 +1,6 @@
 #version 450
 
-#if defined(fragmentDisplay) || defined(fragmentCosplay) || defined(fragmentCopoint) || defined(fragmentCoplane) || defined(fragmentPierce) || defined(fragmentDepth)
+#if defined(fragmentDisplay) || defined(fragmentCopoint) || defined(fragmentCoplane) || defined(fragmentPierce) || defined(fragmentDepth)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in uint fragIdx;
 layout (location = 2) in vec4 fragVec;
@@ -9,13 +9,6 @@ layout (location = 3) flat in uvec4 fragRef;
 #if defined(fragmentDisplay)
 layout (location = 0) out vec4 outColor;
 void fragmentDisplay()
-{
-    outColor = fragOrd;
-}
-#endif
-#if defined(fragmentCosplay)
-layout (location = 0) out vec4 outColor;
-void fragmentCosplay()
 {
     outColor = fragOrd;
 }
@@ -95,7 +88,7 @@ void fragmentDebug()
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexCosplay) || defined(vertexCopoint) || defined(vertexCoplane) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexCopoint) || defined(vertexCoplane) || defined(vertexPierce) || defined(vertexDepth)
 // TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
 // TODO think of more approximate and efficient way to calculate acc-uracy
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
@@ -164,6 +157,8 @@ struct Uniform {
     uint num; // base of numerics
     uint vtx; // base of vertices
     uint mat; // base of matrices
+    uint mod; // vertices or planes
+    uint pad[3];
 };
 struct Matrix {
     mat4 buf;
@@ -236,26 +231,23 @@ void expand(out vec4 res[3], uint ref, uint use)
     res[i] = inBas.buf[use].buf[bas*3+i];
     res[i][use] *= vec[i];}
 }
+void vertex()
+{
+    uint tri,cnr,vtx,pol,num,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,all,idx,one,use);
+    vec4 vec; if (inUni.buf.mod == 1) {
+    vec4 num[3/*plane*/][3/*tangent*/];
+    for (uint i = 0; i < 3; i++)
+    expand(num[i],inVer.buf[vtx].ref[i],use);
+    vec = intersect(num[0],num[1],num[2]);
+    } else vec = inVer.buf[vtx].vec;
+    display(tri,idx,num,one,pol,all,vtx,vec);
+}
 #endif
 #if defined(vertexDisplay)
 void vertexDisplay()
 {
-    uint tri,cnr,vtx,pol,num,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,all,idx,one,use);
-    vec4 vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,one,pol,all,vtx,vec);
-}
-#endif
-#if defined(vertexCosplay)
-void vertexCosplay()
-{
-    uint tri,cnr,vtx,pol,num,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,all,idx,one,use);
-    vec4 num[3/*plane*/][3/*tangent*/];
-    for (uint i = 0; i < 3; i++)
-    expand(num[i],inVer.buf[vtx].ref[i],use);
-    vec4 vec = intersect(num[0],num[1],num[2]);
-    display(tri,idx,num,one,pol,all,vtx,vec);
+    vertex();
 }
 #endif
 #if defined(vertexCopoint)
@@ -298,19 +290,13 @@ void vertexCoplane()
 #if defined(vertexPierce)
 void vertexPierce()
 {
-    uint tri,cnr,vtx,pol,num,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,all,idx,one,use);
-    vec4 vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,one,pol,all,vtx,vec);
+    vertex();
 }
 #endif
 #if defined(vertexDepth)
 void vertexDepth()
 {
-    uint tri,cnr,vtx,pol,num,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,all,idx,one,use);
-    vec4 vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,one,pol,all,vtx,vec);
+    vertex();
 }
 #endif
 
