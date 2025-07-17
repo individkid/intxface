@@ -64,6 +64,7 @@ void fragmentDepth()
     outColor = gl_FragCoord.z;
 }
 #endif
+// TODO Copierce and Codepth?
 
 #if defined(fragmentTest)
 layout (binding = 1) uniform sampler2D texSampler;
@@ -113,7 +114,7 @@ vec4 proj(out float acu, vec4 vec0, vec4 vec1, vec4 num[3])
 {
     // ratio of dot of segment with cross onto segment
     // acu is segment dot difference over cross length
-    acu = 0.0; vec4 res; for (int i = 0; i < 3; i++) {
+    acu = 0.0; vec4 res; for (uint i = 0; i < 3; i++) {
     float tmp; vec4 vec = cross(tmp,num[(i+1)%3],num[(i+2)%3]);
     vec4 dif0 = vec0-num[i]; vec4 dif1 = vec1-num[i];
     float num = dot(vec,dif0); float den = dot(vec,dif1);
@@ -130,7 +131,7 @@ vec4 sect(out float acu, vec4 num0[3], vec4 num1[3], vec4 num2[3])
 {
     // ratio of project of segment of num0/num1 onto num2
     // acu is product of projection acu
-    acu = 0.0; vec4 res; for (int i = 0; i < 3; i++) {
+    acu = 0.0; vec4 res; for (uint i = 0; i < 3; i++) {
     float tmp0; vec4 vec0 = proj(tmp0,num0[i],num0[(i+1)%3],num1);
     float tmp1; vec4 vec1 = proj(tmp1,num0[i],num0[(i+2)%3],num1);
     float tmp2; vec4 vec = proj(tmp2,vec0,vec1,num2);
@@ -231,7 +232,7 @@ void expand(out vec4 res[3], uint ref, uint use)
 {
     uint bas = inNum.buf[ref].bas[0];
     vec4 vec = inNum.buf[ref].vec;
-    for (int i = 0; i < 3; i++) {
+    for (uint i = 0; i < 3; i++) {
     res[i] = inBas.buf[use].buf[bas*3+i];
     res[i][use] *= vec[i];}
 }
@@ -251,7 +252,7 @@ void vertexCosplay()
     uint tri,cnr,vtx,pol,num,all,idx,one,use;
     index(tri,cnr,vtx,pol,num,all,idx,one,use);
     vec4 num[3/*plane*/][3/*tangent*/];
-    for (int i = 0; i < 3; i++)
+    for (uint i = 0; i < 3; i++)
     expand(num[i],inVer.buf[vtx].ref[i],use);
     vec4 vec = intersect(num[0],num[1],num[2]);
     display(tri,idx,num,one,pol,all,vtx,vec);
@@ -261,14 +262,55 @@ void vertexCosplay()
 void vertexCopoint()
 {
     uint use = inUni.buf.use; // which stool feet to use
-    vtx = gl_VertexIndex-inUni.buf.vtx; // vertex index
-    uvec4 ref; for (int i = 0; i < 3; i++) // plane indices
+    uint vtx = gl_VertexIndex-inUni.buf.vtx; // vertex index
+    uvec4 ref; for (uint i = 0; i < 3; i++) // plane indices
     ref[i] = inVer.buf[vtx].ref-inUni.buf.vtx;
     vec4 num[3/*plane*/][3/*tangent*/]; // expanded planes
-    for (int i = 0; i < 3; i++) expand(num[i],ref[i],use);
+    for (uint i = 0; i < 3; i++) expand(num[i],ref[i],use);
     fragVec = intersect(num[0],num[1],num[2]);
     fragRef = inVer.buf[vtx].ref;
     fragOrd = inVer.buf[vtx].ord;
+}
+#endif
+#if defined(vertexCoplane)
+void vertexCoplane()
+{
+    // TODO comb through this
+    uint tri = gl_VertexIndex-inUni.buf.tri;
+    uint num = inTri.buf[tri].num-inUni.buf.num;
+    vec4 vec[3]; for (uint i = 0; i < 3; i++) {
+    uint vtx = inTri.buf[tri].vtx[i]-inUni.buf.vtx;
+    vec[i] = inVer.buf[vtx].vec;}
+    fragRef = uvec4(0,0,0,0); // leg feet selector
+    vec3 dim; for (uint i = 0; i < 3; i++) dim[i] = vec[i][0];
+    float dif = max(dim) - min(dim);
+    for (uint i = 1; i < 3; i++) {
+    vec3 tmp; for (uint j = 0; j < 3; j++) tmp[i] = vec[j][i];
+    float cmp = max(tmp) - min(tmp);
+    if (cmp < dif) {dif = cmp; fragRef[0] = i;}}
+    fragVec; // leg lenths
+    for (uint i = 0; i < 3; i++) {
+    vec4 vec0 = inBas.buf[fragRef[0]*3+i];
+    vec4 vec1 = vec1; vec1[fragRef[0]] += 1.0;
+    float acc; fragVec[i] = proj(acc,vec0,vec1,vec)[fragRef[0]];}
+}
+#endif
+#if defined(vertexPierce)
+void vertexPierce()
+{
+    uint tri,cnr,vtx,pol,num,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,all,idx,one,use);
+    vec4 vec = inVer.buf[vtx].vec;
+    display(tri,idx,num,one,pol,all,vtx,vec);
+}
+#endif
+#if defined(vertexDepth)
+void vertexDepth()
+{
+    uint tri,cnr,vtx,pol,num,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,all,idx,one,use);
+    vec4 vec = inVer.buf[vtx].vec;
+    display(tri,idx,num,one,pol,all,vtx,vec);
 }
 #endif
 
