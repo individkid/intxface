@@ -1292,7 +1292,7 @@ void TestState::call() {
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
-    float start = processTime(); int tested = 0;
+    int tested = 0;
     bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     SmartState mlog;
@@ -3002,6 +3002,7 @@ float *planeWindow(float *mat);
 float *matrc(float *u, int r, int c, int n);
 float *identmat(float *u, int n);
 }
+#include <math.h>
 int TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug) {
     static int count = 0; static float time = 0.0;
     if (time == 0.0) time = processTime();
@@ -3012,15 +3013,15 @@ int TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view,
     *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
     identmat(debug,4);
-    if (count%8 < 4) {
+    // if (count%8 < 4) {
     float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
-    float dst0[] = {-0.5f, -0.5f, 0.60f, 1.0f};
+    float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(processTime()*8.0f), 1.0f};
     float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
     float dst1[] = {0.5f, -0.5f, 0.40f, 1.0f};
     float src2[] = {0.5f, -0.5f, 0.40f, 0.0f};
     float dst2[] = {0.5f, -0.5f, 0.40f, 0.0f};
     float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
-    planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
+    planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);//}
     return count;
 }

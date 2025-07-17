@@ -1,6 +1,6 @@
 #version 450
 
-#if defined(fragmentDisplay) || defined(fragmentCopoint) || defined(fragmentCoplane) || defined(fragmentPierce) || defined(fragmentDepth)
+#if defined(fragmentDisplay) || defined(fragmentPoint) || defined(fragmentPlane) || defined(fragmentPierce) || defined(fragmentDepth)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in uint fragIdx;
 layout (location = 2) in vec4 fragVec;
@@ -13,7 +13,7 @@ void fragmentDisplay()
     outColor = fragOrd;
 }
 #endif
-#if defined(fragmentCopoint)
+#if defined(fragmentPoint)
 struct Vertex {
     vec4 vec; // intersection of planes
     vec4 ord; // coordinate or color
@@ -22,14 +22,14 @@ struct Vertex {
 layout (binding = 7) writeonly restrict buffer Vertexs {
     Vertex buf[];
 } outVer;
-void fragmentCopoint()
+void fragmentPoint()
 {
     outVer.buf[fragIdx].vec = fragVec;
     outVer.buf[fragIdx].ord = fragOrd;
     outVer.buf[fragIdx].ref = fragRef;
 }
 #endif
-#if defined(fragmentCoplane)
+#if defined(fragmentPlane)
 struct Numeric {
     vec4 vec; // distances above basis
     uvec4 bas; // basis selector
@@ -37,7 +37,7 @@ struct Numeric {
 layout (binding = 6) writeonly restrict buffer Numerics {
     Numeric buf[];
 } outNum;
-void fragmentCoplane()
+void fragmentPlane()
 {
     outNum.buf[fragIdx].vec = fragVec;
     outNum.buf[fragIdx].bas = fragRef;
@@ -88,7 +88,7 @@ void fragmentDebug()
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexCopoint) || defined(vertexCoplane) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexPoint) || defined(vertexPlane) || defined(vertexPierce) || defined(vertexDepth)
 // TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
 // TODO think of more approximate and efficient way to calculate acc-uracy
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
@@ -250,8 +250,8 @@ void vertexDisplay()
     vertex();
 }
 #endif
-#if defined(vertexCopoint)
-void vertexCopoint()
+#if defined(vertexPoint)
+void vertexPoint()
 {
     uint use = inUni.buf.use; // which stool feet to use
     uint vtx = gl_VertexIndex-inUni.buf.vtx; // vertex index
@@ -264,8 +264,8 @@ void vertexCopoint()
     fragOrd = inVer.buf[vtx].ord;
 }
 #endif
-#if defined(vertexCoplane)
-void vertexCoplane()
+#if defined(vertexPlane)
+void vertexPlane()
 {
     // TODO comb through this
     uint tri = gl_VertexIndex-inUni.buf.tri;
