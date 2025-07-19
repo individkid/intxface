@@ -704,8 +704,9 @@ void registerOpen(enum Configure cfg, int sav, int val)
 }
 void registerMask(enum Configure cfg, int sav, int val)
 {
-    if (callKnfo(RegisterOpen,0,planeRcfg) & (1<<CopyThd))
-    callKnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    int open = callKnfo(RegisterOpen,0,planeRcfg);
+    int wake = callKnfo(RegisterWake,0,planeRcfg);
+    callKnfo(RegisterOpen,(open & wake),planeWots);
 }
 
 char *planeGetstr()
@@ -774,11 +775,20 @@ void initBoot()
 }
 void initPlan()
 {
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
-    break; case (Bringup): {
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+    break; case (Bringup):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
-    }
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    break; case (Builtin):
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    break; case (Regress): case (Release):
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
 void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
@@ -796,18 +806,31 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     initBoot();
     initPlan();
 }
-void planeLoop()
+int planeLoop()
 {
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
-    break; case (Bringup): {
-    if ((processTime()-start)*1000 < callInfo(RegisterLimit,0,planeRcfg))
-    {callJnfo(RegisterOpen,(1<<TestThd),planeWots); return;}
-    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+    break; case (Bringup): if ((processTime()-start)*1000 < 2000)
+    {/*TODO use TimeThd instead*/callJnfo(RegisterOpen,(1<<TestThd),planeWots); return 1;}
     }
+    return 0;
 }
 void planeDone()
 {
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+    break; case (Bringup):
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
+    break; case (Builtin):
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
+    break; case (Regress): case (Release):
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
     callBack(RegisterMask,0);
     callBack(RegisterOpen,0);
     freeStrq(strin); freeStrq(strout);

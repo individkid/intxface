@@ -5,12 +5,14 @@ layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in uint fragIdx;
 layout (location = 2) in vec4 fragVec;
 layout (location = 3) flat in uvec4 fragRef;
+layout (location = 4) flat in uint fragTex;
 #endif
 #if defined(fragmentDisplay)
 layout (location = 0) out vec4 outColor;
 void fragmentDisplay()
 {
-    outColor = fragOrd;
+    switch (fragTex) {default:
+    break; case (0): outColor = fragOrd;}
 }
 #endif
 #if defined(fragmentPoint)
@@ -185,43 +187,46 @@ struct Vertex {
 layout (binding = 0) uniform Uniforms {
     Uniform buf;
 } inUni;
-layout (binding = 1) buffer Matrixs {
+layout (binding = 1) readonly restrict buffer Matrixs {
     Matrix buf[];
 } inMat;
-layout (binding = 2) buffer Basiss {
+layout (binding = 2) readonly restrict buffer Basiss {
     Basis buf[];
 } inBas;
-layout (binding = 3) buffer Triangles {
+layout (binding = 3) readonly restrict buffer Triangles {
     Triangle buf[];
 } inTri;
-layout (binding = 4) buffer Numerics {
+layout (binding = 4) readonly restrict buffer Numerics {
     Numeric buf[];
 } inNum;
-layout (binding = 5) buffer Vertexs {
+layout (binding = 5) readonly restrict buffer Vertexs {
     Vertex buf[];
 } inVer;
 layout (location = 0) out vec4 fragOrd;
 layout (location = 1) out uint fragIdx;
 layout (location = 2) out vec4 fragVec;
 layout (location = 3) out uvec4 fragRef;
-void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint all, out uint idx, out uint one, out uint use)
+layout (location = 4) out uint fragTex;
+void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
 {
     tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
     cnr = gl_VertexIndex%3; // corner index
     vtx = inTri.buf[tri].vtx[cnr]-inUni.buf.vtx; // vertex index for corner of triangle
     pol = inTri.buf[tri].pol-inUni.buf.mat; // matrix index for polytope vertex is in
     num = inTri.buf[tri].num-inUni.buf.num; // plane index for plane vertex is on
+    tex = inTri.buf[tri].tex; // decoration type
     all = inUni.buf.all-inUni.buf.mat; // matrix index for everything
     idx = inUni.buf.idx-inUni.buf.num; // plane index for manipulated plane
     one = inUni.buf.one-inUni.buf.mat; // matrix index for manipulated plane
     use = inUni.buf.use; // basis index for plane feet
 }
-void display(uint tri, uint idx, uint num, uint one, uint pol, uint all, uint vtx, vec4 vec)
+void display(uint tri, uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vtx, vec4 vec)
 {
     if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     fragOrd = inVer.buf[vtx].ord;
     fragIdx = tri;
+    fragTex = tex;
 }
 void expand(out vec4 res[3], uint ref, uint use)
 {
@@ -233,15 +238,15 @@ void expand(out vec4 res[3], uint ref, uint use)
 }
 void vertex()
 {
-    uint tri,cnr,vtx,pol,num,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,all,idx,one,use);
+    uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
     vec4 vec; if (inUni.buf.mod == 1) {
     vec4 num[3/*plane*/][3/*tangent*/];
     for (uint i = 0; i < 3; i++)
     expand(num[i],inVer.buf[vtx].ref[i],use);
     vec = intersect(num[0],num[1],num[2]);
     } else vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,one,pol,all,vtx,vec);
+    display(tri,idx,num,tex,one,pol,all,vtx,vec);
 }
 #endif
 #if defined(vertexDisplay)

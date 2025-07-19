@@ -2034,10 +2034,8 @@ int main(int argc, const char **argv) {
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     // TODO move glfw functions to WindowState
-    while (!glfwWindowShouldClose(main.windowState.window)) {
-    planeLoop();
-    if (main.copyState.read(RegisterOpen) == 0) break;
-    glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);}
+    while (!glfwWindowShouldClose(main.windowState.window) && planeLoop())
+    glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
     planeDone();
     return 0;
 }
