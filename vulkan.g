@@ -21,7 +21,7 @@ struct Vertex {
     vec4 ord; // coordinate or color
     uvec4 ref; // backreference to planes
 };
-layout (binding = 7) writeonly restrict buffer Vertexs {
+layout (binding = 7) writeonly buffer Vertexs {
     Vertex buf[];
 } outVer;
 void fragmentPoint()
@@ -36,7 +36,7 @@ struct Numeric {
     vec4 vec; // distances above basis
     uvec4 bas; // basis selector
 };
-layout (binding = 6) writeonly restrict buffer Numerics {
+layout (binding = 6) writeonly buffer Numerics {
     Numeric buf[];
 } outNum;
 void fragmentPlane()
@@ -187,19 +187,19 @@ struct Vertex {
 layout (binding = 0) uniform Uniforms {
     Uniform buf;
 } inUni;
-layout (binding = 1) readonly restrict buffer Matrixs {
+layout (binding = 1) readonly buffer Matrixs {
     Matrix buf[];
 } inMat;
-layout (binding = 2) readonly restrict buffer Basiss {
+layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
 } inBas;
-layout (binding = 3) readonly restrict buffer Triangles {
+layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
-layout (binding = 4) readonly restrict buffer Numerics {
+layout (binding = 4) readonly buffer Numerics {
     Numeric buf[];
 } inNum;
-layout (binding = 5) readonly restrict buffer Vertexs {
+layout (binding = 5) readonly buffer Vertexs {
     Vertex buf[];
 } inVer;
 layout (location = 0) out vec4 fragOrd;
