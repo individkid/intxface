@@ -84,6 +84,12 @@ void *backDeque(void *ptr)
     return (void*)que->back().data();
 }
 
+void *ptrDeque(int idx, void *ptr)
+{
+    auto que = (std::deque<std::vector<uint8_t>>*)ptr;
+    return (void*)(*que)[idx].data();
+}
+
 int sizeDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;

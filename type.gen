@@ -172,8 +172,8 @@ Configure = {
 	"RegisterPass", -- pass center index
 	"RegisterFail", -- fail center index
 	"RegisterMask", -- interrupt mask
-	"RegisterWake", -- threads to wake
-	"RegisterTime", -- time since cleared
+	"RegisterWake", -- mask of threads
+	"RegisterTime", -- wake time
 	"RegisterStrq", -- num strings in queue
 	"ProbePoke", -- probe state
 	"ProbePeek",
@@ -310,14 +310,15 @@ Thread = { -- separate threads
 	"TestThd",
 }
 Mask = { -- signals between threads
-	"FnceMsk",
-	"SizeMsk",
-	"SelfMsk",
-	"NslfMsk",
-	"SlctMsk",
-	"CnslMsk",
-	"PassMsk",
-	"FailMsk",
+	"FnceMsk", -- fence thread wakeup
+	"SizeMsk", -- glfw window resized
+	"SelfMsk", -- unexpected self matrix
+	"NslfMsk", -- unexpected non-self matrix
+	"SlctMsk", -- pipe thread wakeup
+	"CnslMsk", -- stdio thread wakeup
+	"TimeMsk", -- time thread wakeup
+	"PassMsk", -- passing copy callback
+	"FailMsk", -- failing copy callback
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary

@@ -310,6 +310,7 @@ void popDeque(void *ptr);
 void dropDeque(void *ptr);
 void *frontDeque(void *ptr);
 void *backDeque(void *ptr);
+void *ptrDeque(int idx, void *ptr);
 int sizeDeque(void *ptr);
 void freeDeque(void *ptr);
 #define DECLARE_DEQUE(TYPE,NAME) \
@@ -319,6 +320,7 @@ void pop ## NAME(void *ptr) {popDeque(ptr);} \
 void drop ## NAME(void *ptr) {dropDeque(ptr);} \
 TYPE front ## NAME(void *ptr) {return *(TYPE*)frontDeque(ptr);} \
 TYPE back ## NAME(void *ptr) {return *(TYPE*)backDeque(ptr);} \
+TYPE *ptr ## NAME(int idx, void *ptr) {return (TYPE*)ptrDeque(idx,ptr);} \
 int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
