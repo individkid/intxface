@@ -148,27 +148,16 @@ template <class Conf, int Size> struct ChangeState {
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
         return ret;
     }
-    typedef int (*ChangeType)(int,int);
-    int change(Conf cfg, int val, ChangeType opr, bool ret, bool typ) {
-        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid change!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; std::set<xftype> todo;
-        if (typ && back.find(cfg) != back.end()) todo = back[cfg];
-        config[cfg] = opr(config[cfg],val); val = config[cfg];
-        nest.wait(); self = pthread_self(); depth++; nest.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
-        nest.wait(); depth--; nest.post();
-        safe.post(); return (ret?sav:val);
-    }
-    static int readOp(int l, int r) {return l;}
-    int read(Conf cfg) {return change(cfg,0,readOp,false,false);}
-    static int writeOp(int l, int r) {return r;}
-    void write(Conf cfg, int val) {change(cfg,val,writeOp,false,true);}
-    static int wotsOp(int l, int r) {return l|r;}
-    void wots(Conf cfg, int val) {change(cfg,val,wotsOp,false,true);}
-    static int wotcOp(int l, int r) {return l&~r;}
-    void wotc(Conf cfg, int val) {change(cfg,val,wotcOp,false,false);}
-    static int rmwOp(int l, int r) {return l+r;}
-    int rmw(Conf cfg, int val) {return change(cfg,val,rmwOp,true,true);}
+    static int readFn(int *ref, int val) {return *ref;}
+    int read(Conf cfg) {return info(cfg,0,readFn);}
+    static int writeFn(int *ref, int val) {*ref = val; return 0;}
+    void write(Conf cfg, int val) {jnfo(cfg,val,writeFn);}
+    static int wotsFn(int *ref, int val) {*ref = *ref|val; return 0;}
+    void wots(Conf cfg, int val) {jnfo(cfg,val,wotsFn);}
+    static int wotcFn(int *ref, int val) {*ref = *ref&~val; return 0;}
+    void wotc(Conf cfg, int val) {jnfo(cfg,val,wotcFn);}
+    static int rmwFn(int *ref, int val) {int ret = *ref; *ref = *ref+val; return ret;}
+    int rmw(Conf cfg, int val) {return jnfo(cfg,val,rmwFn);}
 };
 
 struct CallState;
