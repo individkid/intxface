@@ -682,21 +682,23 @@ void planeTime(enum Thread tag, int idx)
     while (1) {
     if (sizeTimeq(timeq)) {
     if (sem_wait(&timeSem) != 0) ERROR();
-    double time = (double)frontTimeq(timeq)/1000.0 - time;
+    float time = (float)frontTimeq(timeq);
     if (sem_post(&timeSem) != 0) ERROR();
     int sub = waitRead(time-processTime(),(1<<timwake));
-    if (sub == timwake) {
+    if (sub < 0) break;
+    if (sub != timwake) ERROR();
     if (!checkRead(timwake)) break;
-    readInt(timwake);}
+    readInt(timwake);
     if (processTime() >= time) {
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
     if (sem_wait(&timeSem) != 0) ERROR();
     popTimeq(timeq);
     if (sem_post(&timeSem) != 0) ERROR();}} else {
     int sub = waitRead(0.0,(1<<timwake));
-    if (sub == timwake) {
+    if (sub < 0) break;
+    if (sub != timwake) ERROR();
     if (!checkRead(timwake)) break;
-    readInt(timwake);}}}
+    readInt(timwake);}}
 }
 void planeClose(enum Thread tag, int idx)
 {
@@ -745,17 +747,17 @@ void registerMask(enum Configure cfg, int sav, int val)
 }
 void registerTime(enum Configure cfg, int sav, int val)
 {
-    float time = processTime()+val;
+    float time = processTime()+(float)val/1000.0;
     if (sem_wait(&timeSem) != 0) ERROR();
-    if (sizeTimeq(timeq) && backTimeq(timeq) < time) {
+    if (sizeTimeq(timeq) && backTimeq(timeq) > time) {
     pushTimeq(backTimeq(timeq),timeq);
     int idx = sizeTimeq(timeq)-2;
-    while (idx > 0 && *ptrTimeq(idx,timeq) < time) {
+    while (idx > 0 && *ptrTimeq(idx,timeq) > time) {
     *ptrTimeq(idx,timeq) = *ptrTimeq(idx-1,timeq); --idx;}
     *ptrTimeq(idx,timeq) = time;} else
     pushTimeq(time,timeq);
     if (sem_post(&timeSem) != 0) ERROR();
-    callKnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    callKnfo(RegisterMask,(1<<TimeMsk),planeWots);
 }
 
 char *planeGetstr()

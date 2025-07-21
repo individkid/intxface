@@ -1250,6 +1250,7 @@ void TestState::call() {
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
+    copy->wots(RegisterWake,(1<<TestThd)); copy->write(RegisterTime,1000);
     //
     copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //
