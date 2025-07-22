@@ -3,7 +3,7 @@ enum Thread;
 struct Center;
 typedef void (*mftype)(enum Thread tag, int idx);
 typedef void (*wftype)(struct Center *ptr, int sub);
-typedef void (*xftype)(enum Configure cfg, int sav, int val);
+typedef void (*xftype)(enum Configure cfg, int sav, int val, int act);
 typedef void (*nftype)(enum Configure cfg, xftype back);
 typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done);
 typedef int (*yftype)(int *ref, int val);

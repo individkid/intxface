@@ -109,7 +109,7 @@ struct SlogState : public std::ostream {
 extern SlogState slog; // TODO qualify with NDEBUG
 
 template <class Conf, int Size> struct ChangeState {
-    typedef void (*xftype)(Conf cfg, int sav, int val);
+    typedef void (*xftype)(Conf cfg, int sav, int val, int act);
     typedef int (*yftype)(int *ref, int val);
     int config[Size];
     std::map<Conf,std::set<xftype>> back;
@@ -134,7 +134,7 @@ template <class Conf, int Size> struct ChangeState {
         safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
         nest.wait(); self = pthread_self(); depth++; nest.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val,config[cfg]);
         // would block forever if calls info or jnfo
         nest.wait(); depth--; nest.post();
         safe.post(); return ret;
@@ -145,7 +145,7 @@ template <class Conf, int Size> struct ChangeState {
         int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         // would not block if called from jnfo, but thread safe since pthread_equal to calling jnfo
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,config[cfg]);
+        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val,config[cfg]);
         return ret;
     }
     static int readFn(int *ref, int val) {return *ref;}

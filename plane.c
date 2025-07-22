@@ -74,6 +74,10 @@ int planeRdwr(int *ref, int val)
 {
     int ret = *ref; *ref = val; return ret;
 }
+int planeRaz(int *ref, int val)
+{
+    *ref = 0; return 0;
+}
 
 unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l)
 {
@@ -700,40 +704,41 @@ void planeTime(enum Thread tag, int idx)
     if (sub < 0) break;
     if (sub != timwake) ERROR();
     if (!checkRead(timwake)) break;
-    readInt(timwake);}}
+    readInt(timwake);}
+    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}
 }
 void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
 
-void registerOpen(enum Configure cfg, int sav, int val)
+void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterOpen) ERROR();
-    if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
+    if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
         if ((selwake = openPipe()) < 0) ERROR();
         callFork(PipeThd,0,planeSelect,planeClose);}
-    if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
+    if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         closeIdent(external); closeIdent(selwake);}
-    if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
+    if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         if ((conwake = openPipe()) < 0) ERROR();
         callFork(StdioThd,0,planeConsole,planeClose);}
-    if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
+    if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         closeIdent(console); closeIdent(conwake);}
-    if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
+    if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         callFork(CopyThd,0,planeMachine,planeClose);}
-    if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
+    if (!(act & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
         if (sem_post(&waitSem) != 0) ERROR();}
-    if ((val & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
+    if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         if ((timwake = openPipe()) < 0) ERROR();
         callFork(TimeThd,0,planeTime,planeClose);}
-    if (!(val & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
+    if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         closeIdent(timwake);}
 }
-void registerWake(enum Configure cfg, int sav, int val)
+void registerWake(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterWake) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
@@ -745,25 +750,27 @@ void registerWake(enum Configure cfg, int sav, int val)
     if ((val & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         writeInt(timwake,0);}
 }
-void registerMask(enum Configure cfg, int sav, int val)
+void registerMask(enum Configure cfg, int sav, int val, int act)
 {
-    int wake = 0;
     if (cfg != RegisterMask) ERROR();
     int open = callKnfo(RegisterOpen,0,planeRcfg);
+    int wake = 0;
     for (int i = 0; i < Threads; i++) {
     int mask = (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);
     if ((val & (1<<i)) && !(sav & (1<<i)) && (mask & (1<<i))) wake |= (1<<i);}
-    callKnfo(RegisterWake,wake,planeWots);
+    callKnfo(RegisterWake,open&wake,planeRaz);
 }
-void registerAble(enum Configure cfg, int sav, int val)
+void registerAble(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterAble) ERROR();
-    int mask = val << Threads;
-    for (int i = 0; i < Threads; i++) if (val & (1<<i)) {
+    int mask = act << Threads;
+    int wake = act & ((1>>Threads)-1);
+    for (int i = 0; i < Threads; i++)
+    if (wake & (1<<i)) {
     while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
     *ptrAbleq(i,ableq) = mask;}
 }
-void registerTime(enum Configure cfg, int sav, int val)
+void registerTime(enum Configure cfg, int sav, int val, int act)
 {
     float time = processTime()+(float)val/1000.0;
     if (sem_wait(&timeSem) != 0) ERROR();
@@ -775,7 +782,7 @@ void registerTime(enum Configure cfg, int sav, int val)
     *ptrTimeq(idx,timeq) = time;} else
     pushTimeq(time,timeq);
     if (sem_post(&timeSem) != 0) ERROR();
-    callKnfo(RegisterMask,(1<<TimeMsk),planeWots);
+    writeInt(timwake,0);
 }
 
 char *planeGetstr()

@@ -2011,7 +2011,7 @@ const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
-void vulkanBack(Configure cfg, int sav, int val) {
+void vulkanBack(Configure cfg, int sav, int val, int act) {
     if (cfg == RegisterOpen) mptr->callState.back(sav,val);
 }
 void vulkanExit() {
