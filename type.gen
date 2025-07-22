@@ -173,6 +173,7 @@ Configure = {
 	"RegisterFail", -- fail center index
 	"RegisterMask", -- interrupt mask
 	"RegisterWake", -- mask of threads
+        "RegisterAble", -- interrupts per thread
 	"RegisterTime", -- wake time
 	"RegisterStrq", -- num strings in queue
 	"ProbePoke", -- probe state

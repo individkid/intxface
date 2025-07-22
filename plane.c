@@ -26,6 +26,7 @@ void *response = 0; // queue of center; protect with pipeSem
 void *strin = 0; // queue of string; protect with stdioSem
 void *strout = 0; // queue of string; protect with stdioSem
 void *chrq = 0; // temporary queue to convert chars to str
+void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 sem_t waitSem = {0};
@@ -47,6 +48,7 @@ DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(char *,Strq)
 DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
+DECLARE_DEQUE(int, Ableq)
 
 int planeWots(int *ref, int val)
 {
@@ -714,36 +716,52 @@ void registerOpen(enum Configure cfg, int sav, int val)
         callFork(PipeThd,0,planeSelect,planeClose);}
     if (!(val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         closeIdent(external); closeIdent(selwake);}
-    if ((val & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-        writeInt(selwake,0);}
     if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         if ((conwake = openPipe()) < 0) ERROR();
         callFork(StdioThd,0,planeConsole,planeClose);}
     if (!(val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         closeIdent(console); closeIdent(conwake);}
-    if ((val & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-        writeInt(conwake,0);}
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         callFork(CopyThd,0,planeMachine,planeClose);}
     if (!(val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
-        if (sem_post(&waitSem) != 0) ERROR();}
-    if ((val & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         if (sem_post(&waitSem) != 0) ERROR();}
     if ((val & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         if ((timwake = openPipe()) < 0) ERROR();
         callFork(TimeThd,0,planeTime,planeClose);}
     if (!(val & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         closeIdent(timwake);}
-    if ((val & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
+}
+void registerWake(enum Configure cfg, int sav, int val)
+{
+    if (cfg != RegisterWake) ERROR();
+    if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
+        writeInt(selwake,0);}
+    if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
+        writeInt(conwake,0);}
+    if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
+        if (sem_post(&waitSem) != 0) ERROR();}
+    if ((val & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         writeInt(timwake,0);}
 }
 void registerMask(enum Configure cfg, int sav, int val)
 {
+    int wake = 0;
+    if (cfg != RegisterMask) ERROR();
     int open = callKnfo(RegisterOpen,0,planeRcfg);
-    int wake = callKnfo(RegisterWake,0,planeRcfg);
-    callKnfo(RegisterOpen,(open & wake),planeWots);
+    for (int i = 0; i < Threads; i++) {
+    int mask = (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);
+    if ((val & (1<<i)) && !(sav & (1<<i)) && (mask & (1<<i))) wake |= (1<<i);}
+    callKnfo(RegisterWake,wake,planeWots);
+}
+void registerAble(enum Configure cfg, int sav, int val)
+{
+    if (cfg != RegisterAble) ERROR();
+    int mask = val << Threads;
+    for (int i = 0; i < Threads; i++) if (val & (1<<i)) {
+    while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
+    *ptrAbleq(i,ableq) = mask;}
 }
 void registerTime(enum Configure cfg, int sav, int val)
 {
@@ -795,7 +813,8 @@ void initSafe()
     if (sem_init(&dataSem, 0, 1) != 0) ERROR(); // protect data conversion
     sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
     internal = allocCenterq(); response = allocCenterq();
-    strout = allocStrq(); strin = allocStrq(); chrq = allocChrq(); timeq = allocTimeq();
+    strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
+    timeq = allocTimeq(); ableq = allocAbleq();
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterMask,registerMask);
     callBack(RegisterTime,registerTime);
