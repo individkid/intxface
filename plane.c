@@ -698,14 +698,14 @@ void planeTime(enum Thread tag, int idx)
     if (sub < 0) break;
     if (sub != timwake) ERROR();
     if (!checkRead(timwake)) break;
-    readInt(timwake);} else
+    int dbg = readInt(timwake);} else
     if (time > processTime()) {
     int sub = waitRead(time-processTime(),(1<<timwake));
     if (sub != timwake) {
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterTime,500,planeWcfg);}} else {
+    callJnfo(RegisterTime,250,planeWcfg);}} else {
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterTime,500,planeWcfg);}}
+    callJnfo(RegisterTime,250,planeWcfg);}}
 }
 void planeClose(enum Thread tag, int idx)
 {
@@ -757,13 +757,13 @@ void registerMask(enum Configure cfg, int sav, int val, int act)
     int wake = 0;
     for (int i = 0; i < Threads; i++) {
     int mask = (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);
-    if ((val & (1<<i)) && !(sav & (1<<i)) && (mask & (1<<i))) wake |= (1<<i);}
+    if ((val & mask) != 0) wake |= (1<<i);}
     callKnfo(RegisterWake,open&wake,planeRaz);
 }
 void registerAble(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterAble) ERROR();
-    int mask = act << Threads;
+    int mask = act >> Threads;
     int wake = act & ((1>>Threads)-1);
     for (int i = 0; i < Threads; i++)
     if (wake & (1<<i)) {
@@ -824,7 +824,9 @@ void initSafe()
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); ableq = allocAbleq();
     callBack(RegisterOpen,registerOpen);
+    callBack(RegisterWake,registerWake);
     callBack(RegisterMask,registerMask);
+    callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
 }
 void initBoot()

@@ -1250,7 +1250,7 @@ void TestState::call() {
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
-    copy->wots(RegisterWake,(1<<TestThd)); copy->write(RegisterTime,500);
+    copy->wots(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads))); copy->write(RegisterTime,500);
     //
     copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //
@@ -2012,7 +2012,7 @@ const char *vulkanCmnd(int req) {
     return cfg[req];
 }
 void vulkanBack(Configure cfg, int sav, int val, int act) {
-    if (cfg == RegisterOpen) mptr->callState.back(sav,val);
+    if (cfg == RegisterOpen) mptr->callState.back(sav,val); // TODO split between RegisterOpen and RegisterWake
 }
 void vulkanExit() {
     void *buffer[100];
@@ -2022,8 +2022,13 @@ void vulkanExit() {
 void whereIsExit(int val, void *arg) {
     if (val < 0) *(int*)0=0;
 }
+void errorFunc(const char *str, int num, int idx)
+{
+    std::cout << "errfnc called on " << idx << " in " << str << ": " << num << std::endl;
+}
 
 int main(int argc, const char **argv) {
+    errFunc(errorFunc); // in case pipe is closed just before written to
     // on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg
     for (int i = 1; i < argc; i++) cfg << argv[i];
