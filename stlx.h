@@ -228,12 +228,14 @@ struct CallState {
         done.push_back(ptr);
         mask.push_back(1<<thd);
     }
-    void back(int sav, int val) {
-        // if (val) printf("back 0x%x 0x%x\n",sav,val);
+    void open(int sav, int val, int act) {
         for (int i = 0; i < done.size(); i++) {
-        if ((val & mask[i]) && !(sav & mask[i])) push(done[i]);
-        if (!(val & mask[i]) && (sav & mask[i])) stop(done[i]);
-        if ((val & mask[i]) && (sav & mask[i])) done[i]->noop();}
+        if ((act & mask[i]) && !(sav & mask[i])) push(done[i]);
+        if (!(act & mask[i]) && (sav & mask[i])) stop(done[i]);}
+    }
+    void wake(int sav, int val, int act) {
+        for (int i = 0; i < done.size(); i++) {
+        if ((val & mask[i]) && !(sav & mask[i])) done[i]->noop();}
     }
 };
 

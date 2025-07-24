@@ -2012,7 +2012,8 @@ const char *vulkanCmnd(int req) {
     return cfg[req];
 }
 void vulkanBack(Configure cfg, int sav, int val, int act) {
-    if (cfg == RegisterOpen) mptr->callState.back(sav,val); // TODO split between RegisterOpen and RegisterWake
+    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
+    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
 }
 void vulkanExit() {
     void *buffer[100];
