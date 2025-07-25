@@ -697,21 +697,20 @@ void planeTime(enum Thread tag, int idx)
     int sub = waitRead(0.0,(1<<timwake));
     if (sub < 0) break;
     if (sub != timwake) ERROR();
-    if (!checkRead(timwake)) break;
-    int dbg = readInt(timwake);} else
-    if (time > processTime()) {
-    int sub = waitRead(time-processTime(),(1<<timwake));
-    if (sub != timwake) {
+    // readInt could still fail, so break might be on next loop
+    if (!checkRead(timwake)) break;} else {
+    while (time > processTime()) {
+    int sub = waitRead(time-processTime(),(1<<timwake));}
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterTime,250,planeWcfg);}} else {
-    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterTime,250,planeWcfg);}}
+    callJnfo(RegisterTime,250,planeWcfg);}
+    while (checkRead(timwake)) {
+    int dbg = readInt(timwake);}}
 }
+
 void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
-
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterOpen) ERROR();

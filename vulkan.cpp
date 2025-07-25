@@ -13,6 +13,7 @@
 #include <array>
 #include <stdio.h>
 #include <execinfo.h>
+#include <signal.h>
 extern "C" {
 #include "proto.h"
 #include "face.h"
@@ -1250,7 +1251,7 @@ void TestState::call() {
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
-    copy->wots(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads))); copy->write(RegisterTime,500);
+    copy->write(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads))); copy->write(RegisterTime,250);
     //
     copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //
@@ -1972,7 +1973,7 @@ MainState *mptr = 0;
 void vulkanCheck(Center *ptr, int sub) {
     if (ptr->mem != Peekz) EXIT
     for (int i = 0; i < ptr->siz; i++)
-    std::cout << "check:" << std::hex << ptr->eek[i].val << std::dec << std::endl;
+    std::cout << "check:" << std::hex << ptr->eek[i].val << std::dec << " " << processTime() << std::endl;
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanWake(Center *ptr, int sub) {
@@ -2027,8 +2028,15 @@ void errorFunc(const char *str, int num, int idx)
 {
     std::cout << "errfnc called on " << idx << " in " << str << ": " << num << std::endl;
 }
+void sigintFunc(int sig)
+{
+    *(int*)0=0;
+}
 
 int main(int argc, const char **argv) {
+    struct sigaction act;
+    act.sa_handler = sigintFunc;
+    if (sigaction(SIGINT,&act,0) < 0) ERROR();
     errFunc(errorFunc); // in case pipe is closed just before written to
     // on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg
