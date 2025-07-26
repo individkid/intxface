@@ -693,24 +693,25 @@ void planeTime(enum Thread tag, int idx)
     time = (float)frontTimeq(timeq);
     popTimeq(timeq);}
     if (sem_post(&timeSem) != 0) ERROR();
-    if (size == 0) {
-    int sub = waitRead(0.0,(1<<timwake));
+    int sub = -1; if (size == 0) {
+    // no time was read so wait for time written
+    sub = waitRead(0.0,(1<<timwake));
     if (sub < 0) break;
     if (sub != timwake) ERROR();
-    // readInt could still fail, so break might be on next loop
     if (!checkRead(timwake)) break;} else {
-    while (time > processTime()) {
-    int sub = waitRead(time-processTime(),(1<<timwake));}
+    sub = waitRead(time-processTime(),(1<<timwake));
+    // mask bit indicates time was read
+    if (sub != timwake) {
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterTime,250,planeWcfg);}
-    while (checkRead(timwake)) {
-    int dbg = readInt(timwake);}}
+    callJnfo(RegisterTime,250,planeWcfg);}}
+    if (sub == timwake && checkRead(timwake)) readInt(timwake);}
 }
 
 void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
+
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterOpen) ERROR();
