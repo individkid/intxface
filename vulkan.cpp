@@ -1251,7 +1251,6 @@ void TestState::call() {
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
-    copy->write(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads))); copy->write(RegisterTime,250);
     //
     copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //

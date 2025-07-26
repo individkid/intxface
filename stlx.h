@@ -184,7 +184,7 @@ struct CallState {
         safe.wait(); lock = true; safe.post();
         while (1) {safe.wait();
         if (todo.empty()) {safe.post(); break;}
-        DoneState *ptr = *(todo.begin()); todo.erase(ptr);
+        DoneState *ptr = *(todo.begin());
         safe.post(); stop(ptr);} clear();
     }
     void clear() {

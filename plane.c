@@ -685,26 +685,28 @@ void planeConsole(enum Thread tag, int idx)
 }
 void planeTime(enum Thread tag, int idx)
 {
+    // wait for smallest requested time, send interrupt first time it is exceeded
+    float time = 0.0; // time requested
+    float delta = 0.0; // delay or 0.0 for forever
+    int size = 0; // whether time is changed
+    bool init = false; // whether time is valid
     while (1) {
     if (sem_wait(&timeSem) != 0) ERROR();
-    float time = 0.0;
-    int size = sizeTimeq(timeq);
-    if (size != 0) {
+    size = sizeTimeq(timeq);
+    if (!init && size != 0) {init = true;
     time = (float)frontTimeq(timeq);
-    popTimeq(timeq);}
+    dropTimeq(timeq);}
     if (sem_post(&timeSem) != 0) ERROR();
-    int sub = -1; if (size == 0) {
+    if (init) delta = time-(float)processTime(); // how long to wait
+    else delta = 0.0; // wait forever
+    if (init && (delta == 0.0 || delta <= 0.0)) delta = -1.0; // wait not at all
     // no time was read so wait for time written
-    sub = waitRead(0.0,(1<<timwake));
-    if (sub < 0) break;
-    if (sub != timwake) ERROR();
-    if (!checkRead(timwake)) break;} else {
-    sub = waitRead(time-processTime(),(1<<timwake));
-    // mask bit indicates time was read
-    if (sub != timwake) {
+    int sub = waitRead(delta,(1<<timwake));
+    if (!checkRead(timwake)) break;
+    if (sub == timwake) readInt(timwake);
+    if (init && (float)processTime() >= time) {init = false;
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
     callJnfo(RegisterTime,250,planeWcfg);}}
-    if (sub == timwake && checkRead(timwake)) readInt(timwake);}
 }
 
 void planeClose(enum Thread tag, int idx)
@@ -862,6 +864,8 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    callJnfo(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads)),planeWcfg);
+    callJnfo(RegisterTime,250,planeWcfg);
     break; case (Builtin):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
