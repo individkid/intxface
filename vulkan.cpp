@@ -2044,6 +2044,7 @@ int main(int argc, const char **argv) {
     MainState main;
     mptr = &main;
     main.copyState.call(RegisterOpen,vulkanBack);
+    main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);

@@ -864,8 +864,8 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads)),planeWcfg);
-    callJnfo(RegisterTime,250,planeWcfg);
+    // callJnfo(RegisterAble,(1<<TestThd)|(1<<(TimeMsk+Threads)),planeWcfg);
+    // callJnfo(RegisterTime,250,planeWcfg);
     break; case (Builtin):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
