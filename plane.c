@@ -700,13 +700,11 @@ void planeTime(enum Thread tag, int idx)
     if (init) delta = time-(float)processTime(); // how long to wait
     else delta = 0.0; // wait forever
     if (init && (delta == 0.0 || delta <= 0.0)) delta = -1.0; // wait not at all
-    // no time was read so wait for time written
     int sub = waitRead(delta,(1<<timwake));
     if (!checkRead(timwake)) break;
     if (sub == timwake) readInt(timwake);
     if (init && (float)processTime() >= time) {init = false;
-    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterTime,250,planeWcfg);}}
+    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
 }
 
 void planeClose(enum Thread tag, int idx)

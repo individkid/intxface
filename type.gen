@@ -173,7 +173,7 @@ Configure = {
 	"RegisterFail", -- fail center index
 	"RegisterMask", -- interrupt mask
 	"RegisterWake", -- mask of threads
-        "RegisterAble", -- interrupts per thread
+	"RegisterAble", -- interrupts per thread
 	"RegisterTime", -- wake time
 	"RegisterStrq", -- num strings in queue
 	"ProbePoke", -- probe state
@@ -348,29 +348,22 @@ Operate = { -- little language expressions
 	"MulOp",
 	"DivOp",
 	"RemOp",
-	"CndOp", -- switch on exp
-	"TotOp", -- cast to type
+	"CmpOp",
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
-	"OptOp", -- cache result
 	"RexOp", -- regex sugar
 	"IrxOp", -- irrex sugar
-	"CmpOp", -- compare sugar
-	"DatOp", -- memset Dat
 	"GetOp", -- string from callback
 	"PutOp", -- callback with string
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
-	"PrmOp", -- permute of list
-	"LstOp", -- list of Dat
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
 	"CfgOp", -- ImmOp sugar
 	"MemOp", -- ImmOp sugar
-	"UnqOp", -- magic number
 }
 Compare = { -- little language comparisons
 	-- Less Equal More
@@ -659,25 +652,6 @@ Event = { -- for line process
 	{"len","Int",{["tag"]={["Audio"]=true}},{}},
 	{"enb","Int",{["tag"]={["Audio"]=true}},{}},
 }
-Domain = {
-	{"len","Int",{},{}},
-	{"val","Express",{},"len"},
-}
-CondExp = {
-	{"len","Int",{},{}},
-	{"siz","Int",{},{}},
-	{"typ","Str",{},"len"},
-	{"cmp","Compare",{},"len"},
-	{"var","Express",{},"len"},
-	{"dom","Domain",{},"siz"},
-	{"rng","Express",{},"siz"},
-}
-OptExp = {
-	{"vld","Int",{},{}},
-	{"exp","Express",{["vld"]={["0"]=true}},1},
-	{"typ","Int",{["vld"]={["1"]=true}},{}},
-	{"dat","Dat",{["vld"]={["1"]=true}},{}},
-}
 Irrex = { -- permutation of permutations
 	-- prm of zero is always valid
 	-- advance top level prm first, otherwise
@@ -703,27 +677,19 @@ Datex = { -- given index, return vector
 Express = {
 	{"opr","Operate",{},""},
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
-	{"cnd","CondExp",{["opr"]={["CndOp"]=true}},1},
-	{"typ","Str",{["opr"]={["TotOp"]=true}},{}},
-	{"tot","Express",{["opr"]={["TotOp"]=true}},1},
+	{"opc","Express",{["opr"]={["CmpOp"]=true}},2},
+	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true}},1},
 	{"key","Str",{["opr"]={["ValOp"]=true}},{}},
 	{"kys","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"sav","Express",{["opr"]={["SavOp"]=true}},1},
-	{"opt","OptExp",{["opr"]={["OptOp"]=true}},1},
 	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
 	{"irx","Str",{["opr"]={["IrxOp"]=true}},{}},
-	{"csz","Int",{["opr"]={["CmpOp"]=true}},{}},
-	{"cmp","Express",{["opr"]={["CmpOp"]=true}},1},
-	{"dsz","Int",{["opr"]={["DatOp"]=true}},{}},
-	{"dvl","Int",{["opr"]={["DatOp"]=true}},{}},
 	{"put","Express",{["opr"]={["PutOp"]=true}},1}, -- str:Str :Dat
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4}, -- giv:Gen val:Het str:Hom idx:Hom :Gen
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
-	{"prm","Express",{["opr"]={["PrmOp"]=true}},2},
-	{"lst","Express",{["opr"]={["LstOp"]=true}},2},
 	{"val","Str",{["opr"]={["ImmOp"]=true}},1},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
