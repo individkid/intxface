@@ -349,6 +349,7 @@ Operate = { -- little language expressions
 	"DivOp",
 	"RemOp",
 	"CmpOp",
+	"CndOp", -- touring machine
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
 	"ValOp", -- value from lookup
@@ -679,6 +680,9 @@ Express = {
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
 	{"opc","Express",{["opr"]={["CmpOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
+	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
+	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
+	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true}},1},

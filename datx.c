@@ -562,8 +562,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub") break;
 	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") break;
 	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") break;
-	case (RemOp):
-		BINARY_BEGIN()
+	case (RemOp): BINARY_BEGIN()
 		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_REM) else
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,BINARY_REM) else
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
@@ -588,6 +587,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		else BINARY_TYPE(char *,"Str",datxChrz,BINARY_CMP,BINARY_STR)
 		else ERROR();
 		free(dat0); free(dat1);} break;
+	case (CndOp): {
+		int idx = 0; if (exp->siz) while (1) {
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->cnd[idx],-1);
+		if (typ0 != identType("Int")) ERROR();
+		int tmp = *datxIntz(0,dat0); free(dat0);
+		if (tmp == 0) {typ = datxEval(dat,&exp->lst[idx],typ); break;}
+		idx = (idx + tmp) % exp->siz;}} break;
 	case (RetOp): {
 		datxInt(datxDat0,exp->cfg); if (!ptrx[RetcfgCb]) ERROR(); datxUnwrap(RetcfgCb);
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
