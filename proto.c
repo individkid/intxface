@@ -27,6 +27,7 @@ void stackErr()
 }
 void exitErr(const char *file, int line)
 {
+	*(int*)0=0;
 	stackErr();
 	fprintf(stderr,"exitErr %s(%d): %d %lld\n",file,line,errno,(long long)getpid());
 	exit(-1);

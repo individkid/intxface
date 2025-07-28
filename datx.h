@@ -1,6 +1,5 @@
 #include <stdint.h>
 typedef void (*rktype)(void *dat);
-typedef int (*rltype)(void **dat, const char *str);
 enum Callback {SetcfgCb,RetcfgCb,PutstrCb,GetstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);

@@ -9,7 +9,6 @@
 
 void *prefix = 0;
 rktype datxNoteFp = 0;
-rltype datxCallFp = 0;
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -551,8 +550,6 @@ int datxIrrexe(const char *str, int idx)
 	if (!datxIrrnxt(ptr)) break;}
 	return 0;
 }
-// #define BINARY_TYPE(TYPE,STR,GET,SET,OP)
-// #define BINARY_TYPES(LTYP,RTYP,STR,LGET,RGET,SET,OP)
 int datxEval(void **dat, struct Express *exp, int typ)
 {
 	// {char *opr = 0; showOperate(exp->opr,&opr);

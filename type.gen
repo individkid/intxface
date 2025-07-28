@@ -691,8 +691,8 @@ Express = {
 	{"sav","Express",{["opr"]={["SavOp"]=true}},1},
 	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
 	{"irx","Str",{["opr"]={["IrxOp"]=true}},{}},
-	{"put","Express",{["opr"]={["PutOp"]=true}},1}, -- str:Str :Dat
-	{"fld","Express",{["opr"]={["FldOp"]=true}},4}, -- giv:Gen val:Het str:Hom idx:Hom :Gen
+	{"put","Express",{["opr"]={["PutOp"]=true}},1},
+	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"val","Str",{["opr"]={["ImmOp"]=true}},1},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},

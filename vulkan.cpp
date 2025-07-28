@@ -1333,7 +1333,7 @@ struct ForkState : public DoneState {
     }
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
-    void heap() override {delete this;}
+    void heap() override {delete this;} // TODO add hfnc to call closeIdent on pipes for thread
     void noop() override {}
 };
 
@@ -2036,7 +2036,7 @@ int main(int argc, const char **argv) {
     struct sigaction act;
     act.sa_handler = sigintFunc;
     if (sigaction(SIGINT,&act,0) < 0) ERROR();
-    errFunc(errorFunc); // in case pipe is closed just before written to
+    // errFunc(errorFunc); // in case pipe is closed just before written to
     // on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg
     for (int i = 1; i < argc; i++) cfg << argv[i];
