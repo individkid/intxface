@@ -707,7 +707,6 @@ void planeTime(enum Thread tag, int idx)
 
 void planeClose(enum Thread tag, int idx)
 {
-    printf("planeClose %d(%d)\n",tag,TimeThd);
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
 
@@ -742,13 +741,13 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterWake) ERROR();
     if ((val & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
-        writeInt(selwake,0);}
+        writeInt(0,selwake);}
     if ((val & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
-        writeInt(conwake,0);}
+        writeInt(0,conwake);}
     if ((val & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-        writeInt(cpywake,0);}
+        writeInt(0,cpywake);}
     if ((val & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
-        writeInt(timwake,0);}
+        writeInt(0,timwake);}
 }
 void registerMask(enum Configure cfg, int sav, int val, int act)
 {
