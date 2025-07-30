@@ -7,6 +7,7 @@
 #include <math.h>
 #include <regex.h>
 
+// these are thread safe is set once and left
 void *prefix = 0;
 rktype datxNoteFp = 0;
 retfp retptr = 0;
@@ -17,6 +18,7 @@ fldfp fldptr = 0;
 extfp extptr = 0;
 immfp immptr = 0;
 
+// these are not thread safe
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -62,6 +64,24 @@ void datxNon()
 {
 	// TODO free memory created by datxSub
 }
+void datxSingle()
+{
+	if (datxSubs) return;
+	datxSubs = 4;
+	datxSub0 = datxSub();
+	datxSub1 = datxSub();
+	datxSub2 = datxSub();
+	datxSub3 = datxSub();
+	datxIdx0 = puntInit(datxSub0,datxSub0,datxReadFp,datxWriteFp);
+	datxIdx1 = puntInit(datxSub1,datxSub1,datxReadFp,datxWriteFp);
+	datxIdx2 = puntInit(datxSub2,datxSub2,datxReadFp,datxWriteFp);
+	datxIdx3 = puntInit(datxSub3,datxSub3,datxReadFp,datxWriteFp);
+	datxDat0 = datxDat(datxSub0);
+	datxDat1 = datxDat(datxSub1);
+	datxDat2 = datxDat(datxSub2);
+	datxDat3 = datxDat(datxSub3);
+}
+
 void datxVoid(void **dat, int siz)
 {
 	*dat = realloc(*dat,siz+sizeof(int));
@@ -102,23 +122,6 @@ int datxWriteFp(int fildes, const void *buf, int nbyte)
 	free(pre);
 	free(suf);
 	return nbyte;
-}
-void datxSingle()
-{
-	if (datxSubs) return;
-	datxSubs = 4;
-	datxSub0 = datxSub();
-	datxSub1 = datxSub();
-	datxSub2 = datxSub();
-	datxSub3 = datxSub();
-	datxIdx0 = puntInit(datxSub0,datxSub0,datxReadFp,datxWriteFp);
-	datxIdx1 = puntInit(datxSub1,datxSub1,datxReadFp,datxWriteFp);
-	datxIdx2 = puntInit(datxSub2,datxSub2,datxReadFp,datxWriteFp);
-	datxIdx3 = puntInit(datxSub3,datxSub3,datxReadFp,datxWriteFp);
-	datxDat0 = datxDat(datxSub0);
-	datxDat1 = datxDat(datxSub1);
-	datxDat2 = datxDat(datxSub2);
-	datxDat3 = datxDat(datxSub3);
 }
 void datxSplit(void **pre, void **suf, const void *dat, int len)
 {
@@ -632,31 +635,13 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxRetfp(retfp fnc)
+void datxFnptr(retfp ret, setfp set, getfp get, putfp put, fldfp fld, extfp ext, immfp imm)
 {
-	retptr = fnc;
-}
-void datxSetfp(setfp fnc)
-{
-	setptr = fnc;
-}
-void datxGetfp(getfp fnc)
-{
-	getptr = fnc;
-}
-void datxPutfp(putfp fnc)
-{
-	putptr = fnc;
-}
-void datxFldfp(fldfp fnc)
-{
-	fldptr = fnc;
-}
-void datxExtfp(extfp fnc)
-{
-	extptr = fnc;
-}
-void datxImmfp(immfp fnc)
-{
-	immptr = fnc;
+	retptr = ret;
+	setptr = set;
+	getptr = get;
+	putptr = put;
+	fldptr = fld;
+	extptr = ext;
+	immptr = imm;
 }

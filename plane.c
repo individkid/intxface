@@ -785,7 +785,7 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     writeInt(0,timwake);
 }
 
-char *planeGetstr()
+const char *planeGetstr()
 {
     if (sem_wait(&stdioSem) != 0) ERROR();
     if (sizeStrq(strin) == 0) ERROR();
@@ -808,6 +808,19 @@ int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
+int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
+{
+    // TODO
+}
+int planeExtract(void **fld, const void *src, int idx, int sub, int typ)
+{
+    // TODO
+}
+int planeImmed(void **dat, const char *str)
+{
+    // TODO
+}
+
 
 void initSafe()
 {
@@ -826,6 +839,8 @@ void initSafe()
     callBack(RegisterMask,registerMask);
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
+    datxFnptr(planeRetcfg,planeSetcfg,planeGetstr,planePutstr,planeField,planeExtract,planeImmed);
+    start = processTime();
 }
 void initBoot()
 {
@@ -879,7 +894,6 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
-    start = processTime();
     initSafe();
     initBoot();
     initPlan();

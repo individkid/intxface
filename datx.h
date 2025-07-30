@@ -1,7 +1,7 @@
 #include <stdint.h>
 typedef void (*rktype)(void *dat);
 typedef int (*retfp)(int cfg);
-typedef int (*setfp)(int val, int cfg);
+typedef void (*setfp)(int val, int cfg);
 typedef const char *(*getfp)();
 typedef void (*putfp)(const char *);
 typedef int (*fldfp)(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp);
@@ -43,10 +43,4 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
-void datxRetfp(retfp fnc);
-void datxSetfp(setfp fnc);
-void datxGetfp(getfp fnc);
-void datxPutfp(putfp fnc);
-void datxFldfp(fldfp fnc);
-void datxExtfp(extfp fnc);
-void datxImmfp(immfp fnc);
+void datxFnptr(retfp ret, setfp set, getfp get, putfp put, fldfp fld, extfp ext, immfp imm);
