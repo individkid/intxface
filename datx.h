@@ -1,5 +1,12 @@
 #include <stdint.h>
 typedef void (*rktype)(void *dat);
+typedef int (*retfp)(int cfg);
+typedef int (*setfp)(int val, int cfg);
+typedef const char *(*getfp)();
+typedef void (*putfp)(const char *);
+typedef int (*fldfp)(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp);
+typedef int (*extfp)(void **fld, const void *src, int idx, int sub, int typ);
+typedef int (*immfp)(void **dat, const char *str);
 enum Callback {SetcfgCb,RetcfgCb,PutstrCb,GetstrCb,Callbacks};
 int datxSub();
 void **datxDat(int sub);
@@ -36,3 +43,10 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
+void datxRetfp(retfp fnc);
+void datxSetfp(setfp fnc);
+void datxGetfp(getfp fnc);
+void datxPutfp(putfp fnc);
+void datxFldfp(fldfp fnc);
+void datxExtfp(extfp fnc);
+void datxImmfp(immfp fnc);

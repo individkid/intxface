@@ -9,6 +9,14 @@
 
 void *prefix = 0;
 rktype datxNoteFp = 0;
+retfp retptr = 0;
+setfp setptr = 0;
+getfp getptr = 0;
+putfp putptr = 0;
+fldfp fldptr = 0;
+extfp extptr = 0;
+immfp immptr = 0;
+
 void ***datx = 0;
 int ndatx = 0;
 int datxSubs = 0;
@@ -24,58 +32,19 @@ void **datxDat0 = 0;
 void **datxDat1 = 0;
 void **datxDat2 = 0;
 void **datxDat3 = 0;
+
+// TODO protect with sem_t for thread safety
 int sizs = 0;
 int *typs = 0;
 void **boxs = 0;
 void **keys = 0;
+
+// TODO protect with sem_t for thread safety
 regex_t *regexp = 0;
 int regsiz = 0;
 struct Irrex *irrexp = 0;
 int irrsiz = 0;
-struct Datex *datexp = 0;
-int datsiz = 0;
-const struct Close *ptrx[Callbacks] = {0};
 
-void **datxSwitch(int i)
-{
-	switch (i) {
-	case (0): return datxDat0;
-	case (1): return datxDat1;
-	case (2): return datxDat2;
-	case (3): return datxDat3;
-	default: ERROR();}
-	return 0;
-}
-void wrapCallback(const struct Close *arg);
-int datxUnwrap(enum Callback cb)
-{
-	const struct Close *arg = ptrx[cb];
-	for (int i = 0; i < arg->n; i++) switch (arg->a[i].t) {
-		case (Itype): arg->a[i].i = *datxIntz(0,*datxSwitch(i)); break;
-		case (Jtype): arg->a[i].j = *datxInt32z(0,*datxSwitch(i)); break;
-		case (Ktype): arg->a[i].k = *datxNewz(0,*datxSwitch(i)); break;
-		case (Mtype): arg->a[i].m = *datxNumz(0,*datxSwitch(i)); break;
-		case (Ntype): arg->a[i].n = *datxOldz(0,*datxSwitch(i)); break;
-		case (Utype): arg->a[i].u = datxChrz(0,*datxSwitch(i)); break;
-		default: ERROR();}
-	wrapCallback(arg);
-	int vld = (arg->i < 0 || arg->i >= arg->m || arg->b[arg->i].i == 0 ? 1 : 0);
-	if (!vld) ERROR();
-	for (int i = 0; i < arg->m; i++) switch (arg->b[i].t) {
-		case (Itype): datxInt(datxSwitch(i),arg->b[i].i); break;
-		case (Jtype): datxInt32(datxSwitch(i),arg->b[i].j); break;
-		case (Ktype): datxNew(datxSwitch(i),arg->b[i].k); break;
-		case (Mtype): datxNum(datxSwitch(i),arg->b[i].m); break;
-		case (Ntype): datxOld(datxSwitch(i),arg->b[i].n); break;
-		case (Utype): datxStr(datxSwitch(i),arg->b[i].u); break;
-		case (Vtype): datxStr(datxSwitch(i),arg->b[i].v); break;
-		default: ERROR();}
-	return arg->m;
-}
-void datxWrap(enum Callback cb, const struct Close *arg)
-{
-	ptrx[cb] = arg;
-}
 int datxSub()
 {
 	int sub = ndatx;
@@ -592,15 +561,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (tmp == 0) {typ = datxEval(dat,&exp->lst[idx],typ); break;}
 		idx = (idx + tmp) % exp->siz;}} break;
 	case (RetOp): {
-		datxInt(datxDat0,exp->cfg); if (!ptrx[RetcfgCb]) ERROR(); datxUnwrap(RetcfgCb);
+		if (!retptr) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		assignDat(dat,*datxDat0);} break;
+		datxInt(dat,retptr(exp->cfg));} break;
 	case (SetOp): {
-		int typ0 = 0;
-		typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		if (!setptr) ERROR();
+		int typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ0 != identType("Int")) ERROR();
-		assignDat(datxDat0,*dat); datxInt(datxDat1,exp->cgs);
-		if (!ptrx[SetcfgCb]) ERROR(); datxUnwrap(SetcfgCb);} break;
+		setptr(*datxIntz(0,dat),exp->cgs);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -616,22 +584,30 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,datxIrrcmp(exp->irx));} break;
 	case (GetOp): {
-		int typ0 = 0;
-		datxInt(datxDat0,-1); datxInt(datxDat1,2); datxInt(datxDat2,0);
-		if (!ptrx[GetstrCb]) ERROR(); datxUnwrap(GetstrCb);
-		typ0 = identType("Str"); assignDat(dat,*datxDat0);
-		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+		if (!getptr) ERROR();
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxStr(dat,getptr());} break;
 	case (PutOp): {
-		int typ0 = 0;
-		typ0 = datxEval(datxDat0,exp->put,identType("Str")); if (typ0 != identType("Str")) ERROR();
-		if (!ptrx[PutstrCb]) ERROR(); datxUnwrap(PutstrCb);
-		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
-	case (FldOp):
-		break; // TODO use datxWrap to add field functions to try
-	case (ExtOp):
-		break; // TODO use datxWrap to add extract functions to try
+		if (!putptr) ERROR();
+		int typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		if (typ0 != identType("Str")) ERROR();
+		putptr(datxChrz(0,dat));} break;
+	case (FldOp): {
+		if (!fldptr) ERROR();
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
+		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
+		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
+		void *dat3 = 0; int typ3 = datxEval(&dat3,&exp->fld[3],identType("Int")); if (typ3 != identType("Int")) ERROR();
+		typ = fldptr(dat,dat0,dat1,*datxIntz(0,dat2),*datxIntz(0,dat3),typ0,typ1);} break;
+	case (ExtOp): {
+		if (!extptr) ERROR();
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
+		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],identType("Int")); if (typ1 != identType("Int")) ERROR();
+		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
+		typ = extptr(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0);} break;
 	case (ImmOp):
-		break; // TODO use datxWrap to add hide functions to try
+		if (!immptr) ERROR();
+		typ = immptr(dat,exp->val); break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->ivl);} break;
@@ -655,4 +631,32 @@ void datxPrefix(const char *str)
 void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
+}
+void datxRetfp(retfp fnc)
+{
+	retptr = fnc;
+}
+void datxSetfp(setfp fnc)
+{
+	setptr = fnc;
+}
+void datxGetfp(getfp fnc)
+{
+	getptr = fnc;
+}
+void datxPutfp(putfp fnc)
+{
+	putptr = fnc;
+}
+void datxFldfp(fldfp fnc)
+{
+	fldptr = fnc;
+}
+void datxExtfp(extfp fnc)
+{
+	extptr = fnc;
+}
+void datxImmfp(immfp fnc)
+{
+	immptr = fnc;
 }

@@ -808,7 +808,6 @@ int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
-void wrapPlane();
 
 void initSafe()
 {
@@ -881,7 +880,6 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callKnfo = knfo;
     callCmnd = cmnd;
     start = processTime();
-    wrapPlane();
     initSafe();
     initBoot();
     initPlan();

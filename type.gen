@@ -664,17 +664,6 @@ Irrex = { -- permutation of permutations
 	{"siz","Int",{},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{},"siz"},
 }
-Datex = { -- given index, return vector
-	{"idx","Int",{},{}},
-	{"siz","Int",{},{}},
-	{"dim","Int",{},{}},
-	{"min","Int",{},"dim"},
-	{"max","Int",{},"dim"},
-	{"fsz","Int",{},{}},
-	{"rsz","Int",{},{}},
-	{"fwd","Int",{},"fsz"},
-	{"rev","Int",{},"rsz"},
-}
 Express = {
 	{"opr","Operate",{},""},
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
@@ -694,7 +683,7 @@ Express = {
 	{"put","Express",{["opr"]={["PutOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
-	{"val","Str",{["opr"]={["ImmOp"]=true}},1},
+	{"val","Str",{["opr"]={["ImmOp"]=true}},{}},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
 	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
