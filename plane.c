@@ -30,6 +30,7 @@ void *chrq = 0; // temporary queue to convert chars to str
 void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
+int sub1 = 0; int idx1 = 0; void **dat1 = 0; // protect with dataSem
 sem_t waitSem = {0};
 sem_t copySem = {0};
 sem_t pipeSem = {0};
@@ -545,36 +546,43 @@ void machineQopy(int sig, int *arg)
 }
 void machineStage(enum Configure cfg, int idx)
 {
+    if (cfg != ArgumentInp && cfg != ArgumentOut) {
     struct Center *ptr = centerPull(idx);
     switch (cfg) {default: ERROR();
     case (CenterMem): callJnfo(cfg,ptr->mem,planeWcfg); break;
     case (CenterSiz): callJnfo(cfg,ptr->siz,planeWcfg); break;
     case (CenterIdx): callJnfo(cfg,ptr->idx,planeWcfg); break;
-    case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;
+    case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;}
+    centerPlace(ptr,idx);} else switch (cfg) {default: ERROR();
     case (ArgumentInp): callJnfo(cfg,argument.inp,planeWcfg); break;
     case (ArgumentOut): callJnfo(cfg,argument.out,planeWcfg); break;}
-    centerPlace(ptr,idx);
 }
 void machineTsage(enum Configure cfg, int idx)
 {
+    if (cfg != ArgumentInp && cfg != ArgumentOut) {
     struct Center *ptr = centerPull(idx);
     switch (cfg) {default: ERROR();
-    case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break;
+    case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break; // TODO deallocat and zero out siz
+    case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break; // TODO reallocate with new siz
     case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;
+    case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
+    centerPlace(ptr,idx);} else switch (cfg) {default: ERROR();
     case (ArgumentInp): argument.inp = callInfo(cfg,0,planeRcfg); break;
     case (ArgumentOut): argument.out = callInfo(cfg,0,planeRcfg); break;}
-    centerPlace(ptr,idx);
 }
 void machineEval(struct Express *exp, int idx)
 {
-    void *dat = 0; struct Center *cptr = 0;
-    if (datxEval(&dat,exp,identType("Center")) != identType("Center")) ERROR();
+    struct Center *ptr = centerPull(idx);
+    int val = identType("Center");
     if (sem_wait(&dataSem) != 0) ERROR();
-    assignDat(dat0,dat); readCenter(cptr,sub0);
+    datxStr(dat0,"");
+    writeCenter(ptr,sub1);
+    datxInsert(*dat0,*dat1,val);
+    int val0 = datxEval(dat0,exp,val);
+    if (val0 != val) ERROR();
+    readCenter(ptr,sub0);
     if (sem_post(&dataSem) != 0) ERROR();
-    centerPlace(cptr,idx);
+    centerPlace(ptr,idx);
 }
 int machineIval(struct Express *exp)
 {
@@ -584,16 +592,12 @@ int machineIval(struct Express *exp)
     val = *datxIntz(0,dat); free(dat);
     return val;
 }
-struct Machine *machineNext(struct Center *current, int next)
-{
-    if (next < 0 || next >= current->siz) ERROR(); return &current->mch[next];
-}
 int machineEscape(struct Center *current, int level, int next)
 {
     int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
     for (next += inc; level > 0; next += inc) {
-    struct Machine *mptr = machineNext(current,next);
-    if (!mptr) break;
+    if (next < 0 || next >= current->siz) break;
+    struct Machine *mptr = &current->mch[next];
     if (mptr->xfr == Nest) level += mptr->lvl*inc;}
     return next;
 }
@@ -626,8 +630,8 @@ void planeMachine(enum Thread tag, int idx)
     if (!center) ERROR();
     int last = callInfo(MachineLast,0,planeRcfg)-1;
     for (int next = last+1; next != last; last = ++next) {
-    struct Machine *mptr = machineNext(current,next);
-    if (!mptr) ERROR();
+    if (next < 0 || next >= current->siz) ERROR();
+    struct Machine *mptr = &current->mch[next];
     // {char *opr = 0; showTransfer(mptr->xfr,&opr);
     // printf("planeMachine %s\n",opr); free(opr);}
     switch (mptr->xfr) {default: machineSwitch(mptr); break;
@@ -709,6 +713,7 @@ void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
+// TODO add planeJoin to closeIdent after thread is joined
 
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
@@ -821,7 +826,6 @@ int planeImmed(void **dat, const char *str)
     // TODO
 }
 
-
 void initSafe()
 {
     if (sem_init(&waitSem, 0, 0) != 0) ERROR(); // wakeup planeMachine thread
@@ -831,6 +835,7 @@ void initSafe()
     if (sem_init(&timeSem, 0, 1) != 0) ERROR(); // protect planeTime queue
     if (sem_init(&dataSem, 0, 1) != 0) ERROR(); // protect data conversion
     sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
+    sub1 = datxSub(); idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp); dat1 = datxDat(sub1);
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); ableq = allocAbleq();
@@ -900,11 +905,8 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
 }
 int planeLoop()
 {
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
-    default: ERROR();
-    break; case (Bringup): if ((processTime()-start)*1000 < 2000)
-    {/*TODO use TimeThd instead*/callJnfo(RegisterOpen,(1<<TestThd),planeWots); return 1;}
-    }
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
+    break; case (Bringup): if ((processTime()-start)*1000 < 2000) return 1;}
     return 0;
 }
 void planeDone()

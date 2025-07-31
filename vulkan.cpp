@@ -1969,6 +1969,7 @@ MainState *mptr = 0;
 
 // TODO define glfw callbacks
 
+// responses
 void vulkanCheck(Center *ptr, int sub) {
     if (ptr->mem != Peekz) EXIT
     for (int i = 0; i < ptr->siz; i++)
@@ -1987,16 +1988,20 @@ void vulkanPass(Center *ptr, int sub) {
 void vulkanForce(Center *ptr, int sub) {
     EXIT
 }
+// request
 void vulkanCopy(Center *ptr, int sub) {
     // TODO use Configure to decide between registered Fnc structs
     mptr->copyState.push(ptr,sub,Fnc{0,planePass,0,planeFail,false},SmartState());
 }
+// add callback
 void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
 }
+// add thread
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
     mptr->callState.push(new ForkState(thd,idx,fnc,done));
 }
+// register access
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.info(cfg,val,fnc);
 }
@@ -2006,15 +2011,18 @@ int vulkanJnfo(Configure cfg, int val, yftype fnc) {
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.knfo(cfg,val,fnc);
 }
+// startup configuration
 HeapState<const char *> cfg;
 const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
+// builtin callback
 void vulkanBack(Configure cfg, int sav, int val, int act) {
     if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
     if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
 }
+// c debug
 void vulkanExit() {
     void *buffer[100];
     int size = backtrace(buffer,100);
@@ -2050,7 +2058,8 @@ int main(int argc, const char **argv) {
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     // TODO move glfw functions to WindowState
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop())
-    glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
+    if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
+    else glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
     planeDone();
     return 0;
 }

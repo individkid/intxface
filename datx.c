@@ -196,23 +196,6 @@ void datxInserts(const char *pre, const char *str, void *val, int typ)
 	datxStr(&prefix,pre); datxStr(&key,str); datxInsert(key,val,typ);
 	assignDat(&prefix,sav); free(sav);
 }
-void datxReplace(char *str, int val)
-{
-	void *key = 0; void *dat = 0;
-	datxStr(&key,str); datxInt(&dat,val);
-	datxInsert(key,dat,identType("Int"));
-	free(key); free(dat);
-}
-int datxLookup(char *str)
-{
-	void *key = 0; void *dat = 0; int typ = 0; int val = 0;
-	datxStr(&key,str); typ = datxFind(&dat,key);
-	if (typ != identType("Int")) {
-	datxReplace(str,0); val = 0;} else
-	val = *datxIntz(0,dat);
-	free(key); free(dat);
-	return val;
-}
 int datxChrs(void *dat)
 {
 	if (!dat) return 0;

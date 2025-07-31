@@ -214,11 +214,11 @@ Transfer = {
 	"Self", -- clear to written
 	"Other", -- maintain as if
 	"Comp", -- compose for draw
-	"Bopy", -- center to center
-	"Copy", -- center to memory
-	"Dopy", -- center from memory
-	"Popy", -- from queue to center
-	"Qopy", -- from center to queue
+	"Bopy", -- memory to memory
+	"Copy", -- center to resource
+	"Dopy", -- center to center
+	"Popy", -- queue to center
+	"Qopy", -- center to queue
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
@@ -402,6 +402,7 @@ Tag = { -- type of data piped between processes
 	"Centerz", -- plane
 	"Changez", -- space
 	-- video little language -- frame
+	"Valvez", -- share
 }
 --HERE Constants
 ResrcStride = {
