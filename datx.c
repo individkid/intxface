@@ -320,6 +320,7 @@ void datxOld(void **dat, float val)
 #define BINARY_REM(LFT,RGT) (LFT%RGT)
 #define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
 #define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
+#define BINARY_BIT(LFT,RGT) datxBitwise(LFT,RGT,exp->bit)
 #define BINARY_BEGIN() {\
 	void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0;\
 	typ0 = datxEval(&dat1,&exp->opb[1],typ);\
@@ -341,6 +342,18 @@ void datxOld(void **dat, float val)
 	BINARY_DONE()
 #define BINARY_SET(DAT,VAL) datxInt(DAT,VAL)
 #define BINARY_CMP(DAT,VAL) datxInt(DAT,datxComp(VAL,exp->cmp))
+int datxBitwise(int lft, int rgt, enum Bitwise bit)
+{
+	switch (bit) {
+	case (AndBit): return (lft&rgt);
+	case (OrBit): return (lft|rgt);
+	case (XorBit): return (lft^rgt);
+	case (NandBit): return ~(lft&rgt);
+	case (NorBit): return ~(lft|rgt);
+	case (EquBit): return ~(lft^rgt);
+	default: ERROR();}
+	return 0;
+}
 int datxComp(int val, enum Compare cmp)
 {
 	switch (cmp) {
@@ -527,6 +540,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,BINARY_REM) else
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
+		BINARY_DONE() break;
+	case (BitOp): BINARY_BEGIN()
+		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_BIT) else
 		BINARY_DONE() break;
 	case (CmpOp): {
 		void *dat0 = 0; int typ0 = -1; void *dat1 = 0; int typ1 = -1;

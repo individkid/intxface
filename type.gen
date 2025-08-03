@@ -348,6 +348,7 @@ Operate = { -- little language expressions
 	"MulOp",
 	"DivOp",
 	"RemOp",
+	"BitOp",
 	"CmpOp",
 	"CndOp", -- touring machine
 	"RetOp", -- config from callback
@@ -377,6 +378,14 @@ Compare = { -- little language comparisons
 	"MCCmp",
 	"ReCmp", -- regular expression
 	"IrCmp", -- irregular expression
+}
+Bitwise = { -- little language bitwise
+	"AndBit",
+	"OrBit",
+	"XorBit",
+	"NandBit",
+	"NorBit",
+	"EquBit",
 }
 Order = { -- ireg expression operators
 	"ChrOrd",
@@ -563,12 +572,18 @@ Bootstrap = {
 			"fld[0]:ImmOp(val:Str(Configurez(siz:1idx:0slf:0cfg[0]:RegisterPlanval[0]:-1)))"..
 			"fld[1]:CndOp(siz:5"..
 				"cnd[0]:CmpOp(opc[0]:RetOp(RegisterShow)opc[1]:IntOp(0)cmp:EOCmp)".. -- (RegisterShow != 0 ? 1 : 0)
-				"cnd[1]:IntOp(0)".. -- TODO ((((RegisterShow & 1) == 0) + ((RegisterShow & 14) != 0)) != 2 ? 1 : 0)
-				"cnd[2]:IntOp(0)".. -- TODO ((((RegisterShow & 1) != 0) + ((RegisterShow & 14) != 0)) != 2 ? 1 : 0)
-				"cnd[3]:IntOp(0)".. -- TODO (RegisterShow != 1 ? 1 : 0)
+				"cnd[1]:CmpOp(opc[0]:AddOp("..
+					"opb[0]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:ECCmp)"..
+					"opb[1]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(14)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
+					")opc[1]:IntOp(2)cmp:EOCmp)".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 14) != 0)) != 2 ? 1 : 0)
+				"cnd[2]:CmpOp(opc[0]:AddOp("..
+					"opb[0]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
+					"opb[1]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(14)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
+					")opc[1]:IntOp(2)cmp:EOCmp)".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 14) != 0)) != 2 ? 1 : 0)
+				"cnd[3]:CmpOp(opc[0]:RetOp(RegisterShow)opc[1]:IntOp(1)cmp:EOCmp)".. -- (RegisterShow != 1 ? 1 : 0)
 				"cnd[4]:IntOp(0)"..
 				"lst[0]:IntOp(%(return castPlan(\"Bringup\")))"..
-				"lst[1]:IntOp(-1)".. -- %(return castPlan(\"Builtin\")))"..
+				"lst[1]:IntOp(%(return castPlan(\"Builtin\")))"..
 				"lst[2]:IntOp(%(return castPlan(\"Regress\")))"..
 				"lst[3]:IntOp(%(return castPlan(\"Release\")))"..
 				"lst[4]:IntOp(-1)"..
@@ -683,6 +698,8 @@ Express = {
 	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
 	{"opc","Express",{["opr"]={["CmpOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
+	{"opd","Express",{["opr"]={["BitOp"]=true}},2},
+	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
