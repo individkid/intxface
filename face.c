@@ -1262,18 +1262,23 @@ int hideStr(char **val, const char *str, int *siz)
 {
 	char *tmp = 0;
 	int base = -1;
+	int depth = 1;
+	int limit = 0;
 	int num = -1;
-	int limit = -1;
-	sscanf(str+*siz," Str ( %n",&base);
-	limit = base-1; while (base != -1 && str[limit] && num == -1) sscanf(str+*siz+(++limit)," )%n",&num);
+	sscanf(str+*siz," Str ( %n",&base); if (base < 0) return 0;
+	while (str[*siz+base+limit] && depth > 0) {
 	// TODO add ascii escape
-	if (num == -1) return 0;
-	tmp = malloc(limit-base+1);
-	if (tmp == 0) return 0;
-	strncpy(tmp,str+*siz+base,limit-base); tmp[limit-base] = 0;
-	assignStr(val,tmp);
-	free(tmp);
-	*siz += limit+num;
+	int num0 = -1; sscanf(str+*siz+base+limit," (%n",&num0);
+	if (num0 >= 0) {limit += num0; depth += 1;}
+	int num1 = -1; sscanf(str+*siz+base+limit," )%n",&num1);
+	if (num1 >= 0) {limit += num1; depth -= 1;}
+	if (num0 < 0 && num1 < 0) limit += 1;}
+	if (depth != 0) return 0;
+	limit -= 1; // eliminate closing parenthes
+	tmp = malloc(limit+1); if (tmp == 0) return 0;
+	strncpy(tmp,str+*siz+base,limit); tmp[limit] = 0;
+	assignStr(val,tmp); free(tmp);
+	*siz += base+limit+1; // skip closing paranthes
 	return 1;
 }
 int hideDat(void **val, const char *str, int *siz)

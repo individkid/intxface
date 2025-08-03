@@ -13,6 +13,7 @@ void **datxDat(int sub);
 void datxNon();
 int datxReadFp(int fildes, void *buf, int nbyte);
 int datxWriteFp(int fildes, const void *buf, int nbyte);
+void datxVoid(void **dat, int siz);
 void datxSplit(void **pre, void **suf, const void *dat, int len);
 void datxJoin(void **dat, const void *pre, const void *suf);
 int datxFind(void **val, void *key);

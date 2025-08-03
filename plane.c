@@ -327,7 +327,7 @@ float *planeWindow(float *mat)
 void centerSize(int idx)
 {
     if (sem_wait(&copySem) != 0) ERROR();
-    if (idx < 0 || idx >= callInfo(CenterSize,0,planeRcfg)) ERROR();
+    if (idx < 0) ERROR();
     if (idx >= centers) {int size = idx+1; center = realloc(center,size);
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (sem_post(&copySem) != 0) ERROR();
@@ -347,9 +347,6 @@ void centerPlace(struct Center *ptr, int idx)
     if (sem_wait(&copySem) != 0) ERROR();
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (sem_post(&copySem) != 0) ERROR();
-}
-void centerFree(struct Center *ptr) {
-    if (ptr) {freeCenter(ptr); allocCenter(&ptr,0);}
 }
 void kernelClear(struct Kernel *ker)
 {
@@ -576,6 +573,7 @@ void machineEval(struct Express *exp, int idx)
     int val = identType("Center");
     if (sem_wait(&dataSem) != 0) ERROR();
     datxStr(dat0,"");
+    if (!ptr) allocCenter(&ptr,1);
     writeCenter(ptr,sub1);
     datxInsert(*dat0,*dat1,val);
     int val0 = datxEval(dat0,exp,val);
@@ -586,10 +584,11 @@ void machineEval(struct Express *exp, int idx)
 }
 int machineIval(struct Express *exp)
 {
-    void *dat = 0; int val = 0; int typ = 0;
-    typ = datxEval(&dat,exp,identType("Int"));
+    if (sem_wait(&dataSem) != 0) ERROR();
+    int typ = datxEval(dat0,exp,identType("Int"));
     if (typ != identType("Int")) ERROR();
-    val = *datxIntz(0,dat); free(dat);
+    int val = readInt(idx0);
+    if (sem_post(&dataSem) != 0) ERROR();
     return val;
 }
 int machineEscape(struct Center *current, int level, int next)
@@ -815,7 +814,25 @@ int planeRetcfg(int sub)
 }
 int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
 {
-    // TODO
+    if (stp == identType("Center")) {
+    // assume called from machineEval/Ival // if (sem_wait(&dataSem) != 0) ERROR();
+    assignDat(dat0,src);
+    struct Center *tmp = 0;
+    allocCenter(&tmp,1);
+    readCenter(tmp,idx0);
+    switch (idx) {default: ERROR();
+    break; case(5):
+    if (ftp != identType("Int")) ERROR();
+    if (sub < 0 || sub >= tmp->siz) ERROR();
+    assignDat(dat0,fld);
+    tmp->val[sub] = readInt(idx0);}
+    datxVoid(dat0,0);
+    writeCenter(tmp,idx0);
+    allocCenter(&tmp,0);
+    assignDat(dst,*dat0);
+    // assume called from machineEval/Ival // if (sem_post(&dataSem) != 0) ERROR();
+    return stp;}
+    return -1;
 }
 int planeExtract(void **fld, const void *src, int idx, int sub, int typ)
 {
@@ -823,7 +840,18 @@ int planeExtract(void **fld, const void *src, int idx, int sub, int typ)
 }
 int planeImmed(void **dat, const char *str)
 {
-    // TODO
+    struct Center *tmp = 0; int len = 0;
+    allocCenter(&tmp,1);
+    len = 0; if (hideCenter(tmp,str,&len)) {
+    // assume called from machineEval/Ival // if (sem_wait(&dataSem) != 0) ERROR();
+    datxVoid(dat0,0);
+    writeCenter(tmp,idx0);
+    assignDat(dat,*dat0);
+    // assume called from machineEval/Ival // if (sem_post(&dataSem) != 0) ERROR();
+    allocCenter(&tmp,0);
+    return identType("Center");}
+    allocCenter(&tmp,0);
+    return -1;
 }
 
 void initSafe()
@@ -879,7 +907,6 @@ void initPlan()
     break; case (Bringup):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     break; case (Builtin):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
@@ -914,7 +941,6 @@ void planeDone()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup):
-    callJnfo(RegisterOpen,(1<<TimeThd),planeWotc);
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
     break; case (Builtin):

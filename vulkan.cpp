@@ -1137,6 +1137,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(lst,fnc,ptr,sub,log);
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
+        switch (center->mem) {
+        break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
+        for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/res/drw)
+        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
+        break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
+        for (int i = 0; i < center->siz; i++) ins<<center->com[i];
+        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
+        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
+        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
+        if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});
+        break; default: {
         auto f = MemoryIns__Memory__Int__Resrc(center->mem);
         Resrc res = (f?f(0):Resrcs);
         if (res == Resrcs) EXIT
@@ -1183,18 +1196,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,siz,wid,hei,
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}
-        break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
-        for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/res/drw)
-        // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
-        break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
-        for (int i = 0; i < center->siz; i++) ins<<center->com[i];
-        // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
-        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
-        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});}
+            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}}}}
     }
 };
 

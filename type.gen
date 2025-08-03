@@ -156,7 +156,6 @@ Configure = {
 	"BasisSize",
 	"PierceBase",
 	"PierceSize",
-	"CenterSize",
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
@@ -558,12 +557,19 @@ MicroIns = {
 		{"Micro","MicroDebug","Int","6","Resrc","PipeRes"},
 }
 Bootstrap = {
-	{"Int","0","Int","0"},
 	{"Int","0","Str","Force(num:2"..
 		"cfg[0]:RegisterPlan"..
 		"cfg[1]:RegisterPoll"..
 		"val[0]:%(return castPlan(\"Bringup\"))".. -- use RegisterShow in expression to choose between Bringup Builtin Regress
 		"val[1]:1)"},
+	{"Int","1","Str","Eval("..
+		"fnc[0]:FldOp("..
+			"fld[0]:ImmOp(val:Str(Configurez(siz:1idx:0slf:0cfg[0]:RegisterPlanval[0]:-1)))"..
+			"fld[1]:CndOp(siz:1cnd[0]:IntOp(0)lst[0]:IntOp(%(return castPlan(\"Bringup\"))))"..
+			"fld[2]:IntOp(ivl:5)"..
+			"fld[3]:IntOp(ivl:0))"..
+		"res:0)"},
+	{"Int","2","Str","Copy(sig:1arg[0]:0)"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
@@ -704,7 +710,7 @@ Machine = {
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
-	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Eval"]=true}},1},
+	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
 Uniform = {

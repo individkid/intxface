@@ -171,17 +171,25 @@ int datxFind(void **val, void *key)
 void datxInsert(void *key, void *val, int typ)
 {
 	int idx = 0; int siz = sizs; void *dat = 0;
-	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key);
+	if (prefix) datxJoin(&dat,prefix,key);
+	else assignDat(&dat,key);
 	while (siz > 0) {int cmp = 0;
 	if (idx < 0 || idx >= sizs) ERROR();
 	cmp = datxCompare(dat,keys[idx+siz/2]);
-	if (cmp == 0) {assignDat(&boxs[idx+siz/2],val); typs[idx+siz/2] = typ; free(dat); return;}
+	if (cmp == 0) {
+	assignDat(&boxs[idx+siz/2],val);
+	typs[idx+siz/2] = typ; free(dat); return;}
 	if (cmp < 0) {siz = siz/2;}
 	if (cmp > 0) {idx = idx + siz/2 + 1; siz = siz - siz/2 - 1;}}
 	sizs++; keys = realloc(keys,sizs*sizeof(void*)); boxs = realloc(boxs,sizs*sizeof(void*)); typs = realloc(typs,sizs*sizeof(int));
-	for (int i = sizs-1; i > idx; i--) {assignDat(&keys[i],keys[i-1]); assignDat(&boxs[i],boxs[i-1]); typs[i] = typs[i-1];}
+	for (int i = sizs-1; i > idx; i--) {
+	keys[i] = 0; assignDat(&keys[i],keys[i-1]);
+	boxs[i] = 0; assignDat(&boxs[i],boxs[i-1]);
+	typs[i] = typs[i-1];}
 	if (datxNoteFp) datxNoteFp(dat);
-	assignDat(&keys[idx],dat); assignDat(&boxs[idx],val); typs[idx] = typ; free(dat);
+	keys[idx] = 0; assignDat(&keys[idx],dat);
+	boxs[idx] = 0; assignDat(&boxs[idx],val);
+	typs[idx] = typ; free(dat);
 }
 int datxFinds(void **val, const char *pre, const char *str)
 {
@@ -540,7 +548,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		else ERROR();
 		free(dat0); free(dat1);} break;
 	case (CndOp): {
-		int idx = 0; if (exp->siz) while (1) {
+		if (exp->siz <= 0) ERROR();
+		int idx = 0; while (1) {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->cnd[idx],-1);
 		if (typ0 != identType("Int")) ERROR();
 		int tmp = *datxIntz(0,dat0); free(dat0);
