@@ -896,7 +896,7 @@ void initBoot()
     else if (hideStr(&str,boot[i],&ssiz)) {
     planePutstr(str); freeStr(&str,1);
     if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
-    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d unmatched:%s\n",asiz,csiz,msiz,boot[i]); exit(-1);}}
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,boot[i]); exit(-1);}}
 }
 void initPlan()
 {

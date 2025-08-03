@@ -534,9 +534,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ1 = datxEval(&dat1,&exp->opc[1],typ1);
 		if (exp->cmp == ReCmp || exp->cmp == IrCmp) {
 		if (typ0 != identType("Str")) ERROR();
-		if (typ1 != identType("Int")) ERROR();
+		if (typ1 != identType("Int")) ERROR();}
 		if (typ == -1) typ = identType("Int");
-		if (typ != identType("Int")) ERROR();}
+		if (typ != identType("Int")) ERROR();
 		else if (typ0 != typ1) ERROR();
 		if (exp->cmp == ReCmp) datxInt(dat,datxRegexe(datxChrz(0,dat0),*datxIntz(0,dat1)));
 		else if (exp->cmp == IrCmp) datxInt(dat,datxIrrexe(datxChrz(0,dat0),*datxIntz(0,dat1)));
