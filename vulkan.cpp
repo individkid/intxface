@@ -2063,7 +2063,8 @@ int main(int argc, const char **argv) {
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
     planeDone();
-    return 0;
+    int ret = main.copyState.read(RegisterExit);
+    return (ret > 0 ? ret-1 : ret);
 }
 
 GLFWwindow* WindowState::createWindow(uint32_t WIDTH, uint32_t HEIGHT) {

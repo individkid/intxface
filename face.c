@@ -68,7 +68,7 @@ void termFunc(fgtype fnc)
 void closeIdent(int idx)
 {
 	if (idx < 0 || idx >= lim) ERRFNC(idx);
-	if (fdt[idx] != None) {
+	if (fdt[idx] != None && fdt[idx] != Punt && fdt[idx] != Bunt) {
 		close(inp[idx]);
 		if (inp[idx] != out[idx]) close(out[idx]);
 		fdt[idx] = None;}

@@ -31,7 +31,6 @@ void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 int sub1 = 0; int idx1 = 0; void **dat1 = 0; // protect with dataSem
-sem_t waitSem = {0};
 sem_t copySem = {0};
 sem_t pipeSem = {0};
 sem_t stdioSem = {0};
@@ -626,7 +625,7 @@ void planeMachine(enum Thread tag, int idx)
     while (1) {
     int index = callInfo(MachineIndex,0,planeRcfg);
     struct Center *current = centerPull(index);
-    if (!center) ERROR();
+    if (current->mem != Machinez) ERROR();
     int last = callInfo(MachineLast,0,planeRcfg)-1;
     for (int next = last+1; next != last; last = ++next) {
     if (next < 0 || next >= current->siz) ERROR();
@@ -856,7 +855,6 @@ int planeImmed(void **dat, const char *str)
 
 void initSafe()
 {
-    if (sem_init(&waitSem, 0, 0) != 0) ERROR(); // wakeup planeMachine thread
     if (sem_init(&copySem, 0, 1) != 0) ERROR(); // protect array of Center
     if (sem_init(&pipeSem, 0, 1) != 0) ERROR(); // protect planeSelect queues
     if (sem_init(&stdioSem, 0, 1) != 0) ERROR(); // protect planeConsole queues
@@ -904,14 +902,15 @@ void initPlan()
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
-    break; case (Bringup):
+    break; case (Bringup): // no commandline arguments
+    callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    break; case (Builtin):
+    break; case (Builtin): // TimeThd driven machine on commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    break; case (Regress): case (Release):
+    break; case (Regress): case (Release): // Argument on commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
@@ -932,8 +931,10 @@ void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
 }
 int planeLoop()
 {
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
-    break; case (Bringup): if ((processTime()-start)*1000 < 2000) return 1;}
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
+    break; case (Bringup): if ((processTime()-start)*1000 < 2000) return 1;
+    break; case (Builtin): case (Regress): case (Release):
+    if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
 }
 void planeDone()
@@ -951,18 +952,21 @@ void planeDone()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
+    datxFnptr(0,0,0,0,0,0,0);
     callBack(RegisterTime,0);
+    callBack(RegisterAble,0);
     callBack(RegisterMask,0);
+    callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
-    freeStrq(strin); freeStrq(strout);
+    freeAbleq(ableq); freeTimeq(timeq);
+    freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
-    closeIdent(idx0); datxNon();
+    closeIdent(idx1); closeIdent(idx0); datxNon();
     if (sem_destroy(&dataSem) != 0) ERROR();
     if (sem_destroy(&timeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
     if (sem_destroy(&copySem) != 0) ERROR();
-    if (sem_destroy(&waitSem) != 0) ERROR();
 }
 void planePass(struct Center *ptr, int sub)
 {
