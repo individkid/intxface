@@ -1136,12 +1136,32 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (idx != siz) EXIT
         push(lst,fnc,ptr,sub,log);
     }
-    void push(Center *center, int sub, Fnc fnc, SmartState log) {
-        switch (center->mem) {
-        break; case (Drawz): {HeapState<Ins> ins(StackState::comnds);
-        for (int i = 0; i < center->siz; i++); // TODO switch on tag to call push(mem/res/drw)
+    template <class Type> void push(Type typ, Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
         // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
+        push(typ,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);
+    }
+    void push(Center *center, int sub, Fnc fnc, SmartState log) {
+        switch (center->mem) {default: {
+        auto f = MemoryIns__Memory__Int__Resrc(center->mem);
+        Resrc res = (f?f(0):Resrcs); if (res == Resrcs) EXIT
+        int mod = src(res)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
+        int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
+        // TODO allow for Configure Base and Size
+        switch (center->mem) {default: EXIT
+        break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Matrixz): push(center->mem,(void*)center->mat,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Trianglez): push(center->mem,(void*)center->tri,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
+        break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);}}
+        break; case (Drawz): {int didx = 0;
+        for (int i = 0; i < center->siz; i++)
+        switch (center->drw[i].con.tag) {default: ERROR();
+        break; case (MicroCon): push(center->drw[i].con.mic,center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);
+        break; case (MemoryCon): push(center->drw[i].con.mem,center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);
+        break; case (ResrcCon): push(center->drw[i].con.res,center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);}}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
@@ -1149,16 +1169,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});
-        break; default: {
-        auto f = MemoryIns__Memory__Int__Resrc(center->mem);
-        Resrc res = (f?f(0):Resrcs);
-        if (res == Resrcs) EXIT
-        int mod = src(res)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
-        int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
-        // TODO allow for Configure Base and Size
-        switch (center->mem) {default: EXIT
-        break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat); int marg[] = {
@@ -1169,12 +1179,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,log);}
-        break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Matrixz): push(center->mem,(void*)center->mat,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Trianglez): push(center->mem,(void*)center->tri,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
@@ -1196,7 +1200,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,siz,wid,hei,
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}}}}
+            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}}
     }
 };
 
