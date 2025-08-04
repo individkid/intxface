@@ -690,11 +690,11 @@ void planeTime(enum Thread tag, int idx)
     float time = 0.0; // time requested
     float delta = 0.0; // delay or 0.0 for forever
     int size = 0; // whether time is changed
-    bool init = false; // whether time is valid
+    int init = 0; // whether time is valid
     while (1) {
     if (sem_wait(&timeSem) != 0) ERROR();
     size = sizeTimeq(timeq);
-    if (!init && size != 0) {init = true;
+    if (!init && size != 0) {init = 1;
     time = (float)frontTimeq(timeq);
     dropTimeq(timeq);}
     if (sem_post(&timeSem) != 0) ERROR();
@@ -703,7 +703,7 @@ void planeTime(enum Thread tag, int idx)
     if (init && (delta == 0.0 || delta <= 0.0)) delta = -1.0; // wait not at all
     int sub = waitRead(delta,(1<<timwake));
     if (sub == timwake && readInt(timwake) < 0) break;
-    if (init && (float)processTime() >= time) {init = false;
+    if (init && (float)processTime() >= time) {init = 0;
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
 }
 

@@ -803,7 +803,6 @@ Con = {
 	{"mic","Micro",{["tag"]={["MicroCon"]=true}},{}},
 	{"mem","Memory",{["tag"]={["MemoryCon"]=true}},{}},
 	{"res","Resrc",{["tag"]={["ResrcCon"]=true}},{}},
-	{"loc","ResrcLoc",{},{}},
 }
 Req = {
 	{"tag","Request",{},{}},
@@ -828,6 +827,7 @@ Draw = {
 Ins = {
 	{"ins","Instr",{},""},
 	{"res","Resrc",{},{}},
+	{"loc","ResrcLoc",{},{}},
 	{"con","Con",{},{}},
 	{"req","Req",{},{}},
 	{"rsp","Rsp",{},{}},

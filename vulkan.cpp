@@ -435,10 +435,10 @@ struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
 };
 struct Loc {
-    SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
+    ResrcLoc loc; SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
 };
 ResrcLoc &operator*(Loc &loc) {
-    return loc.con.loc;
+    return loc.loc;
 }
 struct BindState;
 struct BaseState {
@@ -468,13 +468,12 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, Con con, Req req, Rsp rsp, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Con con, Req req, Rsp rsp, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push fail " << debug << std::endl;
         safe.post(); return false;}
-        ResrcLoc loc = con.loc;
         log << "push pass " << debug << " loc:" << loc << " tag:" << req.tag << " plock:" << plock << std::endl;
         ploc[loc].req = req;
         plock += 1;
@@ -483,6 +482,7 @@ struct BaseState {
         lock = ptr;
         ploc[loc].rsp = rsp;
         ploc[loc].con = con;
+	ploc[loc].loc = loc;
         return true;
     }
     void done(SmartState log) {
@@ -495,7 +495,7 @@ struct BaseState {
         safe.post();
     }
     void setre(ResrcLoc loc, Extent ext, int base, int size, SmartState log) {
-        push(0,0,0,0,Con{.tag=Constants,.loc=loc},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
+        push(0,0,0,0,loc,Con{.tag=Constants},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
         baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
@@ -667,9 +667,9 @@ struct BindState : public BaseState {
         if (bind[i] == 0) EXIT
         return bind[i];
     }
-    bool push(Resrc i, BaseState *buf, Con con, Req req, Rsp rsp, SmartState log) {
+    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Con con, Req req, Rsp rsp, SmartState log) {
         if (!excl) EXIT
-        if (!buf->push(psav[i],rsav[i],wsav[i],this,con,req,rsp,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,con,req,rsp,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf) EXIT
         bind[i] = buf;
@@ -930,8 +930,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
             ins[i].req.pre = (ins[i].ins == PDerIns && final[res] == i);
-            if (bind) {if (!bind->push(res,dst(res),ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
-            else {if (!dst(res)->push(0,0,0,0,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            if (bind) {if (!bind->push(res,dst(res),ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            else {if (!dst(res)->push(0,0,0,0,ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
             break; case(RDeeIns):
             if (!bind->rinc(res,dst(res),log)) lim = i;
             break; case(IRDeeIns):
@@ -946,8 +946,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = ins[i].res;
             switch(ins[i].ins) {default:
             break; case(DerIns): case (PDerIns): case (IDerIns):
-            lnk = dst(res)->lnk(ins[i].con.loc,bas,lst,lnk);
-            bas = dst(res); lst = ins[i].con.loc;}}
+            lnk = dst(res)->lnk(ins[i].loc,bas,lst,lnk);
+            bas = dst(res); lst = ins[i].loc;}}
         // record bindings
         for (int i = 0; i < num; i++) {
             switch (ins[i].ins) {default:
@@ -959,12 +959,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(DerIns):
             if (first[res] == i) src(res)->advance();
-            thread->push({log,ins[i].con.loc,dst(res)});
+            thread->push({log,ins[i].loc,dst(res)});
             break; case(PDerIns):
-            thread->push({log,ins[i].con.loc,dst(res)});
+            thread->push({log,ins[i].loc,dst(res)});
             break; case(IDerIns):
             if (first[res] == i) src(res)->advance(ins[i].idx);
-            thread->push({log,ins[i].con.loc,dst(res)});}}
+            thread->push({log,ins[i].loc,dst(res)});}}
         // clean up
         for (int i = 0; i < num; i++) {
             Resrc res = ins[i].res;
@@ -1079,22 +1079,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
         }
         return req;
     }
-    static Con constant(Instr ins, Micro typ, ResrcLoc loc, SmartState log) {
-        return Con{.tag = MicroCon, .mic = typ, .loc = loc};
+    static Con constant(Instr ins, Micro typ, SmartState log) {
+        return Con{.tag = MicroCon, .mic = typ};
     }
-    static Con constant(Instr ins, Memory typ, ResrcLoc loc, SmartState log) {
-        return Con{.tag = MemoryCon, .mem = typ, .loc = loc};
+    static Con constant(Instr ins, Memory typ, SmartState log) {
+        return Con{.tag = MemoryCon, .mem = typ};
     }
-    static Con constant(Instr ins, Resrc typ, ResrcLoc loc, SmartState log) {
-        return Con{.tag = ResrcCon, .res = typ, .loc = loc};
+    static Con constant(Instr ins, Resrc typ, SmartState log) {
+        return Con{.tag = ResrcCon, .res = typ};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         // {char *ins = 0; char *res = 0; char *loc = 0; char *fmt = 0; showInstr(dot[i].ins,&ins); showResrc(dot[i].res,&res); showResrcLoc(dot[i].loc,&loc); showFormat(dot[i].fmt,&fmt); log << "instruct " << ins << " " << res << " " << loc << " " << fmt << " idx:" << idx << "/" << siz << std::endl; free(ins); free(res); free(loc); free(fmt);}
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
-        Con con = constant(dot[i].ins,typ,dot[i].loc,log);
+        Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
-        return Ins{dot[i].ins,dot[i].res,con,req,rsp,pre};
+        return Ins{dot[i].ins,dot[i].res,dot[i].loc,con,req,rsp,pre};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
         Type val = (fnc&&fnc(typ)?fnc(typ)(i):inv);
