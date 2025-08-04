@@ -573,12 +573,12 @@ Bootstrap = {
 			"fld[1]:CndOp(siz:5"..
 				"cnd[0]:CmpOp(opc[0]:RetOp(RegisterShow)opc[1]:IntOp(0)cmp:EOCmp)".. -- (RegisterShow != 0 ? 1 : 0)
 				"cnd[1]:CmpOp(opc[0]:AddOp("..
-					"opb[0]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:ECCmp)"..
-					"opb[1]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(14)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
+					"opa[0]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:ECCmp)"..
+					"opa[1]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(14)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
 					")opc[1]:IntOp(2)cmp:EOCmp)".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 14) != 0)) != 2 ? 1 : 0)
 				"cnd[2]:CmpOp(opc[0]:AddOp("..
-					"opb[0]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
-					"opb[1]:CmpOp(opc[0]:BitOp(opd[0]:RetOp(RegisterShow)opd[1]:IntOp(14)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
+					"opa[0]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
+					"opa[1]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(14)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
 					")opc[1]:IntOp(2)cmp:EOCmp)".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 14) != 0)) != 2 ? 1 : 0)
 				"cnd[3]:CmpOp(opc[0]:RetOp(RegisterShow)opc[1]:IntOp(1)cmp:EOCmp)".. -- (RegisterShow != 1 ? 1 : 0)
 				"cnd[4]:IntOp(0)"..
@@ -695,11 +695,11 @@ Irrex = { -- permutation of permutations
 }
 Express = {
 	{"opr","Operate",{},""},
-	{"opb","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
+	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
+	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
+	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"opc","Express",{["opr"]={["CmpOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
-	{"opd","Express",{["opr"]={["BitOp"]=true}},2},
-	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
