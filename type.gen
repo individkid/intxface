@@ -174,18 +174,17 @@ Configure = {
 	"RegisterMask", -- interrupt mask
 	"RegisterWake", -- mask of threads
 	"RegisterAble", -- interrupts per thread
-	"RegisterTime", -- wake time
+	"RegisterTime", -- wake time delay
+	"RegisterPnum", -- wake request count
+	"RegisterQnum", -- wake response count
 	"RegisterStrq", -- num strings in queue
-	"ProbePoke", -- probe state
-	"ProbePeek",
-	"ProbeIndex",
-	"ProbeField",
-	"ProbeDimen",
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
+	"ManipAngle",
 	"ClickLeft",
 	"ClickBase",
+	"ClickAngle",
 	"FixedLeft",
 	"FixedBase",
 	"FixedDeep",

@@ -728,7 +728,8 @@ void planeTime(enum Thread tag, int idx)
     int sub = waitRead(delta,(1<<timwake));
     if (sub == timwake && readInt(timwake) < 0) break;
     if (init && (float)processTime() >= time) {init = 0;
-    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
+    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
+    callJnfo(RegisterQnum,1,planeRmw);}}
 }
 
 void planeClose(enum Thread tag, int idx)
@@ -808,6 +809,7 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     *ptrTimeq(idx,timeq) = *ptrTimeq(idx-1,timeq); --idx;}
     *ptrTimeq(idx,timeq) = time;} else {
     pushTimeq(time,timeq);}
+    callKnfo(RegisterPnum,1,planeRmw);
     if (sem_post(&timeSem) != 0) ERROR();
     writeInt(0,timwake);
 }
