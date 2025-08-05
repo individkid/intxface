@@ -322,6 +322,30 @@ float *planeWindow(float *mat)
     *matrc(range,0,3,4) = 1.0; *matrc(range,1,3,4) = -1.0; *matrc(range,2,3,4) = depth; *matrc(range,3,3,4) = (focal+depth)/focal;
     return planeSolve(mat,domain,range,4);
 }
+void planeTest(float *model, float *view, float *proj, float *debug)
+{
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+    break; case (Bringup): {
+    identmat(model,4);
+    identmat(view,4);
+    identmat(proj,4);
+    *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
+    *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
+    identmat(debug,4);
+    float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
+    float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(processTime()*8.0f), 1.0f};
+    float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
+    float dst1[] = {0.5f, -0.5f, 0.40f, 1.0f};
+    float src2[] = {0.5f, -0.5f, 0.40f, 0.0f};
+    float dst2[] = {0.5f, -0.5f, 0.40f, 0.0f};
+    float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
+    float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
+    planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
+    break; case (Builtin): {
+    // TODO read registers to transform kernels
+    }}
+}
 
 void centerSize(int idx)
 {

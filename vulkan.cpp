@@ -1089,7 +1089,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        // {char *ins = 0; char *res = 0; char *loc = 0; char *fmt = 0; showInstr(dot[i].ins,&ins); showResrc(dot[i].res,&res); showResrcLoc(dot[i].loc,&loc); showFormat(dot[i].fmt,&fmt); log << "instruct " << ins << " " << res << " " << loc << " " << fmt << " idx:" << idx << "/" << siz << std::endl; free(ins); free(res); free(loc); free(fmt);}
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1136,9 +1135,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (idx != siz) EXIT
         push(lst,fnc,ptr,sub,log);
     }
-    template <class Type> void push(Type typ, Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
-        // TODO use Configure or Draw fields to decide between registered Fnc structs
-        push(typ,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);
+    void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
+        switch (drw.con.tag) {default: ERROR();
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);}
     }
     void push(Center *center, int sub, Fnc fnc, SmartState log) {
         switch (center->mem) {default: {
@@ -1158,10 +1159,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);}}
         break; case (Drawz): {int didx = 0;
         for (int i = 0; i < center->siz; i++)
-        switch (center->drw[i].con.tag) {default: ERROR();
-        break; case (MicroCon): push(center->drw[i].con.mic,center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);
-        break; case (MemoryCon): push(center->drw[i].con.mem,center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);
-        break; case (ResrcCon): push(center->drw[i].con.res,center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);}}
+        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        push(center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         // TODO use Configure or Draw fields to decide between registered Fnc structs
@@ -1225,7 +1224,6 @@ struct TestState : public DoneState {
     void noop() override {
         wake.wake();
     }
-    static int testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug);
 };
 void vulkanCheck(Center *ptr, int sub);
 void vulkanWake(Center *ptr, int sub);
@@ -1309,7 +1307,11 @@ void TestState::call() {
     BaseState *sptr = swap->buffer();
     if (!bptr->rinc(SwapRes,sptr,mlog)) {
     mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
-    int test = testUpdate(sptr->getExtent(),model,view,proj,debug);
+    static int count = 0; static float time = 0.0;
+    if (time == 0.0) time = processTime();
+    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
+    int test = count;
+    planeTest(model,view,proj,debug);
     bptr->rdec(SwapRes,mlog);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
@@ -3023,34 +3025,4 @@ void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void 
     submitInfo.pSignalSemaphores = signalSemaphores;
     if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
     EXIT
-}
-
-extern "C" {
-float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1, float *src2, float *dst2, float *src3, float *dst3);
-float *planeWindow(float *mat);
-float *matrc(float *u, int r, int c, int n);
-float *identmat(float *u, int n);
-}
-#include <math.h>
-int TestState::testUpdate(VkExtent2D swapChainExtent, float *model, float *view, float *proj, float *debug) {
-    static int count = 0; static float time = 0.0;
-    if (time == 0.0) time = processTime();
-    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
-    identmat(model,4);
-    identmat(view,4);
-    identmat(proj,4);
-    *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
-    *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
-    identmat(debug,4);
-    // if (count%8 < 4) {
-    float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
-    float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(processTime()*8.0f), 1.0f};
-    float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
-    float dst1[] = {0.5f, -0.5f, 0.40f, 1.0f};
-    float src2[] = {0.5f, -0.5f, 0.40f, 0.0f};
-    float dst2[] = {0.5f, -0.5f, 0.40f, 0.0f};
-    float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
-    float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
-    planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);//}
-    return count;
 }
