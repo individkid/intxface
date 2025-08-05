@@ -932,6 +932,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     break; case (Builtin): // TimeThd driven machine on commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     break; case (Regress): case (Release): // Argument on commandline
@@ -971,6 +972,7 @@ void planeDone()
     break; case (Builtin):
     callJnfo(RegisterOpen,(1<<TimeThd),planeWotc);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
     break; case (Regress): case (Release):
     callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
