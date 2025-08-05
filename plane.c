@@ -728,13 +728,22 @@ void planeTime(enum Thread tag, int idx)
     int sub = waitRead(delta,(1<<timwake));
     if (sub == timwake && readInt(timwake) < 0) break;
     if (init && (float)processTime() >= time) {init = 0;
-    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);
-    callJnfo(RegisterQnum,1,planeRmw);}}
+    callJnfo(RegisterQnum,1,planeRmw);
+    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
 }
 
 void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
+}
+void planeJoin(enum Thread tag, int idx)
+{
+    printf("planeJoin %d\n",tag);
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): closeIdent(external); closeIdent(selwake);
+    break; case (StdioThd): closeIdent(console); closeIdent(conwake);
+    break; case (CopyThd): closeIdent(cpywake);
+    break; case (TimeThd): closeIdent(timwake);}
 }
 // TODO add planeJoin to closeIdent after thread is joined
 
@@ -744,24 +753,24 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
         if ((selwake = openPipe()) < 0) ERROR();
-        callFork(PipeThd,0,planeSelect,planeClose);}
+        callFork(PipeThd,0,planeSelect,planeClose,planeJoin);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         writeInt(-1,selwake);}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         if ((conwake = openPipe()) < 0) ERROR();
-        callFork(StdioThd,0,planeConsole,planeClose);}
+        callFork(StdioThd,0,planeConsole,planeClose,planeJoin);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         writeInt(-1,conwake);}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         if ((cpywake = openPipe()) < 0) ERROR();
-        callFork(CopyThd,0,planeMachine,planeClose);}
+        callFork(CopyThd,0,planeMachine,planeClose,planeJoin);}
     if (!(act & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
         writeInt(-1,cpywake);}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         if ((timwake = openPipe()) < 0) ERROR();
-        callFork(TimeThd,0,planeTime,planeClose);}
+        callFork(TimeThd,0,planeTime,planeClose,planeJoin);}
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         writeInt(-1,timwake);}
 }

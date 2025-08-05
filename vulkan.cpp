@@ -1334,14 +1334,14 @@ void TestState::call() {
 }
 
 struct ForkState : public DoneState {
-    Thread thd; int idx; mftype cfnc; mftype dfnc;
-    ForkState (Thread thd, int idx, mftype call, mftype done) :
-        thd(thd), idx(idx), cfnc(call), dfnc(done) {
+    Thread thd; int idx; mftype cfnc; mftype dfnc; mftype hfnc;
+    ForkState (Thread thd, int idx, mftype call, mftype done, mftype heap) :
+        thd(thd), idx(idx), cfnc(call), dfnc(done), hfnc(heap) {
         strcpy(debug,"ForkState");
     }
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
-    void heap() override {delete this;} // TODO add hfnc to call closeIdent on pipes for thread
+    void heap() override {hfnc(thd,idx); delete this;}
     void noop() override {}
 };
 
@@ -2006,8 +2006,8 @@ void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
 }
 // add thread
-void vulkanFork(Thread thd, int idx, mftype fnc, mftype done) {
-    mptr->callState.push(new ForkState(thd,idx,fnc,done));
+void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join) {
+    mptr->callState.push(new ForkState(thd,idx,fnc,done,join));
 }
 // register access
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
