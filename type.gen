@@ -178,6 +178,9 @@ Configure = {
 	"RegisterPnum", -- wake request count
 	"RegisterQnum", -- wake response count
 	"RegisterStrq", -- num strings in queue
+	"RegisterTemp", -- index of temporary
+	"RegisterUse0", -- test control
+	"RegisterUse1", -- test control
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",

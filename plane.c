@@ -80,6 +80,7 @@ int planeRaz(int *ref, int val)
     *ref = 0; return 0;
 }
 
+// cursor decoration
 unsigned char *moveCursor(int dim, int e, int t, int r, int b, int l)
 {
     int hot = dim/2;
@@ -169,6 +170,7 @@ unsigned char *sculptCursor(int e)
     return pixels;
 }
 
+// matrix manipulation
 float *vectorThree(float *vec, enum Configure left, enum Configure base, enum Configure deep)
 {
     vec[0] = callInfo(left,0,planeRcfg);
@@ -343,10 +345,11 @@ void planeTest(float *model, float *view, float *proj, float *debug)
     float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
     break; case (Builtin): {
-    // TODO read registers to transform kernels
+    // TODO read registers to transform a center of Matrixz
     }}
 }
 
+// resource accessors
 void centerSize(int idx)
 {
     if (sem_wait(&copySem) != 0) ERROR();
@@ -381,6 +384,7 @@ void kernelClear(struct Kernel *ker)
     identmat(ker->self.mat,4); identmat(ker->other.mat,4);
 }
 
+// machine extensions
 struct Center *machineCenter(int sig, int *arg, int lim, int idx, int sub)
 {
     if (sig != lim) ERROR();
@@ -644,6 +648,7 @@ void machineSwitch(struct Machine *mptr)
     case (Qopy): machineQopy(mptr->sig,mptr->arg); break;}
 }
 
+// thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
     while (1) {
@@ -732,45 +737,49 @@ void planeTime(enum Thread tag, int idx)
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
 }
 
+// phase callbacks
 void planeClose(enum Thread tag, int idx)
 {
     callJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
 void planeJoin(enum Thread tag, int idx)
 {
-    printf("planeJoin %d\n",tag);
     switch (tag) {default: ERROR();
     break; case (PipeThd): closeIdent(external); closeIdent(selwake);
     break; case (StdioThd): closeIdent(console); closeIdent(conwake);
     break; case (CopyThd): closeIdent(cpywake);
     break; case (TimeThd): closeIdent(timwake);}
 }
-// TODO add planeJoin to closeIdent after thread is joined
+void planeHeap(enum Thread tag, int idx)
+{
+    callJnfo(RegisterWake,(1<<tag),planeRaz);
+}
 
+// register callbacks
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterOpen) ERROR();
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
         if ((selwake = openPipe()) < 0) ERROR();
-        callFork(PipeThd,0,planeSelect,planeClose,planeJoin);}
+        callFork(PipeThd,0,planeSelect,planeClose,planeJoin,planeHeap);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         writeInt(-1,selwake);}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         if ((conwake = openPipe()) < 0) ERROR();
-        callFork(StdioThd,0,planeConsole,planeClose,planeJoin);}
+        callFork(StdioThd,0,planeConsole,planeClose,planeJoin,planeHeap);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         writeInt(-1,conwake);}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         if ((cpywake = openPipe()) < 0) ERROR();
-        callFork(CopyThd,0,planeMachine,planeClose,planeJoin);}
+        callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeHeap);}
     if (!(act & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
         writeInt(-1,cpywake);}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         if ((timwake = openPipe()) < 0) ERROR();
-        callFork(TimeThd,0,planeTime,planeClose,planeJoin);}
+        callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeHeap);}
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         writeInt(-1,timwake);}
 }
@@ -823,6 +832,7 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     writeInt(0,timwake);
 }
 
+// expression callbacks
 const char *planeGetstr()
 {
     if (sem_wait(&stdioSem) != 0) ERROR();
@@ -888,6 +898,32 @@ int planeImmed(void **dat, const char *str)
     return -1;
 }
 
+// response callbacks
+void planeCheck(struct Center *ptr, int sub) {
+    if (ptr->mem != Peekz) ERROR();
+    for (int i = 0; i < ptr->siz; i++)
+    printf("check: 0x%x %f\n",ptr->eek[i].val,(float)processTime());
+    freeCenter(ptr); allocCenter(&ptr,0); // TODO centerPlace(ptr,sub);
+}
+void planeWake(struct Center *ptr, int sub) {
+    // mptr->testState.noop();
+}
+void planePass(struct Center *ptr, int sub)
+{
+    centerPlace(ptr,sub);
+    callJnfo(RegisterPass,sub,planeWcfg);
+    callJnfo(RegisterMask,(1<<PassMsk),planeWots);
+}
+void planeFail(struct Center *ptr, int sub)
+{
+    centerPlace(ptr,sub);
+    callJnfo(RegisterFail,sub,planeWcfg);
+    callJnfo(RegisterMask,(1<<FailMsk),planeWots);
+}
+void planeForce(struct Center *ptr, int sub) {
+    ERROR();
+}
+
 void initSafe()
 {
     if (sem_init(&copySem, 0, 1) != 0) ERROR(); // protect array of Center
@@ -942,6 +978,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     break; case (Builtin): // TimeThd driven machine on commandline
+    callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
@@ -1004,16 +1041,4 @@ void planeDone()
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
     if (sem_destroy(&copySem) != 0) ERROR();
-}
-void planePass(struct Center *ptr, int sub)
-{
-    centerPlace(ptr,sub);
-    callJnfo(RegisterPass,sub,planeWcfg);
-    callJnfo(RegisterMask,(1<<PassMsk),planeWots);
-}
-void planeFail(struct Center *ptr, int sub)
-{
-    centerPlace(ptr,sub);
-    callJnfo(RegisterFail,sub,planeWcfg);
-    callJnfo(RegisterMask,(1<<FailMsk),planeWots);
 }

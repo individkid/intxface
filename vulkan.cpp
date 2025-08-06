@@ -1204,9 +1204,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
 };
 
 struct TestState : public DoneState {
-    SafeState safe, wake; bool goon; CopyState *copy; StackState *swap; StackState *bind;
+    SafeState safe; bool goon; CopyState *copy; StackState *swap; StackState *bind;
     TestState(CopyState *copy, StackState *swap, StackState *bind) :
-        safe(1), wake(0), goon(true), copy(copy), swap(swap), bind(bind) {
+        safe(1), goon(true), copy(copy), swap(swap), bind(bind) {
         strcpy(debug,"TestState");
         std::cout << debug << std::endl;
     }
@@ -1218,19 +1218,14 @@ struct TestState : public DoneState {
         safe.wait();
         goon = false;
         safe.post();
-        wake.wake();
     }
     void heap() override {}
-    void noop() override {
-        wake.wake();
-    }
+    void noop() override {}
 };
 void vulkanCheck(Center *ptr, int sub);
 void vulkanWake(Center *ptr, int sub);
-void vulkanWait(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
 void TestState::call() {
-    slog.onof(0,10000,123,5);
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         {{0.5f, -0.5f, 0.40f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -1334,15 +1329,15 @@ void TestState::call() {
 }
 
 struct ForkState : public DoneState {
-    Thread thd; int idx; mftype cfnc; mftype dfnc; mftype hfnc;
-    ForkState (Thread thd, int idx, mftype call, mftype done, mftype heap) :
-        thd(thd), idx(idx), cfnc(call), dfnc(done), hfnc(heap) {
+    Thread thd; int idx; mftype cfnc; mftype dfnc; mftype hfnc; mftype nfnc;
+    ForkState (Thread thd, int idx, mftype call, mftype done, mftype heap, mftype noop) :
+        thd(thd), idx(idx), cfnc(call), dfnc(done), hfnc(heap), nfnc(noop) {
         strcpy(debug,"ForkState");
     }
     void call() override {cfnc(thd,idx);}
     void done() override {dfnc(thd,idx);}
     void heap() override {hfnc(thd,idx); delete this;}
-    void noop() override {}
+    void noop() override {nfnc(thd,idx);}
 };
 
 struct SwapState : public BaseState {
@@ -1987,9 +1982,6 @@ void vulkanCheck(Center *ptr, int sub) {
 void vulkanWake(Center *ptr, int sub) {
     mptr->testState.noop();
 }
-void vulkanWait(Center *ptr, int sub) {
-    glfwWaitEventsTimeout(0.001); // TODO move to WindowState
-}
 void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
@@ -2006,8 +1998,8 @@ void vulkanCall(Configure cfg, xftype back) {
     mptr->copyState.call(cfg,back);
 }
 // add thread
-void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join) {
-    mptr->callState.push(new ForkState(thd,idx,fnc,done,join));
+void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftype wake) {
+    mptr->callState.push(new ForkState(thd,idx,fnc,done,join,wake));
 }
 // register access
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
@@ -2057,6 +2049,7 @@ int main(int argc, const char **argv) {
     // TODO parse argv for arguments to main and push only unparsed to cfg
     for (int i = 1; i < argc; i++) cfg << argv[i];
     // TODO pass parsed arguments to main
+    slog.onof(0,10000,123,5);
     MainState main;
     mptr = &main;
     main.copyState.call(RegisterOpen,vulkanBack);
