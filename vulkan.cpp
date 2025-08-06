@@ -844,11 +844,6 @@ struct EnumState {
 struct Arg {
     Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Format fmt = Formats;
 };
-struct Fnc {
-    void (*pnow)(Center*,int) = 0; void (*pass)(Center*,int) = 0;
-    void (*fnow)(Center*,int) = 0; void (*fail)(Center*,int) = 0;
-    bool goon = false;
-};
 void vulkanForce(Center *ptr, int sub);
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
@@ -1159,11 +1154,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);}}
         break; case (Drawz): {int didx = 0;
         for (int i = 0; i < center->siz; i++)
-        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        // TODO get Fnc from Draw
         push(center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
-        // TODO use Configure or Draw fields to decide between registered Fnc structs
+        // TODO get Fnc from Draw
         push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
@@ -1989,9 +1984,8 @@ void vulkanForce(Center *ptr, int sub) {
     EXIT
 }
 // request
-void vulkanCopy(Center *ptr, int sub) {
-    // TODO use Configure to decide between registered Fnc structs
-    mptr->copyState.push(ptr,sub,Fnc{0,planePass,0,planeFail,false},SmartState());
+void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
+    mptr->copyState.push(ptr,sub,fnc,SmartState());
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {

@@ -36,7 +36,7 @@ sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t timeSem = {0};
 sem_t dataSem = {0};
-wftype callCopy = 0;
+uftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
 zftype callInfo = 0;
@@ -536,12 +536,15 @@ void machineBopy(int sig, int *arg)
     machinePlace(srcPtr,sig,arg,BopyArgs,BopySrc,BopySrcSub);
     machinePlace(dstPtr,sig,arg,BopyArgs,BopyDst,BopyDstSub);
 }
+void planePass(struct Center *ptr, int sub);
+void planeFail(struct Center *ptr, int sub);
 void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
     struct Center *ptr = centerPull(src);
-    callCopy(ptr,src);
+    struct Fnc fnc = {0,planePass,0,planeFail,0};
+    callCopy(ptr,src,fnc);
 }
 void machineDopy(int sig, int *arg)
 {
@@ -750,7 +753,7 @@ void planeJoin(enum Thread tag, int idx)
     break; case (CopyThd): closeIdent(cpywake);
     break; case (TimeThd): closeIdent(timwake);}
 }
-void planeHeap(enum Thread tag, int idx)
+void planeWake(enum Thread tag, int idx)
 {
     callJnfo(RegisterWake,(1<<tag),planeRaz);
 }
@@ -762,24 +765,24 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
         if ((selwake = openPipe()) < 0) ERROR();
-        callFork(PipeThd,0,planeSelect,planeClose,planeJoin,planeHeap);}
+        callFork(PipeThd,0,planeSelect,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         writeInt(-1,selwake);}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         if ((conwake = openPipe()) < 0) ERROR();
-        callFork(StdioThd,0,planeConsole,planeClose,planeJoin,planeHeap);}
+        callFork(StdioThd,0,planeConsole,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         writeInt(-1,conwake);}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         if ((cpywake = openPipe()) < 0) ERROR();
-        callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeHeap);}
+        callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
         writeInt(-1,cpywake);}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         if ((timwake = openPipe()) < 0) ERROR();
-        callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeHeap);}
+        callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         writeInt(-1,timwake);}
 }
@@ -905,7 +908,7 @@ void planeCheck(struct Center *ptr, int sub) {
     printf("check: 0x%x %f\n",ptr->eek[i].val,(float)processTime());
     freeCenter(ptr); allocCenter(&ptr,0); // TODO centerPlace(ptr,sub);
 }
-void planeWake(struct Center *ptr, int sub) {
+void planeNoop(struct Center *ptr, int sub) {
     // mptr->testState.noop();
 }
 void planePass(struct Center *ptr, int sub)
@@ -989,7 +992,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(wftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
 {
     callCopy = copy;
     callBack = call;
