@@ -983,11 +983,15 @@ void initTest()
     int idx = 0;
     struct Center *ptr = 0;
     struct Fnc fnc = {0,planeAlloc,0,planeForce,false};
+    int frames = callInfo(ConstantFrames,0,planeRcfg);
     allocCenter(&ptr,1);
-    ptr->mem = Drawz; ptr->siz = 1;
-    allocDraw(&ptr->drw,1);
+    ptr->mem = Drawz; ptr->siz = 1+frames;
+    allocDraw(&ptr->drw,1+frames);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = SwapRes;
+    for (int i = 0; i < frames; i++) {
+    ptr->drw[1+i].con.tag = ResrcCon;
+    ptr->drw[1+i].con.res = ChainRes;}
     callCopy(ptr,0,fnc);}
     break; case (Builtin):
     break; case (Regress): case (Release):;}

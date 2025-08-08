@@ -204,6 +204,9 @@ Configure = {
 	"WindowBase",
 	"FocalLength",
 	"FocalDepth",
+	"ConstantFrames",
+	"ConstantImages",
+	"ConstantComnds",
 }
 Transfer = {
 	"Stage", -- center fields to configure

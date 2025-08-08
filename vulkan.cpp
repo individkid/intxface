@@ -1247,8 +1247,8 @@ void TestState::call() {
     //
     // copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //
-    for (int i = 0; i < StackState::frames; i++)
-    copy->push(ChainRes,0,0,0,idx,0,0,fnc,SmartState());
+    // for (int i = 0; i < StackState::frames; i++)
+    // copy->push(ChainRes,0,0,0,idx,0,0,fnc,SmartState());
     //
     Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
@@ -2048,6 +2048,9 @@ int main(int argc, const char **argv) {
     slog.onof(0,10000,123,5);
     MainState main;
     mptr = &main;
+    main.copyState.write(ConstantFrames,StackState::frames);
+    main.copyState.write(ConstantImages,StackState::images);
+    main.copyState.write(ConstantComnds,StackState::comnds);
     main.copyState.call(RegisterOpen,vulkanBack);
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
