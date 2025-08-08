@@ -1245,7 +1245,7 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
+    // copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
     //
     for (int i = 0; i < StackState::frames; i++)
     copy->push(ChainRes,0,0,0,idx,0,0,fnc,SmartState());

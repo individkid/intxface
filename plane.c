@@ -1023,7 +1023,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callCmnd = cmnd;
     initSafe();
     initBoot();
-    // initTest();
+    initTest();
     initPlan();
 }
 int planeLoop()
