@@ -1266,8 +1266,16 @@ void TestState::call() {
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     copy->push(img,0,cfnc,SmartState());
     //
-    // TODO wait for SwapRes rinc
+    SmartState mlog;
+    bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
+    BindState *bptr = bind->buffer()->getBind(mlog);
+    if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWait(0,0); continue;}
+    BaseState *sptr = swap->buffer();
+    if (!bptr->rinc(SwapRes,sptr,mlog)) {
+    mlog << "rinc continue" << std::endl; vulkanWait(0,0); continue;}
+    bptr->rdec(SwapRes,mlog); break;}
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
+    //
     if (ext.width == 0 || ext.height == 0) ERROR();
     Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->idx = 0; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
@@ -1288,30 +1296,22 @@ void TestState::call() {
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
-    int tested = 0;
-    bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
+    int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
-    SmartState mlog;
     float model[16]; float view[16]; float proj[16]; float debug[16];
-    BindState *bptr = bind->buffer()->getBind(mlog);
-    if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWait(0,0); continue;}
-    BaseState *sptr = swap->buffer();
-    if (!bptr->rinc(SwapRes,sptr,mlog)) {
-    mlog << "rinc continue" << std::endl; vulkanWait(0,0); continue;}
-    static int count = 0; static float time = 0.0;
-    if (time == 0.0) time = processTime();
-    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
-    int test = count;
-    planeTest(model,view,proj,debug);
-    bptr->rdec(SwapRes,mlog);
     Center *mat = 0; allocCenter(&mat,1);
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
+    planeTest(model,view,proj,debug);
     memcpy(&mat->mat[0],model,sizeof(Matrix));
     memcpy(&mat->mat[1],view,sizeof(Matrix));
     memcpy(&mat->mat[2],proj,sizeof(Matrix));
     memcpy(&mat->mat[3],debug,sizeof(Matrix));
-    copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
+    copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},SmartState());
     //
+    static int count = 0; static float time = 0.0;
+    if (time == 0.0) time = processTime();
+    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
+    int test = count;
     if (test == tested) {int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
     else if (test%8 == 1 || test%8 == 5) {tested = test; int idx = 0;
@@ -1964,9 +1964,6 @@ struct MainState {
         std::cout << "~MainState" << std::endl;
     }
 };
-MainState *mptr = 0;
-
-// TODO define glfw callbacks
 
 // responses
 void vulkanCheck(Center *ptr, int sub) {
@@ -1984,6 +1981,9 @@ void vulkanForce(Center *ptr, int sub) {
 void vulkanWait(Center *ptr, int sub) {
     glfwWaitEventsTimeout(0.01);
 }
+
+MainState *mptr = 0;
+// TODO define glfw callbacks
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
     mptr->copyState.push(ptr,sub,fnc,SmartState());
@@ -2006,16 +2006,17 @@ int vulkanJnfo(Configure cfg, int val, yftype fnc) {
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return mptr->copyState.knfo(cfg,val,fnc);
 }
+// builtin callback
+void vulkanBack(Configure cfg, int sav, int val, int act) {
+    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
+    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
+}
+
 // startup configuration
 HeapState<const char *> cfg;
 const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
-}
-// builtin callback
-void vulkanBack(Configure cfg, int sav, int val, int act) {
-    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
-    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
 }
 // c debug
 void vulkanExit() {
