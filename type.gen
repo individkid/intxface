@@ -482,6 +482,8 @@ FragmentFile = {
 	{"Micro","MicroDisplay","Int","0","Str","fragmentDisplayG"},
 }
 MemoryIns = {
+	-- n==0: departures from PDerIns,Resrcs,MiddleLoc,WholeFrm
+	-- n>0: departures from n-1
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
@@ -511,6 +513,8 @@ MemoryIns = {
 	{"Memory","Basisz","Int","0","Resrc","BasisRes"},
 }
 ResrcIns = {
+	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
+	-- n>0: departures from n-1
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
 	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
@@ -537,6 +541,8 @@ ResrcIns = {
 	{"Resrc","DrawRes","Int","0","Format","ConstFrm"},
 }
 MicroIns = {
+	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
+	-- n>0: departures from n-1
 	{"Micro","MicroTest","Int","0","Instr","DerIns"},
 		{"Micro","MicroTest","Int","0","Resrc","ChainRes"},
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},

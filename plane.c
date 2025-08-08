@@ -926,6 +926,9 @@ void planeFail(struct Center *ptr, int sub)
 void planeForce(struct Center *ptr, int sub) {
     ERROR();
 }
+void planeAlloc(struct Center *ptr, int sub) {
+    if (sub >= 0) {freeCenter(ptr); allocCenter(&ptr,0);}
+}
 
 void initSafe()
 {
@@ -972,20 +975,37 @@ void initBoot()
     if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,boot[i]); exit(-1);}}
 }
+void initTest()
+{
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+    break; case (Bringup): {
+    int idx = 0;
+    struct Center *ptr = 0;
+    struct Fnc fnc = {0,planeAlloc,0,planeForce,false};
+    allocCenter(&ptr,1);
+    ptr->mem = Drawz; ptr->siz = 1;
+    allocDraw(&ptr->drw,1);
+    ptr->drw[0].con.tag = ResrcCon;
+    ptr->drw[0].con.res = SwapRes;
+    callCopy(ptr,0,fnc);}
+    break; case (Builtin):
+    break; case (Regress): case (Release):;}
+}
 void initPlan()
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): // no commandline arguments
-    callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    break; case (Builtin): // TimeThd driven machine on commandline
     callJnfo(RegisterPoll,1,planeWcfg);
+    break; case (Builtin): // TimeThd driven machine on commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    callJnfo(RegisterPoll,1,planeWcfg);
     break; case (Regress): case (Release): // Argument on commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
@@ -1003,6 +1023,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callCmnd = cmnd;
     initSafe();
     initBoot();
+    // initTest();
     initPlan();
 }
 int planeLoop()

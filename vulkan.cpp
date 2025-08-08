@@ -482,7 +482,7 @@ struct BaseState {
         lock = ptr;
         ploc[loc].rsp = rsp;
         ploc[loc].con = con;
-	ploc[loc].loc = loc;
+        ploc[loc].loc = loc;
         return true;
     }
     void done(SmartState log) {
@@ -1154,12 +1154,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);}}
         break; case (Drawz): {int didx = 0;
         for (int i = 0; i < center->siz; i++)
-        // TODO get Fnc from Draw
-        push(center->drw[i],didx,center,sub,Fnc{planePass,0,planeFail,0,false},log);}
+        push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
-        // TODO get Fnc from Draw
-        push(ins,Fnc{planePass,0,planeFail,0,false},center,sub,log);}
+        push(ins,fnc,center,sub,log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});
@@ -1218,8 +1216,8 @@ struct TestState : public DoneState {
     void noop() override {}
 };
 void vulkanCheck(Center *ptr, int sub);
-void vulkanWake(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
+void vulkanWait(Center *ptr, int sub);
 void TestState::call() {
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -1241,7 +1239,8 @@ void TestState::call() {
     int xsiz = 800; int ysiz = 600; int idx = 0;
     Fnc fnc = Fnc{0,0,0,vulkanForce,false};
     Fnc cfnc = Fnc{0,vulkanPass,vulkanForce,0,false};
-    Fnc pfnc = Fnc{0,vulkanCheck,0,0,true};
+    Fnc pfnc = Fnc{0,vulkanCheck,vulkanWait,0,true};
+    Fnc wfnc = Fnc{0,0,vulkanWait,0,true};
     copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
@@ -1267,7 +1266,9 @@ void TestState::call() {
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     copy->push(img,0,cfnc,SmartState());
     //
-    VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
+    // TODO wait for SwapRes rinc
+    VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
+    if (ext.width == 0 || ext.height == 0) ERROR();
     Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->idx = 0; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
     oke->oke[0].wid = ext.width/2; oke->oke[0].hei = ext.height/2; oke->oke[0].val = 1.5;
@@ -1293,10 +1294,10 @@ void TestState::call() {
     SmartState mlog;
     float model[16]; float view[16]; float proj[16]; float debug[16];
     BindState *bptr = bind->buffer()->getBind(mlog);
-    if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWake(0,0); continue;}
+    if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWait(0,0); continue;}
     BaseState *sptr = swap->buffer();
     if (!bptr->rinc(SwapRes,sptr,mlog)) {
-    mlog << "rinc continue" << std::endl; vulkanWake(0,0); continue;}
+    mlog << "rinc continue" << std::endl; vulkanWait(0,0); continue;}
     static int count = 0; static float time = 0.0;
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -1312,9 +1313,9 @@ void TestState::call() {
     copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},mlog);
     //
     if (test == tested) {int idx = 0;
-    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
+    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
     else if (test%8 == 1 || test%8 == 5) {tested = test; int idx = 0;
-    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWake,0,vulkanWake,0,false},SmartState());}
+    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
     else if (test%8 == 2 || test%8 == 6) {tested = test;
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
@@ -1974,14 +1975,14 @@ void vulkanCheck(Center *ptr, int sub) {
     std::cout << "check:" << std::hex << ptr->eek[i].val << std::dec << " " << processTime() << std::endl;
     freeCenter(ptr); allocCenter(&ptr,0);
 }
-void vulkanWake(Center *ptr, int sub) {
-    mptr->testState.noop();
-}
 void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
 void vulkanForce(Center *ptr, int sub) {
     EXIT
+}
+void vulkanWait(Center *ptr, int sub) {
+    glfwWaitEventsTimeout(0.01);
 }
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
