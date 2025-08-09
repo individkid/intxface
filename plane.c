@@ -43,6 +43,7 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
+gftype callPoll = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -373,6 +374,14 @@ void centerPlace(struct Center *ptr, int idx)
     if (sem_wait(&copySem) != 0) ERROR();
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (sem_post(&copySem) != 0) ERROR();
+}
+int centerCheck(int idx)
+{
+    centerSize(idx);
+    if (sem_wait(&copySem) != 0) ERROR();
+    int ret = (center[idx] != 0);
+    if (sem_post(&copySem) != 0) ERROR();
+    return ret;
 }
 void kernelClear(struct Kernel *ker)
 {
@@ -913,9 +922,10 @@ void planeNoop(struct Center *ptr, int sub) {
 }
 void planePass(struct Center *ptr, int sub)
 {
+    if (sub >= 0) {
     centerPlace(ptr,sub);
     callJnfo(RegisterPass,sub,planeWcfg);
-    callJnfo(RegisterMask,(1<<PassMsk),planeWots);
+    callJnfo(RegisterMask,(1<<PassMsk),planeWots);}
 }
 void planeFail(struct Center *ptr, int sub)
 {
@@ -981,8 +991,8 @@ void initTest()
     default: ERROR();
     break; case (Bringup): {
     int idx = 0;
-    struct Center *ptr = 0;
-    struct Fnc fnc = {0,planeAlloc,0,planeForce,false};
+    struct Center *ptr = centerPull(0);
+    struct Fnc fnc = {0,planePass,0,planeForce,false};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     allocCenter(&ptr,1);
     ptr->mem = Drawz; ptr->siz = 1+frames;
@@ -1016,7 +1026,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, gftype poll)
 {
     callCopy = copy;
     callBack = call;
@@ -1025,10 +1035,11 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
+    callPoll = poll;
     initSafe();
     initBoot();
-    initTest();
     initPlan();
+    initTest();
 }
 int planeLoop()
 {

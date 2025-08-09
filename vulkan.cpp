@@ -1218,6 +1218,7 @@ struct TestState : public DoneState {
 void vulkanCheck(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
+void vulkanPoll(float sec);
 void TestState::call() {
     const std::vector<Vertex> vertices = {
         {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -1266,14 +1267,7 @@ void TestState::call() {
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     copy->push(img,0,cfnc,SmartState());
     //
-    SmartState mlog;
-    bool temp; while (safe.wait(), temp = goon, safe.post(), temp) {
-    BindState *bptr = bind->buffer()->getBind(mlog);
-    if (!bptr) {mlog << "bptr continue" << std::endl; vulkanWait(0,0); continue;}
-    BaseState *sptr = swap->buffer();
-    if (!bptr->rinc(SwapRes,sptr,mlog)) {
-    mlog << "rinc continue" << std::endl; vulkanWait(0,0); continue;}
-    bptr->rdec(SwapRes,mlog); break;}
+    while (!centerCheck(0)) {std::cout << "callPoll" << std::endl; vulkanPoll(0.1);}
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
     //
     if (ext.width == 0 || ext.height == 0) ERROR();
@@ -1296,7 +1290,7 @@ void TestState::call() {
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
-    int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
+    bool temp; int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     float model[16]; float view[16]; float proj[16]; float debug[16];
     Center *mat = 0; allocCenter(&mat,1);
@@ -2018,6 +2012,10 @@ const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
+void vulkanPoll(float sec)
+{
+    glfwWaitEventsTimeout(sec);
+}
 // c debug
 void vulkanExit() {
     void *buffer[100];
@@ -2055,7 +2053,7 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll);
     // TODO move glfw functions to WindowState
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop())
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
