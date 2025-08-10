@@ -4,6 +4,7 @@
 #include "datx.h"
 #include "stlx.h"
 #include "type.h"
+#include "fmtx.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -355,7 +356,7 @@ void centerSize(int idx)
 {
     if (sem_wait(&copySem) != 0) ERROR();
     if (idx < 0) ERROR();
-    if (idx >= centers) {int size = idx+1; center = realloc(center,size);
+    if (idx >= centers) {int size = idx+1; center = realloc(center,size*sizeof(struct Center *));
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (sem_post(&copySem) != 0) ERROR();
 }
@@ -382,6 +383,26 @@ int centerCheck(int idx)
     int ret = (center[idx] != 0);
     if (sem_post(&copySem) != 0) ERROR();
     return ret;
+}
+int centerMod(struct Center *ptr)
+{
+    switch (ptr->mem) {default: ERROR();
+    break; case (Indexz): return sizeof(int32_t);
+    break; case (Bringupz): return sizeof(struct Vertex);
+    break; case (Imagez): return sizeof(struct Image);
+    break; case (Uniformz): return sizeof(struct Uniform);
+    break; case (Matrixz): return sizeof(struct Matrix);
+    break; case (Trianglez): return sizeof(struct Triangle);
+    break; case (Numericz): return sizeof(struct Numeric);
+    break; case (Vertexz): return sizeof(struct Vertex);
+    break; case (Basisz): return sizeof(struct Basis);
+    break; case (Peekz): return sizeof(struct Pierce);
+    break; case (Pokez): return sizeof(struct Pierce);
+    break; case (Drawz): return sizeof(struct Draw);
+    break; case (Instrz): return sizeof(struct Ins);
+    break; case (Machinez): return sizeof(struct Machine);
+    break; case (Kernelz): return sizeof(struct Kernel);}
+    return 0;
 }
 void kernelClear(struct Kernel *ker)
 {
@@ -987,6 +1008,22 @@ void initBoot()
 }
 void initTest()
 {
+    const struct Vertex vertices[] = {
+        {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, -0.5f, 0.40f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, 0.60f, 1.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, 0.5f, 0.40f, 1.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        //
+        {{-0.5f, -0.5f, 0.50f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, -0.5f, 0.50f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, 0.50f, 1.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, 0.5f, 0.50f, 1.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        //
+    };
+    const uint16_t indices[] = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+    };
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
@@ -1002,7 +1039,20 @@ void initTest()
     for (int i = 0; i < frames; i++) {
     ptr->drw[1+i].con.tag = ResrcCon;
     ptr->drw[1+i].con.res = ChainRes;}
-    callCopy(ptr,0,fnc);}
+    callCopy(ptr,0,fnc);
+    struct Center *vtx = 0; allocCenter(&vtx,1);
+    vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
+    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
+    callCopy(vtx,1,fnc);
+    struct Center *ind = 0; allocCenter(&ind,1);
+    ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
+    memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
+    callCopy(ind,2,fnc);
+    struct Center *img = 0; allocCenter(&img,1);
+    img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
+    fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
+    callCopy(img,3,fnc);
+    }
     break; case (Builtin):
     break; case (Regress): case (Release):;}
 }

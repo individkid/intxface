@@ -19,7 +19,6 @@ extern "C" {
 #include "face.h"
 #include "type.h"
 #include "plane.h"
-#include "fmtx.h"
 };
 #include "stlx.h"
 
@@ -174,7 +173,6 @@ struct StackState {
     virtual void advance() = 0;
     virtual void advance(int i) = 0;
     virtual Resrc buftyp() = 0;
-    virtual int bufsiz() = 0;
     virtual const char *bufnam() = 0;
     static StackState* self;
     static int debug;
@@ -326,7 +324,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (i < 0 || i >= Size) EXIT
         safe.wait(); idx = i; safe.post();}
     Resrc buftyp() override {return Type;}
-    int bufsiz() override {return sizeof(State);}
     const char *bufnam() override {
         switch (Type) {
         default: EXIT
@@ -1140,7 +1137,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (center->mem) {default: {
         auto f = MemoryIns__Memory__Int__Resrc(center->mem);
         Resrc res = (f?f(0):Resrcs); if (res == Resrcs) EXIT
-        int mod = src(res)->bufsiz(); int idx = center->idx*mod; int siz = center->siz*mod;
+        int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
         int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
         // TODO allow for Configure Base and Size
         switch (center->mem) {default: EXIT
@@ -1220,23 +1217,6 @@ void vulkanPass(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
 void vulkanPoll(float sec);
 void TestState::call() {
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, -0.5f, 0.40f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, 0.60f, 1.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{-0.5f, 0.5f, 0.40f, 1.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        //
-        {{-0.5f, -0.5f, 0.50f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, -0.5f, 0.50f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, 0.50f, 1.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{-0.5f, 0.5f, 0.50f, 1.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        //
-    };
-    const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4,
-    };
-    //
     int xsiz = 800; int ysiz = 600; int idx = 0;
     Fnc fnc = Fnc{0,0,0,vulkanForce,false};
     Fnc cfnc = Fnc{0,vulkanPass,vulkanForce,0,false};
@@ -1246,28 +1226,7 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    // copy->push(SwapRes,0,0,0,idx,0,0,fnc,SmartState());
-    //
-    // for (int i = 0; i < StackState::frames; i++)
-    // copy->push(ChainRes,0,0,0,idx,0,0,fnc,SmartState());
-    //
-    Center *vtx = 0; allocCenter(&vtx,1);
-    vtx->mem = Bringupz; vtx->siz = vertices.size(); allocVertex(&vtx->ver,vtx->siz);
-    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(Vertex));
-    copy->push(vtx,0,cfnc,SmartState());
-    //
-    Center *ind = 0; allocCenter(&ind,1);
-    int isiz = indices.size()*sizeof(uint16_t);
-    ind->mem = Indexz; ind->siz = isiz/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
-    memcpy(ind->ind,indices.data(),isiz);
-    copy->push(ind,0,cfnc,SmartState());
-    //
-    Center *img = 0; allocCenter(&img,1);
-    img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
-    fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
-    copy->push(img,0,cfnc,SmartState());
-    //
-    while (!centerCheck(0)) {std::cout << "callPoll" << std::endl; vulkanPoll(0.1);}
+    while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3)) vulkanPoll(0.1);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
     //
     if (ext.width == 0 || ext.height == 0) ERROR();
@@ -1281,14 +1240,15 @@ void TestState::call() {
     eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());
     //
+    Center *ind = centerPull(2); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
     int arg[] = {
-    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
+    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
+    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
-    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroTest,
+    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest};
     int brg[] = {
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/static_cast<int>(indices.size()),/*req.base*/MicroDebug,
+    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
     bool temp; int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
@@ -1494,9 +1454,7 @@ struct UniformState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         int tmp = idx(loc) - max(loc).base;
-        if (tmp < 0 || siz(loc) < 0 || tmp+siz(loc) > max(loc).size)
-        EXIT
-        log << "memcpy " << debug << " " << ptr(loc) << " " << idx << " " << siz(loc) << std::endl;
+        if (tmp < 0 || siz(loc) < 0 || tmp+siz(loc) > max(loc).size) EXIT
         memcpy((void*)((char*)mapped+tmp), ptr(loc), siz(loc));
         return VK_NULL_HANDLE; // return null fence for no wait
     }
