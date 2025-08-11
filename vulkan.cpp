@@ -782,7 +782,7 @@ struct ThreadState : public DoneState {
         safe.wait();
         before.push_back(push);
         safe.post();
-        wake.wake();
+        wake.post();
     }
     bool stage() {
         while (1) {while (1) {
@@ -823,11 +823,11 @@ struct ThreadState : public DoneState {
         safe.wait();
         goon = false;
         safe.post();
-        wake.wake();
+        wake.post();
     }
     void heap() override {}
     void noop() override {
-        wake.wake();
+        wake.post();
     }
 };
 
@@ -1206,7 +1206,6 @@ struct TestState : public DoneState {
 void vulkanCheck(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
-void vulkanPoll(float sec);
 void TestState::call() {
     int xsiz = 800; int ysiz = 600; int idx = 0;
     Fnc fnc = Fnc{0,0,0,vulkanForce,false};
@@ -1217,7 +1216,7 @@ void TestState::call() {
     copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
     copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
-    while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3)) vulkanPoll(0.1);
+    while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3)) vulkanWait(0,0);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
     //
     if (ext.width == 0 || ext.height == 0) ERROR();
@@ -1908,6 +1907,8 @@ struct MainState {
     }
 };
 
+MainState *mptr = 0;
+// TODO glfw callbacks
 // responses
 void vulkanCheck(Center *ptr, int sub) {
     if (ptr->mem != Peekz) EXIT
@@ -1922,11 +1923,8 @@ void vulkanForce(Center *ptr, int sub) {
     EXIT
 }
 void vulkanWait(Center *ptr, int sub) {
-    glfwWaitEventsTimeout(0.01);
+    mptr->callState.wait();
 }
-
-MainState *mptr = 0;
-// TODO define glfw callbacks
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
     mptr->copyState.push(ptr,sub,fnc,SmartState());
@@ -1954,16 +1952,11 @@ void vulkanBack(Configure cfg, int sav, int val, int act) {
     if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
     if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
 }
-
 // startup configuration
 HeapState<const char *> cfg;
 const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
-}
-void vulkanPoll(float sec)
-{
-    glfwWaitEventsTimeout(sec);
 }
 // c debug
 void vulkanExit() {
@@ -2002,11 +1995,12 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     // TODO move glfw functions to WindowState
-    while (!glfwWindowShouldClose(main.windowState.window) && planeLoop())
+    while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
+    main.copyState.wots(RegisterMask,1<<PollMsk);}
     planeDone();
     int ret = main.copyState.read(RegisterExit);
     return (ret > 0 ? ret-1 : ret);

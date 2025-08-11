@@ -325,6 +325,7 @@ Mask = { -- signals between threads
 	"TimeMsk", -- time thread wakeup
 	"PassMsk", -- passing copy callback
 	"FailMsk", -- failing copy callback
+	"PollMsk", -- every glfw wakeup
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary

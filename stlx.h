@@ -26,19 +26,20 @@ struct SafeState {
     ~SafeState() {
         if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; exit(-1);}
     }
-    void wait() {
-        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
-    }
-    void post() {
-        if (sem_post(&semaphore) != 0) {std::cerr << "cannot post to semaphore!" << std::endl; exit(-1);}
-    }
     int get() {
         int sval;
         if (sem_getvalue(&semaphore,&sval) != 0) {std::cerr << "cannot get semaphore!" << std::endl; exit(-1);}
         return sval;
     }
-    void wake() {
-        if (get() == 0) post();
+    void multi() {
+        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
+    }
+    void wait() {
+        while (get() > 1) if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
+        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
+    }
+    void post() {
+        if (sem_post(&semaphore) != 0) {std::cerr << "cannot post to semaphore!" << std::endl; exit(-1);}
     }
 };
 
@@ -171,15 +172,15 @@ struct DoneState {
     virtual void noop() = 0;
 };
 struct CallState {
-    // TODO use queues to start and stop in order
     std::set<DoneState*> todo;
     std::deque<DoneState*> doto;
     std::deque<bool> fall;
     std::deque<DoneState*> done;
     std::deque<int> mask;
     bool lock;
-    SafeState safe;
-    CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
+    SafeState safe, multi;
+    int count;
+    CallState() : lock(false), safe(1), multi(0), count(0) {std::cout << "CallState" << std::endl;}
     ~CallState() {std::cout << "~CallState" << std::endl;
         safe.wait(); lock = true; safe.post();
         while (1) {safe.wait();
@@ -225,17 +226,35 @@ struct CallState {
         call->safe.post(); return 0;
     }
     void back(DoneState *ptr, int thd) {
+        safe.wait();
         done.push_back(ptr);
         mask.push_back(1<<thd);
+        safe.post();
     }
     void open(int sav, int val, int act) {
-        for (int i = 0; i < done.size(); i++) {
-        if ((act & mask[i]) && !(sav & mask[i])) push(done[i]);
-        if (!(act & mask[i]) && (sav & mask[i])) stop(done[i]);}
+        safe.wait();
+        std::deque<DoneState*> dne = done;
+        std::deque<int> msk = mask;
+        safe.post();
+        for (int i = 0; i < dne.size(); i++) {
+        if ((act & msk[i]) && !(sav & msk[i])) push(dne[i]);
+        if (!(act & msk[i]) && (sav & msk[i])) stop(dne[i]);}
     }
     void wake(int sav, int val, int act) {
+        safe.wait();
+        std::deque<DoneState*> dne = done;
+        std::deque<int> msk = mask;
+        int cnt = count;
+        safe.post();
         for (int i = 0; i < done.size(); i++) {
-        if ((val & mask[i]) && !(sav & mask[i])) done[i]->noop();}
+        if ((val & msk[i]) && !(sav & msk[i])) dne[i]->noop();}
+        for (int i = 0; i < cnt; i++) multi.post();
+    }
+    void wait() {
+        safe.wait();
+        count += 1;
+        safe.post();
+        multi.multi();
     }
 };
 

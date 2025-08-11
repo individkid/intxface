@@ -44,7 +44,6 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
-gftype callPoll = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -1076,7 +1075,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, gftype poll)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
 {
     callCopy = copy;
     callBack = call;
@@ -1085,7 +1084,6 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
-    callPoll = poll;
     initSafe();
     initBoot();
     initPlan();
@@ -1115,7 +1113,9 @@ void planeDone()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
-    datxFnptr(0,0,0,0,0,0,0);
+    // TODO after other destructors on the heap
+    // TODO also free heap pointers from face datx fmtx and local globals
+    /*datxFnptr(0,0,0,0,0,0,0);
     callBack(RegisterTime,0);
     callBack(RegisterAble,0);
     callBack(RegisterMask,0);
@@ -1129,5 +1129,5 @@ void planeDone()
     if (sem_destroy(&timeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
-    if (sem_destroy(&copySem) != 0) ERROR();
+    if (sem_destroy(&copySem) != 0) ERROR();*/
 }
