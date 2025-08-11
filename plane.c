@@ -1028,7 +1028,7 @@ void initTest()
     break; case (Bringup): {
     int idx = 0;
     struct Center *ptr = centerPull(0);
-    struct Fnc fnc = {0,planePass,0,planeForce,false};
+    struct Fnc fnc = {0,planePass,0,planeForce,0};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     allocCenter(&ptr,1);
     ptr->mem = Drawz; ptr->siz = 1+frames;

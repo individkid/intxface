@@ -1207,27 +1207,24 @@ void vulkanCheck(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
 void TestState::call() {
-    int xsiz = 800; int ysiz = 600; int idx = 0;
     Fnc fnc = Fnc{0,0,0,vulkanForce,false};
     Fnc cfnc = Fnc{0,vulkanPass,vulkanForce,0,false};
     Fnc pfnc = Fnc{0,vulkanCheck,vulkanWait,0,true};
     Fnc wfnc = Fnc{0,0,vulkanWait,0,true};
-    copy->write(WindowLeft,-xsiz/2); copy->write(WindowBase,-ysiz/2);
-    copy->write(WindowWidth,xsiz); copy->write(WindowHeight,ysiz);
-    copy->write(FocalLength,10); copy->write(FocalDepth,10);
     //
     while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3)) vulkanWait(0,0);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
+    int width = copy->read(WindowWidth); int height = copy->read(WindowHeight);
     //
-    if (ext.width == 0 || ext.height == 0) ERROR();
+    if (width == 0 || height == 0 || ext.width != width || ext.height != height) ERROR();
     Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->idx = 0; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
-    oke->oke[0].wid = ext.width/2; oke->oke[0].hei = ext.height/2; oke->oke[0].val = 1.5;
+    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
     copy->push(oke,0,cfnc,SmartState());
     //
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = ext.width/2; eek->eek[0].hei = ext.height/2; eek->eek[0].val = 1.0;
+    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
     copy->push(eek,0,pfnc,SmartState());
     //
     Center *ind = centerPull(2); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
@@ -1281,6 +1278,7 @@ struct ForkState : public DoneState {
 };
 
 struct SwapState : public BaseState {
+    ChangeState<Configure,Configures> *copy;
     GLFWwindow* window;
     const VkSurfaceKHR surface;
     const VkPhysicalDevice physical;
@@ -1304,6 +1302,7 @@ struct SwapState : public BaseState {
     VkSurfaceCapabilitiesKHR capabilities;
     SwapState() :
         BaseState("SwapState",StackState::self),
+	copy(StackState::copy),
         window(StackState::window),
         surface(StackState::surface),
         physical(StackState::physical),
@@ -1325,6 +1324,7 @@ struct SwapState : public BaseState {
     VkExtent2D getExtent() override {return capabilities.currentExtent;}
     void resize(Loc &loc, SmartState log) override {
         capabilities = findCapabilities(window,surface,physical);
+        copy->write(WindowWidth,getExtent().width); copy->write(WindowHeight,getExtent().height);
         std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode, capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
