@@ -873,15 +873,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (idx >= siz) EXIT
         return arg[idx++];
     }
-    static void *get(void *ptr, int siz) {
-        if (!ptr) return 0;
-        if (*(int*)ptr >= 0) {
-        if (*(int*)ptr != siz) EXIT
-        return (void*)(((int*)ptr)+1);}
-        struct UniDat *uni = (struct UniDat *)ptr;
-        if (uni->siz != siz) EXIT
-        return uni->ptr;
-    }
     void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved

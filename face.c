@@ -632,74 +632,13 @@ void assignStr(char **ptr, const char *str)
 	if (*ptr == 0) ERRFNC(-1);
 	strcpy(*ptr,str);
 }
-void freeDat(void **ptr, int siz)
-{
-	for (int i = 0; i < siz; i++)
-	if (ptr[i]) {free(ptr[i]); ptr[i] = 0;}
-}
-void allocDat(void* **ptr, int siz)
-{
-	if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}
-	if (siz == 0) return;
-	*ptr = malloc(siz*sizeof(void *));
-	if (*ptr == 0) ERRFNC(-1);
-	for (int i = 0; i < siz; i++) (*ptr)[i] = 0;
-}
 void assignDat(void **ptr, const void *dat)
 {
 	if (*ptr && dat == 0) {free(*ptr); *ptr = 0;}
 	if (dat == 0 || dat == *ptr) return;
-	if (*(int*)dat < 0) {
-	int siz = -*(int*)dat;
-	struct MetaDat *src = (struct MetaDat *)(((int*)dat)+1);
-	*ptr = realloc(*ptr,siz*sizeof(struct MetaDat));
-	if (*ptr == 0) ERRFNC(-1);
-	*(int*)*ptr = -siz;
-	struct MetaDat *dst = (struct MetaDat *)(((int*)*ptr)+1);
-	for (int i = 0; i < siz; i++) dst[i] = src[i];} else {
 	*ptr = realloc(*ptr,(*(int*)dat)+sizeof(int));
 	if (*ptr == 0) ERRFNC(-1);
-	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));}
-}
-void prewrapDat(void **ptr, int num)
-{
-	// resize Dat to list of siz/ptr pairs
-	*ptr = realloc(*ptr,sizeof(struct MetaDat)*num+sizeof(int));
-	if (*ptr == 0) ERRFNC(-1);
-	struct MetaDat *dst = (struct MetaDat *)(((int*)*ptr)+1);
-	for (int i = 0; i < num; i++) {dst[i].siz = 0; dst[i].ptr = 0;}
-	*(int*)*ptr = -num;
-}
-void wrapDat(void *ptr, int sub, void **dat, int *siz)
-{
-	// move siz/ptr to position in list
-	// TODO check sub in bounds
-	struct MetaDat *dst = (struct MetaDat *)(((int*)ptr)+1);
-	free(dst[sub].ptr);
-	dst[sub].siz = *siz; dst[sub].ptr = *dat;
-	*dat = 0; *siz = 0;
-}
-void unwrapDat(void **ptr, int *siz, void *dat, int sub)
-{
-	// move siz/ptr from position in list
-	// TODO check sub in bounds
-	struct MetaDat *src = (struct MetaDat *)(((int*)dat)+1);
-	free(*ptr);
-	*ptr = src[sub].ptr; *siz = src[sub].siz;
-	src[sub].ptr = 0; src[sub].siz = 0;
-}
-void towrapDat(void *ptr, int sub, const void **dat)
-{
-	// move Dat to siz/ptr at position in list
-	// TODO check sub in bounds
-	struct MetaDat *dst = (struct MetaDat *)(((int*)ptr)+1);
-	free(dst[sub].ptr);
-	dst[sub].siz = *(int*)*dat; dst[sub].ptr = (void*)(((int*)*dat)+1);
-	*dat = 0;
-}
-int iswrapDat(const void *dat)
-{
-	return (*(int*)dat < 0);
+	memcpy(*ptr,dat,(*(int*)dat)+sizeof(int));
 }
 int readBuf(void *arg, long long siz, int idx)
 {
@@ -906,15 +845,9 @@ void pwriteStr(const char *arg, long long loc, int idx)
 void writeDat(const void *arg, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
-	if (*(int*)arg < 0) {
-	int num = -*(int*)arg;
-	struct MetaDat *src = (struct MetaDat *)(((int*)arg)+1);
-	int siz = 0; for (int i = 0; i < num; i++) siz += src[i].siz;
-	writeBuf(&siz,sizeof(int),idx);
-	for (int i = 0; i < num; i++) writeBuf(src[i].ptr,src[i].siz,idx);} else {
 	int siz = *(int*)arg+sizeof(int);
 	int val = writeBuf(arg,siz,idx);
-	if (val < siz) ERRFNC(idx);}
+	if (val < siz) ERRFNC(idx);
 }
 void writeChr(char arg, int idx)
 {

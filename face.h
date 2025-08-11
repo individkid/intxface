@@ -62,23 +62,7 @@ void allocOld(float **ptr, int siz);
 void freeStr(char **ptr, int siz);
 void allocStr(char* **ptr, int siz);
 void assignStr(char **ptr, const char *str);
-void freeDat(void **ptr, int siz);
-void allocDat(void* **ptr, int siz);
 void assignDat(void **ptr, const void *dat);
-struct MetaDat {
-	int siz;
-	void *ptr;
-};
-struct UniDat {
-	int num;
-	int siz;
-	void *ptr;
-};
-void prewrapDat(void **ptr, int num);
-void wrapDat(void *ptr, int sub, void **dat, int *siz);
-void unwrapDat(void **ptr, int *siz, void *dat, int sub);
-void towrapDat(void *ptr, int sub, const void **dat);
-int iswrapDat(const void *dat);
 int readBuf(void *arg, long long siz, int idx);
 void readStr(char **str, int idx);
 void preadStr(char **str, long long loc, int idx);
