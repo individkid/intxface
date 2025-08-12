@@ -938,9 +938,6 @@ void planeCheck(struct Center *ptr, int sub) {
     printf("check: 0x%x %f\n",ptr->eek[i].val,(float)processTime());
     freeCenter(ptr); allocCenter(&ptr,0); // TODO centerPlace(ptr,sub);
 }
-void planeNoop(struct Center *ptr, int sub) {
-    // mptr->testState.noop();
-}
 void planePass(struct Center *ptr, int sub)
 {
     if (sub >= 0) {
@@ -957,8 +954,8 @@ void planeFail(struct Center *ptr, int sub)
 void planeForce(struct Center *ptr, int sub) {
     ERROR();
 }
-void planeAlloc(struct Center *ptr, int sub) {
-    if (sub >= 0) {freeCenter(ptr); allocCenter(&ptr,0);}
+void planeGoon(struct Center *ptr, int sub) {
+    callPoll();
 }
 
 void initSafe()
@@ -1030,6 +1027,7 @@ void initTest()
     int idx = 0;
     struct Center *ptr = centerPull(0);
     struct Fnc fnc = {0,planePass,0,planeForce,0};
+    struct Fnc nop = {0,planePass,planeGoon,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     allocCenter(&ptr,1);
     ptr->mem = Drawz; ptr->siz = 1+frames;
@@ -1057,11 +1055,11 @@ void initTest()
     struct Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
     oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
-    callCopy(oke,4,fnc);
+    callCopy(oke,4,nop);
     struct Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
-    callCopy(eek,5,fnc);
+    callCopy(eek,5,nop);
     }
     break; case (Builtin):
     break; case (Regress): case (Release):;}

@@ -1909,7 +1909,7 @@ void vulkanWait(Center *ptr, int sub) {
 }
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
-    mptr->copyState.push(ptr,sub,fnc,SmartState("copy"));
+    mptr->copyState.push(ptr,sub,fnc,SmartState());
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {
