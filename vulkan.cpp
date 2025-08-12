@@ -1212,20 +1212,10 @@ void TestState::call() {
     Fnc pfnc = Fnc{0,vulkanCheck,vulkanWait,0,true};
     Fnc wfnc = Fnc{0,0,vulkanWait,0,true};
     //
-    while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3)) vulkanWait(0,0);
+    while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3) || !centerCheck(4) || !centerCheck(5)) vulkanWait(0,0);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
     int width = copy->read(WindowWidth); int height = copy->read(WindowHeight);
-    //
     if (width == 0 || height == 0 || ext.width != width || ext.height != height) ERROR();
-    Center *oke = 0; allocCenter(&oke,1);
-    oke->mem = Pokez; oke->idx = 0; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
-    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
-    copy->push(oke,0,cfnc,SmartState());
-    //
-    Center *eek = 0; allocCenter(&eek,1);
-    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
-    copy->push(eek,0,pfnc,SmartState());
     //
     Center *ind = centerPull(2); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
     int arg[] = {
@@ -1958,6 +1948,10 @@ const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
+// main thread wait
+void vulkanPoll() {
+    mptr->callState.wait();
+}
 // c debug
 void vulkanExit() {
     void *buffer[100];
@@ -1995,7 +1989,7 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll);
     // TODO move glfw functions to WindowState
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();

@@ -44,6 +44,7 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
+aftype callPoll = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -1039,6 +1040,8 @@ void initTest()
     ptr->drw[1+i].con.tag = ResrcCon;
     ptr->drw[1+i].con.res = ChainRes;}
     callCopy(ptr,0,fnc);
+    while (!centerCheck(0)) callPoll();
+    int width = callInfo(WindowWidth,0,planeRcfg); int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
@@ -1051,6 +1054,14 @@ void initTest()
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     callCopy(img,3,fnc);
+    struct Center *oke = 0; allocCenter(&oke,1);
+    oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
+    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
+    callCopy(oke,4,fnc);
+    struct Center *eek = 0; allocCenter(&eek,1);
+    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
+    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
+    callCopy(eek,5,fnc);
     }
     break; case (Builtin):
     break; case (Regress): case (Release):;}
@@ -1075,7 +1086,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype poll)
 {
     callCopy = copy;
     callBack = call;
@@ -1084,6 +1095,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
+    callPoll = poll;
     initSafe();
     initBoot();
     initPlan();
