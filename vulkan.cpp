@@ -471,7 +471,7 @@ struct BaseState {
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push fail " << debug << std::endl;
         safe.post(); return false;}
-        log << "push pass " << debug << " loc:" << loc << " tag:" << req.tag << " plock:" << plock << std::endl;
+        log << "push pass " << debug << " loc:" << loc << std::endl;
         ploc[loc].req = req;
         plock += 1;
         safe.post();
@@ -488,7 +488,6 @@ struct BaseState {
         if (plock <= 0) EXIT
         plock -= 1;
         if (plock == 0) {lock = 0; nask = 0;}
-        log << "done " << debug << " plock:" << plock << std::endl;
         safe.post();
     }
     void setre(ResrcLoc loc, Extent ext, int base, int size, SmartState log) {
@@ -550,7 +549,7 @@ struct BaseState {
         safe.wait();
         if (plock <= 0) EXIT
         safe.post();
-        if (ploc[loc].req.pre) log << "baseups " << debug << " " << item->debug << std::endl;
+        if (ploc[loc].req.pre) log << "baseups " << debug << std::endl;
         else log << "baseups " << debug << std::endl;
         if (ploc[loc].req.pre) item->advance();
         upset(ploc[loc],log);
@@ -681,13 +680,11 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (psav[i] <= 0) EXIT
         psav[i] -= 1;
-        log << "done " << debug << " " << bind[i]->debug << " psav:" << psav[i] << " rsav:" << rsav[i] << " wsav:" << wsav[i] << " lock:" << lock << std::endl;
         if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
         if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
     void done(Rsp rsp, SmartState log) {
         if (!excl) EXIT
-        log << "done " << debug << " idx:" << rsp.idx << "/" << rsp.siz << std::endl;
         if (rsp.siz > this->rsp.size()) EXIT
         for (int i = 0; i < rsp.siz; i++) {
         Resrc res = this->rsp[rsp.idx+i].res;
@@ -698,7 +695,6 @@ struct BindState : public BaseState {
     void done(SmartState log) {
         if (!excl) EXIT
         safe.wait();
-        log << "done " << debug << " lock:" << lock << std::endl;
         if (lock == 0) excl = false;
         safe.post();
     }
@@ -814,7 +810,7 @@ struct ThreadState : public DoneState {
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) EXIT}
-        if (push.base) push.base->baseups(push.loc,push.log);
+        if (push.base) push.base->baseups(push.loc,push.log); slog.clr();
         if (push.fnc) push.fnc(push.ptr,push.sub);
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
@@ -1473,7 +1469,7 @@ struct BufferState : public BaseState {
     VkDeviceMemory getMemory() override {return memory;}
     int getRange() override {return range;}
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << max(loc).size << std::endl;
+        log << "resize " << debug << " " << max(loc) << std::endl;
         range = max(loc).size;
         VkDeviceSize bufferSize = max(loc).size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
@@ -1580,7 +1576,7 @@ struct ImageState : public BaseState {
         if (x < 0 || w < 0 || x + w > tw) EXIT
         if (y < 0 || h < 0 || y + h > th) EXIT
         if (mem(loc) == Imagez && siz(loc) != is) EXIT
-        log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << std::endl;
+        // log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << std::endl;
     }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " location:" << *loc << std::endl;
@@ -1636,15 +1632,12 @@ struct ImageState : public BaseState {
         VkFormat forms = PhysicalState::vulkanFormat(res());
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
-        log << "reform " << max(loc) << std::endl;
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
-        log << "before " << max(loc) << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << std::endl;
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
-        log << "after " << max(loc) << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << " VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:" << VK_IMAGE_LAYOUT_PRESENT_SRC_KHR << std::endl;
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
@@ -1654,13 +1647,12 @@ struct ImageState : public BaseState {
         void* data; if (mem(loc) == Imagez || mem(loc) == Pokez) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
-        log << "middle " << max(loc) << std::endl;
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
-        log << "upset " << debug << " location:" << *loc << "(ResizeLoc:" << ResizeLoc << ",ReformLoc:" << ReformLoc << ",BeforeLoc:" << BeforeLoc << ",MiddleLoc:" << MiddleLoc << ",AfterLoc:" << AfterLoc << ")" << std::endl;
+        log << "upset " << debug << " location:" << *loc << std::endl;
         if (*loc == MiddleLoc) {
         if (mem(loc) == Peekz) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
@@ -1917,7 +1909,7 @@ void vulkanWait(Center *ptr, int sub) {
 }
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
-    mptr->copyState.push(ptr,sub,fnc,SmartState());
+    mptr->copyState.push(ptr,sub,fnc,SmartState("copy"));
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {
