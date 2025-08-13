@@ -45,6 +45,7 @@ zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
 aftype callPoll = 0;
+aftype callGlfw = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -955,7 +956,7 @@ void planeForce(struct Center *ptr, int sub) {
     ERROR();
 }
 void planeGoon(struct Center *ptr, int sub) {
-    callPoll();
+    callGlfw(); // TODO use callGlfw only from main thread, otherwise use callPoll
 }
 
 void initSafe()
@@ -1026,8 +1027,8 @@ void initTest()
     break; case (Bringup): {
     int idx = 0;
     struct Center *ptr = centerPull(0);
-    struct Fnc fnc = {0,planePass,0,planeForce,0};
-    struct Fnc nop = {0,planePass,planeGoon,0,1};
+    struct Fnc fnc = {0,planePass,planeForce,0,0};
+    struct Fnc fun = {0,planePass,planeGoon,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     allocCenter(&ptr,1);
     ptr->mem = Drawz; ptr->siz = 1+frames;
@@ -1038,7 +1039,7 @@ void initTest()
     ptr->drw[1+i].con.tag = ResrcCon;
     ptr->drw[1+i].con.res = ChainRes;}
     callCopy(ptr,0,fnc);
-    while (!centerCheck(0)) callPoll();
+    while (!centerCheck(0)) callGlfw();
     int width = callInfo(WindowWidth,0,planeRcfg); int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
@@ -1051,15 +1052,15 @@ void initTest()
     struct Center *img = 0; allocCenter(&img,1);
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
-    callCopy(img,3,fnc);
+    callCopy(img,3,fun);
     struct Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
     oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
-    callCopy(oke,4,nop);
+    callCopy(oke,4,fun);
     struct Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
-    callCopy(eek,5,nop);
+    callCopy(eek,5,fun);
     }
     break; case (Builtin):
     break; case (Regress): case (Release):;}
@@ -1084,7 +1085,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype poll)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype poll, aftype glfw)
 {
     callCopy = copy;
     callBack = call;
@@ -1094,6 +1095,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callKnfo = knfo;
     callCmnd = cmnd;
     callPoll = poll;
+    callGlfw = glfw;
     initSafe();
     initBoot();
     initPlan();

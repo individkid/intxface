@@ -837,7 +837,6 @@ struct EnumState {
 struct Arg {
     Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Format fmt = Formats;
 };
-void vulkanForce(Center *ptr, int sub);
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Resrcs];
@@ -1203,17 +1202,14 @@ void vulkanCheck(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
 void TestState::call() {
-    Fnc fnc = Fnc{0,0,0,vulkanForce,false};
-    Fnc cfnc = Fnc{0,vulkanPass,vulkanForce,0,false};
-    Fnc pfnc = Fnc{0,vulkanCheck,vulkanWait,0,true};
-    Fnc wfnc = Fnc{0,0,vulkanWait,0,true};
-    //
-    while (!centerCheck(0) || !centerCheck(1) || !centerCheck(2) || !centerCheck(3) || !centerCheck(4) || !centerCheck(5)) vulkanWait(0,0);
+    while (!centerCheck(2)) vulkanWait(0,0);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
     int width = copy->read(WindowWidth); int height = copy->read(WindowHeight);
     if (width == 0 || height == 0 || ext.width != width || ext.height != height) ERROR();
     //
+    while (!centerCheck(2)) vulkanWait(0,0);
     Center *ind = centerPull(2); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
+    //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
@@ -1247,7 +1243,7 @@ void TestState::call() {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*ext.width; eek->eek[0].hei = 0.5*ext.height; eek->eek[0].val = 1.0;
-    copy->push(eek,0,pfnc,SmartState());}
+    copy->push(eek,0,Fnc{0,vulkanCheck,vulkanWait,0,true},SmartState());}
     else tested = test;}
 }
 
@@ -1901,9 +1897,6 @@ void vulkanCheck(Center *ptr, int sub) {
 void vulkanPass(Center *ptr, int sub) {
     freeCenter(ptr); allocCenter(&ptr,0);
 }
-void vulkanForce(Center *ptr, int sub) {
-    EXIT
-}
 void vulkanWait(Center *ptr, int sub) {
     mptr->callState.wait();
 }
@@ -1944,6 +1937,9 @@ const char *vulkanCmnd(int req) {
 void vulkanPoll() {
     mptr->callState.wait();
 }
+void vulkanGlfw() {
+    glfwWaitEventsTimeout(mptr->copyState.read(RegisterPoll)*0.001);
+}
 // c debug
 void vulkanExit() {
     void *buffer[100];
@@ -1981,7 +1977,7 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll,vulkanGlfw);
     // TODO move glfw functions to WindowState
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();

@@ -244,7 +244,7 @@ struct CallState {
         safe.wait();
         std::deque<DoneState*> dne = done;
         std::deque<int> msk = mask;
-        int cnt = count;
+        int cnt = count; count = 0;
         safe.post();
         for (int i = 0; i < done.size(); i++) {
         if ((val & msk[i]) && !(sav & msk[i])) dne[i]->noop();}
