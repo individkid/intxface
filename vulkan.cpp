@@ -1202,13 +1202,13 @@ void vulkanCheck(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
 void vulkanWait(Center *ptr, int sub);
 void TestState::call() {
-    while (!centerCheck(2)) vulkanWait(0,0);
+    while (!centerCheck(1)) vulkanWait(0,0);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
     int width = copy->read(WindowWidth); int height = copy->read(WindowHeight);
     if (width == 0 || height == 0 || ext.width != width || ext.height != height) ERROR();
     //
-    while (!centerCheck(2)) vulkanWait(0,0);
-    Center *ind = centerPull(2); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
+    while (!centerCheck(3)) vulkanWait(0,0);
+    Center *ind = centerPull(3); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
     //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,

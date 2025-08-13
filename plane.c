@@ -1038,29 +1038,29 @@ void initTest()
     for (int i = 0; i < frames; i++) {
     ptr->drw[1+i].con.tag = ResrcCon;
     ptr->drw[1+i].con.res = ChainRes;}
-    callCopy(ptr,0,fnc);
-    while (!centerCheck(0)) callGlfw();
+    callCopy(ptr,1,fnc);
+    while (!centerCheck(1)) callGlfw();
     int width = callInfo(WindowWidth,0,planeRcfg); int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
-    callCopy(vtx,1,fnc);
+    callCopy(vtx,2,fnc);
     struct Center *ind = 0; allocCenter(&ind,1);
     ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
-    callCopy(ind,2,fnc);
+    callCopy(ind,3,fnc);
     struct Center *img = 0; allocCenter(&img,1);
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
-    callCopy(img,3,fun);
+    callCopy(img,4,fun);
     struct Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
     oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
-    callCopy(oke,4,fun);
+    callCopy(oke,5,fun);
     struct Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
-    callCopy(eek,5,fun);
+    callCopy(eek,6,fun);
     }
     break; case (Builtin):
     break; case (Regress): case (Release):;}
