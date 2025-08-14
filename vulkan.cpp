@@ -1220,18 +1220,21 @@ void TestState::call() {
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
     //
     // TODO use centerPull for Matrix and Draw
+    Center *ptr = 0; allocCenter(&ptr,4); int pull = 0;
+    for (int i = 0; i < 4; i++) centerPlace(&ptr[i],i+7);
     //
     bool temp; int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     float model[16]; float view[16]; float proj[16]; float debug[16];
-    Center *mat = 0; allocCenter(&mat,1);
+    int save = pull+7; Center *mat = centerPull(save); if (!mat) {vulkanWait(0,0); continue;}
+    freeCenter(mat); pull = (pull+1)%4;
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     planeTest(model,view,proj,debug);
     memcpy(&mat->mat[0],model,sizeof(Matrix));
     memcpy(&mat->mat[1],view,sizeof(Matrix));
     memcpy(&mat->mat[2],proj,sizeof(Matrix));
     memcpy(&mat->mat[3],debug,sizeof(Matrix));
-    copy->push(mat,0,Fnc{0,vulkanPass,0,vulkanPass,false},SmartState());
+    copy->push(mat,save,Fnc{0,vulkanPass,0,vulkanPass,false},SmartState());
     //
     static int count = 0; static float time = 0.0;
     if (time == 0.0) time = processTime();
@@ -1243,10 +1246,11 @@ void TestState::call() {
     else if (count%8 == 1 || count%8 == 5) {int idx = 0;
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
     else if (count%8 == 2 || count%8 == 6) {
-    Center *eek = 0; allocCenter(&eek,1);
+    int save = pull+7; Center *eek = centerPull(save); if (!eek) {vulkanWait(0,0); continue;}
+    freeCenter(eek); pull = (pull+1)%4;
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*ext.width; eek->eek[0].hei = 0.5*ext.height; eek->eek[0].val = 1.0;
-    copy->push(eek,0,Fnc{0,vulkanCheck,vulkanWait,0,true},SmartState());}
+    copy->push(eek,save,Fnc{0,vulkanCheck,vulkanWait,0,true},SmartState());}
     tested = count;
     //
     }
@@ -1897,10 +1901,10 @@ void vulkanCheck(Center *ptr, int sub) {
     if (ptr->mem != Peekz) EXIT
     for (int i = 0; i < ptr->siz; i++)
     std::cout << "check:" << std::hex << ptr->eek[i].val << std::dec << " " << processTime() << std::endl;
-    freeCenter(ptr); allocCenter(&ptr,0);
+    freeCenter(ptr); centerPlace(ptr,sub); /*allocCenter(&ptr,0);*/
 }
 void vulkanPass(Center *ptr, int sub) {
-    freeCenter(ptr); allocCenter(&ptr,0);
+    freeCenter(ptr); centerPlace(ptr,sub); /*allocCenter(&ptr,0);*/
 }
 void vulkanWait(Center *ptr, int sub) {
     mptr->callState.wait();
