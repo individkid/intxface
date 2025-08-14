@@ -1209,7 +1209,6 @@ void TestState::call() {
     //
     while (!centerCheck(3)) vulkanWait(0,0);
     Center *ind = centerPull(3); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
-    //
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
@@ -1219,6 +1218,9 @@ void TestState::call() {
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
+    //
+    // TODO use centerPull for Matrix and Draw
+    //
     bool temp; int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
     //
     float model[16]; float view[16]; float proj[16]; float debug[16];
@@ -1235,16 +1237,19 @@ void TestState::call() {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     int test = count;
-    if (test == tested) {int idx = 0;
+    //
+    if (count == tested) {int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
-    else if (test%8 == 1 || test%8 == 5) {tested = test; int idx = 0;
+    else if (count%8 == 1 || count%8 == 5) {int idx = 0;
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
-    else if (test%8 == 2 || test%8 == 6) {tested = test;
+    else if (count%8 == 2 || count%8 == 6) {
     Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*ext.width; eek->eek[0].hei = 0.5*ext.height; eek->eek[0].val = 1.0;
     copy->push(eek,0,Fnc{0,vulkanCheck,vulkanWait,0,true},SmartState());}
-    else tested = test;}
+    tested = count;
+    //
+    }
 }
 
 struct ForkState : public DoneState {

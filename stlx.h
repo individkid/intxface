@@ -159,6 +159,8 @@ template <class Conf, int Size> struct ChangeState {
     void wotc(Conf cfg, int val) {jnfo(cfg,val,wotcFn);}
     static int rmwFn(int *ref, int val) {int ret = *ref; *ref = *ref+val; return ret;}
     int rmw(Conf cfg, int val) {return jnfo(cfg,val,rmwFn);}
+    static int razFn(int *ref, int val) {*ref = 0; return 0;}
+    void raz(Conf cfg, int val) {jnfo(cfg,val,razFn);}
 };
 
 struct CallState;
