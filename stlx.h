@@ -17,6 +17,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <strings.h>
 
 struct SafeState {
     sem_t semaphore;
@@ -26,16 +27,7 @@ struct SafeState {
     ~SafeState() {
         if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; exit(-1);}
     }
-    int get() {
-        int sval;
-        if (sem_getvalue(&semaphore,&sval) != 0) {std::cerr << "cannot get semaphore!" << std::endl; exit(-1);}
-        return sval;
-    }
-    void multi() {
-        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
-    }
     void wait() {
-        while (get() > 1) if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
         if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
     }
     void post() {
@@ -61,7 +53,6 @@ struct SmartState {
     std::ostream &str = set(); str << val; return str;}
     void clr();
 };
-
 struct SlogState : public std::ostream {
     SafeState safe;
     std::map<int, std::stringstream*> sstr;
@@ -165,7 +156,7 @@ template <class Conf, int Size> struct ChangeState {
 
 struct CallState;
 struct DoneState {
-    CallState *ptr;
+    CallState *back;
     pthread_t thread;
     char debug[64];
     virtual void call() = 0;
@@ -175,43 +166,37 @@ struct DoneState {
 };
 struct CallState {
     std::set<DoneState*> todo;
-    std::deque<DoneState*> doto;
-    std::deque<bool> fall;
-    std::deque<DoneState*> done;
-    std::deque<int> mask;
+    std::set<DoneState*> doto;
+    std::vector<DoneState*> mask;
     bool lock;
     SafeState safe, multi;
     int count;
     CallState() : lock(false), safe(1), multi(0), count(0) {std::cout << "CallState" << std::endl;}
     ~CallState() {std::cout << "~CallState" << std::endl;
         safe.wait(); lock = true; safe.post();
-        while (1) {safe.wait();
+        while (1) {
+        safe.wait();
         if (todo.empty()) {safe.post(); break;}
-        DoneState *ptr = *(todo.begin());
-        safe.post(); stop(ptr);} clear();
+        DoneState *ptr = *todo.begin();
+        safe.post();
+        ptr->done();}
+        clear();
     }
     void clear() {
-        while (1) {safe.wait();
-        if (doto.empty()) {safe.post(); break;}
-        DoneState *ptr = doto.front(); doto.pop_front();
-        bool temp = fall.front(); fall.pop_front();
-        safe.post(); if (!temp) ptr->done();
-        if (pthread_join(ptr->thread,0) != 0)
-        {std::cerr << "failed to join!" << std::endl; exit(-1);}
-        ptr->heap();}
-    }
-    void stop(DoneState *ptr) {
         safe.wait();
-        if (todo.find(ptr) != todo.end()) {
-        doto.push_back(ptr);
-        fall.push_back(false);
-        todo.erase(ptr);}
+        std::set<DoneState*> both;
+        for (auto i = todo.begin(); i != todo.end(); i++) both.insert(*i);
+        for (auto i = doto.begin(); i != doto.end(); i++) both.insert(*i);
         safe.post();
+        for (auto i = both.begin(); i != both.end(); i++) {
+        if (pthread_join((*i)->thread,0) != 0)
+        {std::cerr << "failed to join!" << std::endl; exit(-1);}
+        (*i)->heap();}
     }
     void push(DoneState *ptr) {
         safe.wait();
         if (lock) {std::cerr << "push after destructor!" << std::endl; exit(-1);}
-        ptr->ptr = this;
+        ptr->back = this;
         todo.insert(ptr);
         if (pthread_create(&ptr->thread,0,call,ptr) != 0)
         {std::cerr << "failed to start thread!" << std::endl; exit(-1);}
@@ -219,44 +204,43 @@ struct CallState {
     }
     static void *call(void *ptr) { // running on separate thread
         DoneState *done = (DoneState*)ptr;
-        CallState *call = done->ptr;
-        done->call(); call->safe.wait();
-        if (call->todo.find(done) != call->todo.end()) {
-        call->doto.push_back(done);
-        call->fall.push_back(true);
-        call->todo.erase(done);}
-        call->safe.post(); return 0;
+        CallState *call = done->back;
+        done->call();
+        call->safe.wait();
+        if ((call->doto.find(done) == call->doto.end()) == (call->todo.find(done) == call->todo.end()))
+        {std::cerr << "fall not found! " << done->debug << std::endl; exit(-1);}
+        call->todo.erase(done); call->doto.insert(done);
+        call->safe.post();
+        return 0;
     }
     void back(DoneState *ptr, int thd) {
         safe.wait();
-        done.push_back(ptr);
-        mask.push_back(1<<thd);
+        if (mask.size() <= thd) mask.resize(thd+1,0);
+        mask[thd] = ptr;
         safe.post();
+    }
+    DoneState *get(int i) {
+        safe.wait();
+        if (i < 0 || i >= mask.size()) {std::cerr << "fail to get!" << std::endl; exit(-1);}
+        DoneState *ptr = mask[i];
+        safe.post();
+        return ptr;
     }
     void open(int sav, int val, int act) {
-        safe.wait();
-        std::deque<DoneState*> dne = done;
-        std::deque<int> msk = mask;
-        safe.post();
-        for (int i = 0; i < dne.size(); i++) {
-        if ((act & msk[i]) && !(sav & msk[i])) push(dne[i]);
-        if (!(act & msk[i]) && (sav & msk[i])) stop(dne[i]);}
+        int open = act & ~sav;
+        int done = ~act & sav;
+        for (int i = ffs(open)-1; open; i = ffs(open&=~(1<<i))-1) push(get(i));
+        for (int i = ffs(done)-1; done; i = ffs(done&=~(1<<i))-1) get(i)->done();
     }
     void wake(int sav, int val, int act) {
-        safe.wait();
-        std::deque<DoneState*> dne = done;
-        std::deque<int> msk = mask;
-        int cnt = count; count = 0;
-        safe.post();
-        for (int i = 0; i < done.size(); i++) {
-        if ((val & msk[i]) && !(sav & msk[i])) dne[i]->noop();}
+        int wake = val & ~sav;
+        for (int i = ffs(wake)-1; wake; i = ffs(wake&=~i)-1) get(i)->noop();
+        safe.wait(); int cnt = count; count = 0; safe.post();
         for (int i = 0; i < cnt; i++) multi.post();
     }
     void wait() {
-        safe.wait();
-        count += 1;
-        safe.post();
-        multi.multi();
+        safe.wait(); count += 1; safe.post();
+        multi.wait();
     }
 };
 

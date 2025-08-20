@@ -1200,7 +1200,8 @@ struct TestState : public DoneState {
 };
 void vulkanCheck(Center *ptr, int sub);
 void vulkanPass(Center *ptr, int sub);
-void vulkanWait(Center *ptr, int sub);
+void vulkanWait(Center *ptr, int sub); // does not place center, so need goon, so needs fnow
+// also vulkanWait not ok in ThreadState, since ThreadState wakes waiters after freeing resources
 void TestState::call() {
     while (!centerCheck(1)) vulkanWait(0,0);
     VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
@@ -1242,9 +1243,9 @@ void TestState::call() {
     int test = count;
     //
     if (count == tested) {int idx = 0;
-    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
+    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanPass,0,vulkanWait,0,true},SmartState());}
     else if (count%8 == 1 || count%8 == 5) {int idx = 0;
-    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanWait,0,vulkanWait,0,false},SmartState());}
+    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanPass,0,vulkanWait,0,true},SmartState());}
     else if (count%8 == 2 || count%8 == 6) {
     int save = pull+7; Center *eek = centerPull(save); if (!eek) {vulkanWait(0,0); continue;}
     freeCenter(eek); pull = (pull+1)%4;
@@ -1904,7 +1905,9 @@ void vulkanCheck(Center *ptr, int sub) {
     freeCenter(ptr); centerPlace(ptr,sub); /*allocCenter(&ptr,0);*/
 }
 void vulkanPass(Center *ptr, int sub) {
+    if (ptr) {
     freeCenter(ptr); centerPlace(ptr,sub); /*allocCenter(&ptr,0);*/
+    }
 }
 void vulkanWait(Center *ptr, int sub) {
     mptr->callState.wait();
@@ -1988,10 +1991,10 @@ int main(int argc, const char **argv) {
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll,vulkanGlfw);
     // TODO move glfw functions to WindowState
+    int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
-    else glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);
-    main.copyState.wots(RegisterMask,1<<PollMsk);}
+    else glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);}
     planeDone();
     int ret = main.copyState.read(RegisterExit);
     return (ret > 0 ? ret-1 : ret);
