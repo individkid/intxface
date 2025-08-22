@@ -169,9 +169,8 @@ struct CallState {
     std::set<DoneState*> doto;
     std::vector<DoneState*> mask;
     bool lock;
-    SafeState safe, multi;
-    int count;
-    CallState() : lock(false), safe(1), multi(0), count(0) {std::cout << "CallState" << std::endl;}
+    SafeState safe;
+    CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
     ~CallState() {std::cout << "~CallState" << std::endl;
         safe.wait(); lock = true; safe.post();
         while (1) {
@@ -235,12 +234,6 @@ struct CallState {
     void wake(int sav, int val, int act) {
         int wake = val & ~sav;
         for (int i = ffs(wake)-1; wake; i = ffs(wake&=~i)-1) get(i)->noop();
-        safe.wait(); int cnt = count; count = 0; safe.post();
-        for (int i = 0; i < cnt; i++) multi.post();
-    }
-    void wait() {
-        safe.wait(); count += 1; safe.post();
-        multi.wait();
     }
 };
 

@@ -1910,7 +1910,7 @@ void vulkanPass(Center *ptr, int sub) {
     }
 }
 void vulkanWait(Center *ptr, int sub) {
-    mptr->callState.wait();
+    usleep(1000);
 }
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
@@ -1946,9 +1946,6 @@ const char *vulkanCmnd(int req) {
     return cfg[req];
 }
 // main thread wait
-void vulkanPoll() {
-    mptr->callState.wait();
-}
 void vulkanGlfw() {
     glfwWaitEventsTimeout(mptr->copyState.read(RegisterPoll)*0.001);
 }
@@ -1989,7 +1986,7 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanPoll,vulkanGlfw);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
     // TODO move glfw functions to WindowState
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {

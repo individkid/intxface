@@ -44,7 +44,6 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
-aftype callPoll = 0;
 aftype callGlfw = 0;
 float start = 0.0;
 
@@ -956,7 +955,7 @@ void planeForce(struct Center *ptr, int sub) {
     ERROR();
 }
 void planeGoon(struct Center *ptr, int sub) {
-    callGlfw(); // TODO use callGlfw only from main thread, otherwise use callPoll
+    callGlfw(); // TODO use callGlfw only from main thread, otherwise use goon to write to a pipe
 }
 
 void initSafe()
@@ -1086,7 +1085,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype poll, aftype glfw)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype glfw)
 {
     callCopy = copy;
     callBack = call;
@@ -1095,7 +1094,6 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
-    callPoll = poll;
     callGlfw = glfw;
     initSafe();
     initBoot();
