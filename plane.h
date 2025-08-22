@@ -12,7 +12,7 @@ typedef const char *(*oftype)(int arg);
 struct Fnc {wftype pnow, pass, fnow, fail; int goon;};
 typedef void (*uftype)(struct Center *ptr, int sub, struct Fnc fnc);
 typedef void (*aftype)();
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype glfw);
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd);
 int planeLoop();
 void planeDone();
 void planePass(struct Center *ptr, int sub);

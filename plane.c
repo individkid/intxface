@@ -44,7 +44,6 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
-aftype callGlfw = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -955,7 +954,7 @@ void planeForce(struct Center *ptr, int sub) {
     ERROR();
 }
 void planeGoon(struct Center *ptr, int sub) {
-    callGlfw(); // TODO use callGlfw only from main thread, otherwise use goon to write to a pipe
+    usleep(1000); // TODO use sleep only from main thread, otherwise use goon to write to a pipe
 }
 
 void initSafe()
@@ -1038,7 +1037,7 @@ void initTest()
     ptr->drw[1+i].con.tag = ResrcCon;
     ptr->drw[1+i].con.res = ChainRes;}
     callCopy(ptr,1,fun);
-    while (!centerCheck(1)) callGlfw();
+    while (!centerCheck(1)) usleep(1000);
     int width = callInfo(WindowWidth,0,planeRcfg); int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
@@ -1085,7 +1084,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype glfw)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
 {
     callCopy = copy;
     callBack = call;
@@ -1094,7 +1093,6 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
-    callGlfw = glfw;
     initSafe();
     initBoot();
     initPlan();

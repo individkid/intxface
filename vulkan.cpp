@@ -1945,10 +1945,6 @@ const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
-// main thread wait
-void vulkanGlfw() {
-    glfwWaitEventsTimeout(mptr->copyState.read(RegisterPoll)*0.001);
-}
 // c debug
 void vulkanExit() {
     void *buffer[100];
@@ -1986,7 +1982,7 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
     // TODO move glfw functions to WindowState
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
