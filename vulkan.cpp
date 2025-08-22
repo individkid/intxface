@@ -874,6 +874,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool goon = true; while (goon) {goon = false;
         // choose buffers
         int count = 0; // actual number of reservations
+        log << "while" << std::endl; slog.clr();
         for (int i = 0; i < num; i++) {
             Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
@@ -981,7 +982,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // notify fail
         if (fnc.fnow) fnc.fnow(ptr,sub);
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
-        if (fnc.goon) {goon = true; log << "goon" << std::endl;}
+        if (fnc.goon) {goon = true; log << "goon" << std::endl; slog.clr();}
         }}
     }
     static Rsp response(HeapState<Arg> &dot, int i, int &count, SmartState log) {
@@ -1198,63 +1199,7 @@ struct TestState : public DoneState {
     void heap() override {}
     void noop() override {}
 };
-void vulkanCheck(Center *ptr, int sub);
-void vulkanPass(Center *ptr, int sub);
-void vulkanWait(Center *ptr, int sub); // does not place center, so need goon, so needs fnow
-// also vulkanWait not ok in ThreadState, since ThreadState wakes waiters after freeing resources
 void TestState::call() {
-    while (!centerCheck(1)) vulkanWait(0,0);
-    VkExtent2D ext = copy->src(SwapRes)->buffer()->getExtent();
-    int width = copy->read(WindowWidth); int height = copy->read(WindowHeight);
-    if (width == 0 || height == 0 || ext.width != width || ext.height != height) ERROR();
-    //
-    while (!centerCheck(3)) vulkanWait(0,0);
-    Center *ind = centerPull(3); int inds = ind->siz*sizeof(int32_t)/sizeof(int16_t); centerPlace(ind,2);
-    int arg[] = {
-    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
-    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroTest};
-    int brg[] = {
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
-    //
-    // TODO use centerPull for Matrix and Draw
-    Center *ptr = 0; allocCenter(&ptr,4); int pull = 0;
-    for (int i = 0; i < 4; i++) centerPlace(&ptr[i],i+7);
-    //
-    bool temp; int tested = 0; while (safe.wait(), temp = goon, safe.post(), temp) {
-    //
-    float model[16]; float view[16]; float proj[16]; float debug[16];
-    int save = pull+7; Center *mat = centerPull(save); if (!mat) {vulkanWait(0,0); continue;}
-    freeCenter(mat); pull = (pull+1)%4;
-    mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
-    planeTest(model,view,proj,debug);
-    memcpy(&mat->mat[0],model,sizeof(Matrix));
-    memcpy(&mat->mat[1],view,sizeof(Matrix));
-    memcpy(&mat->mat[2],proj,sizeof(Matrix));
-    memcpy(&mat->mat[3],debug,sizeof(Matrix));
-    copy->push(mat,save,Fnc{0,vulkanPass,0,vulkanPass,false},SmartState());
-    //
-    static int count = 0; static float time = 0.0;
-    if (time == 0.0) time = processTime();
-    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
-    int test = count;
-    //
-    if (count == tested) {int idx = 0;
-    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,Fnc{vulkanPass,0,vulkanWait,0,true},SmartState());}
-    else if (count%8 == 1 || count%8 == 5) {int idx = 0;
-    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,Fnc{vulkanPass,0,vulkanWait,0,true},SmartState());}
-    else if (count%8 == 2 || count%8 == 6) {
-    int save = pull+7; Center *eek = centerPull(save); if (!eek) {vulkanWait(0,0); continue;}
-    freeCenter(eek); pull = (pull+1)%4;
-    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.5*ext.width; eek->eek[0].hei = 0.5*ext.height; eek->eek[0].val = 1.0;
-    copy->push(eek,save,Fnc{0,vulkanCheck,vulkanWait,0,true},SmartState());}
-    tested = count;
-    //
-    }
 }
 
 struct ForkState : public DoneState {
@@ -1897,21 +1842,6 @@ struct MainState {
 
 MainState *mptr = 0;
 // TODO glfw callbacks
-// responses
-void vulkanCheck(Center *ptr, int sub) {
-    if (ptr->mem != Peekz) EXIT
-    for (int i = 0; i < ptr->siz; i++)
-    std::cout << "check:" << std::hex << ptr->eek[i].val << std::dec << " " << processTime() << std::endl;
-    freeCenter(ptr); centerPlace(ptr,sub); /*allocCenter(&ptr,0);*/
-}
-void vulkanPass(Center *ptr, int sub) {
-    if (ptr) {
-    freeCenter(ptr); centerPlace(ptr,sub); /*allocCenter(&ptr,0);*/
-    }
-}
-void vulkanWait(Center *ptr, int sub) {
-    usleep(1000);
-}
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
     mptr->copyState.push(ptr,sub,fnc,SmartState());
@@ -1945,6 +1875,9 @@ const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
+void vulkanGlfw() {
+    glfwWaitEventsTimeout(mptr->copyState.read(RegisterPoll)*0.001);
+}
 // c debug
 void vulkanExit() {
     void *buffer[100];
@@ -1954,12 +1887,10 @@ void vulkanExit() {
 void whereIsExit(int val, void *arg) {
     if (val < 0) *(int*)0=0;
 }
-void errorFunc(const char *str, int num, int idx)
-{
+void errorFunc(const char *str, int num, int idx) {
     std::cout << "errfnc called on " << idx << " in " << str << ": " << num << std::endl;
 }
-void sigintFunc(int sig)
-{
+void sigintFunc(int sig) {
     *(int*)0=0;
 }
 
@@ -1982,7 +1913,7 @@ int main(int argc, const char **argv) {
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
     // TODO move glfw functions to WindowState
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {

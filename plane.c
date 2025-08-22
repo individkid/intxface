@@ -44,6 +44,7 @@ zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
 oftype callCmnd = 0;
+aftype callGlfw = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Center *,Centerq)
@@ -935,7 +936,7 @@ void planeCheck(struct Center *ptr, int sub) {
     if (ptr->mem != Peekz) ERROR();
     for (int i = 0; i < ptr->siz; i++)
     printf("check: 0x%x %f\n",ptr->eek[i].val,(float)processTime());
-    freeCenter(ptr); allocCenter(&ptr,0); // TODO centerPlace(ptr,sub);
+    centerPlace(ptr,sub);
 }
 void planePass(struct Center *ptr, int sub)
 {
@@ -953,8 +954,11 @@ void planeFail(struct Center *ptr, int sub)
 void planeForce(struct Center *ptr, int sub) {
     ERROR();
 }
-void planeGoon(struct Center *ptr, int sub) {
-    usleep(1000); // TODO use sleep only from main thread, otherwise use goon to write to a pipe
+// a response that does not place center needs goon, and thus fnow
+// also blocking not ok in ThreadState, since ThreadState wakes waiters after freeing resources
+// blocking in main thread must use glfw to allow gpu queue, and thus ThreadState, to progress
+void planeWait(struct Center *ptr, int sub) {
+    callGlfw();
 }
 
 void initSafe()
@@ -1026,7 +1030,7 @@ void initTest()
     int idx = 0;
     struct Center *ptr = centerPull(0);
     struct Fnc fnc = {0,planePass,0,planePass,0};
-    struct Fnc fun = {0,planePass,planeGoon,0,1};
+    struct Fnc fun = {0,planePass,planeWait,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     allocCenter(&ptr,1);
     ptr->mem = Drawz; ptr->siz = 1+frames;
@@ -1038,7 +1042,8 @@ void initTest()
     ptr->drw[1+i].con.res = ChainRes;}
     callCopy(ptr,1,fun);
     while (!centerCheck(1)) usleep(1000);
-    int width = callInfo(WindowWidth,0,planeRcfg); int height = callInfo(WindowHeight,0,planeRcfg);
+    int width = callInfo(WindowWidth,0,planeRcfg);
+    int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
@@ -1059,7 +1064,8 @@ void initTest()
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
     callCopy(eek,6,fun);
-    //
+    struct Center *tmp = 0; allocCenter(&tmp,4);
+    for (int i = 0; i < 4; i++) centerPlace(&tmp[i],i+7);
     } break; case (Builtin): {
     } break; case (Regress): case (Release): {
     }}
@@ -1084,7 +1090,7 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype glfw)
 {
     callCopy = copy;
     callBack = call;
@@ -1093,6 +1099,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callJnfo = jnfo;
     callKnfo = knfo;
     callCmnd = cmnd;
+    callGlfw = glfw;
     initSafe();
     initBoot();
     initPlan();
@@ -1101,7 +1108,66 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
 int planeLoop()
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
-    break; case (Bringup): if ((processTime()-start)*1000 < 2000) return 1;
+    break; case (Bringup): while (1) {
+    struct Fnc fnc = {0,planePass,0,planePass,0};
+    struct Fnc fun = {0,planePass,planeWait,0,1};
+    struct Fnc chk = {0,planeCheck,planeWait,0,1};
+    int inds = 12;
+    int arg[] = {
+    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
+    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
+    /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
+    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
+    /*IDeeIns PipeRes*//*ins.idx*/MicroTest};
+    int brg[] = {
+    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
+    /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
+    static int count = 0; static float time = 0.0;
+    static int tested = 0; static int pull = 0;
+    float model[16]; float view[16]; float proj[16]; float debug[16];
+    int save = pull+7; struct Center *mat = centerPull(save); if (!mat) break;
+    freeCenter(mat); pull = (pull+1)%4;
+    mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
+    planeTest(model,view,proj,debug);
+    memcpy(&mat->mat[0],model,sizeof(struct Matrix));
+    memcpy(&mat->mat[1],view,sizeof(struct Matrix));
+    memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
+    memcpy(&mat->mat[3],debug,sizeof(struct Matrix));
+    callCopy(mat,save,fnc);
+    if (time == 0.0) time = processTime();
+    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
+    if (count == tested) {/*int idx = 0;
+    copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,fun,SmartState());*/
+    int save = pull+7; struct Center *drw = centerPull(save); if (!drw) break;
+    freeCenter(drw); pull = (pull+1)%4;
+    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
+    drw->drw[0].con.tag = MicroCon;
+    drw->drw[0].con.mic = MicroTest;
+    drw->drw[0].siz = sizeof(arg)/sizeof(int);
+    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = arg[i];
+    callCopy(drw,save,fun);}
+    else if (count%8 == 1 || count%8 == 5) {/*int idx = 0;
+    copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,fun,SmartState());*/
+    int save = pull+7; struct Center *drw = centerPull(save); if (!drw) break;
+    freeCenter(drw); pull = (pull+1)%4;
+    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
+    drw->drw[0].con.tag = MicroCon;
+    drw->drw[0].con.mic = MicroDebug;
+    drw->drw[0].siz = sizeof(brg)/sizeof(int);
+    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = brg[i];
+    callCopy(drw,save,fun);}
+    else if (count%8 == 2 || count%8 == 6) {
+    int width = callInfo(WindowWidth,0,planeRcfg);
+    int height = callInfo(WindowHeight,0,planeRcfg);
+    int save = pull+7; struct Center *eek = centerPull(save); if (!eek) break;
+    freeCenter(eek); pull = (pull+1)%4;
+    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
+    eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].val = 1.0;
+    callCopy(eek,save,chk);}
+    tested = count; break;}
+    if ((processTime()-start)*1000 < 2000) return 1;
     break; case (Builtin): case (Regress): case (Release):
     if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
