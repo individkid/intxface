@@ -935,7 +935,7 @@ int planeImmed(void **dat, const char *str)
 void planeCheck(struct Center *ptr, int sub) {
     if (ptr->mem != Peekz) ERROR();
     for (int i = 0; i < ptr->siz; i++)
-    printf("check: 0x%x %f\n",ptr->eek[i].val,(float)processTime());
+    printf("check: %f %f\n",ptr->eek[i].val,processTime());
     centerPlace(ptr,sub);
 }
 void planePass(struct Center *ptr, int sub)

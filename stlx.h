@@ -220,7 +220,7 @@ struct CallState {
     }
     DoneState *get(int i) {
         safe.wait();
-        if (i < 0 || i >= mask.size()) {std::cerr << "fail to get!" << std::endl; exit(-1);}
+        if (i < 0 || i >= mask.size()) {safe.post(); return 0;}
         DoneState *ptr = mask[i];
         safe.post();
         return ptr;
@@ -228,12 +228,12 @@ struct CallState {
     void open(int sav, int val, int act) {
         int open = act & ~sav;
         int done = ~act & sav;
-        for (int i = ffs(open)-1; open; i = ffs(open&=~(1<<i))-1) push(get(i));
-        for (int i = ffs(done)-1; done; i = ffs(done&=~(1<<i))-1) get(i)->done();
+        for (int i = ffs(open)-1; open; i = ffs(open&=~(1<<i))-1) if (get(i)) push(get(i));
+        for (int i = ffs(done)-1; done; i = ffs(done&=~(1<<i))-1) if (get(i)) get(i)->done();
     }
     void wake(int sav, int val, int act) {
         int wake = val & ~sav;
-        for (int i = ffs(wake)-1; wake; i = ffs(wake&=~i)-1) get(i)->noop();
+        for (int i = ffs(wake)-1; wake; i = ffs(wake&=~i)-1) if (get(i)) get(i)->noop();
     }
 };
 

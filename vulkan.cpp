@@ -1180,28 +1180,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
 };
 
-struct TestState : public DoneState {
-    SafeState safe; bool goon; CopyState *copy; StackState *swap; StackState *bind;
-    TestState(CopyState *copy, StackState *swap, StackState *bind) :
-        safe(1), goon(true), copy(copy), swap(swap), bind(bind) {
-        strcpy(debug,"TestState");
-        std::cout << debug << std::endl;
-    }
-    ~TestState() {
-        std::cout << "~" << debug << std::endl;
-    }
-    void call() override;
-    void done() override {
-        safe.wait();
-        goon = false;
-        safe.post();
-    }
-    void heap() override {}
-    void noop() override {}
-};
-void TestState::call() {
-}
-
 struct ForkState : public DoneState {
     Thread thd; int idx; mftype cfnc; mftype dfnc; mftype hfnc; mftype nfnc;
     ForkState (Thread thd, int idx, mftype call, mftype done, mftype heap, mftype noop) :
@@ -1794,7 +1772,6 @@ struct MainState {
     EnumState enumState[Resrcs+1];
     ThreadState threadState;
     CopyState copyState;
-    TestState testState;
     CallState callState;
     MainState() :
         vulkanState(windowState.window),
@@ -1831,8 +1808,7 @@ struct MainState {
             {BindRes,&bindState},
             {Resrcs,0}},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,enumState),
-        testState(&copyState,&swapState,&bindState) {
+        copyState(&threadState,enumState) {
         std::cout << "MainState" << std::endl;
     }
     ~MainState() {
@@ -1911,7 +1887,6 @@ int main(int argc, const char **argv) {
     main.copyState.write(ConstantComnds,StackState::comnds);
     main.copyState.call(RegisterOpen,vulkanBack);
     main.copyState.call(RegisterWake,vulkanBack);
-    main.callState.back(&main.testState,TestThd);
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
     // TODO move glfw functions to WindowState
