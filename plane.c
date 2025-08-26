@@ -633,24 +633,24 @@ void machineTsage(enum Configure cfg, int idx)
 void machineEval(struct Express *exp, int idx)
 {
     struct Center *ptr = centerPull(idx);
-    int val = identType("Center");
-    if (sem_wait(&dataSem) != 0) ERROR(); // TODO make more specific
-    datxStr(dat0,"");
     if (!ptr) allocCenter(&ptr,1);
-    writeCenter(ptr,sub1);
-    datxInsert(*dat0,*dat1,val);
-    int val0 = datxEval(dat0,exp,val);
+    int val = identType("Center");
+    if (sem_wait(&dataSem) != 0) ERROR();
+    datxStr(dat0,""); writeCenter(ptr,sub1); datxInsert(*dat0,*dat1,val);
+    if (sem_post(&dataSem) != 0) ERROR();
+    void *dat = 0; int val0 = datxEval(&dat,exp,val);
     if (val0 != val) ERROR();
-    readCenter(ptr,sub0);
+    if (sem_wait(&dataSem) != 0) ERROR();
+    assignDat(dat0,dat); readCenter(ptr,sub0);
     if (sem_post(&dataSem) != 0) ERROR();
     centerPlace(ptr,idx);
 }
 int machineIval(struct Express *exp)
 {
-    if (sem_wait(&dataSem) != 0) ERROR(); // TODO make more specific
-    int typ = datxEval(dat0,exp,identType("Int"));
+    void *dat = 0; int typ = datxEval(dat,exp,identType("Int"));
     if (typ != identType("Int")) ERROR();
-    int val = readInt(idx0);
+    if (sem_wait(&dataSem) != 0) ERROR();
+    assignDat(dat0,dat); int val = readInt(idx0);
     if (sem_post(&dataSem) != 0) ERROR();
     return val;
 }
@@ -996,7 +996,7 @@ int planeRetcfg(int sub)
 int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
 {
     if (stp == identType("Center")) {
-    // TODO after dataSem used more specifically in Eval/Ival // if (sem_wait(&dataSem) != 0) ERROR();
+    if (sem_wait(&dataSem) != 0) ERROR();
     assignDat(dat0,src);
     struct Center *tmp = 0;
     allocCenter(&tmp,1);
@@ -1011,7 +1011,7 @@ int planeField(void **dst, const void *src, const void *fld, int idx, int sub, i
     writeCenter(tmp,idx0);
     allocCenter(&tmp,0);
     assignDat(dst,*dat0);
-    // TODO after dataSem used more specifically in Eval/Ival // if (sem_post(&dataSem) != 0) ERROR();
+    if (sem_post(&dataSem) != 0) ERROR();
     return stp;}
     return -1;
 }
@@ -1024,11 +1024,11 @@ int planeImmed(void **dat, const char *str)
     struct Center *tmp = 0; int len = 0;
     allocCenter(&tmp,1);
     len = 0; if (hideCenter(tmp,str,&len)) {
-    // TODO after dataSem used more specifically in Eval/Ival // if (sem_wait(&dataSem) != 0) ERROR();
+    if (sem_wait(&dataSem) != 0) ERROR();
     datxVoid(dat0,0);
     writeCenter(tmp,idx0);
     assignDat(dat,*dat0);
-    // TODO after dataSem used more specifically in Eval/Ival // if (sem_post(&dataSem) != 0) ERROR();
+    if (sem_post(&dataSem) != 0) ERROR();
     allocCenter(&tmp,0);
     return identType("Center");}
     allocCenter(&tmp,0);
