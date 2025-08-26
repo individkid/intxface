@@ -33,6 +33,11 @@ struct SafeState {
     void post() {
         if (sem_post(&semaphore) != 0) {std::cerr << "cannot post to semaphore!" << std::endl; exit(-1);}
     }
+    int get() {
+        int sval;
+        if (sem_getvalue(&semaphore,&sval) != 0) {std::cerr << "cannot get semaphore!" << std::endl; exit(-1);}
+        return sval;
+    }
 };
 
 struct SmartState {
@@ -233,7 +238,7 @@ struct CallState {
     }
     void wake(int sav, int val, int act) {
         int wake = val & ~sav;
-        for (int i = ffs(wake)-1; wake; i = ffs(wake&=~i)-1) if (get(i)) get(i)->noop();
+        for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) if (get(i)) get(i)->noop();
     }
 };
 

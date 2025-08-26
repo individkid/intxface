@@ -17,7 +17,6 @@ int planeLoop();
 void planeDone();
 void planePass(struct Center *ptr, int sub);
 void planeFail(struct Center *ptr, int sub);
-void planeTest(float *model, float *view, float *proj, float *debug);
 struct Center *centerPull(int idx);
 void centerPlace(struct Center *ptr, int idx);
 int centerCheck(int idx);

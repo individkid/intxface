@@ -699,6 +699,10 @@ struct BindState : public BaseState {
         safe.post();
     }
     bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
+        if (!buf) {
+            log << "error" << std::endl;
+            slog.clr();
+            *(int*)0=0;}
         if (!excl) EXIT
         if (bind[i] != 0 && bind[i] != buf) EXIT
         if (!buf->incr(elock,psav[i],rsav[i],wsav[i])) {
@@ -812,6 +816,7 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) EXIT}
         if (push.base) push.base->baseups(push.loc,push.log); slog.clr();
         if (push.fnc) push.fnc(push.ptr,push.sub);
+        copy->wots(RegisterWake,1<<TestThd); // TODO replace with RegisterAble in initPlan
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
@@ -840,23 +845,16 @@ struct Arg {
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Resrcs];
-    BaseState *buffer[Resrcs];
-    int first[Resrcs];
-    int final[Resrcs];
     CopyState(ThreadState *thread, EnumState *stack) :
         thread(thread),
-        stack{0},
-        buffer{0},
-        first{0},
-        final{0} {
+        stack{0} {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
-        for (int i = 0; i < Resrcs; i++) buffer[i] = 0;
     }
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
     }
-    BaseState *&dst(Resrc res) {
+    BaseState *&dst(Resrc res, BaseState *buffer[]) {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
         return buffer[res];
     }
@@ -869,6 +867,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return arg[idx++];
     }
     void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
+        BaseState *buffer[Resrcs] = {0};
+        int first[Resrcs];
+        int final[Resrcs];
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
@@ -879,25 +880,25 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns):
-            if (dst(res) == 0) {dst(res) = src(res)->buffer(); first[res] = i;}
+            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
             final[res] = i; count += 1;
-            log << "DerIns " << dst(res)->debug << std::endl;
+            log << "DerIns " << dst(res,buffer)->debug << std::endl;
             break; case(PDerIns):
-            if (dst(res) == 0) {dst(res) = src(res)->prebuf(); first[res] = i;}
+            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(); first[res] = i;}
             final[res] = i; count += 1;
-            log << "PDerIns " << dst(res)->debug << std::endl;
+            log << "PDerIns " << dst(res,buffer)->debug << std::endl;
             break; case(IDerIns):
-            if (dst(res) == 0) {dst(res) = src(res)->prebuf(ins[i].idx); first[res] = i;}
+            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(ins[i].idx); first[res] = i;}
             final[res] = i; count += 1;
-            log << "IDerIns idx:" << ins[i].idx << " " << dst(res)->debug << std::endl;
+            log << "IDerIns idx:" << ins[i].idx << " " << dst(res,buffer)->debug << std::endl; slog.clr();
             break; case(RDeeIns): case(WDeeIns):
-            if (dst(res) == 0) dst(res) = src(res)->buffer();
+            if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->buffer();
             count += 1;
-            log << "RWDeeIns " << dst(res)->debug << std::endl;
+            log << "RWDeeIns " << dst(res,buffer)->debug << std::endl;
             break; case(IRDeeIns):
-            if (dst(res) == 0) dst(res) = src(res)->prebuf(ins[i].idx);
+            if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->prebuf(ins[i].idx);
             count += 1;
-            log << "IRDeeIns idx:" << ins[i].idx << " " << dst(res)->debug << std::endl;}}
+            log << "IRDeeIns idx:" << ins[i].idx << " " << dst(res,buffer)->debug << std::endl;}}
         // choose binding
         BindState *bind = 0;
         if (count > 1) bind = stack[BindRes]->buffer()->getBind(log);
@@ -909,14 +910,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
             ins[i].req.pre = (ins[i].ins == PDerIns && final[res] == i);
-            if (bind) {if (!bind->push(res,dst(res),ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
-            else {if (!dst(res)->push(0,0,0,0,ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
             break; case(RDeeIns):
-            if (!bind->rinc(res,dst(res),log)) lim = i;
+            if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(IRDeeIns):
-            if (!bind->rinc(res,dst(res),log)) lim = i;
+            if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(WDeeIns):
-            if (!bind->winc(res,dst(res),log)) lim = i;}}
+            if (!bind->winc(res,dst(res,buffer),log)) lim = i;}}
         if (lim == num) {
         BaseState *last = 0;
         // link list
@@ -925,8 +926,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = ins[i].res;
             switch(ins[i].ins) {default:
             break; case(DerIns): case (PDerIns): case (IDerIns):
-            lnk = dst(res)->lnk(ins[i].loc,bas,lst,lnk);
-            bas = dst(res); lst = ins[i].loc;}}
+            lnk = dst(res,buffer)->lnk(ins[i].loc,bas,lst,lnk);
+            bas = dst(res,buffer); lst = ins[i].loc;}}
         // record bindings
         for (int i = 0; i < num; i++) {
             switch (ins[i].ins) {default:
@@ -938,25 +939,17 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(DerIns):
             if (first[res] == i) src(res)->advance();
-            thread->push({log,ins[i].loc,dst(res)});
+            thread->push({log,ins[i].loc,dst(res,buffer)});
             break; case(PDerIns):
-            thread->push({log,ins[i].loc,dst(res)});
+            thread->push({log,ins[i].loc,dst(res,buffer)});
             break; case(IDerIns):
             if (first[res] == i) src(res)->advance(ins[i].idx);
-            thread->push({log,ins[i].loc,dst(res)});}}
-        // clean up
-        for (int i = 0; i < num; i++) {
-            Resrc res = ins[i].res;
-            switch (ins[i].ins) {default:
-            break; case(DerIns): case(PDerIns): case(IDerIns):
-            dst(res) = 0;
-            break; case(RDeeIns): case(WDeeIns): case(IRDeeIns):
-            dst(res) = 0;}}
+            thread->push({log,ins[i].loc,dst(res,buffer)});}}
         // notify pass
         if (fnc.pnow) fnc.pnow(ptr,sub);
         if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
         if (bind) stack[BindRes]->advance();
-        log << "copy pass" << std::endl;
+        log << "copy pass " << goon << std::endl;
         } else {
         log << "copy fail" << std::endl;
         // release reserved
@@ -966,7 +959,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
             if (bind) bind->done(res,log);
-            dst(res)->done(log);
+            dst(res,buffer)->done(log);
             break; case(RDeeIns): case(IRDeeIns):
             bind->rdec(res,log);
             break; case(WDeeIns):
@@ -976,9 +969,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
-            dst(res) = 0;
+            dst(res,buffer) = 0;
             break; case(RDeeIns): case(WDeeIns): case(IRDeeIns):
-            dst(res) = 0;}}
+            dst(res,buffer) = 0;}}
         // notify fail
         if (fnc.fnow) fnc.fnow(ptr,sub);
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
