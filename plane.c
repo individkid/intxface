@@ -887,7 +887,12 @@ void planeJoin(enum Thread tag, int idx)
 }
 void planeWake(enum Thread tag, int idx)
 {
-    callJnfo(RegisterWake,(1<<tag),planeRaz);
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): writeInt(0,selwake);
+    break; case (StdioThd): writeInt(0,conwake);
+    break; case (CopyThd): writeInt(0,cpywake);
+    break; case (TimeThd): writeInt(0,timwake);
+    break; case (TestThd): writeInt(0,tstwake);}
 }
 
 // register callbacks
@@ -926,18 +931,14 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterWake) ERROR();
-    if (val & (1<<PipeThd)) writeInt(0,selwake);
-    if (val & (1<<StdioThd)) writeInt(0,conwake);
-    if (val & (1<<CopyThd)) writeInt(0,cpywake);
-    if (val & (1<<TimeThd)) writeInt(0,timwake);
-    if (val & (1<<TestThd)) writeInt(0,tstwake);
+    for (int i = ffs(val)-1; val; i = ffs(val&=~(1<<i))-1) planeWake(i,0);
 }
 void registerMask(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterMask) ERROR();
     int open = callKnfo(RegisterOpen,0,planeRcfg);
     int wake = 0;
-    for (int i = 0; i < Masks; i++) if (val & (1<<i)) // TODO use ffs
+    for (int i = ffs(val)-1; val; i = ffs(val&=~(1<<i))-1)
     wake |= (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);
     callKnfo(RegisterWake,open&wake,planeRaz);
 }
@@ -946,7 +947,7 @@ void registerAble(enum Configure cfg, int sav, int val, int act)
     if (cfg != RegisterAble) ERROR();
     int mask = val >> Threads; // mask of events
     int wake = val & ((1<<Threads)-1); // mask of threads
-    for (int i = 0; i < Masks; i++) if (mask & (1<<i)) {
+    for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
     while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
     // map event to set of threads to wake it up
     *ptrAbleq(i,ableq) = wake;}
