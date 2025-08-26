@@ -816,7 +816,6 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) EXIT}
         if (push.base) push.base->baseups(push.loc,push.log); slog.clr();
         if (push.fnc) push.fnc(push.ptr,push.sub);
-        copy->wots(RegisterWake,1<<TestThd); // TODO replace with RegisterAble in initPlan
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }

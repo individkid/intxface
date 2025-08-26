@@ -1146,7 +1146,7 @@ void initPlan()
     break; case (Bringup): // no commandline arguments
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    // callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
+    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
     callJnfo(RegisterPoll,1,planeWcfg);
     break; case (Builtin): // TimeThd driven machine on commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
