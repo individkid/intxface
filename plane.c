@@ -31,6 +31,7 @@ void *strout = 0; // queue of string; protect with stdioSem
 void *chrq = 0; // temporary queue to convert chars to str
 void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
+void *wakeq = 0; // queue of wakeup threads
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 int sub1 = 0; int idx1 = 0; void **dat1 = 0; // protect with dataSem
 sem_t copySem = {0};
@@ -47,11 +48,13 @@ zftype callKnfo = 0;
 oftype callCmnd = 0;
 aftype callGlfw = 0;
 float start = 0.0;
+float times[Threads] = {0};
 
 DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(char *,Strq)
 DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
+DECLARE_DEQUE(enum Thread, Wakeq)
 DECLARE_DEQUE(int, Ableq)
 
 int planeWots(int *ref, int val)
@@ -338,8 +341,10 @@ void planeDebug(float *model, float *view, float *proj, float *debug)
     *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
     identmat(debug,4);
+    float time = processTime();
+    /* float time = (float)callInfo(RegisterPnum,0,planeRcfg)/1000.0 */
     float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
-    float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(processTime()*8.0f), 1.0f};
+    float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(time*8.0f), 1.0f};
     float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
     float dst1[] = {0.5f, -0.5f, 0.40f, 1.0f};
     float src2[] = {0.5f, -0.5f, 0.40f, 0.0f};
@@ -374,7 +379,7 @@ void centerPlace(struct Center *ptr, int idx)
 {
     centerSize(idx);
     if (sem_wait(&copySem) != 0) ERROR();
-    freeCenter(center[idx]);
+    freeCenter(center[idx]); // TODO remove and run valgrind
     allocCenter(&center[idx],0);
     center[idx] = ptr;
     if (sem_post(&copySem) != 0) ERROR();
@@ -748,8 +753,10 @@ void planeSelect(enum Thread tag, int idx)
     if (sem_wait(&pipeSem) != 0) ERROR();
     struct Center *center = maybeCenterq(0,response);
     if (sem_post(&pipeSem) != 0) ERROR();
-    if (center) {writeCenter(center,external);
-    freeCenter(center); allocCenter(&center,0);}}
+    if (center) {
+    writeCenter(center,external);
+    freeCenter(center); // TODO remove and run valgrind
+    allocCenter(&center,0);}}
     else if (sub == external) {
     struct Center *center = 0;
     allocCenter(&center,1);
@@ -783,27 +790,30 @@ void planeConsole(enum Thread tag, int idx)
     callJnfo(RegisterStrq,size,planeWcfg);}}
     else ERROR();}
 }
+void planeWake(enum Thread tag, int idx);
 void planeTime(enum Thread tag, int idx)
 {
     // wait for smallest requested time, send interrupt first time it is exceeded
     float time = 0.0; // time requested
+    enum Thread wake = Threads; // wake requested
     float delta = 0.0; // delay or 0.0 for forever
     int size = 0; // whether time is changed
     int init = 0; // whether time is valid
     while (1) {
     if (sem_wait(&timeSem) != 0) ERROR();
     size = sizeTimeq(timeq);
+    if (size != sizeWakeq(wakeq)) ERROR();
     if (!init && size != 0) {init = 1;
-    time = (float)frontTimeq(timeq);
-    dropTimeq(timeq);}
+    time = frontTimeq(timeq); wake = frontWakeq(wakeq);
+    dropTimeq(timeq); dropWakeq(wakeq);}
     if (sem_post(&timeSem) != 0) ERROR();
     if (init) delta = time-(float)processTime(); // how long to wait
     else delta = 0.0; // wait forever
-    if (init && (delta == 0.0 || delta <= 0.0)) delta = -1.0; // wait not at all
+    if (init && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
     int sub = waitRead(delta,(1<<timwake));
     if (sub == timwake && readInt(timwake) < 0) break;
     if (init && (float)processTime() >= time) {init = 0;
-    callJnfo(RegisterQnum,1,planeRmw);
+    if (wake != Threads) planeWake(wake,0);
     callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
 }
 void planeTest(enum Thread tag, int idx)
@@ -955,16 +965,23 @@ void registerAble(enum Configure cfg, int sav, int val, int act)
 void registerTime(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterTime) ERROR();
-    float time = processTime()+(float)val/1000.0;
+    int lwr = val & 0xff;
+    int upr = val >> 8;
+    if (lwr >= Threads) lwr = Threads;
     if (sem_wait(&timeSem) != 0) ERROR();
+    if (times[lwr] < start) times[lwr] = processTime();
+    float time = times[lwr] + (float)upr/1000.0; times[lwr] = time;
+    enum Thread wake = lwr;
     if (sizeTimeq(timeq) && backTimeq(timeq) > time) {
     pushTimeq(backTimeq(timeq),timeq);
     int idx = sizeTimeq(timeq)-2;
-    while (idx > 0 && *ptrTimeq(idx,timeq) > time) {
-    *ptrTimeq(idx,timeq) = *ptrTimeq(idx-1,timeq); --idx;}
-    *ptrTimeq(idx,timeq) = time;} else {
-    pushTimeq(time,timeq);}
-    callKnfo(RegisterPnum,1,planeRmw);
+    while (idx > 0 && *ptrTimeq(idx,timeq) > time) {idx--;
+    *ptrTimeq(idx+1,timeq) = *ptrTimeq(idx,timeq);
+    *ptrWakeq(idx+1,wakeq) = *ptrWakeq(idx,wakeq);}
+    *ptrTimeq(idx,timeq) = time;
+    *ptrWakeq(idx,wakeq) = wake;} else {
+    pushTimeq(time,timeq);
+    pushWakeq(wake,wakeq);}
     if (sem_post(&timeSem) != 0) ERROR();
     writeInt(0,timwake);
 }
@@ -1046,7 +1063,7 @@ void initSafe()
     sub1 = datxSub(); idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp); dat1 = datxDat(sub1);
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
-    timeq = allocTimeq(); ableq = allocAbleq();
+    timeq = allocTimeq(); wakeq = allocWakeq(); ableq = allocAbleq();
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
     callBack(RegisterMask,registerMask);
@@ -1209,7 +1226,7 @@ void planeDone()
     callBack(RegisterMask,0);
     callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
-    freeAbleq(ableq); freeTimeq(timeq);
+    freeAbleq(ableq); freeWakeq(wakeq); freeTimeq(timeq);
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();

@@ -449,88 +449,6 @@ function showWriteC(name,struct)
 	end
 	return result.."}"
 end
-function showFreeCJ(pre,field,sub,arg,post)
-	if (Enumz[field[2]]~=nil) then
-		coroutine.yield(pre..";"..post)
-	elseif (Structz[field[2]]~=nil) then
-		coroutine.yield(pre.."free"..field[2].."(&ptr->"..field[1]..sub..");"..post)
-	elseif (field[2] == "Str") then
-		coroutine.yield(pre.."assignStr(&ptr->"..field[1]..sub..",0);"..post)
-	elseif (field[2] == "Dat") then
-		coroutine.yield(pre.."assignDat(&ptr->"..field[1]..sub..",0);"..post)
-	else
-		coroutine.yield(pre..";"..post)
-	end	
-end
-function showFreeCI(pre,field,post)
-	local recurse = (Structz[field[2]]~=nil) or (field[2] == "Str") or (field[2] == "Dat")
-	local count = 0
-	if (type(field[4]) == "table") then
-		count = sizeIter(field[4])
-	end
-	if ((type(field[4]) == "table") or ((type(field[4] == "string")) and (field[4] == ""))) then
-		local indent = ""
-		local sub = ""
-		local arg = ""..#field[4]
-		if not (count == 0) then
-			for key,val in ipairs(field[4]) do
-				sub = sub.."[i"..key.."]"
-				arg = arg..",i"..key
-				coroutine.yield(pre..indent.."for (int i"..key.." = 0; i"..key.." < "..val.."; i"..key.."++)")
-				indent = indent.."    "
-			end
-		end
-		showFreeCJ(pre..indent,field,sub,arg,post)
-	elseif (type(field[4]) == "number") then
-		if recurse then
-			coroutine.yield(pre.."if (ptr->"..field[1]..")")
-			coroutine.yield(pre.."    for (int i = 0; i < "..field[4].."; i++)")
-			showFreeCJ(pre.."        ",field,"[i]","1,i","")
-		end
-		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",0);"..post)
-	elseif (type(field[4]) == "string" and field[4] ~= "") then
-		if recurse then
-			coroutine.yield(pre.."if (ptr->"..field[1]..")")
-			coroutine.yield(pre.."    for (int i = 0; i < ptr->"..field[4].."; i++)")
-			showFreeCJ(pre.."        ",field,"[i]","1,i","")
-		end
-		coroutine.yield(pre.."alloc"..field[2].."(&ptr->"..field[1]..",0);"..post)
-	end
-end
-function showFreeCH(field)
-	local recurse = (Structz[field[2]]~=nil) or (field[2] == "Str") or (field[2] == "Dat")
-	local alloc = (type(field[4]) == "number") or (type(field[4]) == "string" and field[4] ~= "")
-	local condit = ""
-	local seper = ""
-	local count = sizeIter(field[3])
-	for key,val in sortIter(field[3]) do
-		local cond = ""
-		local sep = ""
-		local cnt = sizeIter(val)
-		for ky,vl in sortIter(val) do
-			if (cnt > 1) or (count > 1) then
-				cond = cond..sep.."(ptr->"..key.." == "..ky..")"
-			else
-				cond = cond..sep.."ptr->"..key.." == "..ky
-			end
-			sep = " || "
-		end
-		if (cnt > 1) then
-			condit = condit..seper.."("..cond..")"
-		else
-			condit = condit..seper..cond
-		end
-		seper = " && "
-	end
-	if recurse or alloc then
-		if (count > 0) then
-			coroutine.yield("    if ("..condit..") {")
-			showFreeCI("        ",field,"}")
-		else
-			showFreeCI("    ",field,"")
-		end
-	end
-end
 function showFreeC(name,struct)
 	local result = ""
 	local depth = 1
@@ -599,7 +517,7 @@ function showAllocSC(name,struct)
 	local result = ""
 	result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
 	if prototype then return result..";" else result = result.."\n{\n" end
-	result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
+	result = result..showIndent(1).."if (*ptr && siz == 0) {free"..name.."(*ptr); free(*ptr); *ptr = 0;}\n"
 	result = result..showIndent(1).."if (siz == 0) return;\n"
 	result = result..showIndent(1).."*ptr = malloc(siz*sizeof(struct "..name.."));\n"
 	result = result..showIndent(1).."if (*ptr == 0) ERROR();\n"
