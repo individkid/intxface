@@ -798,24 +798,27 @@ void planeConsole(enum Thread tag, int idx)
 void planeTime(enum Thread tag, int idx)
 {
     // wait for smallest requested time, send interrupt first time it is exceeded
+    float time = 0.0; // time requested
+    int wake = 0; // expression to evaluate
+    float delta = 0.0; // delay or 0.0 for forever
+    int size = 0; // whether time is changed
+    int init = 0; // whether time is valid
     while (1) {
     if (sem_wait(&timeSem) != 0) ERROR();
-    int size = sizeTimeq(timeq);
+    size = sizeTimeq(timeq);
     if (size != sizeWakeq(wakeq)) ERROR();
-    float time = 0.0; // time requested
-    enum Thread wake = Threads; // wake requested
-    if (size != 0) {
+    if (!init && size != 0) {init = 1;
     time = frontTimeq(timeq); wake = frontWakeq(wakeq);
     dropTimeq(timeq); dropWakeq(wakeq);}
     if (sem_post(&timeSem) != 0) ERROR();
-    float delta = 0.0; // delay or 0.0 for forever
-    if (size != 0) delta = time-(float)processTime(); // how long to wait
+    if (init) delta = time-(float)processTime(); // how long to wait
     else delta = 0.0; // wait forever
-    if (size != 0 && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
+    if (init && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
     int sub = waitRead(delta,(1<<timwake));
     if (sub == timwake && readInt(timwake) < 0) break;
+    if (init && (float)processTime() >= time) {init = 0;
     callJnfo(RegisterEval,wake,planeWcfg);
-    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}
+    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
 }
 void planeTest(enum Thread tag, int idx)
 {
