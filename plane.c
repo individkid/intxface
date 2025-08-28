@@ -39,6 +39,7 @@ sem_t pipeSem = {0};
 sem_t stdioSem = {0};
 sem_t timeSem = {0};
 sem_t dataSem = {0};
+sem_t evalSem = {0};
 uftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
@@ -643,19 +644,23 @@ void machineEval(struct Express *exp, int idx)
     if (sem_wait(&dataSem) != 0) ERROR();
     datxStr(dat0,""); writeCenter(ptr,sub1); datxInsert(*dat0,*dat1,val);
     if (sem_post(&dataSem) != 0) ERROR();
+    if (sem_wait(&evalSem) != 0) ERROR();
     void *dat = 0; int val0 = datxEval(&dat,exp,val);
+    if (sem_post(&evalSem) != 0) ERROR();
     if (val0 != val) ERROR();
     if (sem_wait(&dataSem) != 0) ERROR();
-    assignDat(dat0,dat); readCenter(ptr,sub0);
+    assignDat(dat0,dat); free(dat); readCenter(ptr,sub0);
     if (sem_post(&dataSem) != 0) ERROR();
     centerPlace(ptr,idx);
 }
 int machineIval(struct Express *exp)
 {
-    void *dat = 0; int typ = datxEval(dat,exp,identType("Int"));
+    if (sem_wait(&evalSem) != 0) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,identType("Int"));
+    if (sem_post(&evalSem) != 0) ERROR();
     if (typ != identType("Int")) ERROR();
     if (sem_wait(&dataSem) != 0) ERROR();
-    assignDat(dat0,dat); int val = readInt(idx0);
+    assignDat(dat0,dat); free(dat); int val = readInt(idx0);
     if (sem_post(&dataSem) != 0) ERROR();
     return val;
 }
@@ -790,31 +795,27 @@ void planeConsole(enum Thread tag, int idx)
     callJnfo(RegisterStrq,size,planeWcfg);}}
     else ERROR();}
 }
-void planeWake(enum Thread tag, int idx);
 void planeTime(enum Thread tag, int idx)
 {
     // wait for smallest requested time, send interrupt first time it is exceeded
-    float time = 0.0; // time requested
-    enum Thread wake = Threads; // wake requested
-    float delta = 0.0; // delay or 0.0 for forever
-    int size = 0; // whether time is changed
-    int init = 0; // whether time is valid
     while (1) {
     if (sem_wait(&timeSem) != 0) ERROR();
-    size = sizeTimeq(timeq);
+    int size = sizeTimeq(timeq);
     if (size != sizeWakeq(wakeq)) ERROR();
-    if (!init && size != 0) {init = 1;
+    float time = 0.0; // time requested
+    enum Thread wake = Threads; // wake requested
+    if (size != 0) {
     time = frontTimeq(timeq); wake = frontWakeq(wakeq);
     dropTimeq(timeq); dropWakeq(wakeq);}
     if (sem_post(&timeSem) != 0) ERROR();
-    if (init) delta = time-(float)processTime(); // how long to wait
+    float delta = 0.0; // delay or 0.0 for forever
+    if (size != 0) delta = time-(float)processTime(); // how long to wait
     else delta = 0.0; // wait forever
-    if (init && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
+    if (size != 0 && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
     int sub = waitRead(delta,(1<<timwake));
     if (sub == timwake && readInt(timwake) < 0) break;
-    if (init && (float)processTime() >= time) {init = 0;
-    if (wake != Threads) planeWake(wake,0);
-    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}}
+    callJnfo(RegisterEval,wake,planeWcfg);
+    callJnfo(RegisterMask,(1<<TimeMsk),planeWots);}
 }
 void planeTest(enum Thread tag, int idx)
 {
@@ -985,6 +986,17 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     if (sem_post(&timeSem) != 0) ERROR();
     writeInt(0,timwake);
 }
+void registerEval(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != RegisterEval) ERROR();
+    int idx = callInfo(RegisterExpr,0,planeRcfg);
+    struct Center *ptr = centerPull(idx);
+    if (ptr && ptr->mem == Expressz && val < ptr->siz) {
+    if (sem_post(&evalSem) != 0) ERROR();
+    void *dat = 0; if (datxEval(&dat,&ptr->exp[val],-1) != -1) ERROR(); free(dat);
+    if (sem_post(&evalSem) != 0) ERROR();}
+    centerPlace(ptr,idx);
+}
 
 // expression callbacks
 const char *planeGetstr()
@@ -1013,22 +1025,20 @@ int planeRetcfg(int sub)
 int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
 {
     if (stp == identType("Center")) {
-    if (sem_wait(&dataSem) != 0) ERROR();
-    assignDat(dat0,src);
     struct Center *tmp = 0;
     allocCenter(&tmp,1);
-    readCenter(tmp,idx0);
+    if (sem_wait(&dataSem) != 0) ERROR();
+    assignDat(dat0,src); readCenter(tmp,idx0);
+    if (sem_post(&dataSem) != 0) ERROR();
     switch (idx) {default: ERROR();
     break; case(5):
     if (ftp != identType("Int")) ERROR();
-    if (sub < 0 || sub >= tmp->siz) ERROR();
-    assignDat(dat0,fld);
-    tmp->val[sub] = readInt(idx0);}
-    datxVoid(dat0,0);
-    writeCenter(tmp,idx0);
-    allocCenter(&tmp,0);
-    assignDat(dst,*dat0);
+    if (sub < 0 || sub >= tmp->siz) ERROR(); // TODO reallocate when siz field changes
+    if (sem_wait(&dataSem) != 0) ERROR();
+    assignDat(dat0,fld); tmp->val[sub] = readInt(idx0);}
+    datxVoid(dat0,0); writeCenter(tmp,idx0); assignDat(dst,*dat0);
     if (sem_post(&dataSem) != 0) ERROR();
+    allocCenter(&tmp,0);
     return stp;}
     return -1;
 }
@@ -1042,9 +1052,7 @@ int planeImmed(void **dat, const char *str)
     allocCenter(&tmp,1);
     len = 0; if (hideCenter(tmp,str,&len)) {
     if (sem_wait(&dataSem) != 0) ERROR();
-    datxVoid(dat0,0);
-    writeCenter(tmp,idx0);
-    assignDat(dat,*dat0);
+    datxVoid(dat0,0); writeCenter(tmp,idx0); assignDat(dat,*dat0);
     if (sem_post(&dataSem) != 0) ERROR();
     allocCenter(&tmp,0);
     return identType("Center");}
@@ -1059,6 +1067,7 @@ void initSafe()
     if (sem_init(&stdioSem, 0, 1) != 0) ERROR(); // protect planeConsole queues
     if (sem_init(&timeSem, 0, 1) != 0) ERROR(); // protect planeTime queue
     if (sem_init(&dataSem, 0, 1) != 0) ERROR(); // protect data conversion
+    if (sem_init(&evalSem, 0, 1) != 0) ERROR(); // protect data evaluation
     sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
     sub1 = datxSub(); idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp); dat1 = datxDat(sub1);
     internal = allocCenterq(); response = allocCenterq();
@@ -1230,6 +1239,7 @@ void planeDone()
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();
+    if (sem_destroy(&evalSem) != 0) ERROR();
     if (sem_destroy(&dataSem) != 0) ERROR();
     if (sem_destroy(&timeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();

@@ -46,6 +46,7 @@ Memory = {
 	"Instrz", -- little vulkan language
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
+	"Expressz", -- expression library
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
@@ -176,9 +177,8 @@ Configure = {
 	"RegisterAble", -- interrupts per thread
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
-	"RegisterTemp", -- index of temporary
-	"RegisterUse0", -- test control
-	"RegisterUse1", -- test control
+	"RegisterExpr", -- expression center index
+	"RegisterEval", -- center expression index
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -863,6 +863,7 @@ Center = {
 	{"com","Ins",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
+	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
