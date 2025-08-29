@@ -351,6 +351,15 @@ int datxBitwise(int lft, int rgt, enum Bitwise bit)
 	case (NandBit): return ~(lft&rgt);
 	case (NorBit): return ~(lft|rgt);
 	case (EquBit): return ~(lft^rgt);
+	case (PackBit): {
+	int idx = 0; int res = 0;
+	while (rgt) {
+	while (rgt && !(rgt&0x1)) {
+	lft >>= 1; rgt >>= 1;}
+	while (rgt && (rgt&0x1)) {
+	res |= ((lft&0x1)<<idx); idx += 1;
+	lft >>= 1; rgt >>= 1;}}
+	return res;}
 	default: ERROR();}
 	return 0;
 }
@@ -551,9 +560,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (exp->cmp == ReCmp || exp->cmp == IrCmp) {
 		if (typ0 != identType("Str")) ERROR();
 		if (typ1 != identType("Int")) ERROR();}
+		else if (typ0 != typ1) ERROR();
 		if (typ == -1) typ = identType("Int");
 		if (typ != identType("Int")) ERROR();
-		else if (typ0 != typ1) ERROR();
 		if (exp->cmp == ReCmp) datxInt(dat,datxRegexe(datxChrz(0,dat0),*datxIntz(0,dat1)));
 		else if (exp->cmp == IrCmp) datxInt(dat,datxIrrexe(datxChrz(0,dat0),*datxIntz(0,dat1)));
 		else BINARY_TYPE(int,"Int",*datxIntz,BINARY_CMP,BINARY_TRI)
@@ -571,6 +580,15 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int tmp = *datxIntz(0,dat0); free(dat0);
 		if (tmp == 0) {typ = datxEval(dat,&exp->lst[idx],typ); break;}
 		idx = (idx + tmp) % exp->siz;}} break;
+	case (FesOp): {
+		datxNone(dat); typ = identType("Dat");
+		if (exp->num <= 0) ERROR();
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->msk[0],-1);
+		if (typ0 != identType("Int")) ERROR();
+		int msk = *datxIntz(0,dat0); free(dat0);
+		for (int i = ffs(msk)-1; msk; i = ffs(msk&=~(1<<i))-1) {
+		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->mux[i],-1);
+		if (typ1 != typ) ERROR(); free(dat1);}} break;
 	case (RetOp): {
 		if (!retptr) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();

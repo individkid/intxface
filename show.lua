@@ -517,7 +517,7 @@ function showAllocSC(name,struct)
 	local result = ""
 	result = result.."void alloc"..name.."(struct "..name.." **ptr, int siz)"
 	if prototype then return result..";" else result = result.."\n{\n" end
-	result = result..showIndent(1).."if (*ptr && siz == 0) {free"..name.."(*ptr); free(*ptr); *ptr = 0;}\n"
+	result = result..showIndent(1).."if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"
 	result = result..showIndent(1).."if (siz == 0) return;\n"
 	result = result..showIndent(1).."*ptr = malloc(siz*sizeof(struct "..name.."));\n"
 	result = result..showIndent(1).."if (*ptr == 0) ERROR();\n"

@@ -281,7 +281,14 @@ QopyArg = {
 	"QopySrc",
 }
 Plan = { -- which test to run
-	"Bringup", -- reproduce the tutorial through vulkanCpp
+	"Bringup",
+	-- Bootstrap detects no arguments through RegisterShow == 0, sets RegisterPlan to Bringup.
+	-- initPlan starts test and gpu threads, and directs gpu events to test thread.
+	-- initTest sets up gpu buffers for fetched tutorial points.
+	-- planeTest issues matrix buffer updates and draw requests as fast as possible.
+	-- TODO initPlan starts machine and time threads, and direct time events to machine.
+	-- TODO planeMachine reads count incremented by planeTime RegisterEval.
+	-- TODO planeMachine advances matrix used by planeTest count number of times.
 	"Builtin", -- test each transformation with indexed buffers through planra.lua
 	"Regress", -- test each interaction with user space file through planer.lua
 	"Release", -- complete user and remote modes and actions through plane.lua
@@ -355,6 +362,8 @@ Operate = { -- little language expressions
 	"BitOp",
 	"CmpOp",
 	"CndOp", -- touring machine
+	"FesOp", -- for each set
+	"FfsOp", -- find first set
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
 	"ValOp", -- value from lookup
@@ -390,6 +399,7 @@ Bitwise = { -- little language bitwise
 	"NandBit",
 	"NorBit",
 	"EquBit",
+	"PackBit",
 }
 Order = { -- ireg expression operators
 	"ChrOrd",
@@ -713,6 +723,9 @@ Express = {
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
+	{"num","Int",{["opr"]={["FesOp"]=true}},{}},
+	{"msk","Express",{["opr"]={["FesOp"]=true}},1},
+	{"mux","Express",{["opr"]={["FesOp"]=true}},"num"},
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true}},1},

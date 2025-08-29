@@ -312,7 +312,7 @@ Expected = {
 	"}",
 	"void allocStruct1(struct Struct1 **ptr, int siz)\n"..
 	"{\n"..
-	"    if (*ptr && siz == 0) {freeStruct1(*ptr); free(*ptr); *ptr = 0;}\n"..
+	"    if (*ptr && siz == 0) {free(*ptr); *ptr = 0;}\n"..
 	"    if (siz == 0) return;\n"..
 	"    *ptr = malloc(siz*sizeof(struct Struct1));\n"..
 	"    if (*ptr == 0) ERROR();\n"..
