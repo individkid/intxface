@@ -50,7 +50,6 @@ void *allocDeque(int siz)
 {
     return new std::deque<std::vector<uint8_t>>;
 }
-
 void pushDeque(int siz, void *val, void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
@@ -59,47 +58,102 @@ void pushDeque(int siz, void *val, void *ptr)
     for (int i = 0; i < siz; i++) vec[i] = ui8[i];
     que->push_back(vec);
 }
-
 void popDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     que->pop_back();
 }
-
 void dropDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     que->pop_front();
 }
-
 void *frontDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     return (void*)que->front().data();
 }
-
 void *backDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     return (void*)que->back().data();
 }
-
 void *ptrDeque(int idx, void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     return (void*)(*que)[idx].data();
 }
-
 int sizeDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     return que->size();
 }
-
 void freeDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;
     delete que;
+}
+
+struct MaybeState {
+    std::vector<uint8_t> val;
+    SafeState sem;
+    MaybeState() : sem(1) {}
+};
+void *allocMaybe(int siz)
+{
+    return new MaybeState();
+}
+void setMaybe(int siz, void *val, void *ptr)
+{
+    auto may = (MaybeState*)ptr;
+    auto ui8 = (uint8_t*)val;
+    may->sem.lock();
+    may->val.resize(siz);
+    may->sem.cast();
+    for (int i = 0; i < siz; i++) may->val.at(i) = ui8[i];
+    may->sem.ulck();
+}
+int getMaybe(int siz, void *val, void *ptr)
+{
+    auto may = (MaybeState*)ptr;
+    auto ui8 = (uint8_t*)val;
+    may->sem.lock();
+    if (siz > may->val.size()) siz = may->val.size();
+    for (int i = 0; i < siz; i++) ui8[i] = may->val.at(i);
+    may->sem.ulck();
+    return siz;
+}
+int clrMaybe(int siz, void *val, void *ptr)
+{
+    auto may = (MaybeState*)ptr;
+    auto ui8 = (uint8_t*)val;
+    may->sem.lock();
+    if (siz > may->val.size()) siz = may->val.size();
+    for (int i = 0; i < siz; i++) ui8[i] = may->val.at(i);
+    may->val.resize(0);
+    may->sem.cast();
+    may->sem.ulck();
+    return siz;
+}
+int notMaybe(int siz, void *val, void *ptr)
+{
+    auto may = (MaybeState*)ptr;
+    auto ui8 = (uint8_t*)val;
+    may->sem.lock();
+    while (1) {
+    int tmp = may->val.size();
+    if (tmp >= siz) break;
+    may->sem.cond();}
+    for (int i = 0; i < siz; i++) ui8[i] = may->val.at(i);
+    may->val.resize(0);
+    may->sem.cast();
+    may->sem.ulck();
+    return siz;
+}
+void freeMaybe(void *ptr)
+{
+    auto may = (MaybeState*)ptr;
+    delete may;
 }
 
 float processTime()

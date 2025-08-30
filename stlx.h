@@ -1,14 +1,5 @@
 #include <stdint.h>
 #include <pthread.h>
-#ifdef __APPLE__
-#include <dispatch/dispatch.h>
-#define sem_t dispatch_semaphore_t
-#define sem_init(S,P,V) {*S = dispatch_semaphore_create(V);}
-#define sem_post(S) {dispatch_semaphore_signal(*S);}
-#define sem_wait(S) {dispatch_semaphore_wait(*S,DISPATCH_TIME_FOREVER);}
-#else
-#include <semaphore.h>
-#endif
 #ifdef __cplusplus
 #include <vector>
 #include <deque>
@@ -20,23 +11,41 @@
 #include <strings.h>
 
 struct SafeState {
-    sem_t semaphore;
+    pthread_mutex_t mutex;
+    pthread_cond_t condit;
+    int semaphore;
     SafeState(int val) {
-        if (sem_init(&semaphore, 0, val) != 0) {std::cerr << "failed to create semaphore!" << std::endl; exit(-1);}
+        semaphore = val;
+        if (pthread_mutex_init(&mutex, 0) != 0) {std::cerr << "failed to create mutex!" << std::endl; exit(-1);}
+        if (pthread_cond_init(&condit, 0) != 0) {std::cerr << "failed to create cond!" << std::endl; exit(-1);}
     }
     ~SafeState() {
-        if (sem_destroy(&semaphore) != 0) {std::cerr << "cannot destroy semaphore!" << std::endl; exit(-1);}
+        if (pthread_cond_destroy(&condit) != 0) {std::cerr << "cannot destroy cond!" << std::endl; exit(-1);}
+        if (pthread_mutex_destroy(&mutex) != 0) {std::cerr << "cannot destroy mutex!" << std::endl; exit(-1);}
     }
     void wait() {
-        if (sem_wait(&semaphore) != 0) {std::cerr << "cannot wait for semaphore!" << std::endl; exit(-1);}
+        if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
+        while (semaphore <= 0) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
+        semaphore -= 1;
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
     }
     void post() {
-        if (sem_post(&semaphore) != 0) {std::cerr << "cannot post to semaphore!" << std::endl; exit(-1);}
+        if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
+        semaphore += 1;
+        if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
     }
-    int get() {
-        int sval;
-        if (sem_getvalue(&semaphore,&sval) != 0) {std::cerr << "cannot get semaphore!" << std::endl; exit(-1);}
-        return sval;
+    void lock() {
+        if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
+    }
+    void ulck() {
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+    }
+    void cond() {
+        if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
+    }
+    void cast() {
+        if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
     }
 };
 
@@ -319,6 +328,21 @@ TYPE *ptr ## NAME(int idx, void *ptr) {return (TYPE*)ptrDeque(idx,ptr);} \
 int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
+
+void *allocMaybe(int siz);
+void setMaybe(int siz, void *val, void *ptr);
+int getMaybe(int siz, void *val, void *ptr);
+int clrMaybe(int siz, void *val, void *ptr);
+int notMaybe(int siz, void *val, void *ptr);
+
+void freeMaybe(void *ptr);
+#define DECLARE_MAYBE(TYPE,NAME) \
+void *alloc ## NAME() {return allocMaybe(sizeof(TYPE));} \
+void set ## NAME(TYPE val, void *ptr) {setMaybe(sizeof(TYPE),&val,ptr);} \
+int get ## NAME(TYPE *val, void *ptr) {return getMaybe(sizeof(TYPE),val,ptr);} \
+int clr ## NAME(TYPE *val, void *ptr) {return clrMaybe(sizeof(TYPE),val,ptr);} \
+int not ## NAME(TYPE *val, void *ptr) {return clrMaybe(sizeof(TYPE),val,ptr);} \
+void free ## NAME(void *ptr) {freeMaybe(ptr);}
 
 float processTime();
 

@@ -13,16 +13,25 @@
 #include <math.h>
 #include <sys/time.h>
 #include <errno.h>
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#define sem_t dispatch_semaphore_t
+#define sem_init(S,P,V) {*S = dispatch_semaphore_create(V);}
+#define sem_post(S) {dispatch_semaphore_signal(*S);}
+#define sem_wait(S) {dispatch_semaphore_wait(*S,DISPATCH_TIME_FOREVER);}
+#else
+#include <semaphore.h>
+#endif
 
 struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 int external = 0; // pipe to planeSelect
-int selwake = 0; // pipe to planeSelect
+/*void **/int selwake = 0; // pipe to planeSelect
 int console = 0; // pipe to planeConsole
-int conwake = 0; // pipe to planeConsole
-int timwake = 0; // pipe to planeTime
-int cpywake = 0; // pipe to planeMachine
-int tstwake = 0; // pipe to planeTest
+/*void **/int conwake = 0; // pipe to planeConsole
+/*void **/int timwake = 0; // pipe to planeTime
+/*void **/int cpywake = 0; // pipe to planeMachine
+/*void **/int tstwake = 0; // pipe to planeTest
 struct Argument argument = {0}; // constant from commandline
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
@@ -57,6 +66,7 @@ DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
 DECLARE_DEQUE(enum Thread, Wakeq)
 DECLARE_DEQUE(int, Ableq)
+DECLARE_MAYBE(int, Wake)
 
 int planeWots(int *ref, int val)
 {
@@ -935,7 +945,8 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         if ((tstwake = openPipe()) < 0) ERROR();
         callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
-        centerPlace(0,0); writeInt(-1,tstwake);}
+        centerPlace(0,0);
+        writeInt(-1,tstwake);}
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
@@ -1182,12 +1193,12 @@ void initPlan()
     break; case (Bringup): // no commandline arguments
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(MachineIndex,1,planeWcfg);
+    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
+    callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
-    callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
     break; case (Builtin): // choose what to test from commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
@@ -1232,6 +1243,8 @@ void planeDone()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup):
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
     break; case (Builtin):
@@ -1239,7 +1252,11 @@ void planeDone()
     callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
     callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
-    break; case (Regress): case (Release):
+    break; case (Regress):
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
+    break; case (Release):
     callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWotc);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
