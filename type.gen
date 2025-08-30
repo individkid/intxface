@@ -594,7 +594,16 @@ MicroIns = {
 		{"Micro","MicroDebug","Int","6","Resrc","PipeRes"},
 }
 Bootstrap = {
-	{"Int","0","Str","Eval("..
+	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"}, -- placeholder for centerCheck in main loop of planeTest
+	{"Int","1","Str","Machinez(siz:1idx:0slf:0mch[0]:Goto(exp[0]:IntOp(ivl:0)))"},
+	-- initialize count, wait for count nonzero, update matrix and decrement count, repeat from wait
+	{"Int","2","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:0msk[0]:IntOp(ivl:0)))"}, -- increment count
+	{"Int","3","Str","Matrixz(siz:1idx:0slf:0mat[0]:Matrix("..
+		"mat[0]:1.0mat[1]:0.0mat[2]:0.0mat[3]:0.0"..
+		"mat[4]:1.0mat[5]:1.0mat[6]:0.0mat[7]:0.0"..
+		"mat[8]:1.0mat[9]:0.0mat[10]:1.0mat[11]:0.0"..
+		"mat[12]:1.0mat[13]:0.0mat[14]:0.0mat[15]:1.0))"}, -- for use by planeTest
+	{"Int","4","Str","Eval("..
 		"fnc[0]:FldOp("..
 			"fld[0]:ImmOp(val:Str(Configurez(siz:1idx:0slf:0cfg[0]:RegisterPlanval[0]:-1)))"..
 			"fld[1]:CndOp(siz:5"..
@@ -617,11 +626,7 @@ Bootstrap = {
 			"fld[2]:IntOp(ivl:5)"..
 			"fld[3]:IntOp(ivl:0))"..
 		"res:10)"},
-	{"Int","1","Str","Copy(sig:1arg[0]:10)"},
-	{"Int","2","Str","Eval(fnc[0]:ImmOp(val:Str(Indexz(siz:0idx:0slf:0)))res:0)"}, -- placeholder for centerCheck in main loop of planeTest
-	-- {"Int","3","Str","Machinez()"}, -- initialize count, wait for count nonzero, update matrix and decrement count, repeat from wait
-	-- {"Int","4","Str","Expressz()"}, -- increment count
-	-- {"Int","5","Str","Matrixz()"}, -- for use by planeTest
+	{"Int","5","Str","Copy(sig:1arg[0]:10)"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},

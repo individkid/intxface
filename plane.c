@@ -719,8 +719,7 @@ void planeGlfw(struct Center *ptr, int sub) {
     callGlfw();
 }
 void planeWait(struct Center *ptr, int sub) {
-    int tmp = waitRead(0.0,(1<<tstwake));
-    if (tmp == tstwake && readInt(tstwake) < 0) centerPlace(0,0);
+    if (waitRead(0.0,(1<<tstwake)) == tstwake) readInt(tstwake);
 }
 void planeForce(struct Center *ptr, int sub) {
     ERROR();
@@ -1097,7 +1096,6 @@ void initBoot()
     if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
     else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
     allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);
-    fprintf(stdout,"initBoot %p %d\n",ptr,centers);
     if (i < cmnds) callInfo(RegisterShow,2,planeWots);}
     else if (hideMachine(&mchn, boot[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);
@@ -1136,8 +1134,8 @@ void initTest()
     // center[5] fetch data for tutorial
     // center[6] indices for indirect fetch
     // center[7] image for facet texture
-    // center[8] data to initialize fragment buffer
-    // center[9] 
+    // center[8] pierce to initialize fragment buffer
+    // center[9] pierce to read fragment buffer
     struct Fnc fnc = {0,planePass,0,planePass,0};
     struct Fnc fun = {0,planePass,planeGlfw,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
