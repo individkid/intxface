@@ -833,8 +833,8 @@ void planeTest(enum Thread tag, int idx)
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
     float model[16]; float view[16]; float proj[16]; float debug[16];
-    for (int i = 0; i < 5; i++) {struct Center *tmp = 0; 
-    allocCenter(&tmp,1); centerPlace(tmp,(i<4?i+10:0));}
+    for (int i = 0; i < 4; i++) {struct Center *tmp = 0; 
+    allocCenter(&tmp,1); centerPlace(tmp,i+10);}
     while (centerCheck(9)) planeWait(0,0);
     while (centerCheck(0)) {
     int save = pull+10; struct Center *mat = centerPull(save); if (!mat) {planeWait(0,0); continue;}
@@ -936,7 +936,7 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         if ((tstwake = openPipe()) < 0) ERROR();
         callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
-        writeInt(-1,tstwake);}
+        centerPlace(0,0); writeInt(-1,tstwake);}
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
@@ -1097,6 +1097,7 @@ void initBoot()
     if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
     else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
     allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);
+    fprintf(stdout,"initBoot %p %d\n",ptr,centers);
     if (i < cmnds) callInfo(RegisterShow,2,planeWots);}
     else if (hideMachine(&mchn, boot[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);

@@ -282,16 +282,23 @@ QopyArg = {
 }
 Plan = { -- which test to run
 	"Bringup",
-	-- Bootstrap detects no arguments through RegisterShow == 0, sets RegisterPlan to Bringup.
+	-- Bootstrap detects no arguments through RegisterShow, sets RegisterPlan to Bringup.
 	-- initPlan starts test and gpu threads, and directs gpu events to test thread.
 	-- initTest sets up gpu buffers for fetched tutorial points.
 	-- planeTest issues matrix buffer updates and draw requests as fast as possible.
 	-- TODO initPlan starts machine and time threads, and direct time events to machine.
 	-- TODO planeMachine reads count incremented by planeTime RegisterEval.
 	-- TODO planeMachine advances matrix used by planeTest count number of times.
-	"Builtin", -- test each transformation with indexed buffers through planra.lua
-	"Regress", -- test each interaction with user space file through planer.lua
-	"Release", -- complete user and remote modes and actions through plane.lua
+	"Builtin",
+	-- Bootstrap detects arguments but no Argument, sets RegisterPlan to Builtin.
+	-- TODO similar to Bringup, except use indexed instead of fetched points.
+	-- TODO similar to Bringup, except matrix for planeTest copied to gpu by planeMachine.
+	-- TODO similar to Bringup, except matrix for planeTest adjusted through
+	-- TODO Click Manip Pulse Self Other Manip Click Fixed Normal.
+	"Regress",
+	-- Bootstrap detects arguments and Argument, sets RegisterPlan to Regress.
+	"Release",
+	-- Bootstrap detects Argument only, sets RegisterPlan to Release.
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
@@ -606,12 +613,15 @@ Bootstrap = {
 				"lst[1]:IntOp(%(return castPlan(\"Builtin\")))"..
 				"lst[2]:IntOp(%(return castPlan(\"Regress\")))"..
 				"lst[3]:IntOp(%(return castPlan(\"Release\")))"..
-				"lst[4]:IntOp(-1)"..
-				")"..
+				"lst[4]:IntOp(-1))"..
 			"fld[2]:IntOp(ivl:5)"..
 			"fld[3]:IntOp(ivl:0))"..
-		"res:0)"},
-	{"Int","1","Str","Copy(sig:1arg[0]:0)"},
+		"res:10)"},
+	{"Int","1","Str","Copy(sig:1arg[0]:10)"},
+	{"Int","2","Str","Eval(fnc[0]:ImmOp(val:Str(Indexz(siz:0idx:0slf:0)))res:0)"}, -- placeholder for centerCheck in main loop of planeTest
+	-- {"Int","3","Str","Machinez()"}, -- initialize count, wait for count nonzero, update matrix and decrement count, repeat from wait
+	-- {"Int","4","Str","Expressz()"}, -- increment count
+	-- {"Int","5","Str","Matrixz()"}, -- for use by planeTest
 }
 Execname = {
 	{"Program","Filez","Str","./file"},

@@ -1136,7 +1136,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(ins,fnc,center,sub,log);}
         break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push({log,ResrcLocs,0,center,0,fnc.pass});
+        if (fnc.pass) thread->push({log,ResrcLocs,0,center,sub,fnc.pass});
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat); int marg[] = {
