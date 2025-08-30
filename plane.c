@@ -1180,17 +1180,24 @@ void initPlan()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): // no commandline arguments
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
     callJnfo(RegisterPoll,1,planeWcfg);
-    break; case (Builtin): // TimeThd driven machine on commandline
+    callJnfo(MachineIndex,1,planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterPoll,1,planeWcfg);
-    break; case (Regress): case (Release): // Argument on commandline
+    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
+    callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
+    break; case (Builtin): // choose what to test from commandline
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    break; case (Regress): // choose how to interpret centers from pipe
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
+    break; case (Release): // use builtin machine to handle user and pipe
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}

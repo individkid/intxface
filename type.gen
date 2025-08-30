@@ -297,8 +297,11 @@ Plan = { -- which test to run
 	-- TODO Click Manip Pulse Self Other Manip Click Fixed Normal.
 	"Regress",
 	-- Bootstrap detects arguments and Argument, sets RegisterPlan to Regress.
+	-- TODO no test or time thread, just gpu machine select.
+	-- TODO use arguments to load machine, then reproduce Builtin from pipe from lua.
 	"Release",
 	-- Bootstrap detects Argument only, sets RegisterPlan to Release.
+	-- TODO similar to Regress, except pipe and user processed by builtin machine.
 }
 Action = { -- what input does
 	"Indicate", -- move to new piere point
