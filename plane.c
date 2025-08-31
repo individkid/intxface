@@ -18,7 +18,7 @@ struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 int external = 0; // pipe to planeSelect
 int selwake = 0; // pipe to planeSelect
-// TODO think of way to wake pselect without a pipe
+// TODO add openEvent to face.c to use eventfd for wake without wasted buffer
 int console = 0; // pipe to planeConsole
 int conwake = 0; // pipe to planeConsole
 int timwake = 0; // pipe to planeTime
