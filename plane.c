@@ -13,7 +13,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <errno.h>
-#ifdef __APPLE__
+#ifdef __APPLE__ // TODO make c wrapper for SafeState
 #include <dispatch/dispatch.h>
 #define sem_t dispatch_semaphore_t
 #define sem_init(S,P,V) {*S = dispatch_semaphore_create(V);}
@@ -26,12 +26,13 @@
 struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 int external = 0; // pipe to planeSelect
-/*void **/int selwake = 0; // pipe to planeSelect
+int selwake = 0; // pipe to planeSelect
+// TODO think of way to wake pselect without a pipe
 int console = 0; // pipe to planeConsole
-/*void **/int conwake = 0; // pipe to planeConsole
-/*void **/int timwake = 0; // pipe to planeTime
-/*void **/int cpywake = 0; // pipe to planeMachine
-/*void **/int tstwake = 0; // pipe to planeTest
+int conwake = 0; // pipe to planeConsole
+int timwake = 0; // pipe to planeTime
+int cpywake = 0; // pipe to planeMachine
+int tstwake = 0; // pipe to planeTest
 struct Argument argument = {0}; // constant from commandline
 void *internal = 0; // queue of center; protect with pipeSem
 void *response = 0; // queue of center; protect with pipeSem
@@ -66,7 +67,6 @@ DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
 DECLARE_DEQUE(enum Thread, Wakeq)
 DECLARE_DEQUE(int, Ableq)
-DECLARE_MAYBE(int, Wake)
 
 int planeWots(int *ref, int val)
 {

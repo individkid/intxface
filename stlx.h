@@ -23,29 +23,28 @@ struct SafeState {
         if (pthread_cond_destroy(&condit) != 0) {std::cerr << "cannot destroy cond!" << std::endl; exit(-1);}
         if (pthread_mutex_destroy(&mutex) != 0) {std::cerr << "cannot destroy mutex!" << std::endl; exit(-1);}
     }
-    void wait() {
+    int wait() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        while (semaphore <= 0) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
-        semaphore -= 1;
+        while (semaphore == 0) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
+        int ret = semaphore;
+        if (semaphore > 0) semaphore -= 1;
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+        return ret;
     }
-    void post() {
+    int post() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        semaphore += 1;
+        int ret = semaphore;
+        if (semaphore >= 0) semaphore += 1;
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+        return ret;
     }
-    void lock() {
+    void hack() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-    }
-    void ulck() {
-        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
-    }
-    void cond() {
-        if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
-    }
-    void cast() {
+        semaphore = -1;
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+
     }
 };
 
@@ -329,20 +328,11 @@ int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
 
-void *allocMaybe(int siz);
-void setMaybe(int siz, void *val, void *ptr);
-int getMaybe(int siz, void *val, void *ptr);
-int clrMaybe(int siz, void *val, void *ptr);
-int notMaybe(int siz, void *val, void *ptr);
-
-void freeMaybe(void *ptr);
-#define DECLARE_MAYBE(TYPE,NAME) \
-void *alloc ## NAME() {return allocMaybe(sizeof(TYPE));} \
-void set ## NAME(TYPE val, void *ptr) {setMaybe(sizeof(TYPE),&val,ptr);} \
-int get ## NAME(TYPE *val, void *ptr) {return getMaybe(sizeof(TYPE),val,ptr);} \
-int clr ## NAME(TYPE *val, void *ptr) {return clrMaybe(sizeof(TYPE),val,ptr);} \
-int not ## NAME(TYPE *val, void *ptr) {return clrMaybe(sizeof(TYPE),val,ptr);} \
-void free ## NAME(void *ptr) {freeMaybe(ptr);}
+void *allocSafe(int val);
+int waitSafe(void *ptr);
+int postSafe(void *ptr);
+void hackSafe(void *ptr);
+void freeSafe(void *ptr);
 
 float processTime();
 
