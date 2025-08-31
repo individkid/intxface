@@ -834,10 +834,10 @@ void planeTest(enum Thread tag, int idx)
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
     float model[16]; float view[16]; float proj[16]; float debug[16];
     for (int i = 0; i < 4; i++) {struct Center *tmp = 0; 
-    allocCenter(&tmp,1); centerPlace(tmp,i+10);}
-    while (centerCheck(9)) planeWait(0,0);
+    allocCenter(&tmp,1); centerPlace(tmp,i+11);}
+    while (centerCheck(10)) planeWait(0,0);
     while (centerCheck(0)) {
-    int save = pull+10; struct Center *mat = centerPull(save); if (!mat) {planeWait(0,0); continue;}
+    int save = pull+11; struct Center *mat = centerPull(save); if (!mat) {planeWait(0,0); continue;}
     freeCenter(mat); pull = (pull+1)%4;
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     planeDebug(model,view,proj,debug);
@@ -850,7 +850,7 @@ void planeTest(enum Thread tag, int idx)
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {/*int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,fun,SmartState());*/
-    int save = pull+10; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
+    int save = pull+11; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
@@ -861,7 +861,7 @@ void planeTest(enum Thread tag, int idx)
     callCopy(drw,save,fun);}
     else if (count%8 == 1 || count%8 == 5) {/*int idx = 0;
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,fun,SmartState());*/
-    int save = pull+10; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
+    int save = pull+11; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
@@ -873,7 +873,7 @@ void planeTest(enum Thread tag, int idx)
     else if (count%8 == 2 || count%8 == 6) {
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
-    int save = pull+10; struct Center *eek = centerPull(save); if (!eek) {planeWait(0,0); continue;}
+    int save = pull+11; struct Center *eek = centerPull(save); if (!eek) {planeWait(0,0); continue;}
     freeCenter(eek); pull = (pull+1)%4;
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].val = 1.0;
@@ -1132,12 +1132,13 @@ void initTest()
     // center[1] machine for planeMachine
     // center[2] expressions for RegisterEval
     // center[3] matrices for planeTest
-    // center[4] resize resources
-    // center[5] fetch data for tutorial
-    // center[6] indices for indirect fetch
-    // center[7] image for facet texture
-    // center[8] pierce to initialize fragment buffer
-    // center[9] pierce to read fragment buffer
+    // center[4] kernels for after bringup
+    // center[5] resize resources
+    // center[6] fetch data for tutorial
+    // center[7] indices for indirect fetch
+    // center[8] image for facet texture
+    // center[9] pierce to initialize fragment buffer
+    // center[10] pierce to read fragment buffer
     struct Fnc fnc = {0,planePass,0,planePass,0};
     struct Fnc fun = {0,planePass,planeGlfw,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
@@ -1149,30 +1150,30 @@ void initTest()
     for (int i = 0; i < frames; i++) {
     ptr->drw[1+i].con.tag = ResrcCon;
     ptr->drw[1+i].con.res = ChainRes;}
-    callCopy(ptr,4,fun);
-    while (!centerCheck(4)) usleep(1000);
+    callCopy(ptr,5,fun);
+    while (!centerCheck(5)) usleep(1000);
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *vtx = 0; allocCenter(&vtx,1);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
-    callCopy(vtx,5,fun);
+    callCopy(vtx,6,fun);
     struct Center *ind = 0; allocCenter(&ind,1);
     ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
-    callCopy(ind,6,fun);
+    callCopy(ind,7,fun);
     struct Center *img = 0; allocCenter(&img,1);
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
-    callCopy(img,7,fun);
+    callCopy(img,8,fun);
     struct Center *oke = 0; allocCenter(&oke,1);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
     oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
-    callCopy(oke,8,fun);
+    callCopy(oke,9,fun);
     struct Center *eek = 0; allocCenter(&eek,1);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
-    callCopy(eek,9,fun);
+    callCopy(eek,10,fun);
     } break; case (Builtin): {
     } break; case (Regress): case (Release): {
     }}

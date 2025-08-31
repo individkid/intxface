@@ -606,7 +606,8 @@ Bootstrap = {
 		"mat[4]:1.0mat[5]:1.0mat[6]:0.0mat[7]:0.0"..
 		"mat[8]:1.0mat[9]:0.0mat[10]:1.0mat[11]:0.0"..
 		"mat[12]:1.0mat[13]:0.0mat[14]:0.0mat[15]:1.0))"}, -- for use by planeTest
-	{"Int","4","Str","Eval("..
+	{"Int","4","Str","Kernelz(siz:0idx:0slf:0)"}, -- for plans after Bringup
+	{"Int","5","Str","Eval("..
 		"fnc[0]:FldOp("..
 			"fld[0]:ImmOp(val:Str(Configurez(siz:1idx:0slf:0cfg[0]:RegisterPlanval[0]:-1)))"..
 			"fld[1]:CndOp(siz:5"..
@@ -628,8 +629,8 @@ Bootstrap = {
 				"lst[4]:IntOp(-1))"..
 			"fld[2]:IntOp(ivl:5)"..
 			"fld[3]:IntOp(ivl:0))"..
-		"res:10)"},
-	{"Int","5","Str","Copy(sig:1arg[0]:10)"},
+		"res:11)"},
+	{"Int","6","Str","Copy(sig:1arg[0]:11)"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
