@@ -996,10 +996,12 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
 void registerEval(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterEval) ERROR();
-    int idx = callInfo(RegisterExpr,0,planeRcfg);
+    int idx = callKnfo(RegisterExpr,0,planeRcfg);
     struct Center *ptr = centerPull(idx);
-    if (ptr && ptr->mem == Expressz && val < ptr->siz)
-    machineVoid(&ptr->exp[val]);
+    if (ptr && ptr->mem == Expressz && val < ptr->siz) {
+    {char *exp = 0; showExpress(&ptr->exp[val],&exp);
+    printf("%s\n",exp); free(exp);}
+    machineVoid(&ptr->exp[val]);}
     centerPlace(ptr,idx);
 }
 
@@ -1083,6 +1085,7 @@ void initSafe()
     callBack(RegisterMask,registerMask);
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
+    callBack(RegisterEval,registerEval);
     datxFnptr(planeRetcfg,planeSetcfg,planeGetstr,planePutstr,planeField,planeExtract,planeImmed);
     start = processTime();
 }

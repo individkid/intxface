@@ -600,7 +600,8 @@ Bootstrap = {
 	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"}, -- placeholder for centerCheck in main loop of planeTest
 	{"Int","1","Str","Machinez(siz:1idx:0slf:0mch[0]:Goto(exp[0]:IntOp(ivl:0)))"},
 	-- wait for count nonzero, update matrix and decrement count, repeat from wait
-	{"Int","2","Str","Expressz(siz:0idx:0slf:0)"}, -- increment count
+	{"Int","2","Str","Expressz(siz:1idx:0slf:0exp[0]:SavOp("..
+		"kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1))))"}, -- increment count
 	{"Int","3","Str","Matrixz(siz:1idx:0slf:0mat[0]:Matrix("..
 		"mat[0]:1.0mat[1]:0.0mat[2]:0.0mat[3]:0.0"..
 		"mat[4]:1.0mat[5]:1.0mat[6]:0.0mat[7]:0.0"..
