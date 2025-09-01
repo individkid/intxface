@@ -373,7 +373,6 @@ Operate = { -- little language expressions
 	"CmpOp",
 	"CndOp", -- touring machine
 	"FesOp", -- for each set
-	"FfsOp", -- find first set
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
 	"ValOp", -- value from lookup
@@ -387,8 +386,6 @@ Operate = { -- little language expressions
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
-	"CfgOp", -- ImmOp sugar
-	"MemOp", -- ImmOp sugar
 }
 Compare = { -- little language comparisons
 	-- Less Equal More
@@ -602,7 +599,7 @@ Bootstrap = {
 	{"Int","1","Str","Machinez(siz:1idx:0slf:0mch[0]:Goto(exp[0]:IntOp(ivl:0)))"},
 	-- wait for count nonzero, update matrix and decrement count, repeat from wait
 	{"Int","2","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
-		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShiftBitopb[0]:IntOp(500)opb[1]:IntOp(8)))".. -- continue timer
+		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShiftBitopb[0]:IntOp(750)opb[1]:IntOp(8)))".. -- continue timer
 		"mux[1]:SavOp(kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"}, -- increment count
 	{"Int","3","Str","Matrixz(siz:1idx:0slf:0mat[0]:Matrix("..
 		"mat[0]:1.0mat[1]:0.0mat[2]:0.0mat[3]:0.0"..
@@ -763,8 +760,6 @@ Express = {
 	{"val","Str",{["opr"]={["ImmOp"]=true}},{}},
 	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
 	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
-	{"cvl","Configure",{["opr"]={["CfgOp"]=true}},{}},
-	{"mvl","Memory",{["opr"]={["MemOp"]=true}},{}},
 }
 Machine = {
 	{"xfr","Transfer",{},""},

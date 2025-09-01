@@ -645,12 +645,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (StrOp): {
 		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
 		datxStr(dat,exp->svl);} break;
-	case (CfgOp): {
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,exp->cvl);} break;
-	case (MemOp): {
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,exp->mvl);} break;
 	default: ERROR();}
 	// debug--;
 	return typ;
