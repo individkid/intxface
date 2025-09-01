@@ -332,19 +332,13 @@ float *planeWindow(float *mat)
     *matrc(range,0,3,4) = 1.0; *matrc(range,1,3,4) = -1.0; *matrc(range,2,3,4) = depth; *matrc(range,3,3,4) = (focal+depth)/focal;
     return planeSolve(mat,domain,range,4);
 }
-void planeDebug(float *model, float *view, float *proj, float *debug)
+void planeDebug(float *debug)
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
-    identmat(model,4);
-    identmat(view,4);
-    identmat(proj,4);
-    *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
-    *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
     identmat(debug,4);
     float time = processTime();
-    /* float time = (float)callInfo(RegisterPnum,0,planeRcfg)/1000.0 */
     float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
     float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(time*8.0f), 1.0f};
     float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
@@ -355,7 +349,7 @@ void planeDebug(float *model, float *view, float *proj, float *debug)
     float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
     break; case (Builtin): {
-    // TODO
+    // TODO call machineIval or callInfo for which transformation or projection to use
     }}
 }
 
@@ -547,6 +541,14 @@ void machineComp(int sig, int *arg)
     machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
 }
+void machineTest(int sig, int *arg)
+{
+    struct Center *center = machineCenter(sig,arg,TestArgs,TestDst,TestDstSub);
+    struct Matrix *matrix = machineMatrix(center,sig,arg,TestArgs,TestDst,TestDstSub);
+    float debug[16]; planeDebug(debug);
+    copymat(matrix->mat,debug,4);
+    machinePlace(center,sig,arg,TestArgs,TestDst,TestDstSub);
+}
 void machineBopy(int sig, int *arg)
 {
     int count = arg[BopyCount];
@@ -693,6 +695,7 @@ void machineSwitch(struct Machine *mptr)
     case (Self): machineSelf(mptr->sig,mptr->arg); break;
     case (Other): machineOther(mptr->sig,mptr->arg); break;
     case (Comp): machineComp(mptr->sig,mptr->arg); break;
+    case (Test): machineTest(mptr->sig,mptr->arg); break;
     case (Bopy): machineBopy(mptr->sig,mptr->arg); break;
     case (Copy): machineCopy(mptr->sig,mptr->arg); break;
     case (Dopy): machineDopy(mptr->sig,mptr->arg); break;
@@ -839,7 +842,6 @@ void planeTest(enum Thread tag, int idx)
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
-    float model[16]; float view[16]; float proj[16]; float debug[16];
     for (int i = 0; i < 4; i++) {struct Center *tmp = 0; 
     allocCenter(&tmp,1); centerPlace(tmp,i+11);}
     while (centerCheck(10)) planeWait(0,0);
@@ -847,12 +849,16 @@ void planeTest(enum Thread tag, int idx)
     int save = pull+11; struct Center *mat = centerPull(save); if (!mat) {planeWait(0,0); continue;}
     freeCenter(mat); pull = (pull+1)%4;
     mat->mem = Matrixz; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
-    planeDebug(model,view,proj,debug);
-    memcpy(&mat->mat[0],model,sizeof(struct Matrix));
-    memcpy(&mat->mat[1],view,sizeof(struct Matrix));
+    float debug[16]; planeDebug(debug);
+    float ident[16]; identmat(ident,4);
+    float proj[16]; identmat(proj,4);
+    *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
+    *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
+    memcpy(&mat->mat[0],ident,sizeof(struct Matrix));
+    memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],debug,sizeof(struct Matrix));
-    callCopy(mat,save,fnc);
+    callCopy(mat,save,fnc); // TODO only do this once initially after changing to use Test Transfer
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {/*int idx = 0;

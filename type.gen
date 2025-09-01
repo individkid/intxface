@@ -217,6 +217,7 @@ Transfer = {
 	"Self", -- clear to written
 	"Other", -- maintain as if
 	"Comp", -- compose for draw
+	"Test", -- time to matrix
 	"Bopy", -- memory to memory
 	"Copy", -- center to resource
 	"Dopy", -- center to center
@@ -259,6 +260,10 @@ CompArg = {
 	"CompSrcSub",
 	"CompDst",
 	"CompDstSub",
+}
+TestArg = {
+	"TestDst",
+	"TestDstSub",
 }
 BopyArg = {
 	"BopySrc",
@@ -772,9 +777,9 @@ Machine = {
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"res","Int",{["xfr"]={["Eval"]=true}},{}},
 	{"sig","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
+		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
+		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
