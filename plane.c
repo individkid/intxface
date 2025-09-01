@@ -40,7 +40,7 @@ void *pipeSem = 0;
 void *stdioSem = 0;
 void *timeSem = 0;
 void *dataSem = 0;
-void *evalSem = 0;
+void *evalSem = 0; int jknfo = 0;
 uftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
@@ -1001,6 +1001,9 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     if (ptr && ptr->mem == Expressz && val < ptr->siz) {
     {char *exp = 0; showExpress(&ptr->exp[val],&exp);
     printf("%s\n",exp); free(exp);}
+    if (waitSafe(evalSem) != 0) ERROR();
+    jknfo = 1;
+    if (postSafe(evalSem) != 1) ERROR();    
     machineVoid(&ptr->exp[val]);}
     centerPlace(ptr,idx);
 }
@@ -1023,7 +1026,8 @@ void planePutstr(const char *src)
 }
 void planeSetcfg(int val, int sub)
 {
-    callJnfo((enum Configure)sub,val,planeWcfg);
+    if (jknfo) callKnfo((enum Configure)sub,val,planeWcfg);
+    else callJnfo((enum Configure)sub,val,planeWcfg);
 }
 int planeRetcfg(int sub)
 {
@@ -1127,7 +1131,7 @@ void initPlan()
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(MachineIndex,1,planeWcfg);
     callJnfo(RegisterExpr,2,planeWcfg);
-    callJnfo(RegisterTime,1000<<8,planeWcfg);
+    callJnfo(RegisterTime,500<<8,planeWcfg);
     callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
     callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);

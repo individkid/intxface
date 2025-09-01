@@ -409,6 +409,7 @@ Bitwise = { -- little language bitwise
 	"NandBit",
 	"NorBit",
 	"EquBit",
+	"ShiftBit",
 	"PackBit",
 }
 Order = { -- ireg expression operators
@@ -600,8 +601,9 @@ Bootstrap = {
 	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"}, -- placeholder for centerCheck in main loop of planeTest
 	{"Int","1","Str","Machinez(siz:1idx:0slf:0mch[0]:Goto(exp[0]:IntOp(ivl:0)))"},
 	-- wait for count nonzero, update matrix and decrement count, repeat from wait
-	{"Int","2","Str","Expressz(siz:1idx:0slf:0exp[0]:SavOp("..
-		"kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1))))"}, -- increment count
+	{"Int","2","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
+		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShiftBitopb[0]:IntOp(500)opb[1]:IntOp(8)))".. -- continue timer
+		"mux[1]:SavOp(kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"}, -- increment count
 	{"Int","3","Str","Matrixz(siz:1idx:0slf:0mat[0]:Matrix("..
 		"mat[0]:1.0mat[1]:0.0mat[2]:0.0mat[3]:0.0"..
 		"mat[4]:1.0mat[5]:1.0mat[6]:0.0mat[7]:0.0"..
@@ -613,16 +615,16 @@ Bootstrap = {
 		"fnc[0]:FldOp("..
 			"fld[0]:ImmOp(val:Str(Configurez(siz:1idx:0slf:0cfg[0]:RegisterPlanval[0]:-1)))"..
 			"fld[1]:CndOp(siz:5"..
-				"cnd[0]:CmpOp(opc[0]:RetOp(RegisterShow)opc[1]:IntOp(0)cmp:EOCmp)".. -- (RegisterShow != 0 ? 1 : 0)
-				"cnd[1]:CmpOp(opc[0]:AddOp("..
-					"opa[0]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:ECCmp)"..
-					"opa[1]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(30)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
-					")opc[1]:IntOp(2)cmp:EOCmp)".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
-				"cnd[2]:CmpOp(opc[0]:AddOp("..
-					"opa[0]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(1)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
-					"opa[1]:CmpOp(opc[0]:BitOp(opb[0]:RetOp(RegisterShow)opb[1]:IntOp(30)bit:AndBit)opc[1]:IntOp(0)cmp:EOCmp)"..
-					")opc[1]:IntOp(2)cmp:EOCmp)".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
-				"cnd[3]:CmpOp(opc[0]:RetOp(RegisterShow)opc[1]:IntOp(1)cmp:EOCmp)".. -- (RegisterShow != 1 ? 1 : 0)
+				"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
+				"cnd[1]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
+					"opa[0]:CmpOp(cmp:ECCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
+					"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
+					")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
+				"cnd[2]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
+					"opa[0]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
+					"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
+					")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
+				"cnd[3]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(1))".. -- (RegisterShow != 1 ? 1 : 0)
 				"cnd[4]:IntOp(0)"..
 				"lst[0]:IntOp(%(return castPlan(\"Bringup\")))"..
 				"lst[1]:IntOp(%(return castPlan(\"Builtin\")))"..
@@ -737,10 +739,10 @@ Irrex = { -- permutation of permutations
 Express = {
 	{"opr","Operate",{},""},
 	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
-	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
 	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
-	{"opc","Express",{["opr"]={["CmpOp"]=true}},2},
+	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
+	{"opc","Express",{["opr"]={["CmpOp"]=true}},2},
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},

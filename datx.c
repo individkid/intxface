@@ -321,10 +321,10 @@ void datxOld(void **dat, float val)
 #define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
 #define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
 #define BINARY_BIT(LFT,RGT) datxBitwise(LFT,RGT,exp->bit)
-#define BINARY_BEGIN() {\
+#define BINARY_BEGIN(FLD) {\
 	void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0;\
-	typ0 = datxEval(&dat1,&exp->opb[1],typ);\
-	typ1 = datxEval(&dat0,&exp->opb[0],typ);\
+	typ0 = datxEval(&dat0,&exp->FLD[0],typ);\
+	typ1 = datxEval(&dat1,&exp->FLD[1],typ);\
 	if (typ == -1) typ = typ0; if (typ0 != typ1 || typ != typ0) ERROR();
 #define BINARY_DONE() ERROR();\
 	free(dat0); free(dat1);}
@@ -333,8 +333,8 @@ void datxOld(void **dat, float val)
 	TYPE lft = GET(0,dat0);\
 	TYPE rgt = GET(0,dat1);\
 	SET(dat,OP(lft,rgt));}
-#define BINARY_BLOCK(OP,STR)\
-	BINARY_BEGIN()\
+#define BINARY_BLOCK(OP,STR,FLD)\
+	BINARY_BEGIN(FLD)\
 	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
 	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else\
 	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
@@ -351,6 +351,7 @@ int datxBitwise(int lft, int rgt, enum Bitwise bit)
 	case (NandBit): return ~(lft&rgt);
 	case (NorBit): return ~(lft|rgt);
 	case (EquBit): return ~(lft^rgt);
+	case (ShiftBit): return (lft<<rgt);
 	case (PackBit): {
 	int idx = 0; int res = 0;
 	while (rgt) {
@@ -540,17 +541,17 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	// {char *opr = 0; showOperate(exp->opr,&opr);
 	// printf("datxEval %d %s\n",debug++,opr); free(opr);}
 	switch (exp->opr) {
-	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add") break;
-	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub") break;
-	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul") break;
-	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div") break;
-	case (RemOp): BINARY_BEGIN()
+	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add",opa) break;
+	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub",opa) break;
+	case (MulOp): BINARY_BLOCK(BINARY_MUL,"mul",opa) break;
+	case (DivOp): BINARY_BLOCK(BINARY_DIV,"div",opa) break;
+	case (RemOp): BINARY_BEGIN(opa)
 		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_REM) else
 		BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,BINARY_REM) else
 		BINARY_TYPE(double,"Num",*datxNumz,datxNum,BINARY_MOD) else
 		BINARY_TYPE(float,"Old",*datxOldz,datxOld,BINARY_FLM) else
 		BINARY_DONE() break;
-	case (BitOp): BINARY_BEGIN()
+	case (BitOp): BINARY_BEGIN(opb)
 		BINARY_TYPE(int,"Int",*datxIntz,datxInt,BINARY_BIT) else
 		BINARY_DONE() break;
 	case (CmpOp): {
@@ -595,9 +596,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxInt(dat,retptr(exp->cfg));} break;
 	case (SetOp): {
 		if (!setptr) ERROR();
-		int typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-		if (typ0 != identType("Int")) ERROR();
-		setptr(*datxIntz(0,dat),exp->cgs);} break;
+		void *dat0 = 0; int typ1 = identType("Int");
+		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
+		setptr(*datxIntz(0,dat0),exp->cgs);
+		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
