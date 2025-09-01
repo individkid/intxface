@@ -663,6 +663,13 @@ int machineIval(struct Express *exp)
     if (postSafe(dataSem) != 1) ERROR();
     return val;
 }
+void machineVoid(struct Express *exp)
+{
+    if (waitSafe(evalSem) != 0) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
+    int typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
+}
 int machineEscape(struct Center *current, int level, int next)
 {
     int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
@@ -737,8 +744,8 @@ void planeMachine(enum Thread tag, int idx)
     for (int next = last+1; next != last; last = ++next) {
     if (next < 0 || next >= current->siz) ERROR();
     struct Machine *mptr = &current->mch[next];
-    // {char *opr = 0; showTransfer(mptr->xfr,&opr);
-    // printf("planeMachine %s\n",opr); free(opr);}
+    {char *opr = 0; showMachine(mptr,&opr);
+    printf("%s\n",opr); free(opr);}
     switch (mptr->xfr) {default: machineSwitch(mptr); break;
     case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
     case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
@@ -991,11 +998,8 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     if (cfg != RegisterEval) ERROR();
     int idx = callInfo(RegisterExpr,0,planeRcfg);
     struct Center *ptr = centerPull(idx);
-    if (ptr && ptr->mem == Expressz && val < ptr->siz) {
-    if (postSafe(evalSem) != 1) ERROR();
-    void *dat = 0; int typ = datxEval(&dat,&ptr->exp[val],-1); free(dat);
-    int typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-    if (postSafe(evalSem) != 1) ERROR();}
+    if (ptr && ptr->mem == Expressz && val < ptr->siz)
+    machineVoid(&ptr->exp[val]);
     centerPlace(ptr,idx);
 }
 
@@ -1091,8 +1095,10 @@ void initBoot()
     const char **boot = malloc(size*sizeof(const char *)); size = 0;
     for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
     for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
-    for (int i = 0; i < size; i++) {int asiz = 0; int csiz = 0; int msiz = 0; int ssiz = 0;
-    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0}; char *str = 0;
+    for (int i = 0; i < size; i++) {
+    int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
+    struct Argument arg = {0}; struct Center cntr = {0};
+    struct Machine mchn = {0}; struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, boot[i], &asiz)) {
     copyArgument(&argument,&arg); freeArgument(&arg);
     if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
@@ -1102,10 +1108,42 @@ void initBoot()
     else if (hideMachine(&mchn, boot[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);
     if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
+    else if (hideExpress(&expr, boot[i], &esiz)) {
+    machineVoid(&expr); freeExpress(&expr);
+    if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
     else if (hideStr(&str,boot[i],&ssiz)) {
     planePutstr(str); freeStr(&str,1);
-    if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
+    if (i < cmnds) callInfo(RegisterShow,16,planeWots);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,boot[i]); exit(-1);}}
+}
+void initPlan()
+{
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+    break; case (Bringup): // no commandline arguments
+    callJnfo(RegisterPoll,1,planeWcfg);
+    callJnfo(MachineIndex,1,planeWcfg);
+    callJnfo(RegisterExpr,2,planeWcfg);
+    callJnfo(RegisterTime,1000<<8,planeWcfg);
+    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
+    callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    break; case (Builtin): // choose what to test from commandline
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    break; case (Regress): // choose how to interpret centers from pipe
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
+    break; case (Release): // use builtin machine to handle user and pipe
+    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 void initTest()
 {
@@ -1177,33 +1215,6 @@ void initTest()
     } break; case (Builtin): {
     } break; case (Regress): case (Release): {
     }}
-}
-void initPlan()
-{
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
-    default: ERROR();
-    break; case (Bringup): // no commandline arguments
-    callJnfo(RegisterPoll,1,planeWcfg);
-    callJnfo(MachineIndex,1,planeWcfg);
-    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
-    callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    break; case (Builtin): // choose what to test from commandline
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    break; case (Regress): // choose how to interpret centers from pipe
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
-    break; case (Release): // use builtin machine to handle user and pipe
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
 }
 
 void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype glfw)
