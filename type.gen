@@ -541,6 +541,12 @@ MemoryIns = {
 	{"Memory","Vertexz","Int","0","Resrc","VertexRes"},
 	{"Memory","Basisz","Int","0","Resrc","BasisRes"},
 }
+MemoryAlt = {
+	{"Memory","Matrixz","Int","0","Instr","PDerIns"},
+	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
+	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
+	{"Memory","Matrixz","Int","0","Format","LockFrm"},
+}
 ResrcIns = {
 	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
 	-- n>0: departures from n-1
@@ -568,6 +574,12 @@ ResrcIns = {
 	{"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
 	{"Resrc","DrawRes","Int","0","Format","ConstFrm"},
+}
+ResrcAlt = {
+	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
+	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
+	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
+	{"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 }
 MicroIns = {
 	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
@@ -602,6 +614,12 @@ MicroIns = {
 		{"Micro","MicroDebug","Int","%(dee = {\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}; for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(i+1) else return i+1 end end)","Resrc","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
 	{"Micro","MicroDebug","Int","6","Instr","IRDeeIns"},
 		{"Micro","MicroDebug","Int","6","Resrc","PipeRes"},
+}
+MicroAlt = {
+	{"Micro","MicroTest","Int","0","Instr","DerIns"},
+		{"Micro","MicroTest","Int","0","Resrc","ChainRes"},
+		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
+		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 }
 Bootstrap = {
 	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"}, -- placeholder for centerCheck in main loop of planeTest

@@ -433,6 +433,17 @@ struct Lnk {
 };
 struct ConstState {
     decltype(MemoryIns__Memory__Int__Instr) *memins;
+    decltype(MemoryIns__Memory__Int__Resrc) *memres;
+    decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
+    decltype(MemoryIns__Memory__Int__Format) *memfmt;
+    decltype(ResrcIns__Resrc__Int__Instr) *resins;
+    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
+    decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
+    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
+    decltype(MicroIns__Micro__Int__Instr) *micins;
+    decltype(MicroIns__Micro__Int__Resrc) *micres;
+    decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
+    decltype(MicroIns__Micro__Int__Format) *micfmt;
 };
 struct Loc {
     ResrcLoc loc; SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
@@ -1107,61 +1118,60 @@ struct CopyState : public ChangeState<Configure,Configures> {
         bool done = true;
         if (sub == 0) sav = {PDerIns,Resrcs,MiddleLoc,WholeFrm};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.res,dot.res,MemoryIns__Memory__Int__Resrc,typ,sub,Resrcs,log)) done = false;
-        if (builtin(sav.loc,dot.loc,MemoryIns__Memory__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
-        if (builtin(sav.fmt,dot.fmt,MemoryIns__Memory__Int__Format,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
         return !done;
     }
     static bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
         if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
-        if (builtin(sav.ins,dot.ins,ResrcIns__Resrc__Int__Instr,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.res,dot.res,ResrcIns__Resrc__Int__Resrc,typ,sub,Resrcs,log)) done = false;
-        if (builtin(sav.loc,dot.loc,ResrcIns__Resrc__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
-        if (builtin(sav.fmt,dot.fmt,ResrcIns__Resrc__Int__Format,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
+        if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
         return !done;
     }
     static bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
         if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
-        if (builtin(sav.ins,dot.ins,MicroIns__Micro__Int__Instr,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.res,dot.res,MicroIns__Micro__Int__Resrc,typ,sub,Resrcs,log)) done = false;
-        if (builtin(sav.loc,dot.loc,MicroIns__Micro__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
-        if (builtin(sav.fmt,dot.fmt,MicroIns__Micro__Int__Format,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
+        if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
         return !done;
     }
-    template <class Type> void push(Type typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    template <class Type> void push(Type typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
         HeapState<Ins> lst; int count = 0; Ins ins; Arg sav; Arg tmp; HeapState<Arg> dot;
-        for (int i = 0; iterate(typ,i,sav,tmp,array,log); i++) dot << tmp;
+        for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) lst << instruct(dot,i,typ,val,arg,siz,idx,count,log);
         if (idx != siz) EXIT
         push(lst,fnc,ptr,sub,log);
     }
-    void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
+    void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
         switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,log);}
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);}
     }
-    void push(Center *center, int sub, Fnc fnc, SmartState log) {
+    void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
         switch (center->mem) {default: {
-        auto f = MemoryIns__Memory__Int__Resrc(center->mem);
-        Resrc res = (f?f(0):Resrcs); if (res == Resrcs) EXIT
         int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
+        // TODO switch on array[ary].memfmt and array[ary].memins for arg
         int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
         // TODO allow for Configure Base and Size
         switch (center->mem) {default: EXIT
-        break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Matrixz): push(center->mem,(void*)center->mat,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Trianglez): push(center->mem,(void*)center->tri,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,log);
-        break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,log);}}
+        break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Uniformz): push(center->mem,(void*)center->uni,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Matrixz): push(center->mem,(void*)center->mat,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Trianglez): push(center->mem,(void*)center->tri,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,ary,log);}}
         break; case (Drawz): {int didx = 0;
         for (int i = 0; i < center->siz; i++)
-        push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,log);}
+        push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         push(ins,fnc,center,sub,log);}
@@ -1177,7 +1187,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,tot,wid,hei,
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,log);}
+            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
@@ -1188,7 +1198,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,siz,wid,hei,
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,log);}
+            push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
@@ -1199,7 +1209,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,siz,wid,hei,
             idx,tot};
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,log);}}
+            push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,ary,log);}}
     }
 };
 
@@ -1793,7 +1803,7 @@ struct MainState {
     ArrayState<DrawState,DrawRes,StackState::frames> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
     EnumState enumState[Resrcs+1];
-    ConstState constState;
+    ConstState constState[2];
     ThreadState threadState;
     CopyState copyState;
     CallState callState;
@@ -1831,9 +1841,33 @@ struct MainState {
             {DrawRes,&drawState},
             {BindRes,&bindState},
             {Resrcs,0}},
-        constState{MemoryIns__Memory__Int__Instr},
+        constState{{
+            MemoryIns__Memory__Int__Instr,
+            MemoryIns__Memory__Int__Resrc,
+            MemoryIns__Memory__Int__ResrcLoc,
+            MemoryIns__Memory__Int__Format,
+            ResrcIns__Resrc__Int__Instr,
+            ResrcIns__Resrc__Int__Resrc,
+            ResrcIns__Resrc__Int__ResrcLoc,
+            ResrcIns__Resrc__Int__Format,
+            MicroIns__Micro__Int__Instr,
+            MicroIns__Micro__Int__Resrc,
+            MicroIns__Micro__Int__ResrcLoc,
+            MicroIns__Micro__Int__Format},{
+            MemoryAlt__Memory__Int__Instr,
+            MemoryAlt__Memory__Int__Resrc,
+            MemoryAlt__Memory__Int__ResrcLoc,
+            MemoryAlt__Memory__Int__Format,
+            ResrcAlt__Resrc__Int__Instr,
+            ResrcAlt__Resrc__Int__Resrc,
+            ResrcAlt__Resrc__Int__ResrcLoc,
+            ResrcAlt__Resrc__Int__Format,
+            MicroAlt__Micro__Int__Instr,
+            MicroAlt__Micro__Int__Resrc,
+            MicroAlt__Micro__Int__ResrcLoc,
+            MicroAlt__Micro__Int__Format}},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,enumState,&constState) {
+        copyState(&threadState,enumState,constState) {
         std::cout << "MainState" << std::endl;
     }
     ~MainState() {
@@ -1844,8 +1878,9 @@ struct MainState {
 MainState *mptr = 0;
 // TODO glfw callbacks
 // request
-void vulkanCopy(Center *ptr, int sub, Fnc fnc) {
-    mptr->copyState.push(ptr,sub,fnc,SmartState());
+void vulkanCopy(Center *ptr, int sub, Fnc fnc, int ary, const char *dbg) {
+    if (dbg) mptr->copyState.push(ptr,sub,fnc,ary,SmartState(dbg));
+    else mptr->copyState.push(ptr,sub,fnc,ary,SmartState());
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {
