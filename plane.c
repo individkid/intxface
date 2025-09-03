@@ -741,6 +741,7 @@ void planeMachine(enum Thread tag, int idx)
 {
     while (1) {
     int index = callInfo(MachineIndex,0,planeRcfg);
+    if (index < 0) break;
     struct Center *current = centerPull(index);
     if (current->mem != Machinez) ERROR();
     int last = callInfo(MachineLast,0,planeRcfg)-1;

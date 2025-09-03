@@ -101,6 +101,7 @@ Request = {
 	"LockReq", -- call setup
 	"SizeReq", -- call resize if changed
 	"ExclReq", -- call resize and setup if changed
+	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
 Format = {
 	"VecFrm", -- VkFormat
@@ -120,7 +121,10 @@ Format = {
 	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
 	"SizeFrm", -- SizeReq IntExt base size
 	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
-	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(identifier of first in buffer) siz(buffer size) base(implied: same as idx) size(implied: same as siz)
+	"PartFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(from configure) size(from configure)
+	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
+	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
+	"LockFrm", -- LockReq IntExt ptr(raw data) idx(from center) siz(from center)
 	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
 	"CastFrm", -- BothReq ExtentExt ptr(elements) siz(number of elements) base(width) size(height)
 	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)

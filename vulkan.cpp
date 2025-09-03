@@ -431,8 +431,11 @@ struct BaseState;
 struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
 };
+struct ConstState {
+    decltype(MemoryIns__Memory__Int__Instr) *memins;
+};
 struct Loc {
-    ResrcLoc loc; SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt;
+    ResrcLoc loc; SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -465,21 +468,22 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Con con, Req req, Rsp rsp, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Con con, Req req, Rsp rsp, ConstState *ary, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push fail " << debug << std::endl;
         safe.post(); return false;}
         log << "push pass " << debug << " loc:" << loc << std::endl;
-        ploc[loc].req = req;
         plock += 1;
         safe.post();
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
+        ploc[loc].req = req;
         ploc[loc].rsp = rsp;
         ploc[loc].con = con;
         ploc[loc].loc = loc;
+        ploc[loc].ary = ary;
         return true;
     }
     void done(SmartState log) {
@@ -491,7 +495,7 @@ struct BaseState {
         safe.post();
     }
     void setre(ResrcLoc loc, Extent ext, int base, int size, SmartState log) {
-        push(0,0,0,0,loc,Con{.tag=Constants},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},log);
+        push(0,0,0,0,loc,Con{.tag=Constants},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},0,log);
         baseres(loc,log); baseups(loc,log);
     }
     void reset(SmartState log) {
@@ -509,6 +513,14 @@ struct BaseState {
         if (loc.max == ini); else {resize(loc,log); if (mask == 0) valid = true; mask |= msk;
         return true;}}
         return false;
+    }
+    void precall(Loc &loc, SmartState log) {
+        SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
+        SizeState ini = SizeState(InitExt);
+        int msk = 1<<*loc;
+        if (loc.max == ini) {
+        loc.max = max;
+        if (loc.max == ini); else {resize(loc,log); if (mask == 0) valid = true; mask |= msk;}}
     }
     VkFence basesiz(ResrcLoc loc, SmartState log) {
         // resize and setup
@@ -542,6 +554,15 @@ struct BaseState {
         if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
         nask |= 1<<loc;
         return setup(ploc[loc],log);        
+    }
+    VkFence baseone(ResrcLoc loc, SmartState log) {
+        // resize from initial and setup
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != OnceReq) EXIT
+        safe.post();
+        precall(ploc[loc],log);
+        nask |= 1<<loc;
+        return setup(ploc[loc],log);
     }
     void unlock(Loc &loc, SmartState log);
     void baseups(ResrcLoc loc, SmartState log) {
@@ -603,6 +624,7 @@ struct BaseState {
     static SizeState &max(Loc &loc) {return loc.max;}
     static Extent &ext(Loc &loc) {return loc.max.tag;}
     static Memory mem(Loc &loc) {return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);}
+    static ConstState *ary(Loc &loc) {return loc.ary;}
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
     virtual VkFence setup(Loc &loc, SmartState log) EXIT
@@ -663,9 +685,9 @@ struct BindState : public BaseState {
         if (bind[i] == 0) EXIT
         return bind[i];
     }
-    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Con con, Req req, Rsp rsp, SmartState log) {
+    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Con con, Req req, Rsp rsp, ConstState *ary, SmartState log) {
         if (!excl) EXIT
-        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,con,req,rsp,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,con,req,rsp,ary,log)) return false;
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf) EXIT
         bind[i] = buf;
@@ -796,7 +818,8 @@ struct ThreadState : public DoneState {
         break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
         break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
         break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);
-        break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);}}
+        break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);
+        break; case(OnceReq): push.fence = push.base->baseone(push.loc,push.log);}}
         after.push_back(push);}
         if (!after.empty()) break;
         safe.wait();
@@ -844,9 +867,11 @@ struct Arg {
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
     StackState *stack[Resrcs];
-    CopyState(ThreadState *thread, EnumState *stack) :
+    ConstState *array;
+    CopyState(ThreadState *thread, EnumState *stack, ConstState *ary) :
         thread(thread),
-        stack{0} {
+        stack{0},
+        array(ary) {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
     }
@@ -909,8 +934,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(DerIns): case(PDerIns): case(IDerIns):
             ins[i].req.pre = (ins[i].ins == PDerIns && final[res] == i);
-            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
-            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,log)) lim = i;}
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,array,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].loc,ins[i].con,ins[i].req,ins[i].rsp,array,log)) lim = i;}
             break; case(RDeeIns):
             if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(IRDeeIns):
@@ -1032,6 +1057,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (WholeFrm):
         req.tag = BothReq; req.ext = IntExt;
         req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
+        break; case (OnceFrm):
+        req.tag = OnceReq; req.ext = IntExt;
+        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
+        break; case (LockFrm):
+        req.tag = LockReq; req.ext = IntExt;
+        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx);
         break; case (IndexFrm):
         req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx);
         break; case (CastFrm):
@@ -1072,16 +1103,16 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (arg == inv) arg = sav; else sav = arg;
         return (val != inv);
     }
-    static bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, SmartState log) {
+    static bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
         if (sub == 0) sav = {PDerIns,Resrcs,MiddleLoc,WholeFrm};
-        if (builtin(sav.ins,dot.ins,MemoryIns__Memory__Int__Instr,typ,sub,Instrs,log)) done = false;
+        if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.res,dot.res,MemoryIns__Memory__Int__Resrc,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,MemoryIns__Memory__Int__ResrcLoc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,MemoryIns__Memory__Int__Format,typ,sub,Formats,log)) done = false;
         return !done;
     }
-    static bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, SmartState log) {
+    static bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
         if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
         if (builtin(sav.ins,dot.ins,ResrcIns__Resrc__Int__Instr,typ,sub,Instrs,log)) done = false;
@@ -1090,7 +1121,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (builtin(sav.fmt,dot.fmt,ResrcIns__Resrc__Int__Format,typ,sub,Formats,log)) done = false;
         return !done;
     }
-    static bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, SmartState log) {
+    static bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
         if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
         if (builtin(sav.ins,dot.ins,MicroIns__Micro__Int__Instr,typ,sub,Instrs,log)) done = false;
@@ -1101,7 +1132,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     template <class Type> void push(Type typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, SmartState log) {
         HeapState<Ins> lst; int count = 0; Ins ins; Arg sav; Arg tmp; HeapState<Arg> dot;
-        for (int i = 0; iterate(typ,i,sav,tmp,log); i++) dot << tmp;
+        for (int i = 0; iterate(typ,i,sav,tmp,array,log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) lst << instruct(dot,i,typ,val,arg,siz,idx,count,log);
         if (idx != siz) EXIT
         push(lst,fnc,ptr,sub,log);
@@ -1694,7 +1725,7 @@ struct DrawState : public BaseState {
         bool middle = false;
         log << "micro " << debug << " " << max(loc) << std::endl;
         Arg sav; Arg tmp; HeapState<Arg> dot;
-        for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,log); i++) dot << tmp;
+        for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,ary(loc),log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++)
         if (dot[i].loc == MiddleLoc && dot[i].ins == RDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == IRDeeIns ||
@@ -1762,6 +1793,7 @@ struct MainState {
     ArrayState<DrawState,DrawRes,StackState::frames> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
     EnumState enumState[Resrcs+1];
+    ConstState constState;
     ThreadState threadState;
     CopyState copyState;
     CallState callState;
@@ -1799,8 +1831,9 @@ struct MainState {
             {DrawRes,&drawState},
             {BindRes,&bindState},
             {Resrcs,0}},
+        constState{MemoryIns__Memory__Int__Instr},
         threadState(logicalState.device,&copyState),
-        copyState(&threadState,enumState) {
+        copyState(&threadState,enumState,&constState) {
         std::cout << "MainState" << std::endl;
     }
     ~MainState() {
