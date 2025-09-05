@@ -1236,8 +1236,7 @@ void initTest()
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
     callCopy(eek,Peekz,fun,0,0);
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
-    int lim = 2; // ConstantFrames
-    mat->mem = Matrixz; mat->slf = lim; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
+    mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; identmat(proj,4);
     *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
@@ -1246,7 +1245,7 @@ void initTest()
     memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
-    for (int i = 0; i < lim; i++) callCopy(mat,Matrixz,fnc,1,0);
+    for (int i = 0; i < frames; i++) callCopy(mat,Matrixz,fnc,1,0);
     } break; case (Builtin): {
     } break; case (Regress): case (Release): {
     }}
