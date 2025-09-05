@@ -141,26 +141,6 @@ Instr = {
 	"WDeeIns", -- increment write lock in current
 }
 Configure = {
-	"IndexBase",
-	"IndexSize",
-	"BringupBase",
-	"BringupSize",
-	"ImageBase",
-	"ImageSize",
-	"UniformBase",
-	"UniformSize",
-	"MatrixBase",
-	"MatrixSize",
-	"TriangleBase",
-	"TriangleSize",
-	"NumericBase",
-	"NumericSize",
-	"VertexBase",
-	"VertexSize",
-	"BasisBase",
-	"BasisSize",
-	"PierceBase",
-	"PierceSize",
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
@@ -215,6 +195,7 @@ Transfer = {
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
 	"Eval", -- call datxEval
+	"Merge", -- combine src to dst
 	"Click", -- change manipulator
 	"Manip", -- manipulate local
 	"Pulse", -- clear to towrite
@@ -230,6 +211,10 @@ Transfer = {
 	"Jump", -- skip if true
 	"Goto", -- jump if true
 	"Nest", -- nest to level
+}
+MergeArg = {
+	"MergeSrc",
+	"MergeDst",
 }
 ClickArg = {
 	"ClickSrc",
@@ -536,6 +521,7 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(aft))"},
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
+	{"Memory","Matrixz","Int","0","Format","LockFrm"},
 	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
 	{"Memory","Numericz","Int","0","Resrc","NumericRes"},
 	{"Memory","Vertexz","Int","0","Resrc","VertexRes"},
@@ -545,7 +531,7 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","PDerIns"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
-	{"Memory","Matrixz","Int","0","Format","LockFrm"},
+	{"Memory","Matrixz","Int","0","Format","WholeFrm"},
 }
 ResrcIns = {
 	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
@@ -621,44 +607,56 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 }
+-- i<Memorys centerPull(i)->mem==i
+-- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
+-- i>Memorys+4 Machine arrays as callable procedures
+-- i==Machinez is main machine that waits for bit CopyThd in RegisterWake
 Bootstrap = {
-	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"}, -- placeholder for centerCheck in main loop of planeTest
-	{"Int","1","Str","Machinez(siz:1idx:0slf:0mch[0]:Goto(exp[0]:IntOp(ivl:0)))"},
+	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"},
+	-- also used for centerCheck in main loop of planeTest
+	{"Int","1","Str","Bringupz(siz:0idx:0slf:0)"},
+	{"Int","2","Str","Imagez(siz:0idx:0slf:0)"},
+	{"Int","3","Str","Uniformz(siz:0idx:0slf:0)"},
+	{"Int","4","Str","Matrixz(siz:0idx:0slf:0)"},
+	{"Int","5","Str","Trianglez(siz:0idx:0slf:0)"},
+	{"Int","6","Str","Numericz(siz:0idx:0slf:0)"},
+	{"Int","7","Str","Vertexz(siz:0idx:0slf:0)"},
+	{"Int","8","Str","Basisz(siz:0idx:0slf:0)"},
+	{"Int","9","Str","Peekz(siz:0idx:0slf:0)"},
+	{"Int","10","Str","Pokez(siz:0idx:0slf:0)"},
+	{"Int","11","Str","Drawz(siz:0idx:0slf:0)"},
+	{"Int","12","Str","Instrz(siz:0idx:0slf:0)"},
+	{"Int","13","Str","Stringz(siz:0idx:0slf:0)"},
+	{"Int","14","Str","Machinez(siz:1idx:0slf:0mch[0]:Goto(exp[0]:IntOp(0)))"},
 	-- wait for count nonzero, update matrix and decrement count, repeat from wait
-	{"Int","2","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
-		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShiftBitopb[0]:IntOp(750)opb[1]:IntOp(8)))".. -- continue timer
-		"mux[1]:SavOp(kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"}, -- increment count
-	{"Int","3","Str","Matrixz(siz:1idx:0slf:0mat[0]:Matrix("..
-		"mat[0]:1.0mat[1]:0.0mat[2]:0.0mat[3]:0.0"..
-		"mat[4]:1.0mat[5]:1.0mat[6]:0.0mat[7]:0.0"..
-		"mat[8]:1.0mat[9]:0.0mat[10]:1.0mat[11]:0.0"..
-		"mat[12]:1.0mat[13]:0.0mat[14]:0.0mat[15]:1.0))"}, -- for use by planeTest
-	{"Int","4","Str","Kernelz(siz:0idx:0slf:0)"}, -- for plans after Bringup
-	{"Int","5","Str","SavOp(kys:Str(count)sav[0]:IntOp(0))"}, -- initialize count
-	{"Int","6","Str","Eval("..
-		"fnc[0]:FldOp("..
-			"fld[0]:ImmOp(val:Str(Configurez(siz:1idx:0slf:0cfg[0]:RegisterPlanval[0]:-1)))"..
-			"fld[1]:CndOp(siz:5"..
-				"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
-				"cnd[1]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
-					"opa[0]:CmpOp(cmp:ECCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
-					"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
-					")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
-				"cnd[2]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
-					"opa[0]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
-					"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
-					")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
-				"cnd[3]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(1))".. -- (RegisterShow != 1 ? 1 : 0)
-				"cnd[4]:IntOp(0)"..
-				"lst[0]:IntOp(%(return castPlan(\"Bringup\")))"..
-				"lst[1]:IntOp(%(return castPlan(\"Builtin\")))"..
-				"lst[2]:IntOp(%(return castPlan(\"Regress\")))"..
-				"lst[3]:IntOp(%(return castPlan(\"Release\")))"..
-				"lst[4]:IntOp(-1))"..
-			"fld[2]:IntOp(ivl:5)"..
-			"fld[3]:IntOp(ivl:0))"..
-		"res:11)"},
-	{"Int","7","Str","Copy(sig:1arg[0]:11)"},
+	{"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
+		-- continue timer and increment count
+		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShiftBitopb[0]:IntOp(750)opb[1]:IntOp(8)))"..
+		"mux[1]:SavOp(kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"},
+	{"Int","16","Str","Kernelz(siz:0idx:0slf:0)"}, -- for plans after Bringup
+	{"Int","17","Str","Configurez(siz:0idx:0slf:0)"},
+	{"Int","18","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
+	{"Int","19","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
+	{"Int","20","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
+	{"Int","21","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
+	{"Int","22","Str","SavOp(kys:Str(count)sav[0]:IntOp(0))"}, -- initialize count
+	{"Int","23","Str","Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
+		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
+		"cnd[1]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
+			"opa[0]:CmpOp(cmp:ECCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
+			"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
+			")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
+		"cnd[2]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
+			"opa[0]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
+			"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
+			")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
+		"cnd[3]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(1))".. -- (RegisterShow != 1 ? 1 : 0)
+		"cnd[4]:IntOp(0)"..
+		"lst[0]:IntOp(%(return castPlan(\"Bringup\")))"..
+		"lst[1]:IntOp(%(return castPlan(\"Builtin\")))"..
+		"lst[2]:IntOp(%(return castPlan(\"Regress\")))"..
+		"lst[3]:IntOp(%(return castPlan(\"Release\")))"..
+		"lst[4]:IntOp(-1)))"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
@@ -792,15 +790,15 @@ Machine = {
 	{"xfr","Transfer",{},""},
 	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
 	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
-	{"idx","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
+	{"idx","Express",{["xfr"]={["Stage"]=true,["Tsage"]=true}},1},
 	{"num","Int",{["xfr"]={["Force"]=true}},{}},
 	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
-	{"val","Int",{["xfr"]={["Force"]=true}},"num"},
+	{"val","Express",{["xfr"]={["Force"]=true}},"num"},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
-	{"res","Int",{["xfr"]={["Eval"]=true}},{}},
+	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"sig","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
 		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
-	{"arg","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
+	{"arg","Express",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
 		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},

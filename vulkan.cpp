@@ -1157,9 +1157,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
         switch (center->mem) {default: {
         int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
-        // TODO switch on array[ary].memfmt and array[ary].memins for arg
         int arg[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
-        // TODO allow for Configure Base and Size
         switch (center->mem) {default: EXIT
         break; case (Indexz): push(center->mem,(void*)center->ind,arg,aiz,adx,center,sub,fnc,ary,log);
         break; case (Bringupz): push(center->mem,(void*)center->ver,arg,aiz,adx,center,sub,fnc,ary,log);
