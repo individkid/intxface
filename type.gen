@@ -64,6 +64,7 @@ Resrc = { -- per variation of BaseState
 	"BasisRes",
 	"DebugRes",
 	"PierceRes",
+	"DepthRes",
 	"ChainRes",
 	"DrawRes",
 	"BindRes",
@@ -73,6 +74,7 @@ Micro = { -- what runs on gpu
 	"MicroDebug", -- testing microcode
 	"MicroDisplay", -- indexed storage
 	"MicroPierce", -- fragment feedback
+	"MicroDepth", -- fixed point
 }
 Constant = {
 	"MicroCon",
@@ -456,11 +458,13 @@ ResrcIndex = {
 	{"Resrc","SwapRes","Int","0","Int","0"},
 	{"Resrc","DebugRes","Int","0","Int","1"},
 	{"Resrc","PierceRes","Int","0","Int","2"},
+	{"Resrc","DepthRes","Int","0","Int","3"},
 }
 IndexResrc = {
 	{"Int","0","Int","0","Resrc","SwapRes"},
 	{"Int","1","Int","0","Resrc","DebugRes"},
 	{"Int","2","Int","0","Resrc","PierceRes"},
+	{"Int","3","Int","0","Resrc","DepthRes"},
 }
 FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
@@ -473,6 +477,8 @@ UniformResrc = {
 	{"Micro","MicroDisplay","Int","1","Resrc","UniformRes"},
 	{"Micro","MicroPierce","Int","0","Resrc","MatrixRes"},
 	{"Micro","MicroPierce","Int","1","Resrc","UniformRes"},
+	{"Micro","MicroDepth","Int","0","Resrc","MatrixRes"},
+	{"Micro","MicroDepth","Int","1","Resrc","UniformRes"},
 }
 StorageResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","Resrcs"},
@@ -485,6 +491,10 @@ StorageResrc = {
 	{"Micro","MicroPierce","Int","1","Resrc","TriangleRes"},
 	{"Micro","MicroPierce","Int","2","Resrc","NumericRes"},
 	{"Micro","MicroPierce","Int","3","Resrc","VertexRes"},
+	{"Micro","MicroDepth","Int","0","Resrc","BasisRes"},
+	{"Micro","MicroDepth","Int","1","Resrc","TriangleRes"},
+	{"Micro","MicroDepth","Int","2","Resrc","NumericRes"},
+	{"Micro","MicroDepth","Int","3","Resrc","VertexRes"},
 }
 SamplerResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
@@ -498,18 +508,21 @@ RenderResrc = {
 	{"Micro","MicroDebug","Int","0","Resrc","DebugRes"},
 	{"Micro","MicroDisplay","Int","0","Resrc","SwapRes"},
 	{"Micro","MicroPierce","Int","0","Resrc","PierceRes"},
+	{"Micro","MicroDepth","Int","0","Resrc","DepthRes"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Int","0","Str","vertexTestG"},
 	{"Micro","MicroDebug","Int","0","Str","vertexDebugG"},
 	{"Micro","MicroDisplay","Int","0","Str","vertexDisplayG"},
 	{"Micro","MicroPierce","Int","0","Str","vertexPierceG"},
+	{"Micro","MicroDepth","Int","0","Str","vertexDepthG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Int","0","Str","fragmentTestG"},
 	{"Micro","MicroDebug","Int","0","Str","fragmentDebugG"},
 	{"Micro","MicroDisplay","Int","0","Str","fragmentDisplayG"},
 	{"Micro","MicroPierce","Int","0","Str","fragmentPierceG"},
+	{"Micro","MicroDepth","Int","0","Str","fragmentDepthG"},
 }
 MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,MiddleLoc,WholeFrm

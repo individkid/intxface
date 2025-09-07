@@ -17,6 +17,7 @@ fragmentDebugG: vulkan.g
 fragmentDisplayG: vulkan.g
 fragmentTestG: vulkan.g
 fragmentPierceG: vulkan.g
+fragmentDepthG: vulkan.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
 holeC.o: face.h hole.c proto.h type.h
@@ -33,7 +34,7 @@ luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h metx.h plane.c plane.h proto.h stlx.h type.h
 planra.log: planraC
-vulkan.log: fragmentPierceG fragmentDebugG fragmentDisplayG fragmentTestG texture.jpg vertexPierceG vertexDebugG vertexDisplayG vertexTestG vulkanCpp
+vulkan.log: fragmentDepthG fragmentPierceG fragmentDebugG fragmentDisplayG fragmentTestG texture.jpg vertexDepthG vertexPierceG vertexDebugG vertexDisplayG vertexTestG vulkanCpp
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
@@ -69,6 +70,7 @@ vertexDebugG: vulkan.g
 vertexDisplayG: vulkan.g
 vertexTestG: vulkan.g
 vertexPierceG: vulkan.g
+vertexDepthG: vulkan.g
 vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o vulkanCpp.o vulkanCpp.typeC.o
 vulkanCpp.o: face.h fmtx.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen
