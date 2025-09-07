@@ -128,7 +128,7 @@ struct PhysicalState {
 const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
 struct LogicalState {
-    static const int passes = 2;
+    static const int passes = Micros;
     VkDevice device;
     VkQueue graphics;
     VkQueue present;
@@ -338,7 +338,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (NumericRes): return "NumericRes";
         case (VertexRes): return "VertexRes";
         case (BasisRes): return "BasisRes";
-        case (PierceRes): return "PierceRes";
+        case (DebugRes): return "DebugRes";
         case (ChainRes): return "ChainRes";
         case (DrawRes): return "DrawRes";
         case (BindRes): return "BindRes";}
@@ -1547,12 +1547,12 @@ struct ImageState : public BaseState {
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         VkFormat forms = PhysicalState::vulkanFormat(res());
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
-        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
+        if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
         createImage(device, physical, /*TODO:*/texWidth, texHeight, forms/*:TODO*/, /*TODO:*/flags/*:TODO*/, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         if (res() == ImageRes) {
         textureSampler = createTextureSampler(device,properties);}
-        if (res() == PierceRes) {
+        if (res() == DebugRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
@@ -1572,7 +1572,7 @@ struct ImageState : public BaseState {
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
         if (*loc == ResizeLoc) {
-        if (res() == PierceRes) {
+        if (res() == DebugRes) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
@@ -1588,7 +1588,7 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = PierceRes;
+        Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = DebugRes;
         VkFormat forms = PhysicalState::vulkanFormat(res());
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
@@ -1743,7 +1743,7 @@ struct DrawState : public BaseState {
         break; case (PipeRes): pipePtr = res(PipeRes);
         break; case (SwapRes): swapPtr = res(SwapRes);
         break; case (ChainRes): framePtr = res(ChainRes);
-        break; case (PierceRes): framePtr = swapPtr = res(PierceRes);
+        break; case (DebugRes): framePtr = swapPtr = res(DebugRes);
         break; case (IndexRes): indexPtr = res(IndexRes);
         break; case (BringupRes): fetchPtr = res(BringupRes);
         break; case (ImageRes): imagePtr = res(ImageRes); imageIdx = index++;
@@ -1796,7 +1796,7 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
-    ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
+    ArrayState<ImageState,DebugRes,StackState::frames> pierceState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
     ArrayState<DrawState,DrawRes,StackState::frames> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
@@ -1834,7 +1834,7 @@ struct MainState {
             {NumericRes,&numericState},
             {VertexRes,&vertexState},
             {BasisRes,&basisState},
-            {PierceRes,&pierceState},
+            {DebugRes,&pierceState},
             {ChainRes,&chainState},
             {DrawRes,&drawState},
             {BindRes,&bindState},

@@ -62,15 +62,17 @@ Resrc = { -- per variation of BaseState
 	"NumericRes",
 	"VertexRes",
 	"BasisRes",
+	"DebugRes",
 	"PierceRes",
 	"ChainRes",
 	"DrawRes",
 	"BindRes",
 }
 Micro = { -- what runs on gpu
-	"MicroTest", -- for Bringup Plan
-	"MicroDebug", -- for testing microcode
+	"MicroTest", -- Bringup Plan
+	"MicroDebug", -- testing microcode
 	"MicroDisplay", -- indexed storage
+	"MicroPierce", -- fragment feedback
 }
 Constant = {
 	"MicroCon",
@@ -443,7 +445,7 @@ ResrcFormat = {
 	{"Resrc","VertexRes","Int","1","Format","VecFrm"},
 	{"Resrc","VertexRes","Int","2","Format","UvecFrm"},
 	{"Resrc","SwapRes","Int","0","Format","SrgbFrm"},
-	{"Resrc","PierceRes","Int","0","Format","SfloatFrm"},
+	{"Resrc","DebugRes","Int","0","Format","SfloatFrm"},
 }
 ResrcElement = {
 	{"Resrc","VertexRes","Int","0","Int","4"},
@@ -452,11 +454,13 @@ ResrcElement = {
 }
 ResrcIndex = {
 	{"Resrc","SwapRes","Int","0","Int","0"},
-	{"Resrc","PierceRes","Int","0","Int","1"},
+	{"Resrc","DebugRes","Int","0","Int","1"},
+	{"Resrc","PierceRes","Int","0","Int","2"},
 }
 IndexResrc = {
 	{"Int","0","Int","0","Resrc","SwapRes"},
-	{"Int","1","Int","0","Resrc","PierceRes"},
+	{"Int","1","Int","0","Resrc","DebugRes"},
+	{"Int","2","Int","0","Resrc","PierceRes"},
 }
 FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
@@ -465,35 +469,47 @@ FetchResrc = {
 UniformResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","MatrixRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroDisplay","Int","0","Resrc","UniformRes"},
+	{"Micro","MicroDisplay","Int","0","Resrc","MatrixRes"},
+	{"Micro","MicroDisplay","Int","1","Resrc","UniformRes"},
+	{"Micro","MicroPierce","Int","0","Resrc","MatrixRes"},
+	{"Micro","MicroPierce","Int","1","Resrc","UniformRes"},
 }
 StorageResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","Resrcs"},
 	{"Micro","MicroDebug","Int","0","Resrc","Resrcs"},
-	{"Micro","MicroDisplay","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroDisplay","Int","1","Resrc","BasisRes"},
-	{"Micro","MicroDisplay","Int","2","Resrc","TriangleRes"},
-	{"Micro","MicroDisplay","Int","3","Resrc","NumericRes"},
-	{"Micro","MicroDisplay","Int","4","Resrc","VertexRes"},
+	{"Micro","MicroDisplay","Int","0","Resrc","BasisRes"},
+	{"Micro","MicroDisplay","Int","1","Resrc","TriangleRes"},
+	{"Micro","MicroDisplay","Int","2","Resrc","NumericRes"},
+	{"Micro","MicroDisplay","Int","3","Resrc","VertexRes"},
+	{"Micro","MicroPierce","Int","0","Resrc","BasisRes"},
+	{"Micro","MicroPierce","Int","1","Resrc","TriangleRes"},
+	{"Micro","MicroPierce","Int","2","Resrc","NumericRes"},
+	{"Micro","MicroPierce","Int","3","Resrc","VertexRes"},
 }
 SamplerResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","ImageRes"},
 }
+RelateResrc = {
+	{"Micro","MicroDisplay","Int","0","Resrc","PierceRes"},
+}
 RenderResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","SwapRes"},
-	{"Micro","MicroDebug","Int","0","Resrc","PierceRes"},
+	{"Micro","MicroDebug","Int","0","Resrc","DebugRes"},
 	{"Micro","MicroDisplay","Int","0","Resrc","SwapRes"},
+	{"Micro","MicroPierce","Int","0","Resrc","PierceRes"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Int","0","Str","vertexTestG"},
 	{"Micro","MicroDebug","Int","0","Str","vertexDebugG"},
 	{"Micro","MicroDisplay","Int","0","Str","vertexDisplayG"},
+	{"Micro","MicroPierce","Int","0","Str","vertexPierceG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Int","0","Str","fragmentTestG"},
 	{"Micro","MicroDebug","Int","0","Str","fragmentDebugG"},
 	{"Micro","MicroDisplay","Int","0","Str","fragmentDisplayG"},
+	{"Micro","MicroPierce","Int","0","Str","fragmentPierceG"},
 }
 MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,MiddleLoc,WholeFrm
@@ -501,7 +517,7 @@ MemoryIns = {
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
-	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\"}"..
+	"res={\"ImageRes\",\"DebugRes\",\"DebugRes\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
 	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
 	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
@@ -553,9 +569,9 @@ ResrcIns = {
 	{"Resrc","NumericRes","Int","0","Resrc","NumericRes"},
 	{"Resrc","VertexRes","Int","0","Resrc","VertexRes"},
 	{"Resrc","BasisRes","Int","0","Resrc","BasisRes"},
-	{"Resrc","PierceRes","Int","0","Instr","IDerIns"},
-	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
-	{"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
+	{"Resrc","DebugRes","Int","0","Instr","IDerIns"},
+	{"Resrc","DebugRes","Int","0","Resrc","DebugRes"},
+	{"Resrc","DebugRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
 	{"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
@@ -595,7 +611,7 @@ MicroIns = {
 		{"Micro","MicroDebug","Int","0","ResrcLoc","MiddleLoc"},
 		{"Micro","MicroDebug","Int","0","Format","MicroFrm"},
 	{"Micro","MicroDebug","Int","1","Instr","WDeeIns"},
-		{"Micro","MicroDebug","Int","1","Resrc","PierceRes"},
+		{"Micro","MicroDebug","Int","1","Resrc","DebugRes"},
 	{"Micro","MicroDebug","Int","2","Instr","RDeeIns"},
 		{"Micro","MicroDebug","Int","%(dee = {\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}; for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(i+1) else return i+1 end end)","Resrc","%(for i,v in ipairs(dee) do if i~=#dee then coroutine.yield(v) else return v end end)"},
 	{"Micro","MicroDebug","Int","6","Instr","IRDeeIns"},
