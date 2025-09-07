@@ -25,7 +25,7 @@ extern "C" {
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
 #define RI(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
-#define RF(NAME,RES,SUB) (NAME##__Resrc__Int__Format(RES)?(NAME##__Resrc__Int__Format(RES)(SUB)):Formats)
+#define RP(NAME,RES,SUB) (NAME##__Resrc__Int__Packing(RES)?(NAME##__Resrc__Int__Packing(RES)(SUB)):Packings)
 #define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
 #define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
 #define IR(NAME,IDX,SUB) (NAME##__Int__Int__Resrc(IDX)?(NAME##__Int__Int__Resrc(IDX)(SUB)):Resrcs)
@@ -86,7 +86,7 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 struct PhysicalState {
     static const char *deviceExtensions[];
     static VkFormat vulkanFormat(Resrc i) {
-        switch (RF(ResrcFormat,i,0)) {default: return VK_FORMAT_R8G8B8A8_SRGB;
+        switch (RP(ResrcPacking,i,0)) {default: return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
@@ -339,6 +339,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (VertexRes): return "VertexRes";
         case (BasisRes): return "BasisRes";
         case (DebugRes): return "DebugRes";
+        case (PierceRes): return "PierceRes";
+        case (DepthRes): return "DepthRes";
         case (ChainRes): return "ChainRes";
         case (DrawRes): return "DrawRes";
         case (BindRes): return "BindRes";}
@@ -2523,11 +2525,11 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
         bindingDescription.stride = RI(ResrcStride,res,0);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; RF(ResrcFormat,res,j) != Formats; j++) {
+    for (int j = 0; RP(ResrcPacking,res,j) != Packings; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
         attributeDescription.binding = i;
         attributeDescription.location = j;
-        switch (RF(ResrcFormat,res,j)) {
+        switch (RP(ResrcPacking,res,j)) {
         default: EXIT
         case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}

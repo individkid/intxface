@@ -107,13 +107,15 @@ Request = {
 	"ExclReq", -- call resize and setup if changed
 	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
+Packing = { -- VkFormat
+	"VecFrm",
+	"UvecFrm",
+	"UintFrm",
+	"SintFrm",
+	"SfloatFrm",
+	"SrgbFrm",
+}
 Format = {
-	"VecFrm", -- VkFormat
-	"UvecFrm", -- VkFormat
-	"UintFrm", -- VkFormat
-	"SintFrm", -- VkFormat
-	"SfloatFrm", -- VkFormat
-	"SrgbFrm", -- VkFormat
 	"ImageFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
 	"WonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
@@ -442,12 +444,12 @@ ResrcOffset = {
 	{"Resrc","VertexRes","Int","1","Int","16"},
 	{"Resrc","VertexRes","Int","2","Int","32"},
 }
-ResrcFormat = {
-	{"Resrc","VertexRes","Int","0","Format","VecFrm"},
-	{"Resrc","VertexRes","Int","1","Format","VecFrm"},
-	{"Resrc","VertexRes","Int","2","Format","UvecFrm"},
-	{"Resrc","SwapRes","Int","0","Format","SrgbFrm"},
-	{"Resrc","DebugRes","Int","0","Format","SfloatFrm"},
+ResrcPacking = {
+	{"Resrc","VertexRes","Int","0","Packing","VecFrm"},
+	{"Resrc","VertexRes","Int","1","Packing","VecFrm"},
+	{"Resrc","VertexRes","Int","2","Packing","UvecFrm"},
+	{"Resrc","SwapRes","Int","0","Packing","SrgbFrm"},
+	{"Resrc","DebugRes","Int","0","Packing","SfloatFrm"},
 }
 ResrcElement = {
 	{"Resrc","VertexRes","Int","0","Int","4"},
