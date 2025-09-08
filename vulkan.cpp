@@ -24,11 +24,14 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
-#define RI(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
-#define RP(NAME,RES,SUB) (NAME##__Resrc__Int__Packing(RES)?(NAME##__Resrc__Int__Packing(RES)(SUB)):Packings)
+#define RI(NAME,RES) NAME##__Resrc__Int(RES)
+#define RO(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
+#define RF(NAME,RES,SUB) (NAME##__Resrc__Int__Packing(RES)?(NAME##__Resrc__Int__Packing(RES)(SUB)):Packings)
+#define RP(NAME,RES) NAME##__Resrc__Packing(RES)
 #define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
+#define MF(NAME,MIC) NAME##__Micro__Resrc(MIC)
 #define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
-#define IR(NAME,IDX,SUB) (NAME##__Int__Int__Resrc(IDX)?(NAME##__Int__Int__Resrc(IDX)(SUB)):Resrcs)
+#define IR(NAME,IDX) NAME##__Int__Resrc(IDX)
 
 // TODO declare glfw callbacks
 
@@ -85,22 +88,15 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 
 struct PhysicalState {
     static const char *deviceExtensions[];
-    static VkFormat vulkanFormat(Resrc i) {
-        switch (RP(ResrcFormat,i,0)) {default: ERROR();
-        break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (SintFrm): return VK_FORMAT_R32_SINT;
-        break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
-        return VK_FORMAT_R8G8B8A8_SRGB;
-    }
     static VkFormat vulkanPacking(Resrc i) {
-        switch (RP(ResrcPacking,i,0)) {default: ERROR();
+        switch (RP(ResrcPacking,i)) {default: ERROR();
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
     }
     static VkFormat vulkanPacking(int i) {
-        return vulkanPacking(IR(IndexResrc,i,0));
+        return vulkanPacking(IR(IndexResrc,i));
     }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
@@ -1266,9 +1262,9 @@ struct SwapState : public BaseState {
         presentMode(StackState::presentMode),
         graphicsFamily(StackState::graphicsFamily),
         presentFamily(StackState::presentFamily),
-        imageFormat(StackState::imageFormat[RI(ResrcIndex,res(),0)]),
+        imageFormat(StackState::imageFormat[RI(ResrcIndex,res())]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[RI(ResrcIndex,res(),0)]),
+        renderPass(StackState::renderPass[RI(ResrcIndex,res())]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1346,7 +1342,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return renderPass[RI(ResrcIndex,MR(RenderResrc,micro,0),0)];}
+    VkRenderPass getRenderPass() override {return renderPass[RI(ResrcIndex,MF(RenderResrc,micro))];}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1521,7 +1517,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[RI(ResrcIndex,res(),0)]) {
+        renderPass(StackState::renderPass[RI(ResrcIndex,res())]) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -2530,18 +2526,18 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
         Resrc res = MR(FetchResrc,micro,i);
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = i;
-        bindingDescription.stride = RI(ResrcStride,res,0);
+        bindingDescription.stride = RO(ResrcStride,res,i);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; RP(ResrcFormat,res,j) != Packings; j++) {
+    for (int j = 0; RF(ResrcFormat,res,j) != Packings; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
         attributeDescription.binding = i;
         attributeDescription.location = j;
-        switch (RP(ResrcFormat,res,j)) {
+        switch (RF(ResrcFormat,res,j)) {
         default: EXIT
         case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
-        attributeDescription.offset = RI(ResrcOffset,res,j);
+        attributeDescription.offset = RO(ResrcOffset,res,j);
         attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());

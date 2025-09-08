@@ -449,26 +449,26 @@ ResrcFormat = {
 	{"Resrc","VertexRes","Int","1","Packing","VecFrm"},
 	{"Resrc","VertexRes","Int","2","Packing","UvecFrm"},
 }
-ResrcPacking = {
-	{"Resrc","SwapRes","Int","0","Packing","SrgbFrm"},
-	{"Resrc","DebugRes","Int","0","Packing","SfloatFrm"},
-}
 ResrcElement = {
 	{"Resrc","VertexRes","Int","0","Int","4"},
 	{"Resrc","VertexRes","Int","1","Int","4"},
 	{"Resrc","VertexRes","Int","2","Int","4"},
 }
+ResrcPacking = {
+	{"Resrc","SwapRes","Packing","SrgbFrm"},
+	{"Resrc","DebugRes","Packing","SfloatFrm"},
+}
 ResrcIndex = {
-	{"Resrc","SwapRes","Int","0","Int","0"},
-	{"Resrc","DebugRes","Int","0","Int","1"},
-	{"Resrc","PierceRes","Int","0","Int","2"},
-	{"Resrc","DepthRes","Int","0","Int","3"},
+	{"Resrc","SwapRes","Int","0"},
+	{"Resrc","DebugRes","Int","1"},
+	{"Resrc","PierceRes","Int","2"},
+	{"Resrc","DepthRes","Int","3"},
 }
 IndexResrc = {
-	{"Int","0","Int","0","Resrc","SwapRes"},
-	{"Int","1","Int","0","Resrc","DebugRes"},
-	{"Int","2","Int","0","Resrc","PierceRes"},
-	{"Int","3","Int","0","Resrc","DepthRes"},
+	{"Int","0","Resrc","SwapRes"},
+	{"Int","1","Resrc","DebugRes"},
+	{"Int","2","Resrc","PierceRes"},
+	{"Int","3","Resrc","DepthRes"},
 }
 FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
@@ -508,11 +508,11 @@ RelateResrc = {
 	{"Micro","MicroDisplay","Int","0","Resrc","PierceRes"},
 }
 RenderResrc = {
-	{"Micro","MicroTest","Int","0","Resrc","SwapRes"},
-	{"Micro","MicroDebug","Int","0","Resrc","DebugRes"},
-	{"Micro","MicroDisplay","Int","0","Resrc","SwapRes"},
-	{"Micro","MicroPierce","Int","0","Resrc","PierceRes"},
-	{"Micro","MicroDepth","Int","0","Resrc","DepthRes"},
+	{"Micro","MicroTest","Resrc","SwapRes"},
+	{"Micro","MicroDebug","Resrc","DebugRes"},
+	{"Micro","MicroDisplay","Resrc","SwapRes"},
+	{"Micro","MicroPierce","Resrc","PierceRes"},
+	{"Micro","MicroDepth","Resrc","DepthRes"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Int","0","Str","vertexTestG"},
