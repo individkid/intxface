@@ -24,14 +24,14 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
-#define RI(NAME,RES) NAME##__Resrc__Int(RES)
+#define RI(RES) ResrcIndex__Resrc__Int(RES)
 #define RO(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
-#define RF(NAME,RES,SUB) (NAME##__Resrc__Int__Packing(RES)?(NAME##__Resrc__Int__Packing(RES)(SUB)):Packings)
-#define RP(NAME,RES) NAME##__Resrc__Packing(RES)
+#define RF(RES,SUB) (ResrcFormat__Resrc__Int__Packing(RES)?(ResrcFormat__Resrc__Int__Packing(RES)(SUB)):Packings)
+#define RP(RES) ResrcPacking__Resrc__Packing(RES)
 #define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
-#define MF(NAME,MIC) NAME##__Micro__Resrc(MIC)
+#define MF(MIC) RenderResrc__Micro__Resrc(MIC)
 #define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
-#define IR(NAME,IDX) NAME##__Int__Resrc(IDX)
+#define IR(IDX) IndexResrc__Int__Resrc(IDX)
 
 // TODO declare glfw callbacks
 
@@ -89,14 +89,14 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 struct PhysicalState {
     static const char *deviceExtensions[];
     static VkFormat vulkanPacking(Resrc i) {
-        switch (RP(ResrcPacking,i)) {default: ERROR();
+        switch (RP(i)) {default: ERROR();
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
     }
     static VkFormat vulkanPacking(int i) {
-        return vulkanPacking(IR(IndexResrc,i));
+        return vulkanPacking(IR(i));
     }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
@@ -1262,9 +1262,9 @@ struct SwapState : public BaseState {
         presentMode(StackState::presentMode),
         graphicsFamily(StackState::graphicsFamily),
         presentFamily(StackState::presentFamily),
-        imageFormat(StackState::imageFormat[RI(ResrcIndex,res())]),
+        imageFormat(StackState::imageFormat[RI(res())]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[RI(ResrcIndex,res())]),
+        renderPass(StackState::renderPass[RI(res())]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1342,7 +1342,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return renderPass[RI(ResrcIndex,MF(RenderResrc,micro))];}
+    VkRenderPass getRenderPass() override {return renderPass[RI(MF(micro))];}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1517,7 +1517,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[RI(ResrcIndex,res())]) {
+        renderPass(StackState::renderPass[RI(res())]) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -2529,11 +2529,11 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
         bindingDescription.stride = RO(ResrcStride,res,i);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; RF(ResrcFormat,res,j) != Packings; j++) {
+    for (int j = 0; RF(res,j) != Packings; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
         attributeDescription.binding = i;
         attributeDescription.location = j;
-        switch (RF(ResrcFormat,res,j)) {
+        switch (RF(res,j)) {
         default: EXIT
         case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
