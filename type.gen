@@ -444,10 +444,12 @@ ResrcOffset = {
 	{"Resrc","VertexRes","Int","1","Int","16"},
 	{"Resrc","VertexRes","Int","2","Int","32"},
 }
-ResrcPacking = {
+ResrcFormat = {
 	{"Resrc","VertexRes","Int","0","Packing","VecFrm"},
 	{"Resrc","VertexRes","Int","1","Packing","VecFrm"},
 	{"Resrc","VertexRes","Int","2","Packing","UvecFrm"},
+}
+ResrcPacking = {
 	{"Resrc","SwapRes","Int","0","Packing","SrgbFrm"},
 	{"Resrc","DebugRes","Int","0","Packing","SfloatFrm"},
 }
