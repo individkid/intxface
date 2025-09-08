@@ -24,14 +24,14 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
-#define RI(RES) ResrcIndex__Resrc__Int(RES)
-#define RO(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
-#define RF(RES,SUB) (ResrcFormat__Resrc__Int__Packing(RES)?(ResrcFormat__Resrc__Int__Packing(RES)(SUB)):Packings)
-#define RP(RES) ResrcPacking__Resrc__Packing(RES)
+#define ResrcIndex(RES) ResrcIndex__Resrc__Int(RES)
+#define RI(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
+#define ResrcFormat(RES,SUB) (ResrcFormat__Resrc__Int__Packing(RES)?(ResrcFormat__Resrc__Int__Packing(RES)(SUB)):Packings)
+#define ResrcPacking(RES) ResrcPacking__Resrc__Packing(RES)
 #define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
-#define MF(MIC) RenderResrc__Micro__Resrc(MIC)
+#define RenderResrc(MIC) RenderResrc__Micro__Resrc(MIC)
 #define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
-#define IR(IDX) IndexResrc__Int__Resrc(IDX)
+#define IndexResrc(IDX) IndexResrc__Int__Resrc(IDX)
 
 // TODO declare glfw callbacks
 
@@ -88,15 +88,12 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 
 struct PhysicalState {
     static const char *deviceExtensions[];
-    static VkFormat vulkanPacking(Resrc i) {
-        switch (RP(i)) {default: ERROR();
+    static VkFormat vulkanFormat(Resrc i) {
+        switch (ResrcPacking(i)) {default: ERROR();
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
-    }
-    static VkFormat vulkanPacking(int i) {
-        return vulkanPacking(IR(i));
     }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
@@ -110,7 +107,7 @@ struct PhysicalState {
         graphicsFamily(findGraphicsFamily(surface,device)),
         presentFamily(findPresentFamily(surface,device)),
         properties(findProperties(device)),
-        surfaceFormat(chooseSwapSurfaceFormat(vulkanPacking(0),VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,surface,device)),
+        surfaceFormat(chooseSwapSurfaceFormat(vulkanFormat(SwapRes),VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
         std::cout << "PhysicalState " << properties.deviceName << std::endl;
@@ -131,7 +128,7 @@ struct PhysicalState {
 const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
 struct LogicalState {
-    static const int passes = Micros;
+    static const int passes = 2; // TODO Micros;
     VkDevice device;
     VkQueue graphics;
     VkQueue present;
@@ -146,14 +143,13 @@ struct LogicalState {
         graphics(createQueue(device,graphicsFamily)),
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
-        imageFormat{PhysicalState::vulkanPacking(0),PhysicalState::vulkanPacking(1)},
-        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))),
-        renderPass{createRenderPass(device,imageFormat[0],depthFormat),createRenderPass(device,imageFormat[1],depthFormat)} {
+        depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))) {
         std::cout << "LogicalState" << std::endl;
+        for (int i = 0; i < passes; i++) imageFormat[i] = PhysicalState::vulkanFormat(IndexResrc(i));
+        for (int i = 0; i < passes; i++) renderPass[i] = createRenderPass(device,imageFormat[i],depthFormat);
     }
     ~LogicalState() {
-        vkDestroyRenderPass(device, renderPass[1], nullptr);
-        vkDestroyRenderPass(device, renderPass[0], nullptr);
+        for (int i = 0; i < passes; i++) vkDestroyRenderPass(device, renderPass[i], nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
         std::cout << "~LogicalState" << std::endl;
@@ -1262,9 +1258,9 @@ struct SwapState : public BaseState {
         presentMode(StackState::presentMode),
         graphicsFamily(StackState::graphicsFamily),
         presentFamily(StackState::presentFamily),
-        imageFormat(StackState::imageFormat[RI(res())]),
+        imageFormat(StackState::imageFormat[ResrcIndex(res())]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[RI(res())]),
+        renderPass(StackState::renderPass[ResrcIndex(res())]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1342,7 +1338,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return renderPass[RI(MF(micro))];}
+    VkRenderPass getRenderPass() override {return renderPass[ResrcIndex(RenderResrc(micro))];}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1517,7 +1513,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[RI(res())]) {
+        renderPass(StackState::renderPass[ResrcIndex(res())]) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -1550,7 +1546,7 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        VkFormat forms = (res() == DebugRes ? PhysicalState::vulkanPacking(res()) : VK_FORMAT_R8G8B8A8_SRGB);
+        VkFormat forms = (res() == DebugRes ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
         if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
         createImage(device, physical, /*TODO:*/texWidth, texHeight, forms/*:TODO*/, /*TODO:*/flags/*:TODO*/, memProperties, /*output*/ image, imageMemory);
@@ -1594,7 +1590,7 @@ struct ImageState : public BaseState {
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = DebugRes;
-        VkFormat forms = (res() == DebugRes ? PhysicalState::vulkanPacking(res()) : VK_FORMAT_R8G8B8A8_SRGB);
+        VkFormat forms = (res() == DebugRes ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2526,18 +2522,18 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
         Resrc res = MR(FetchResrc,micro,i);
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = i;
-        bindingDescription.stride = RO(ResrcStride,res,i);
+        bindingDescription.stride = RI(ResrcStride,res,i);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; RF(res,j) != Packings; j++) {
+    for (int j = 0; ResrcFormat(res,j) != Packings; j++) {
         VkVertexInputAttributeDescription attributeDescription{};
         attributeDescription.binding = i;
         attributeDescription.location = j;
-        switch (RF(res,j)) {
+        switch (ResrcFormat(res,j)) {
         default: EXIT
         case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
         case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
-        attributeDescription.offset = RO(ResrcOffset,res,j);
+        attributeDescription.offset = RI(ResrcOffset,res,j);
         attributeDescriptions.push_back(attributeDescription);}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
