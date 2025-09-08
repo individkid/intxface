@@ -107,6 +107,12 @@ Request = {
 	"ExclReq", -- call resize and setup if changed
 	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
+Render = { -- render pass and frame buffer are one to one
+	"SwapBuf",
+	"DebugBuf",
+	"PierceBuf",
+	"DepthBuf",
+}
 Packing = { -- VkFormat
 	"VecFrm",
 	"UvecFrm",
@@ -454,26 +460,32 @@ ResrcElement = {
 	{"Resrc","VertexRes","Int","1","Int","4"},
 	{"Resrc","VertexRes","Int","2","Int","4"},
 }
+-- :multiple fetch fields per fetch resource
+-- but only one display format per framebuffer resource:
 ResrcPacking = {
 	{"Resrc","SwapRes","Packing","SrgbFrm"},
 	{"Resrc","DebugRes","Packing","SfloatFrm"},
+	{"Resrc","PierceRes","Packing","SintFrm"},
+	{"Resrc","DepthRes","Packing","SfloatFrm"},
 }
 ResrcIndex = {
-	{"Resrc","SwapRes","Int","0"},
-	{"Resrc","DebugRes","Int","1"},
-	{"Resrc","PierceRes","Int","2"},
-	{"Resrc","DepthRes","Int","3"},
+	{"Resrc","SwapRes","Render","SwapBuf"},
+	{"Resrc","DebugRes","Render","DebugBuf"},
+	{"Resrc","PierceRes","Render","PierceBuf"},
+	{"Resrc","DepthRes","Render","DepthBuf"},
 }
 IndexResrc = {
-	{"Int","0","Resrc","SwapRes"},
-	{"Int","1","Resrc","DebugRes"},
-	{"Int","2","Resrc","PierceRes"},
-	{"Int","3","Resrc","DepthRes"},
+	{"Render","SwapBuf","Resrc","SwapRes"},
+	{"Render","DebugBuf","Resrc","DebugRes"},
+	{"Render","PierceBuf","Resrc","PierceRes"},
+	{"Render","DepthBuf","Resrc","DepthRes"},
 }
+-- vulkan has a binding index for fetch resource, so possibly multiple:
 FetchResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","VertexRes"},
 }
+-- multiple uniform storage sampler correlate resources per pipeline:
 UniformResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","MatrixRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","MatrixRes"},
@@ -507,6 +519,7 @@ SamplerResrc = {
 RelateResrc = {
 	{"Micro","MicroDisplay","Int","0","Resrc","PierceRes"},
 }
+-- single framebuffer resource, vertex shader, fragment shader per pipeline:
 RenderResrc = {
 	{"Micro","MicroTest","Resrc","SwapRes"},
 	{"Micro","MicroDebug","Resrc","DebugRes"},
@@ -515,18 +528,18 @@ RenderResrc = {
 	{"Micro","MicroDepth","Resrc","DepthRes"},
 }
 VertexFile = {
-	{"Micro","MicroTest","Int","0","Str","vertexTestG"},
-	{"Micro","MicroDebug","Int","0","Str","vertexDebugG"},
-	{"Micro","MicroDisplay","Int","0","Str","vertexDisplayG"},
-	{"Micro","MicroPierce","Int","0","Str","vertexPierceG"},
-	{"Micro","MicroDepth","Int","0","Str","vertexDepthG"},
+	{"Micro","MicroTest","Str","vertexTestG"},
+	{"Micro","MicroDebug","Str","vertexDebugG"},
+	{"Micro","MicroDisplay","Str","vertexDisplayG"},
+	{"Micro","MicroPierce","Str","vertexPierceG"},
+	{"Micro","MicroDepth","Str","vertexDepthG"},
 }
 FragmentFile = {
-	{"Micro","MicroTest","Int","0","Str","fragmentTestG"},
-	{"Micro","MicroDebug","Int","0","Str","fragmentDebugG"},
-	{"Micro","MicroDisplay","Int","0","Str","fragmentDisplayG"},
-	{"Micro","MicroPierce","Int","0","Str","fragmentPierceG"},
-	{"Micro","MicroDepth","Int","0","Str","fragmentDepthG"},
+	{"Micro","MicroTest","Str","fragmentTestG"},
+	{"Micro","MicroDebug","Str","fragmentDebugG"},
+	{"Micro","MicroDisplay","Str","fragmentDisplayG"},
+	{"Micro","MicroPierce","Str","fragmentPierceG"},
+	{"Micro","MicroDepth","Str","fragmentDepthG"},
 }
 MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,MiddleLoc,WholeFrm

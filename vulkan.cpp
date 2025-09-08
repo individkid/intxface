@@ -24,14 +24,14 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
-#define ResrcIndex(RES) ResrcIndex__Resrc__Int(RES)
+#define ResrcIndex(RES) ResrcIndex__Resrc__Render(RES)
 #define RI(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
 #define ResrcFormat(RES,SUB) (ResrcFormat__Resrc__Int__Packing(RES)?(ResrcFormat__Resrc__Int__Packing(RES)(SUB)):Packings)
 #define ResrcPacking(RES) ResrcPacking__Resrc__Packing(RES)
 #define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
 #define RenderResrc(MIC) RenderResrc__Micro__Resrc(MIC)
-#define MS(NAME,MIC,SUB) (NAME##__Micro__Int__Str(MIC)?(NAME##__Micro__Int__Str(MIC)(SUB)):0)
-#define IndexResrc(IDX) IndexResrc__Int__Resrc(IDX)
+#define MS(NAME,MIC) NAME##__Micro__Str(MIC)
+#define IndexResrc(IDX) IndexResrc__Render__Resrc(IDX)
 
 // TODO declare glfw callbacks
 
@@ -128,7 +128,7 @@ struct PhysicalState {
 const char *PhysicalState::deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,0};
 
 struct LogicalState {
-    static const int passes = 2; // TODO Micros;
+    static const int passes = Renders;
     VkDevice device;
     VkQueue graphics;
     VkQueue present;
@@ -145,7 +145,7 @@ struct LogicalState {
         commandPool(createCommandPool(device,graphicsFamily)),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))) {
         std::cout << "LogicalState" << std::endl;
-        for (int i = 0; i < passes; i++) imageFormat[i] = PhysicalState::vulkanFormat(IndexResrc(i));
+        for (int i = 0; i < passes; i++) imageFormat[i] = PhysicalState::vulkanFormat(IndexResrc((Render)i));
         for (int i = 0; i < passes; i++) renderPass[i] = createRenderPass(device,imageFormat[i],depthFormat);
     }
     ~LogicalState() {
@@ -1481,7 +1481,7 @@ struct ImageState : public BaseState {
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkFormat depthFormat;
-    const VkRenderPass renderPass;
+    const std::array<VkRenderPass,LogicalState::passes> renderPass;
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
@@ -1513,7 +1513,7 @@ struct ImageState : public BaseState {
         commandPool(StackState::commandPool),
         memProperties(StackState::memProperties),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[ResrcIndex(res())]) {
+        renderPass(StackState::renderPass) {
     }
     ~ImageState() {
         reset(SmartState());
@@ -1546,7 +1546,7 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        VkFormat forms = (res() == DebugRes ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
+        VkFormat forms = (res() == DebugRes || res() == PierceRes || res() == DepthRes /*TODO better way than listing every one that's valid*/ ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
         if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
         createImage(device, physical, /*TODO:*/texWidth, texHeight, forms/*:TODO*/, /*TODO:*/flags/*:TODO*/, memProperties, /*output*/ image, imageMemory);
@@ -1556,7 +1556,7 @@ struct ImageState : public BaseState {
         if (res() == DebugRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass,imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,max(loc).extent,renderPass[ResrcIndex(res())],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -2499,8 +2499,8 @@ VkShaderModule PipeState::createShaderModule(VkDevice device, const std::vector<
 VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
     VkPipelineLayout pipelineLayout, Micro micro) {
     VkPipeline pipeline;
-    auto vertShaderCode = readFile(MS(VertexFile,micro,0));
-    auto fragShaderCode = readFile(MS(FragmentFile,micro,0));
+    auto vertShaderCode = readFile(MS(VertexFile,micro));
+    auto fragShaderCode = readFile(MS(FragmentFile,micro));
     VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
