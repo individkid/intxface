@@ -1788,7 +1788,7 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapRes,1> swapState;
-    ArrayState<PipeState,PipeRes,Micros> pipelineState;
+    ArrayState<PipeState,PipeRes,2/*TODO Micros*/> pipelineState;
     ArrayState<BufferState,IndexRes,StackState::frames> indexState;
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
@@ -1967,7 +1967,8 @@ GLFWwindow* WindowState::createWindow(uint32_t WIDTH, uint32_t HEIGHT) {
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanState::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;
+    std::cout << "validation layer: " << pCallbackData->pMessage << " severity:0x" << std::hex << messageSeverity << std::dec << std::endl;
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) *(int*)0=0;
     return VK_FALSE;
 }
 VkDebugUtilsMessengerCreateInfoEXT VulkanState::createInfo(const char **validationLayers) {
