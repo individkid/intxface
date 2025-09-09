@@ -443,22 +443,22 @@ Tag = { -- type of data piped between processes
 }
 --HERE Constants
 ResrcStride = {
-	{"Resrc","VertexRes","Int","0","Int","48"},
+	{"Resrc","BringupRes","Int","0","Int","48"},
 }
 ResrcOffset = {
-	{"Resrc","VertexRes","Int","0","Int","0"},
-	{"Resrc","VertexRes","Int","1","Int","16"},
-	{"Resrc","VertexRes","Int","2","Int","32"},
+	{"Resrc","BringupRes","Int","0","Int","0"},
+	{"Resrc","BringupRes","Int","1","Int","16"},
+	{"Resrc","BringupRes","Int","2","Int","32"},
 }
 ResrcFormat = {
-	{"Resrc","VertexRes","Int","0","Packing","VecFrm"},
-	{"Resrc","VertexRes","Int","1","Packing","VecFrm"},
-	{"Resrc","VertexRes","Int","2","Packing","UvecFrm"},
+	{"Resrc","BringupRes","Int","0","Packing","VecFrm"},
+	{"Resrc","BringupRes","Int","1","Packing","VecFrm"},
+	{"Resrc","BringupRes","Int","2","Packing","UvecFrm"},
 }
 ResrcElement = {
-	{"Resrc","VertexRes","Int","0","Int","4"},
-	{"Resrc","VertexRes","Int","1","Int","4"},
-	{"Resrc","VertexRes","Int","2","Int","4"},
+	{"Resrc","BringupRes","Int","0","Int","4"},
+	{"Resrc","BringupRes","Int","1","Int","4"},
+	{"Resrc","BringupRes","Int","2","Int","4"},
 }
 -- :multiple fetch fields per fetch resource
 -- but only one display format per framebuffer resource:
@@ -482,8 +482,8 @@ IndexResrc = {
 }
 -- vulkan has a binding index for fetch resource, so possibly multiple:
 FetchResrc = {
-	{"Micro","MicroTest","Int","0","Resrc","VertexRes"},
-	{"Micro","MicroDebug","Int","0","Resrc","VertexRes"},
+	{"Micro","MicroTest","Int","0","Resrc","BringupRes"},
+	{"Micro","MicroDebug","Int","0","Resrc","BringupRes"},
 }
 -- multiple uniform storage sampler correlate resources per pipeline:
 UniformResrc = {
@@ -860,8 +860,9 @@ Uniform = {
 	{"vtx","Int32",{},{}}, -- base of vertices
 	{"mat","Int32",{},{}}, -- base of matrices
 
-	{"mod","Int32",{},{}}, -- vertices or planes
-	{"pad","Int32",{},{3}},
+	{"bas","Int32",{},{}}, -- base of basises
+	{"mod","Int32",{},{}}, -- fetch/storage vertices/planes
+	{"pad","Int32",{},{2}},
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle

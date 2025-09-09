@@ -1751,7 +1751,19 @@ struct DrawState : public BaseState {
         break; case (MatrixRes): matrixPtr = res(MatrixRes); matrixIdx = index++;}
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
-                trianglePtr->getRange(),pierceIdx,descriptorSet);}*/ // TODO vertexPtr and basisPtr etc for MicroSculpt
+                trianglePtr->getRange(),triangleIdx,descriptorSet);}*/
+        /*if (vertexPtr) {
+            updateStorageDescriptor(device,vertexPtr->getBuffer(),
+                vertexPtr->getRange(),vertexIdx,descriptorSet);}*/
+        /*if (numericPtr) {
+            updateStorageDescriptor(device,numericPtr->getBuffer(),
+                numericPtr->getRange(),numericIdx,descriptorSet);}*/
+        /*if (basisPtr) {
+            updateStorageDescriptor(device,basisPtr->getBuffer(),
+                basisPtr->getRange(),basisIdx,descriptorSet);}*/
+        /*if (uniformPtr) {
+            if (uniformPtr->getBuffer() == VK_NULL_HANDLE) EXIT
+            updateUniformDescriptor(device,uniformPtr->getBuffer(),uniformPtr->getRange(),uniformIdx,descriptorSet);}*/
         if (matrixPtr) {
             if (matrixPtr->getBuffer() == VK_NULL_HANDLE) EXIT
             updateUniformDescriptor(device,matrixPtr->getBuffer(),matrixPtr->getRange(),matrixIdx,descriptorSet);}

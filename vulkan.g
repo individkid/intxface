@@ -155,12 +155,15 @@ struct Uniform {
     uint one; // which element to use
     uint idx; // which plane to manipulate
     uint use; // which basis to use
+
     uint tri; // base of triangles
     uint num; // base of numerics
     uint vtx; // base of vertices
     uint mat; // base of matrices
+
+    uint bas; // base of basises
     uint mod; // vertices or planes
-    uint pad[3];
+    uint pad[2];
 };
 struct Matrix {
     mat4 buf;
