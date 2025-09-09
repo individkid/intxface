@@ -163,6 +163,7 @@ struct LogicalState {
 
 struct BaseState;
 struct StackState {
+    static const int descrs = 4;
     static const int frames = 2;
     static const int images = 2;
     static const int comnds = 20;
@@ -331,6 +332,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (IndexRes): return "IndexRes";
         case (BringupRes): return "BringupRes";
         case (ImageRes): return "ImageRes";
+        case (RelateRes): return "RelateRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -1321,7 +1323,7 @@ struct PipeState : public BaseState {
         device(StackState::device),
         renderPass(StackState::renderPass),
         micro((Micro)StackState::micro++),
-        descriptorPool(createDescriptorPool(StackState::device,StackState::frames)),
+        descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro)) {
@@ -1745,10 +1747,22 @@ struct DrawState : public BaseState {
         break; case (SwapRes): swapPtr = res(SwapRes);
         break; case (ChainRes): framePtr = res(ChainRes);
         break; case (DebugRes): framePtr = swapPtr = res(DebugRes);
+        // break; case (PierceRes): framePtr = swapPtr = res(PierceRes);
         break; case (IndexRes): indexPtr = res(IndexRes);
         break; case (BringupRes): fetchPtr = res(BringupRes);
+        // break; case (RelateRes): relatePtr = res(RelatRes); relateIdx = index++;
         break; case (ImageRes): imagePtr = res(ImageRes); imageIdx = index++;
         break; case (MatrixRes): matrixPtr = res(MatrixRes); matrixIdx = index++;}
+        // TODO add MicroPierce to planeTest that computes PierceRes Imagez.
+        // TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
+        // TODO add each buffer to Bringup, using them depending upon mod in Uniform.
+        // TODO use same gpu program for Builtin, set mod in Uniform from commandline.
+        // TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
+        // TODO in Regress, use Center pipe instead of planeTest.
+        // TODO in Release, use mouse and roller instead of Center spoofs.
+        /*if (relatePtr) {
+            updateStorageDescriptor(device,relatePtr->getBuffer(),
+                relatePtr->getRange(),relateIdx,descriptorSet);}*/
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),triangleIdx,descriptorSet);}*/
@@ -1809,7 +1823,9 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
-    ArrayState<ImageState,DebugRes,StackState::frames> pierceState;
+    ArrayState<BufferState,RelateRes,StackState::frames> relateState;
+    ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
+    ArrayState<ImageState,DebugRes,StackState::frames> debugState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
     ArrayState<DrawState,DrawRes,StackState::frames> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
@@ -1847,7 +1863,9 @@ struct MainState {
             {NumericRes,&numericState},
             {VertexRes,&vertexState},
             {BasisRes,&basisState},
-            {DebugRes,&pierceState},
+            {RelateRes,&relateState},
+            {PierceRes,&pierceState},
+            {DebugRes,&debugState},
             {ChainRes,&chainState},
             {DrawRes,&drawState},
             {BindRes,&bindState},
@@ -2428,11 +2446,13 @@ void SwapState::createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, 
 
 VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
     VkDescriptorPool descriptorPool;
-    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    std::array<VkDescriptorPoolSize, 3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(frames);
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(frames);
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(frames);
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
@@ -2455,13 +2475,21 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     bindings.push_back(uboLayoutBinding);}
     for (int i = 0; MR(StorageResrc,micro,i) != Resrcs; i++) {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = bindings.size();
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    bindings.push_back(uboLayoutBinding);}
+    VkDescriptorSetLayoutBinding storageLayoutBinding{};
+    storageLayoutBinding.binding = bindings.size();
+    storageLayoutBinding.descriptorCount = 1;
+    storageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    storageLayoutBinding.pImmutableSamplers = nullptr;
+    storageLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings.push_back(storageLayoutBinding);}
+    for (int i = 0; MR(RelateResrc,micro,i) != Resrcs; i++) {
+    VkDescriptorSetLayoutBinding relateLayoutBinding{};
+    relateLayoutBinding.binding = bindings.size();
+    relateLayoutBinding.descriptorCount = 1;
+    relateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    relateLayoutBinding.pImmutableSamplers = nullptr;
+    relateLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings.push_back(relateLayoutBinding);}
     for (int i = 0; MR(SamplerResrc,micro,i) != Resrcs; i++) {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     samplerLayoutBinding.binding = bindings.size();

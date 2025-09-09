@@ -56,6 +56,7 @@ Resrc = { -- per variation of BaseState
 	"IndexRes",
 	"BringupRes",
 	"ImageRes",
+	"RelateRes",
 	"UniformRes",
 	"MatrixRes",
 	"TriangleRes",
@@ -512,12 +513,13 @@ StorageResrc = {
 	{"Micro","MicroDepth","Int","2","Resrc","NumericRes"},
 	{"Micro","MicroDepth","Int","3","Resrc","VertexRes"},
 }
+RelateResrc = {
+	-- {"Micro","MicroTest","Int","0","Resrc","RelateRes"}, -- TODO after adding relatePtr to DrawState
+	{"Micro","MicroDisplay","Int","0","Resrc","RelateRes"},
+}
 SamplerResrc = {
 	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
 	{"Micro","MicroDebug","Int","0","Resrc","ImageRes"},
-}
-RelateResrc = {
-	{"Micro","MicroDisplay","Int","0","Resrc","PierceRes"},
 }
 -- single framebuffer resource, vertex shader, fragment shader per pipeline:
 RenderResrc = {

@@ -62,7 +62,10 @@ void fragmentDepth()
 // TODO Copierce and Codepth?
 
 #if defined(fragmentTest)
-layout (binding = 1) uniform sampler2D texSampler;
+// layout (binding = 1) buffer MyDataBuffer {
+//     uint values[]; // Or a struct, array of structs, etc.
+// } myData;
+layout (binding = 1/*2*/) uniform sampler2D texSampler;
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec2 fragTexCoord;
