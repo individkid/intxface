@@ -161,6 +161,21 @@ struct LogicalState {
     static VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
 };
 
+struct ConstState {
+    decltype(MemoryIns__Memory__Int__Instr) *memins;
+    decltype(MemoryIns__Memory__Int__Resrc) *memres;
+    decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
+    decltype(MemoryIns__Memory__Int__Format) *memfmt;
+    decltype(ResrcIns__Resrc__Int__Instr) *resins;
+    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
+    decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
+    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
+    decltype(MicroIns__Micro__Int__Instr) *micins;
+    decltype(MicroIns__Micro__Int__Resrc) *micres;
+    decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
+    decltype(MicroIns__Micro__Int__Format) *micfmt;
+};
+
 struct BaseState;
 struct StackState {
     static const int descrs = 4;
@@ -195,6 +210,7 @@ struct StackState {
     static VkQueue graphics;
     static VkQueue present;
     static VkBufferUsageFlags flags;
+    static ConstState *constState;
     StackState(
         ChangeState<Configure,Configures> *copy,
         GLFWwindow* window,
@@ -234,6 +250,12 @@ struct StackState {
         StackState::graphics = graphics;
         StackState::present = present;
     }
+    StackState(ConstState *constState) {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::constState = constState;
+    }
     StackState(VkBufferUsageFlags flags) {
         StackState::self = this;
         StackState::debug = 0;
@@ -267,6 +289,7 @@ VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
 VkBufferUsageFlags StackState::flags;
+ConstState *StackState::constState;
 
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
@@ -311,6 +334,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe(1), idx(0) {
     }
     ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
+    }
+    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
     }
     ArrayState() : safe(1), idx(0) {
     }
@@ -433,20 +458,6 @@ struct Syn {
 struct BaseState;
 struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
-};
-struct ConstState {
-    decltype(MemoryIns__Memory__Int__Instr) *memins;
-    decltype(MemoryIns__Memory__Int__Resrc) *memres;
-    decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
-    decltype(MemoryIns__Memory__Int__Format) *memfmt;
-    decltype(ResrcIns__Resrc__Int__Instr) *resins;
-    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
-    decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
-    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
-    decltype(MicroIns__Micro__Int__Instr) *micins;
-    decltype(MicroIns__Micro__Int__Resrc) *micres;
-    decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
-    decltype(MicroIns__Micro__Int__Format) *micfmt;
 };
 struct Loc {
     ResrcLoc loc; SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
@@ -1313,6 +1324,7 @@ struct SwapState : public BaseState {
 struct PipeState : public BaseState {
     const VkDevice device;
     const std::array<VkRenderPass,LogicalState::passes> renderPass;
+    const ConstState *constState;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -1322,6 +1334,7 @@ struct PipeState : public BaseState {
         BaseState("PipeState",StackState::self),
         device(StackState::device),
         renderPass(StackState::renderPass),
+        constState(StackState::constState),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
@@ -1728,10 +1741,14 @@ struct DrawState : public BaseState {
         BaseState *framePtr = 0;
         BaseState *indexPtr = 0;
         BaseState *fetchPtr = 0;
+        BaseState *relatePtr = 0;
         BaseState *imagePtr = 0;
+        BaseState *uniformPtr = 0;
         BaseState *matrixPtr = 0;
+        int relateIdx = 0;
         int imageIdx = 0;
         int matrixIdx = 0;
+        int uniformIdx = 0;
         int index = 0;
         bool middle = false;
         log << "micro " << debug << " " << max(loc) << std::endl;
@@ -1750,8 +1767,9 @@ struct DrawState : public BaseState {
         // break; case (PierceRes): framePtr = swapPtr = res(PierceRes);
         break; case (IndexRes): indexPtr = res(IndexRes);
         break; case (BringupRes): fetchPtr = res(BringupRes);
-        // break; case (RelateRes): relatePtr = res(RelatRes); relateIdx = index++;
+        break; case (RelateRes): relatePtr = res(RelateRes); relateIdx = index++;
         break; case (ImageRes): imagePtr = res(ImageRes); imageIdx = index++;
+        break; case (UniformRes): uniformPtr = res(UniformRes); uniformIdx = index++;
         break; case (MatrixRes): matrixPtr = res(MatrixRes); matrixIdx = index++;}
         // TODO add MicroPierce to planeTest that computes PierceRes Imagez.
         // TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
@@ -1760,9 +1778,6 @@ struct DrawState : public BaseState {
         // TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
         // TODO in Regress, use Center pipe instead of planeTest.
         // TODO in Release, use mouse and roller instead of Center spoofs.
-        /*if (relatePtr) {
-            updateStorageDescriptor(device,relatePtr->getBuffer(),
-                relatePtr->getRange(),relateIdx,descriptorSet);}*/
         /*if (trianglePtr) {
             updateStorageDescriptor(device,trianglePtr->getBuffer(),
                 trianglePtr->getRange(),triangleIdx,descriptorSet);}*/
@@ -1775,12 +1790,15 @@ struct DrawState : public BaseState {
         /*if (basisPtr) {
             updateStorageDescriptor(device,basisPtr->getBuffer(),
                 basisPtr->getRange(),basisIdx,descriptorSet);}*/
-        /*if (uniformPtr) {
+        if (uniformPtr) {
             if (uniformPtr->getBuffer() == VK_NULL_HANDLE) EXIT
-            updateUniformDescriptor(device,uniformPtr->getBuffer(),uniformPtr->getRange(),uniformIdx,descriptorSet);}*/
+            updateUniformDescriptor(device,uniformPtr->getBuffer(),uniformPtr->getRange(),uniformIdx,descriptorSet);}
         if (matrixPtr) {
             if (matrixPtr->getBuffer() == VK_NULL_HANDLE) EXIT
             updateUniformDescriptor(device,matrixPtr->getBuffer(),matrixPtr->getRange(),matrixIdx,descriptorSet);}
+        if (relatePtr) {
+            if (relatePtr->getBuffer() == VK_NULL_HANDLE) EXIT
+            updateStorageDescriptor(device,relatePtr->getBuffer(),relatePtr->getRange(),relateIdx,descriptorSet);}
         if (imagePtr) {
             updateTextureDescriptor(device,imagePtr->getImageView(),imagePtr->getTextureSampler(),imageIdx,descriptorSet);}
         if (pipePtr && swapPtr && framePtr && indexPtr && fetchPtr) {
@@ -1808,6 +1826,8 @@ struct DrawState : public BaseState {
 };
 
 struct MainState {
+    EnumState enumState[Resrcs+1];
+    ConstState constState[2];
     WindowState windowState;
     VulkanState vulkanState;
     PhysicalState physicalState;
@@ -1829,28 +1849,10 @@ struct MainState {
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
     ArrayState<DrawState,DrawRes,StackState::frames> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
-    EnumState enumState[Resrcs+1];
-    ConstState constState[2];
     ThreadState threadState;
     CopyState copyState;
     CallState callState;
     MainState() :
-        vulkanState(windowState.window),
-        physicalState(vulkanState.instance,vulkanState.surface),
-        logicalState(physicalState.device,physicalState.graphicsFamily,
-            physicalState.presentFamily,vulkanState.validationLayers,
-            physicalState.deviceExtensions),
-        swapState(&copyState,
-            windowState.window,vulkanState.surface,physicalState.device,
-            physicalState.surfaceFormat,physicalState.presentMode,
-            physicalState.graphicsFamily,physicalState.presentFamily,
-            physicalState.properties,physicalState.memProperties,
-            logicalState.device,logicalState.commandPool,logicalState.renderPass,
-            logicalState.imageFormat,logicalState.depthFormat,
-            logicalState.graphics,logicalState.present),
-        indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
-        bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         enumState{
             {SwapRes,&swapState},
             {PipeRes,&pipelineState},
@@ -1895,6 +1897,23 @@ struct MainState {
             MicroAlt__Micro__Int__Resrc,
             MicroAlt__Micro__Int__ResrcLoc,
             MicroAlt__Micro__Int__Format}},
+        vulkanState(windowState.window),
+        physicalState(vulkanState.instance,vulkanState.surface),
+        logicalState(physicalState.device,physicalState.graphicsFamily,
+            physicalState.presentFamily,vulkanState.validationLayers,
+            physicalState.deviceExtensions),
+        swapState(&copyState,
+            windowState.window,vulkanState.surface,physicalState.device,
+            physicalState.surfaceFormat,physicalState.presentMode,
+            physicalState.graphicsFamily,physicalState.presentFamily,
+            physicalState.properties,physicalState.memProperties,
+            logicalState.device,logicalState.commandPool,logicalState.renderPass,
+            logicalState.imageFormat,logicalState.depthFormat,
+            logicalState.graphics,logicalState.present),
+        pipelineState(constState),
+        indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+        bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&copyState),
         copyState(&threadState,enumState,constState) {
         std::cout << "MainState" << std::endl;
@@ -2464,6 +2483,7 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
     return descriptorPool;
 }
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
+    // TODO use MemoryIns__ of micro instead of, or to double check, MR resource bindings
     VkDescriptorSetLayout descriptorSetLayout;
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     for (int i = 0; MR(UniformResrc,micro,i) != Resrcs; i++) {
@@ -2852,7 +2872,7 @@ void DrawState::updateStorageDescriptor(VkDevice device, VkBuffer buffer,
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.pBufferInfo = &bufferInfo;
     VkWriteDescriptorSet descriptorWrites [] = {descriptorWrite};
-    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);\
+    vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
 }
 void DrawState::updateUniformDescriptor(VkDevice device, VkBuffer buffer,
     int size, int index, VkDescriptorSet descriptorSet) {
