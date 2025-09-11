@@ -108,7 +108,19 @@ Request = {
 	"ExclReq", -- call resize and setup if changed
 	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
-Render = { -- render pass and frame buffer are one to one
+Phase = {
+	"IndexPhs",
+	"FetchPhs",
+	"UniformPhs",
+	"StoragePhs",
+	"RelatePhs",
+	"SamplePhs",
+	"PipePhs",
+	"FramePhs",
+	"SwapPhs",
+	"RenderPhs",
+}
+Render = { -- multiple render pass types, but only one per pipeline type
 	"SwapBuf",
 	"DebugBuf",
 	"PierceBuf",
@@ -444,7 +456,7 @@ Tag = { -- type of data piped between processes
 }
 --HERE Constants
 ResrcStride = {
-	{"Resrc","BringupRes","Int","0","Int","48"},
+	{"Resrc","BringupRes","Int","48"},
 }
 ResrcOffset = {
 	{"Resrc","BringupRes","Int","0","Int","0"},
@@ -469,65 +481,34 @@ ResrcPacking = {
 	{"Resrc","PierceRes","Packing","SintFrm"},
 	{"Resrc","DepthRes","Packing","SfloatFrm"},
 }
-ResrcIndex = {
-	{"Resrc","SwapRes","Render","SwapBuf"},
-	{"Resrc","DebugRes","Render","DebugBuf"},
-	{"Resrc","PierceRes","Render","PierceBuf"},
-	{"Resrc","DepthRes","Render","DepthBuf"},
+-- where resource is used in the graphics pipeline:
+ResrcPhase = {
+	{"Resrc","IndexRes","Phase","IndexPhs"},
+	{"Resrc","BringupRes","Phase","FetchPhs"},
+	{"Resrc","UniformRes","Phase","UniformPhs"},
+	{"Resrc","MatrixRes","Phase","UniformPhs"},
+	{"Resrc","BasisRes","Phase","StoragePhs"},
+	{"Resrc","TriangleRes","Phase","StoragePhs"},
+	{"Resrc","NumericRes","Phase","StoragePhs"},
+	{"Resrc","VertexRes","Phase","StoragePhs"},
+	{"Resrc","RelateRes","Phase","RelatePhs"},
+	{"Resrc","ImageRes","Phase","SamplePhs"},
+	{"Resrc","DebugRes","Phase","RenderPhs"},
+	{"Resrc","PierceRes","Phase","RenderPhs"},
+	{"Resrc","DepthRes","Phase","RenderPhs"},
+	{"Resrc","SwapRes","Phase","SwapPhs"},
+	{"Resrc","ChainRes","Phase","FramePhs"},
+	{"Resrc","PipeRes","Phase","PipePhs"},
 }
-IndexResrc = {
-	{"Render","SwapBuf","Resrc","SwapRes"},
-	{"Render","DebugBuf","Resrc","DebugRes"},
-	{"Render","PierceBuf","Resrc","PierceRes"},
-	{"Render","DepthBuf","Resrc","DepthRes"},
-}
--- vulkan has a binding index for fetch resource, so possibly multiple:
-FetchResrc = {
-	{"Micro","MicroTest","Int","0","Resrc","BringupRes"},
-	{"Micro","MicroDebug","Int","0","Resrc","BringupRes"},
-}
--- multiple uniform storage sampler correlate resources per pipeline:
-UniformResrc = {
-	{"Micro","MicroTest","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroDebug","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroDisplay","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroDisplay","Int","1","Resrc","UniformRes"},
-	{"Micro","MicroPierce","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroPierce","Int","1","Resrc","UniformRes"},
-	{"Micro","MicroDepth","Int","0","Resrc","MatrixRes"},
-	{"Micro","MicroDepth","Int","1","Resrc","UniformRes"},
-}
-StorageResrc = {
-	{"Micro","MicroTest","Int","0","Resrc","Resrcs"},
-	{"Micro","MicroDebug","Int","0","Resrc","Resrcs"},
-	{"Micro","MicroDisplay","Int","0","Resrc","BasisRes"},
-	{"Micro","MicroDisplay","Int","1","Resrc","TriangleRes"},
-	{"Micro","MicroDisplay","Int","2","Resrc","NumericRes"},
-	{"Micro","MicroDisplay","Int","3","Resrc","VertexRes"},
-	{"Micro","MicroPierce","Int","0","Resrc","BasisRes"},
-	{"Micro","MicroPierce","Int","1","Resrc","TriangleRes"},
-	{"Micro","MicroPierce","Int","2","Resrc","NumericRes"},
-	{"Micro","MicroPierce","Int","3","Resrc","VertexRes"},
-	{"Micro","MicroDepth","Int","0","Resrc","BasisRes"},
-	{"Micro","MicroDepth","Int","1","Resrc","TriangleRes"},
-	{"Micro","MicroDepth","Int","2","Resrc","NumericRes"},
-	{"Micro","MicroDepth","Int","3","Resrc","VertexRes"},
-}
-RelateResrc = {
-	-- {"Micro","MicroTest","Int","0","Resrc","RelateRes"}, -- TODO after adding relatePtr to DrawState
-	{"Micro","MicroDisplay","Int","0","Resrc","RelateRes"},
-}
-SamplerResrc = {
-	{"Micro","MicroTest","Int","0","Resrc","ImageRes"},
-	{"Micro","MicroDebug","Int","0","Resrc","ImageRes"},
-}
--- single framebuffer resource, vertex shader, fragment shader per pipeline:
-RenderResrc = {
-	{"Micro","MicroTest","Resrc","SwapRes"},
-	{"Micro","MicroDebug","Resrc","DebugRes"},
-	{"Micro","MicroDisplay","Resrc","SwapRes"},
-	{"Micro","MicroPierce","Resrc","PierceRes"},
-	{"Micro","MicroDepth","Resrc","DepthRes"},
+ResrcBinding = {
+	{"Resrc","UniformRes","Int","0"},
+	{"Resrc","MatrixRes","Int","1"},
+	{"Resrc","BasisRes","Int","2"},
+	{"Resrc","TriangleRes","Int","3"},
+	{"Resrc","NumericRes","Int","4"},
+	{"Resrc","VertexRes","Int","5"},
+	{"Resrc","RelateRes","Int","6"},
+	{"Resrc","ImageRes","Int","7"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexTestG"},

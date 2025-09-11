@@ -1,6 +1,17 @@
 #version 450
 
-#if defined(fragmentDisplay) || defined(fragmentPoint) || defined(fragmentPlane) || defined(fragmentPierce) || defined(fragmentDepth)
+/*ResrcBinding = {
+    {"Resrc","UniformRes","Int","0"},
+    {"Resrc","MatrixRes","Int","1"},
+    {"Resrc","BasisRes","Int","2"},
+    {"Resrc","TriangleRes","Int","3"},
+    {"Resrc","NumericRes","Int","4"},
+    {"Resrc","VertexRes","Int","5"},
+    {"Resrc","RelateRes","Int","6"},
+    {"Resrc","ImageRes","Int","7"},
+}*/
+
+#if defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in uint fragIdx;
 layout (location = 2) in vec4 fragVec;
@@ -13,36 +24,6 @@ void fragmentDisplay()
 {
     switch (fragTex) {default:
     break; case (0): outColor = fragOrd;}
-}
-#endif
-#if defined(fragmentPoint)
-struct Vertex {
-    vec4 vec; // intersection of planes
-    vec4 ord; // coordinate or color
-    uvec4 ref; // backreference to planes
-};
-layout (binding = 7) writeonly buffer Vertexs {
-    Vertex buf[];
-} outVer;
-void fragmentPoint()
-{
-    outVer.buf[fragIdx].vec = fragVec;
-    outVer.buf[fragIdx].ord = fragOrd;
-    outVer.buf[fragIdx].ref = fragRef;
-}
-#endif
-#if defined(fragmentPlane)
-struct Numeric {
-    vec4 vec; // distances above basis
-    uvec4 bas; // basis selector
-};
-layout (binding = 6) writeonly buffer Numerics {
-    Numeric buf[];
-} outNum;
-void fragmentPlane()
-{
-    outNum.buf[fragIdx].vec = fragVec;
-    outNum.buf[fragIdx].bas = fragRef;
 }
 #endif
 #if defined(fragmentPierce)
@@ -59,13 +40,12 @@ void fragmentDepth()
     outColor = gl_FragCoord.z;
 }
 #endif
-// TODO Copierce and Codepth?
 
 #if defined(fragmentTest)
 // layout (binding = 1) buffer MyDataBuffer {
 //     uint values[]; // Or a struct, array of structs, etc.
 // } myData;
-layout (binding = 1/*2*/) uniform sampler2D texSampler;
+layout (binding = 7) uniform sampler2D texSampler;
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec2 fragTexCoord;
@@ -79,7 +59,7 @@ void fragmentTest()
 #endif
 
 #if defined(fragmentDebug)
-layout (binding = 1) uniform sampler2D texSampler;
+layout (binding = 7) uniform sampler2D texSampler;
 
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec2 fragTexCoord;
@@ -93,7 +73,7 @@ void fragmentDebug()
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPoint) || defined(vertexPlane) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth)
 // TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
 // TODO think of more approximate and efficient way to calculate acc-uracy
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
@@ -261,43 +241,6 @@ void vertexDisplay()
     vertex();
 }
 #endif
-#if defined(vertexPoint)
-void vertexPoint()
-{
-    uint use = inUni.buf.use; // which stool feet to use
-    uint vtx = gl_VertexIndex-inUni.buf.vtx; // vertex index
-    uvec4 ref; for (uint i = 0; i < 3; i++) // plane indices
-    ref[i] = inVer.buf[vtx].ref-inUni.buf.vtx;
-    vec4 num[3/*plane*/][3/*tangent*/]; // expanded planes
-    for (uint i = 0; i < 3; i++) expand(num[i],ref[i],use);
-    fragVec = intersect(num[0],num[1],num[2]);
-    fragRef = inVer.buf[vtx].ref;
-    fragOrd = inVer.buf[vtx].ord;
-}
-#endif
-#if defined(vertexPlane)
-void vertexPlane()
-{
-    // TODO comb through this
-    uint tri = gl_VertexIndex-inUni.buf.tri;
-    uint num = inTri.buf[tri].num-inUni.buf.num;
-    vec4 vec[3]; for (uint i = 0; i < 3; i++) {
-    uint vtx = inTri.buf[tri].vtx[i]-inUni.buf.vtx;
-    vec[i] = inVer.buf[vtx].vec;}
-    fragRef = uvec4(0,0,0,0); // leg feet selector
-    vec3 dim; for (uint i = 0; i < 3; i++) dim[i] = vec[i][0];
-    float dif = max(dim) - min(dim);
-    for (uint i = 1; i < 3; i++) {
-    vec3 tmp; for (uint j = 0; j < 3; j++) tmp[i] = vec[j][i];
-    float cmp = max(tmp) - min(tmp);
-    if (cmp < dif) {dif = cmp; fragRef[0] = i;}}
-    fragVec; // leg lenths
-    for (uint i = 0; i < 3; i++) {
-    vec4 vec0 = inBas.buf[fragRef[0]*3+i];
-    vec4 vec1 = vec1; vec1[fragRef[0]] += 1.0;
-    float acc; fragVec[i] = proj(acc,vec0,vec1,vec)[fragRef[0]];}
-}
-#endif
 #if defined(vertexPierce)
 void vertexPierce()
 {
@@ -312,7 +255,7 @@ void vertexDepth()
 #endif
 
 #if defined(vertexTest)
-layout (binding = 0) uniform Matrix {mat4 buf[];} inMat;
+layout (binding = 1) uniform Matrix {mat4 buf[];} inMat;
 
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
@@ -332,7 +275,7 @@ void vertexTest()
 #endif
 
 #if defined(vertexDebug)
-layout (binding = 0) uniform Matrix {mat4 buf[];} inMat;
+layout (binding = 1) uniform Matrix {mat4 buf[];} inMat;
 
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;

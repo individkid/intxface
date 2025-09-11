@@ -24,14 +24,6 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();/*vulkanExit();*/*(int*)0=0;exit(-1);}
-#define ResrcIndex(RES) ResrcIndex__Resrc__Render(RES)
-#define RI(NAME,RES,SUB) (NAME##__Resrc__Int__Int(RES)?(NAME##__Resrc__Int__Int(RES)(SUB)):0)
-#define ResrcFormat(RES,SUB) (ResrcFormat__Resrc__Int__Packing(RES)?(ResrcFormat__Resrc__Int__Packing(RES)(SUB)):Packings)
-#define ResrcPacking(RES) ResrcPacking__Resrc__Packing(RES)
-#define MR(NAME,MIC,SUB) (NAME##__Micro__Int__Resrc(MIC)?(NAME##__Micro__Int__Resrc(MIC)(SUB)):Resrcs)
-#define RenderResrc(MIC) RenderResrc__Micro__Resrc(MIC)
-#define MS(NAME,MIC) NAME##__Micro__Str(MIC)
-#define IndexResrc(IDX) IndexResrc__Render__Resrc(IDX)
 
 // TODO declare glfw callbacks
 
@@ -89,11 +81,28 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 struct PhysicalState {
     static const char *deviceExtensions[];
     static VkFormat vulkanFormat(Resrc i) {
-        switch (ResrcPacking(i)) {default: ERROR();
+        switch (ResrcPacking__Resrc__Packing(i)) {default: ERROR();
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
+    }
+    static VkFormat vulkanFormat(Render i) {
+        Resrc res = Resrcs;
+        switch (i) {default: ERROR();
+        break; case (SwapBuf): res = SwapRes;
+        break; case (DebugBuf): res = DebugRes;
+        break; case (PierceBuf): res = PierceRes;
+        break; case (DepthBuf): res = DepthRes;}
+        return vulkanFormat(res);
+    }
+    static Render vulkanRender(Resrc i) {
+        switch (i) {default: ERROR();
+        break; case (SwapRes): return SwapBuf;
+        break; case (DebugRes): return DebugBuf;
+        break; case (PierceRes): return PierceBuf;
+        break; case (DepthRes): return DepthBuf;}
+        return Renders;
     }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
@@ -145,7 +154,7 @@ struct LogicalState {
         commandPool(createCommandPool(device,graphicsFamily)),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))) {
         std::cout << "LogicalState" << std::endl;
-        for (int i = 0; i < passes; i++) imageFormat[i] = PhysicalState::vulkanFormat(IndexResrc((Render)i));
+        for (int i = 0; i < passes; i++) imageFormat[i] = PhysicalState::vulkanFormat((Render)i);
         for (int i = 0; i < passes; i++) renderPass[i] = createRenderPass(device,imageFormat[i],depthFormat);
     }
     ~LogicalState() {
@@ -1271,9 +1280,9 @@ struct SwapState : public BaseState {
         presentMode(StackState::presentMode),
         graphicsFamily(StackState::graphicsFamily),
         presentFamily(StackState::presentFamily),
-        imageFormat(StackState::imageFormat[ResrcIndex(res())]),
+        imageFormat(StackState::imageFormat[PhysicalState::vulkanRender(res())]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[ResrcIndex(res())]),
+        renderPass(StackState::renderPass[PhysicalState::vulkanRender(res())]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1323,23 +1332,31 @@ struct SwapState : public BaseState {
 
 struct PipeState : public BaseState {
     const VkDevice device;
-    const std::array<VkRenderPass,LogicalState::passes> renderPass;
+    const VkRenderPass renderPass;
     const ConstState *constState;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
+    Render renderIndex(Micro micro, const ConstState *func) {
+        auto fnc = func->micres(micro);
+        for (int i = 0; fnc(i) != Resrcs; i++)
+        switch (fnc(i)) {default:
+        break; case (DebugRes): return DebugBuf;
+        break; case (SwapRes): return SwapBuf;}
+        return Renders;
+    }
     PipeState() :
         BaseState("PipeState",StackState::self),
         device(StackState::device),
-        renderPass(StackState::renderPass),
+        renderPass(StackState::renderPass[renderIndex((Micro)StackState::micro,StackState::constState)]),
         constState(StackState::constState),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
-        descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
+        descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro,constState)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
-        pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro)) {
+        pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro,constState)) {
         setre(ResizeLoc,MicroExt,micro,0,SmartState());
     }
     ~PipeState() {
@@ -1353,7 +1370,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
     VkDescriptorPool getDescriptorPool() override {return descriptorPool;}
     VkDescriptorSetLayout getDescriptorSetLayout() override {return descriptorSetLayout;}
-    VkRenderPass getRenderPass() override {return renderPass[ResrcIndex(RenderResrc(micro))];}
+    VkRenderPass getRenderPass() override {return renderPass;}
     void resize(Loc &loc, SmartState log) override {}
     void unsize(Loc &loc, SmartState log) override {}
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1364,10 +1381,10 @@ struct PipeState : public BaseState {
         log << "upset " << debug << std::endl;
     }
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
-    static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro);
+    static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func);
     static VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
     static std::vector<char> readFile(const std::string& filename);
-    static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, Micro micro);
+    static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, Micro micro, const ConstState *func);
     static VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
 };
 
@@ -1571,7 +1588,7 @@ struct ImageState : public BaseState {
         if (res() == DebugRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass[ResrcIndex(res())],imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,max(loc).extent,renderPass[PhysicalState::vulkanRender(res())],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -1732,6 +1749,13 @@ struct DrawState : public BaseState {
         log << "unsize " << debug << std::endl;
     }
     VkFence setup(Loc &loc, SmartState log) override {
+        // TODO add MicroPierce to planeTest that computes PierceRes Imagez.
+        // TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
+        // TODO add each buffer to Bringup, using them depending upon mod in Uniform.
+        // TODO use same gpu program for Builtin, set mod in Uniform from commandline.
+        // TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
+        // TODO in Regress, use Center pipe instead of planeTest.
+        // TODO in Release, use mouse and roller instead of Center spoofs.
         log << "setup " << debug << std::endl;
         if (ptr(loc) != 0 || idx(loc) != 0) EXIT
         vkResetFences(device, 1, &fen(loc));
@@ -1741,16 +1765,7 @@ struct DrawState : public BaseState {
         BaseState *framePtr = 0;
         BaseState *indexPtr = 0;
         BaseState *fetchPtr = 0;
-        BaseState *relatePtr = 0;
-        BaseState *imagePtr = 0;
-        BaseState *uniformPtr = 0;
-        BaseState *matrixPtr = 0;
-        int relateIdx = 0;
-        int imageIdx = 0;
-        int matrixIdx = 0;
-        int uniformIdx = 0;
         int index = 0;
-        bool middle = false;
         log << "micro " << debug << " " << max(loc) << std::endl;
         Arg sav; Arg tmp; HeapState<Arg> dot;
         for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,ary(loc),log); i++) dot << tmp;
@@ -1758,56 +1773,34 @@ struct DrawState : public BaseState {
         if (dot[i].loc == MiddleLoc && dot[i].ins == RDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == IRDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == WDeeIns)
-        switch (dot[i].res) {
-        default: EXIT
-        break; case (PipeRes): pipePtr = res(PipeRes);
-        break; case (SwapRes): swapPtr = res(SwapRes);
-        break; case (ChainRes): framePtr = res(ChainRes);
-        break; case (DebugRes): framePtr = swapPtr = res(DebugRes);
-        // break; case (PierceRes): framePtr = swapPtr = res(PierceRes);
-        break; case (IndexRes): indexPtr = res(IndexRes);
-        break; case (BringupRes): fetchPtr = res(BringupRes);
-        break; case (RelateRes): relatePtr = res(RelateRes); relateIdx = index++;
-        break; case (ImageRes): imagePtr = res(ImageRes); imageIdx = index++;
-        break; case (UniformRes): uniformPtr = res(UniformRes); uniformIdx = index++;
-        break; case (MatrixRes): matrixPtr = res(MatrixRes); matrixIdx = index++;}
-        // TODO add MicroPierce to planeTest that computes PierceRes Imagez.
-        // TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
-        // TODO add each buffer to Bringup, using them depending upon mod in Uniform.
-        // TODO use same gpu program for Builtin, set mod in Uniform from commandline.
-        // TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
-        // TODO in Regress, use Center pipe instead of planeTest.
-        // TODO in Release, use mouse and roller instead of Center spoofs.
-        /*if (trianglePtr) {
-            updateStorageDescriptor(device,trianglePtr->getBuffer(),
-                trianglePtr->getRange(),triangleIdx,descriptorSet);}*/
-        /*if (vertexPtr) {
-            updateStorageDescriptor(device,vertexPtr->getBuffer(),
-                vertexPtr->getRange(),vertexIdx,descriptorSet);}*/
-        /*if (numericPtr) {
-            updateStorageDescriptor(device,numericPtr->getBuffer(),
-                numericPtr->getRange(),numericIdx,descriptorSet);}*/
-        /*if (basisPtr) {
-            updateStorageDescriptor(device,basisPtr->getBuffer(),
-                basisPtr->getRange(),basisIdx,descriptorSet);}*/
-        if (uniformPtr) {
-            if (uniformPtr->getBuffer() == VK_NULL_HANDLE) EXIT
-            updateUniformDescriptor(device,uniformPtr->getBuffer(),uniformPtr->getRange(),uniformIdx,descriptorSet);}
-        if (matrixPtr) {
-            if (matrixPtr->getBuffer() == VK_NULL_HANDLE) EXIT
-            updateUniformDescriptor(device,matrixPtr->getBuffer(),matrixPtr->getRange(),matrixIdx,descriptorSet);}
-        if (relatePtr) {
-            if (relatePtr->getBuffer() == VK_NULL_HANDLE) EXIT
-            updateStorageDescriptor(device,relatePtr->getBuffer(),relatePtr->getRange(),relateIdx,descriptorSet);}
-        if (imagePtr) {
-            updateTextureDescriptor(device,imagePtr->getImageView(),imagePtr->getTextureSampler(),imageIdx,descriptorSet);}
-        if (pipePtr && swapPtr && framePtr && indexPtr && fetchPtr) {
-            VkExtent2D extent = swapPtr->getExtent();
-            recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
-            VkSemaphore before = VK_NULL_HANDLE; VkSemaphore after = VK_NULL_HANDLE;
-            if (framePtr != swapPtr) {before = sem(lst(loc)); after = sem(get(framePtr->getImageLoc()));}
-            drawFrame(commandBuffer,graphics,ptr(loc),idx(loc),siz(loc),max(loc).micro,before,after,fen(loc),VK_NULL_HANDLE);}
-        else EXIT
+        switch (ResrcPhase__Resrc__Phase(dot[i].res)) {default: EXIT
+        break; case (PipePhs): pipePtr = res(dot[i].res);
+        break; case (FramePhs): framePtr = res(dot[i].res);
+        break; case (SwapPhs): swapPtr = res(dot[i].res);
+        break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res);
+        break; case (IndexPhs): indexPtr = res(IndexRes);
+        break; case (FetchPhs): fetchPtr = res(BringupRes);
+        break; case (UniformPhs): {
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        break; case (StoragePhs): {
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        break; case (RelatePhs): {
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        break; case (SamplePhs): {
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}
+        if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
+        VkExtent2D extent = swapPtr->getExtent();
+        recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
+        VkSemaphore before = VK_NULL_HANDLE; VkSemaphore after = VK_NULL_HANDLE;
+        if (framePtr != swapPtr) {before = sem(lst(loc)); after = sem(get(framePtr->getImageLoc()));}
+        drawFrame(commandBuffer,graphics,ptr(loc),idx(loc),siz(loc),max(loc).micro,before,after,fen(loc),VK_NULL_HANDLE);
         return fen(loc);
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2482,42 +2475,44 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
     EXIT
     return descriptorPool;
 }
-VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
-    // TODO use MemoryIns__ of micro instead of, or to double check, MR resource bindings
+VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func) {
     VkDescriptorSetLayout descriptorSetLayout;
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    for (int i = 0; MR(UniformResrc,micro,i) != Resrcs; i++) {
+    auto fnc = func->micres(micro);
+    for (int i = 0; fnc(i) != Resrcs; i++)
+    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
+    break; case (UniformPhs): {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = bindings.size();
+    uboLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
     uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     bindings.push_back(uboLayoutBinding);}
-    for (int i = 0; MR(StorageResrc,micro,i) != Resrcs; i++) {
+    break; case (StoragePhs): {
     VkDescriptorSetLayoutBinding storageLayoutBinding{};
-    storageLayoutBinding.binding = bindings.size();
+    storageLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
     storageLayoutBinding.descriptorCount = 1;
     storageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     storageLayoutBinding.pImmutableSamplers = nullptr;
     storageLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     bindings.push_back(storageLayoutBinding);}
-    for (int i = 0; MR(RelateResrc,micro,i) != Resrcs; i++) {
+    break; case (RelatePhs): {
     VkDescriptorSetLayoutBinding relateLayoutBinding{};
-    relateLayoutBinding.binding = bindings.size();
+    relateLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
     relateLayoutBinding.descriptorCount = 1;
     relateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     relateLayoutBinding.pImmutableSamplers = nullptr;
     relateLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings.push_back(relateLayoutBinding);}
-    for (int i = 0; MR(SamplerResrc,micro,i) != Resrcs; i++) {
+    break; case (SamplePhs): {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = bindings.size();
+    samplerLayoutBinding.binding = 7; // bindings.size();
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    bindings.push_back(samplerLayoutBinding);}
+    bindings.push_back(samplerLayoutBinding);}}
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -2557,10 +2552,10 @@ VkShaderModule PipeState::createShaderModule(VkDevice device, const std::vector<
     return shaderModule;
 }
 VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
-    VkPipelineLayout pipelineLayout, Micro micro) {
+    VkPipelineLayout pipelineLayout, Micro micro, const ConstState *func) {
     VkPipeline pipeline;
-    auto vertShaderCode = readFile(MS(VertexFile,micro));
-    auto fragShaderCode = readFile(MS(FragmentFile,micro));
+    auto vertShaderCode = readFile(VertexFile__Micro__Str(micro));
+    auto fragShaderCode = readFile(FragmentFile__Micro__Str(micro));
     VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
@@ -2578,23 +2573,24 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     std::vector<VkVertexInputBindingDescription> bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    for (int i = 0; MR(FetchResrc,micro,i) != Resrcs; i++) {
-        Resrc res = MR(FetchResrc,micro,i);
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = i;
-        bindingDescription.stride = RI(ResrcStride,res,i);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        bindingDescriptions.push_back(bindingDescription);
-    for (int j = 0; ResrcFormat(res,j) != Packings; j++) {
-        VkVertexInputAttributeDescription attributeDescription{};
-        attributeDescription.binding = i;
-        attributeDescription.location = j;
-        switch (ResrcFormat(res,j)) {
-        default: EXIT
-        case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT; break;
-        case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT; break;}
-        attributeDescription.offset = RI(ResrcOffset,res,j);
-        attributeDescriptions.push_back(attributeDescription);}}
+    auto fnc = func->micres(micro);
+    for (int i = 0; fnc(i) != Resrcs; i++)
+    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
+    break; case (FetchPhs): {
+    VkVertexInputBindingDescription bindingDescription{};
+    bindingDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
+    bindingDescription.stride = ResrcStride__Resrc__Int(fnc(i));
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    bindingDescriptions.push_back(bindingDescription);
+    for (int j = 0; ResrcFormat__Resrc__Int__Packing(fnc(i))(j) != Packings; j++) {
+    VkVertexInputAttributeDescription attributeDescription{};
+    attributeDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
+    attributeDescription.location = j;
+    switch (ResrcFormat__Resrc__Int__Packing(fnc(i))(j)) {default: EXIT
+    break; case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    break; case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT;}
+    attributeDescription.offset = ResrcOffset__Resrc__Int__Int(fnc(i))(j);
+    attributeDescriptions.push_back(attributeDescription);}}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
@@ -2628,8 +2624,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_FALSE;
     VkPipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -2662,8 +2657,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     pipelineInfo.renderPass = renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
-    EXIT
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) EXIT
     vkDestroyShaderModule(device, fragShaderModule, nullptr);
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
     return pipeline;
