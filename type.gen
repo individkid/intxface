@@ -640,6 +640,13 @@ MicroAlt = {
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
 -- i>Memorys+4 Machine arrays as callable procedures
 -- i==Machinez is main machine that waits for bit CopyThd in RegisterWake
+-- TODO add MicroPierce to planeTest that computes PierceRes Imagez.
+-- TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
+-- TODO add each buffer to Bringup, using them depending upon mod in Uniform.
+-- TODO use same gpu program for Builtin, set mod in Uniform from commandline.
+-- TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
+-- TODO in Regress, use Center pipe instead of planeTest.
+-- TODO in Release, use mouse and roller instead of Center spoofs.
 Bootstrap = {
 	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"},
 	-- also used for centerCheck in main loop of planeTest

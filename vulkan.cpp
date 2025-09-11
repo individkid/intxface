@@ -1749,13 +1749,6 @@ struct DrawState : public BaseState {
         log << "unsize " << debug << std::endl;
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        // TODO add MicroPierce to planeTest that computes PierceRes Imagez.
-        // TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
-        // TODO add each buffer to Bringup, using them depending upon mod in Uniform.
-        // TODO use same gpu program for Builtin, set mod in Uniform from commandline.
-        // TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
-        // TODO in Regress, use Center pipe instead of planeTest.
-        // TODO in Release, use mouse and roller instead of Center spoofs.
         log << "setup " << debug << std::endl;
         if (ptr(loc) != 0 || idx(loc) != 0) EXIT
         vkResetFences(device, 1, &fen(loc));
