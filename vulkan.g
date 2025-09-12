@@ -1,22 +1,19 @@
 #version 450
 
-/*ResrcBinding = {
-    {"Resrc","UniformRes","Int","0"},
-    {"Resrc","MatrixRes","Int","1"},
-    {"Resrc","BasisRes","Int","2"},
-    {"Resrc","TriangleRes","Int","3"},
-    {"Resrc","NumericRes","Int","4"},
-    {"Resrc","VertexRes","Int","5"},
-    {"Resrc","RelateRes","Int","6"},
-    {"Resrc","ImageRes","Int","7"},
-}*/
-
-#if defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth)
+#if defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentTest) || defined(fragmentDebug)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in uint fragIdx;
 layout (location = 2) in vec4 fragVec;
 layout (location = 3) flat in uvec4 fragRef;
 layout (location = 4) flat in uint fragTex;
+layout (location = 5) in vec3 fragColor;
+layout (location = 6) in vec2 fragTexCoord;
+layout (location = 7) in vec4 test;
+/*ResrcBinding = {
+    {"Resrc","RelateRes","Int","6"},
+    {"Resrc","ImageRes","Int","7"},
+}*/
+layout (binding = 7) uniform sampler2D texSampler;
 #endif
 #if defined(fragmentDisplay)
 layout (location = 0) out vec4 outColor;
@@ -40,40 +37,25 @@ void fragmentDepth()
     outColor = gl_FragCoord.z;
 }
 #endif
-
 #if defined(fragmentTest)
 // layout (binding = 1) buffer MyDataBuffer {
 //     uint values[]; // Or a struct, array of structs, etc.
 // } myData;
-layout (binding = 7) uniform sampler2D texSampler;
-
-layout (location = 0) in vec3 fragColor;
-layout (location = 1) in vec2 fragTexCoord;
-
 layout (location = 0) out vec4 outColor;
-
 void fragmentTest()
 {
     outColor = texture(texSampler, fragTexCoord); // vec4(fragColor,1.0);
 }
 #endif
-
 #if defined(fragmentDebug)
-layout (binding = 7) uniform sampler2D texSampler;
-
-layout (location = 0) in vec3 fragColor;
-layout (location = 1) in vec2 fragTexCoord;
-layout (location = 2) in vec4 test;
-
 layout (location = 0) out float outColor;
-
 void fragmentDebug()
 {
     outColor = test.z;
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexTest) || defined(vertexDebug)
 // TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
 // TODO think of more approximate and efficient way to calculate acc-uracy
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
@@ -170,11 +152,20 @@ struct Vertex {
     vec4 ord; // coordinate or color
     uvec4 ref; // backreference to planes
 };
-layout (binding = 0) uniform Uniforms {
+
+/*ResrcBinding = {
+    {"Resrc","UniformRes","Int","0"},
+    {"Resrc","MatrixRes","Int","1"},
+    {"Resrc","BasisRes","Int","2"},
+    {"Resrc","TriangleRes","Int","3"},
+    {"Resrc","NumericRes","Int","4"},
+    {"Resrc","VertexRes","Int","5"},
+}*/
+layout (binding = 0) readonly uniform Uniforms {
     Uniform buf;
 } inUni;
-layout (binding = 1) readonly buffer Matrixs {
-    Matrix buf[];
+layout (binding = 1) readonly uniform Matrixs {
+    Matrix buf[4]; // uniforms cannot be variable size
 } inMat;
 layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
@@ -188,11 +179,20 @@ layout (binding = 4) readonly buffer Numerics {
 layout (binding = 5) readonly buffer Vertexs {
     Vertex buf[];
 } inVer;
+
 layout (location = 0) out vec4 fragOrd;
 layout (location = 1) out uint fragIdx;
 layout (location = 2) out vec4 fragVec;
 layout (location = 3) out uvec4 fragRef;
 layout (location = 4) out uint fragTex;
+layout (location = 5) out vec3 fragColor;
+layout (location = 6) out vec2 fragTexCoord;
+layout (location = 7) out vec4 test;
+
+layout (location = 0) in vec4 inPosition;
+layout (location = 1) in vec4 inOrdClr;
+layout (location = 2) in uvec4 inRefer;
+
 void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
 {
     tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
@@ -253,43 +253,22 @@ void vertexDepth()
     vertex();
 }
 #endif
-
 #if defined(vertexTest)
-layout (binding = 1) uniform Matrix {mat4 buf[];} inMat;
-
-layout (location = 0) in vec4 inPosition;
-layout (location = 1) in vec4 inOrdClr;
-layout (location = 2) in uvec4 inRefer;
-
-layout (location = 0) out vec3 fragColor;
-layout (location = 1) out vec2 fragTexCoord;
-
 void vertexTest()
 {
-    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2] * inPosition;
-    else gl_Position = inMat.buf[2] * inMat.buf[3] * inPosition;
+    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
     if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
     else fragColor = vec3(1.0,0.0,0.0); // red
     fragTexCoord = inOrdClr.xy;
 }
 #endif
-
 #if defined(vertexDebug)
-layout (binding = 1) uniform Matrix {mat4 buf[];} inMat;
-
-layout (location = 0) in vec4 inPosition;
-layout (location = 1) in vec4 inOrdClr;
-layout (location = 2) in uvec4 inRefer;
-
-layout (location = 0) out vec3 fragColor;
-layout (location = 1) out vec2 fragTexCoord;
-layout (location = 2) out vec4 test;
-
 void vertexDebug()
 {
-    gl_Position = inMat.buf[2] * inPosition;
+    gl_Position = inMat.buf[2].buf * inPosition;
     fragColor = inOrdClr.xyz;
     fragTexCoord = inOrdClr.xy;
-    test = inMat.buf[3] * vec4(-0.5,-0.5,0.2,1.0);
+    test = inMat.buf[3].buf * vec4(-0.5,-0.5,0.2,1.0);
 }
 #endif

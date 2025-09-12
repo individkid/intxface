@@ -473,15 +473,12 @@ ResrcElement = {
 	{"Resrc","BringupRes","Int","1","Int","4"},
 	{"Resrc","BringupRes","Int","2","Int","4"},
 }
--- :multiple fetch fields per fetch resource
--- but only one display format per framebuffer resource:
 ResrcPacking = {
 	{"Resrc","SwapRes","Packing","SrgbFrm"},
 	{"Resrc","DebugRes","Packing","SfloatFrm"},
 	{"Resrc","PierceRes","Packing","SintFrm"},
 	{"Resrc","DepthRes","Packing","SfloatFrm"},
 }
--- where resource is used in the graphics pipeline:
 ResrcPhase = {
 	{"Resrc","IndexRes","Phase","IndexPhs"},
 	{"Resrc","BringupRes","Phase","FetchPhs"},

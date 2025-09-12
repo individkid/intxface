@@ -1196,7 +1196,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         push(ins,fnc,center,sub,log);}
-        break; case (Configurez): // TODO alias Uniform* Configure to Uniformz fields
+        break; case (Configurez):
         for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,ResrcLocs,0,center,sub,fnc.pass});
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
