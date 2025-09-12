@@ -13,6 +13,9 @@ layout (location = 7) in vec4 test;
     {"Resrc","RelateRes","Int","6"},
     {"Resrc","ImageRes","Int","7"},
 }*/
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
 layout (binding = 7) uniform sampler2D texSampler;
 #endif
 #if defined(fragmentDisplay)
