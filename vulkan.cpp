@@ -1097,6 +1097,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (LockFrm):
         req.tag = LockReq; req.ext = IntExt;
         req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx);
+        break; case (ResrcFrm):
+        req.tag = LockReq; req.ext = ResrcExt;
+        req.idx = get(arg,siz,idx);
         break; case (IndexFrm):
         req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx);
         break; case (CastFrm):
@@ -1465,8 +1468,7 @@ struct BufferState : public BaseState {
         log << "resize " << debug << " " << max(loc) << std::endl;
         range = max(loc).size;
         VkDeviceSize bufferSize = max(loc).size;
-        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
         commandBuffer = createCommandBuffer(device,commandPool);
         fen(loc) = createFence(device);
     }
@@ -1479,18 +1481,15 @@ struct BufferState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << std::endl;
         int tmp = idx(loc) - max(loc).base;
-        if (tmp < 0 || siz(loc) < 0 || tmp+siz(loc) > max(loc).size)
-        EXIT
+        if (tmp < 0 || siz(loc) < 0 || tmp+siz(loc) > max(loc).size) EXIT
         VkDeviceSize bufferSize = max(loc).size;
-        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         memProperties, stagingBuffer, stagingBufferMemory);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy((void*)((char*)data+tmp),ptr(loc),siz(loc));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fen(loc));
-        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer,
-        fen(loc),VK_NULL_HANDLE,VK_NULL_HANDLE);
+        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fen(loc),VK_NULL_HANDLE,VK_NULL_HANDLE);
         return fen(loc);
     }
     void upset(Loc &loc, SmartState log) override {
@@ -1499,6 +1498,60 @@ struct BufferState : public BaseState {
         vkDestroyBuffer(device, stagingBuffer, nullptr);
     }
     static void copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
+};
+
+struct RelateState : public BaseState {
+    const VkDevice device;
+    const VkPhysicalDevice physical;
+    const VkQueue graphics;
+    const VkCommandPool commandPool;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    const VkBufferUsageFlags flags;
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    int range;
+    VkCommandBuffer commandBuffer;
+    VkDeviceSize bufferSize;
+    RelateState() :
+        BaseState("RelateState",StackState::self),
+        device(StackState::device),
+        physical(StackState::physical),
+        graphics(StackState::graphics),
+        commandPool(StackState::commandPool),
+        memProperties(StackState::memProperties),
+        flags(StackState::flags) {
+    }
+    ~RelateState() {
+        reset(SmartState());
+    }
+    VkBuffer getBuffer() override {return buffer;}
+    VkDeviceMemory getMemory() override {return memory;}
+    int getRange() override {return range;}
+    void resize(Loc &loc, SmartState log) override {
+        log << "resize " << debug << " " << max(loc) << std::endl;
+        // TODO use idx/siz from src and dst buffers
+        range = max(loc).size;
+        bufferSize = max(loc).size;
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
+        commandBuffer = createCommandBuffer(device,commandPool);
+        fen(loc) = createFence(device);
+    }
+    void unsize(Loc &loc, SmartState log) override {
+        vkDestroyFence(device, fen(loc), nullptr);
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeMemory(device, memory, nullptr);
+        vkDestroyBuffer(device, buffer, nullptr);
+    }
+    VkFence setup(Loc &loc, SmartState log) override {
+        log << "setup " << debug << std::endl;
+        VkBuffer stagingBuffer = res(max(loc).resrc)->getBuffer();
+        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetFences(device, 1, &fen(loc));
+        BufferState::copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fen(loc),VK_NULL_HANDLE,VK_NULL_HANDLE);
+        return fen(loc);
+    }
+    void upset(Loc &loc, SmartState log) override {
+    }
 };
 
 struct ImageState : public BaseState {
@@ -1829,7 +1882,7 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
-    ArrayState<BufferState,RelateRes,StackState::frames> relateState;
+    ArrayState<RelateState,RelateRes,StackState::frames> relateState;
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,DebugRes,StackState::frames> debugState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;

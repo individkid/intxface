@@ -143,6 +143,7 @@ Format = {
 	"SourceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
 	"PokeFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to dst)
 	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to color)
+	-- for Pierce (ImageState) and Relate (BufferState), we need (color to buf)
 	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
 	"SizeFrm", -- SizeReq IntExt base size
 	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
@@ -150,6 +151,7 @@ Format = {
 	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"LockFrm", -- LockReq IntExt ptr(raw data) idx(from center) siz(from center)
+	"ResrcFrm", -- LockReq ResrcExt resrc
 	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
 	"CastFrm", -- BothReq ExtentExt ptr(elements) siz(number of elements) base(width) size(height)
 	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
@@ -573,6 +575,10 @@ ResrcIns = {
 	{"Resrc","ImageRes","Int","0","Instr","IDerIns"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
 	{"Resrc","ImageRes","Int","0","Format","ExtentFrm"},
+	-- {"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
+	-- ImageState ResrcLoc's to setup for DrawState to fill in with polytope or facet identifiers
+	-- {"Resrc","RelateRes","Int","0","Resrc","RelateRes"},
+	-- RelateState Instr's to bind PierceRes to copy from
 	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
 	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
 	{"Resrc","TriangleRes","Int","0","Resrc","TriangleRes"},
