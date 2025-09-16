@@ -1,66 +1,47 @@
 #version 450
 
-#if defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentTest) || defined(fragmentDebug)
-layout (location = 0) in vec4 fragOrd;
-layout (location = 1) flat in uint fragIdx;
-layout (location = 2) in vec4 fragVec;
-layout (location = 3) flat in uvec4 fragRef;
-layout (location = 4) flat in uint fragTex;
-layout (location = 5) in vec3 fragColor;
-layout (location = 6) in vec2 fragTexCoord;
-layout (location = 7) in vec4 test;
-/*ResrcBinding = {
-    {"Resrc","RelateRes","Int","6"},
-    {"Resrc","ImageRes","Int","7"},
-}*/
-layout (binding = 6) readonly buffer Relates {
-    uint buf[];
-} inRel;
-layout (binding = 7) uniform sampler2D texSampler;
-#endif
-#if defined(fragmentDisplay)
-layout (location = 0) out vec4 outColor;
-void fragmentDisplay()
-{
-    switch (fragTex) {default:
-    break; case (0): outColor = fragOrd;}
-}
-#endif
-#if defined(fragmentPierce)
-layout (location = 0) out uint outColor;
-void fragmentPierce()
-{
-    outColor = fragIdx;
-}
-#endif
-#if defined(fragmentDepth)
-layout (location = 0) out float outColor;
-void fragmentDepth()
-{
-    outColor = gl_FragCoord.z;
-}
-#endif
-#if defined(fragmentTest)
-// layout (binding = 1) buffer MyDataBuffer {
-//     uint values[]; // Or a struct, array of structs, etc.
-// } myData;
-layout (location = 0) out vec4 outColor;
-void fragmentTest()
-{
-    outColor = texture(texSampler, fragTexCoord); // vec4(fragColor,1.0);
-}
-#endif
-#if defined(fragmentDebug)
-layout (location = 0) out float outColor;
-void fragmentDebug()
-{
-    outColor = test.z;
-}
-#endif
+struct Uniform {
+    uint all; // which subject to use
+    uint one; // which element to use
+    uint idx; // which plane to manipulate
+    uint use; // which basis to use
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexTest) || defined(vertexDebug)
-// TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
-// TODO think of more approximate and efficient way to calculate acc-uracy
+    uint tri; // base of triangles
+    uint num; // base of numerics
+    uint vtx; // base of vertices
+    uint mat; // base of matrices
+
+    uint bas; // base of basises
+    uint mod; // vertices or planes
+    uint pad[2];
+};
+struct Matrix {
+    mat4 buf;
+};
+struct Basis {
+    vec4 buf[9];
+};
+struct Triangle {
+    uvec4 vtx; // points of triangle
+    uint num; // plane of points
+    uint pol; // polytope triangle is in
+    uint tex; // texture selector
+    uint rot; // texture rotation
+};
+struct Numeric {
+    vec4 vec; // distances above basis
+    uvec4 bas; // basis selector
+};
+struct Vertex {
+    vec4 vec; // intersection of planes
+    vec4 ord; // coordinate or color
+    uvec4 ref; // backreference to planes
+};
+
+layout (binding = 0) readonly uniform Uniforms {
+    Uniform buf;
+} inUni;
+
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
 {
     // acu is magnitude of cross over product of leg magnitudes
@@ -118,55 +99,73 @@ vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
     if (tmq1 > tmq0 && tmq1 > tmq && tmq1 > tmp0 && tmq1 > tmp1 && tmq1 > tmp) return uec1;
     /*if (tmq > tmq0 && tmq > tmq1 && tmq > tmp0 && tmq > tmp1 && tmq > tmp)*/ return uec;
 }
-struct Uniform {
-    uint all; // which subject to use
-    uint one; // which element to use
-    uint idx; // which plane to manipulate
-    uint use; // which basis to use
 
-    uint tri; // base of triangles
-    uint num; // base of numerics
-    uint vtx; // base of vertices
-    uint mat; // base of matrices
-
-    uint bas; // base of basises
-    uint mod; // vertices or planes
-    uint pad[2];
-};
-struct Matrix {
-    mat4 buf;
-};
-struct Basis {
-    vec4 buf[9];
-};
-struct Triangle {
-    uvec4 vtx; // points of triangle
-    uint num; // plane of points
-    uint pol; // polytope triangle is in
-    uint tex; // texture selector
-    uint rot; // texture rotation
-};
-struct Numeric {
-    vec4 vec; // distances above basis
-    uvec4 bas; // basis selector
-};
-struct Vertex {
-    vec4 vec; // intersection of planes
-    vec4 ord; // coordinate or color
-    uvec4 ref; // backreference to planes
-};
-
+#if defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentTest) || defined(fragmentDebug)
 /*ResrcBinding = {
     {"Resrc","UniformRes","Int","0"},
+    {"Resrc","RelateRes","Int","6"},
+    {"Resrc","ImageRes","Int","7"},
+}*/
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
+layout (binding = 7) uniform sampler2D texSampler;
+layout (location = 0) in vec4 fragOrd;
+layout (location = 1) flat in uint fragIdx;
+layout (location = 2) in vec4 fragVec;
+layout (location = 3) flat in uvec4 fragRef;
+layout (location = 4) flat in uint fragTex;
+layout (location = 5) in vec3 fragColor;
+layout (location = 6) in vec2 fragTexCoord;
+layout (location = 7) in vec4 test;
+#endif
+#if defined(fragmentDisplay)
+layout (location = 0) out vec4 outColor;
+void fragmentDisplay()
+{
+    switch (fragTex) {default:
+    break; case (0): outColor = fragOrd;}
+}
+#endif
+#if defined(fragmentPierce)
+layout (location = 0) out uint outColor;
+void fragmentPierce()
+{
+    outColor = fragIdx;
+}
+#endif
+#if defined(fragmentDepth)
+layout (location = 0) out float outColor;
+void fragmentDepth()
+{
+    outColor = gl_FragCoord.z;
+}
+#endif
+#if defined(fragmentTest)
+layout (location = 0) out vec4 outColor;
+void fragmentTest()
+{
+    outColor = texture(texSampler, fragTexCoord); // vec4(fragColor,1.0);
+}
+#endif
+#if defined(fragmentDebug)
+layout (location = 0) out float outColor;
+void fragmentDebug()
+{
+    outColor = test.z;
+}
+#endif
+
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexTest) || defined(vertexDebug)
+// TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
+// TODO think of more approximate and efficient way to calculate acc-uracy
+/*ResrcBinding = {
     {"Resrc","MatrixRes","Int","1"},
     {"Resrc","BasisRes","Int","2"},
     {"Resrc","TriangleRes","Int","3"},
     {"Resrc","NumericRes","Int","4"},
     {"Resrc","VertexRes","Int","5"},
 }*/
-layout (binding = 0) readonly uniform Uniforms {
-    Uniform buf;
-} inUni;
 layout (binding = 1) readonly uniform Matrixs {
     Matrix buf[4]; // uniforms cannot be variable size
 } inMat;
@@ -182,7 +181,6 @@ layout (binding = 4) readonly buffer Numerics {
 layout (binding = 5) readonly buffer Vertexs {
     Vertex buf[];
 } inVer;
-
 layout (location = 0) out vec4 fragOrd;
 layout (location = 1) out uint fragIdx;
 layout (location = 2) out vec4 fragVec;
@@ -191,11 +189,9 @@ layout (location = 4) out uint fragTex;
 layout (location = 5) out vec3 fragColor;
 layout (location = 6) out vec2 fragTexCoord;
 layout (location = 7) out vec4 test;
-
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uvec4 inRefer;
-
 void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
 {
     tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
@@ -244,19 +240,8 @@ void vertexDisplay()
     vertex();
 }
 #endif
-#if defined(vertexPierce)
-void vertexPierce()
-{
-    vertex();
-}
-#endif
-#if defined(vertexDepth)
-void vertexDepth()
-{
-    vertex();
-}
-#endif
 #if defined(vertexTest)
+// TODO normalize towards vertex()
 void vertexTest()
 {
     if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
@@ -273,5 +258,19 @@ void vertexDebug()
     fragColor = inOrdClr.xyz;
     fragTexCoord = inOrdClr.xy;
     test = inMat.buf[3].buf * vec4(-0.5,-0.5,0.2,1.0);
+}
+#endif
+#if defined(vertexPierce)
+// TODO normalize towards vertexDebug
+void vertexPierce()
+{
+    vertex();
+}
+#endif
+#if defined(vertexDepth)
+// TODO normalize towards vertexDebug
+void vertexDepth()
+{
+    vertex();
 }
 #endif

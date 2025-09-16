@@ -884,6 +884,7 @@ void planeTest(enum Thread tag, int idx)
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {/*int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,fun,SmartState());*/
+    // TODO issue MicroPierce and RelateRes
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -1246,6 +1247,7 @@ void initTest()
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
     for (int i = 0; i < frames; i++) callCopy(mat,Matrixz,fnc,1,0);
+    // TODO initialize PierceRes
     } break; case (Builtin): {
     } break; case (Regress): case (Release): {
     }}
