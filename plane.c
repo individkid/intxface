@@ -1205,13 +1205,23 @@ void initTest()
     struct Fnc fun = {0,planePass,planeGlfw,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 1+frames;
-    allocDraw(&ptr->drw,1+frames);
+    ptr->mem = Drawz; ptr->siz = 1+2/*Micros*/+frames/*+frames*/;
+    allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = SwapRes;
-    for (int i = 0; i < frames; i++) {
+    for (int i = 0; i < 2/*Micros*/; i++) {
     ptr->drw[1+i].con.tag = ResrcCon;
-    ptr->drw[1+i].con.res = ChainRes;}
+    ptr->drw[1+i].con.res = PipeRes;
+    int arg[] = {/*IDerIns PipeRes Micro*/i,/*req.base Micro*/i};
+    ptr->drw[1+i].siz = sizeof(arg)/sizeof(int);
+    allocInt(&ptr->drw[1+i].arg,ptr->drw[1+i].siz);
+    for (int j = 0; j < ptr->drw[1+i].siz; j++) ptr->drw[1+i].arg[j] = arg[j];}
+    for (int i = 0; i < frames; i++) {
+    ptr->drw[1+2/*Micros*/+i].con.tag = ResrcCon;
+    ptr->drw[1+2/*Micros*/+i].con.res = ChainRes;}
+    //for (int i = 0; i < frames; i++) {
+    //ptr->drw[1+2/*Micros*/+frames+i].con.tag = ResrcCon;
+    //ptr->drw[1+2/*Micros*/+frames+i].con.res = PierceRes;}
     callCopy(ptr,Drawz,fun,0,0);
     while (!centerCheck(Drawz)) usleep(1000);
     int width = callInfo(WindowWidth,0,planeRcfg);
@@ -1247,7 +1257,6 @@ void initTest()
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
     for (int i = 0; i < frames; i++) callCopy(mat,Matrixz,fnc,1,0);
-    // TODO initialize PierceRes
     } break; case (Builtin): {
     } break; case (Regress): case (Release): {
     }}

@@ -135,29 +135,29 @@ Packing = { -- VkFormat
 	"SrgbFrm",
 }
 Format = {
-	"ImageFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
-	"WonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
-	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
-	"PierceFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
-	"PeekFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to src)
-	"SourceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
-	"PokeFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to dst)
-	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to color)
+	"ImageFrm", -- 0 ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
+	"WonlyFrm", -- 1 BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
+	"RonlyFrm", -- 2 BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
+	"PierceFrm", -- 3 ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
+	"PeekFrm", -- 4 BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to src)
+	"SourceFrm", -- 5 BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
+	"PokeFrm", -- 6 BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to dst)
+	"DestFrm", -- 7 BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to color)
 	-- for Pierce (ImageState) and Relate (BufferState), we need (color to buf)
-	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
-	"SizeFrm", -- SizeReq IntExt base size
-	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
-	"PartFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(from configure) size(from configure)
-	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
-	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
-	"LockFrm", -- LockReq IntExt ptr(raw data) idx(from center) siz(from center)
-	"ResrcFrm", -- LockReq ResrcExt resrc
-	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
-	"CastFrm", -- BothReq ExtentExt ptr(elements) siz(number of elements) base(width) size(height)
-	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
-	"ConstFrm", -- SizeReq MicroExt base(which shader set)
-	"FalseFrm", -- SizeReq FalseExt(always resize)
-	"TrueFrm", -- SizeReq TrueExt(resize once)
+	"ExtentFrm", -- 8 SizeReq ExtentExt base(width) size(height)
+	"SizeFrm", -- 9 SizeReq IntExt base size
+	"HighFrm", -- 0 BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
+	"PartFrm", -- 1 BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(from configure) size(from configure)
+	"WholeFrm", -- 2 BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
+	"OnceFrm", -- 3 OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
+	"LockFrm", -- 4 LockReq IntExt ptr(raw data) idx(from center) siz(from center)
+	"ResrcFrm", -- 5 LockReq ResrcExt resrc
+	"IndexFrm", -- 6 SizeReq MicroExt base(same as resource index)
+	"CastFrm", -- 7 BothReq ExtentExt ptr(elements) siz(number of elements) base(width) size(height)
+	"MicroFrm", -- 8 BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
+	"ConstFrm", -- 9 SizeReq MicroExt base(which shader set)
+	"FalseFrm", -- 0 SizeReq FalseExt(always resize)
+	"TrueFrm", -- 1 SizeReq TrueExt(resize once)
 }
 Instr = {
 	"DerIns",  -- advance before push to thread
@@ -569,13 +569,12 @@ ResrcIns = {
 	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	{"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	{"Resrc","PipeRes","Int","0","Instr","IDerIns"},
+	{"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	{"Resrc","PipeRes","Int","0","Format","IndexFrm"},
 	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
-	{"Resrc","ImageRes","Int","0","Instr","IDerIns"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
-	{"Resrc","ImageRes","Int","0","Format","ExtentFrm"},
-	-- {"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
+	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
 	-- ImageState ResrcLoc's to setup for DrawState to fill in with polytope or facet identifiers
 	-- {"Resrc","RelateRes","Int","0","Resrc","RelateRes"},
 	-- RelateState Instr's to bind PierceRes to copy from
@@ -585,9 +584,7 @@ ResrcIns = {
 	{"Resrc","NumericRes","Int","0","Resrc","NumericRes"},
 	{"Resrc","VertexRes","Int","0","Resrc","VertexRes"},
 	{"Resrc","BasisRes","Int","0","Resrc","BasisRes"},
-	{"Resrc","DebugRes","Int","0","Instr","IDerIns"},
 	{"Resrc","DebugRes","Int","0","Resrc","DebugRes"},
-	{"Resrc","DebugRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
 	{"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
@@ -653,10 +650,6 @@ MicroAlt = {
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
 -- i>Memorys+4 Machine arrays as callable procedures
 -- i==Machinez is main machine that waits for bit CopyThd in RegisterWake
--- TODO add MicroPierce to planeTest that computes PierceRes Imagez.
--- TODO add copy PierceRes to RelateRes for binding to MicroTest/Display.
--- TODO add each buffer to Bringup, using them depending upon mod in Uniform.
--- TODO use same gpu program for Builtin, set mod in Uniform from commandline.
 -- TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
 -- TODO in Regress, use Center pipe instead of planeTest.
 -- TODO in Release, use mouse and roller instead of Center spoofs.

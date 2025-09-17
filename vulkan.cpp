@@ -528,10 +528,6 @@ struct BaseState {
         if (plock == 0) {lock = 0; nask = 0;}
         safe.post();
     }
-    void setre(ResrcLoc loc, Extent ext, int base, int size, SmartState log) {
-        push(0,0,0,0,loc,Con{.tag=Constants},Req{SizeReq,0,0,0,ext,base,size,false},Rsp{},0,log);
-        baseres(loc,log); baseups(loc,log);
-    }
     void reset(SmartState log) {
         for (int i = 0; i < ResrcLocs; i++)
         if (ploc[i].max == SizeState(InitExt));
@@ -921,7 +917,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return stack[res];
     }
     static int get(int *arg, int siz, int &idx) {
-        if (idx >= siz) EXIT
+        if (idx >= siz) {std::cerr << "not enough int arguments in struct Draw " << idx << ">=" << siz << std::endl; EXIT}
         return arg[idx++];
     }
     void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
@@ -1171,7 +1167,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         HeapState<Ins> lst; int count = 0; Ins ins; Arg sav; Arg tmp; HeapState<Arg> dot;
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) lst << instruct(dot,i,typ,val,arg,siz,idx,count,log);
-        if (idx != siz) EXIT
+        if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
@@ -1193,14 +1189,13 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Numericz): push(center->mem,(void*)center->num,arg,aiz,adx,center,sub,fnc,ary,log);
         break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,aiz,adx,center,sub,fnc,ary,log);
         break; case (Basisz): push(center->mem,(void*)center->bas,arg,aiz,adx,center,sub,fnc,ary,log);}}
-        break; case (Drawz): {int didx = 0;
-        for (int i = 0; i < center->siz; i++)
+        break; case (Drawz): for (int i = 0; i < center->siz; i++) {int didx = 0;
         push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
         for (int i = 0; i < center->siz; i++) ins<<center->com[i];
         push(ins,fnc,center,sub,log);}
-        break; case (Configurez):
-        for (int i = 0; i < center->siz; i++) write(center->cfg[i],center->val[i]);
+        break; case (Configurez): for (int i = 0; i < center->siz; i++)
+        write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,ResrcLocs,0,center,sub,fnc.pass});
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
@@ -1360,7 +1355,6 @@ struct PipeState : public BaseState {
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro,constState)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro,constState)) {
-        setre(ResizeLoc,MicroExt,micro,0,SmartState());
     }
     ~PipeState() {
         vkDestroyPipeline(device, pipeline, nullptr);
