@@ -1047,7 +1047,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         count += 1; rsp.siz += 1;}
         return rsp;
     }
-    static Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+    Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default: EXIT
@@ -1078,6 +1078,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        break; case (SwapFrm):
+        req.tag = SizeReq; req.ext = ExtentExt;
+        req.base = read(WindowWidth); req.size = read(WindowHeight);
         break; case (SizeFrm):
         req.tag = SizeReq; req.ext = IntExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
@@ -1123,7 +1126,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     static Con constant(Instr ins, Resrc typ, SmartState log) {
         return Con{.tag = ResrcCon, .res = typ};
     }
-    template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type> Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1200,33 +1203,33 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat); int marg[] = {
-            idx,wid,hei,
-            idx,tot,
-            idx,tot,
-            idx,tot,wid,hei,
-            idx,tot};
+            idx,wid,hei, // ExtentFrm
+            idx,tot, // ImageFrm
+            idx,tot, // WonlyFrm
+            idx,tot,wid,hei, // HighFrm
+            idx,tot}; // RonlyFrm
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
-            idx,wid,hei,
-            idx,tot,
-            idx,tot,
-            idx,siz,wid,hei,
-            idx,tot};
+            idx, // SwapFrm
+            idx,tot, // PierceFrm
+            idx,tot, // PeekFrm
+            idx,siz,wid,hei, // HighFrm
+            idx,tot}; // SourceFrm
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
-            idx,wid,hei,
-            idx,tot,
-            idx,tot,
-            idx,siz,wid,hei,
-            idx,tot};
+            idx, // SwapFrm
+            idx,tot, // PierceFrm
+            idx,tot, // PokeFrm
+            idx,siz,wid,hei, // HighFrm
+            idx,tot}; // DestFrm
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,ary,log);}}
     }
@@ -1624,11 +1627,12 @@ struct ImageState : public BaseState {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
-        VkImageUsageFlagBits flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        VkImageUsageFlagBits flags;
         VkFormat forms = (res() == DebugRes || res() == PierceRes || res() == DepthRes /*TODO better way than listing every one that's valid*/ ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
-        if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)flags);
-        if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)flags);
-        createImage(device, physical, /*TODO:*/texWidth, texHeight, forms/*:TODO*/, /*TODO:*/flags/*:TODO*/, memProperties, /*output*/ image, imageMemory);
+        if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         if (res() == ImageRes) {
         textureSampler = createTextureSampler(device,properties);}

@@ -1205,23 +1205,33 @@ void initTest()
     struct Fnc fun = {0,planePass,planeGlfw,0,1};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 1+2/*Micros*/+frames/*+frames*/;
+    ptr->mem = Drawz; ptr->siz = 1/*+2*//*Micros*//*+frames*//*+frames*/;
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = SwapRes;
+    callCopy(ptr,Drawz,fun,0,0);
+    while (!centerCheck(Drawz)) usleep(1000);
+    ptr = centerPull(Drawz); freeCenter(ptr);
+    ptr->mem = Drawz; ptr->siz = 2/*Micros*/+frames+frames;
+    allocDraw(&ptr->drw,ptr->siz);
     for (int i = 0; i < 2/*Micros*/; i++) {
-    ptr->drw[1+i].con.tag = ResrcCon;
-    ptr->drw[1+i].con.res = PipeRes;
+    ptr->drw[i].con.tag = ResrcCon;
+    ptr->drw[i].con.res = PipeRes;
     int arg[] = {/*IDerIns PipeRes Micro*/i,/*req.base Micro*/i};
-    ptr->drw[1+i].siz = sizeof(arg)/sizeof(int);
-    allocInt(&ptr->drw[1+i].arg,ptr->drw[1+i].siz);
-    for (int j = 0; j < ptr->drw[1+i].siz; j++) ptr->drw[1+i].arg[j] = arg[j];}
+    ptr->drw[i].siz = sizeof(arg)/sizeof(int);
+    allocInt(&ptr->drw[i].arg,ptr->drw[i].siz);
+    for (int j = 0; j < ptr->drw[i].siz; j++) ptr->drw[i].arg[j] = arg[j];}
     for (int i = 0; i < frames; i++) {
-    ptr->drw[1+2/*Micros*/+i].con.tag = ResrcCon;
-    ptr->drw[1+2/*Micros*/+i].con.res = ChainRes;}
-    //for (int i = 0; i < frames; i++) {
-    //ptr->drw[1+2/*Micros*/+frames+i].con.tag = ResrcCon;
-    //ptr->drw[1+2/*Micros*/+frames+i].con.res = PierceRes;}
+    ptr->drw[2/*Micros*/+i].con.tag = ResrcCon;
+    ptr->drw[2/*Micros*/+i].con.res = ChainRes;}
+    for (int i = 0; i < frames; i++) {
+    ptr->drw[2/*Micros*/+frames+i].con.tag = ResrcCon;
+    ptr->drw[2/*Micros*/+frames+i].con.res = PierceRes;
+    int arg[] = {/*IDerIns PipeRes*/i};
+    ptr->drw[2/*Micros*/+frames+i].siz = sizeof(arg)/sizeof(int);
+    allocInt(&ptr->drw[2/*Micros*/+frames+i].arg,ptr->drw[2/*Micros*/+frames+i].siz);
+    for (int j = 0; j < ptr->drw[2/*Micros*/+frames+i].siz; j++)
+    ptr->drw[2/*Micros*/+frames+i].arg[j] = arg[j];}
     callCopy(ptr,Drawz,fun,0,0);
     while (!centerCheck(Drawz)) usleep(1000);
     int width = callInfo(WindowWidth,0,planeRcfg);
