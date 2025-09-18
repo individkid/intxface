@@ -609,6 +609,7 @@ MicroIns = {
 	mic = {\"MicroTest\",\"MicroDisplay\"}\
 	deb = {\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\",\"MicroPierce\"}\
+	web = {\"DebugRes\",\"PierceRes\"}\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num) else return i+num end end end\
@@ -632,18 +633,16 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","11","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","12","Instr","IRDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","12","Resrc","PipeRes"},
-	{"Micro","%(return gnc(mib,deb))","Int","0","Instr","DerIns"},
-		{"Micro","%(return gnc(mib,deb))","Int","0","Resrc","DrawRes"},
-		{"Micro","%(return gnc(mib,deb))","Int","0","ResrcLoc","MiddleLoc"},
-		{"Micro","%(return gnc(mib,deb))","Int","0","Format","MicroFrm"},
-	{"Micro","%(return gnc(mib,deb))","Int","1","Instr","WDeeIns"},
-		{"Micro","%(return gnc(mib,deb))","Int","1","Resrc","DebugRes"},
-	--TODO{"Micro","%(return gnc(mib,deb))","Int","2","Instr","WDeeIns"},
-	--	{"Micro","%(return gnc(mib,deb))","Int","2","Resrc","PierceRes"},
-	{"Micro","%(return gnc(mib,deb))","Int","2","Instr","RDeeIns"},
+	{"Micro","%(return fnc(mib))","Int","0","Instr","DerIns"},
+		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
+		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},
+		{"Micro","%(return fnc(mib))","Int","0","Format","MicroFrm"},
+	{"Micro","%(return fnc(mib))","Int","1","Instr","WDeeIns"},
+		{"Micro","%(return fnc(mib))","Int","1","Resrc","%(return fnc(web))"},
+	{"Micro","%(return fnc(mib))","Int","2","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mib,deb))","Int","%(return hnc(deb,1))","Resrc","%(return fnc(deb))"},
-	{"Micro","%(return gnc(mib,deb))","Int","6","Instr","IRDeeIns"},
-		{"Micro","%(return gnc(mib,deb))","Int","6","Resrc","PipeRes"},
+	{"Micro","%(return fnc(mib))","Int","6","Instr","IRDeeIns"},
+		{"Micro","%(return fnc(mib))","Int","6","Resrc","PipeRes"},
 }
 MicroAlt = {
 	{"Micro","MicroTest","Int","0","Instr","DerIns"},
