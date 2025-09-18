@@ -264,7 +264,9 @@ void vertexDebug()
 // TODO normalize towards vertexDebug
 void vertexPierce()
 {
-    vertex();
+    gl_Position = inMat.buf[2].buf * inPosition;
+    fragIdx = gl_VertexIndex/3;
+    // instead TODO vertex();
 }
 #endif
 #if defined(vertexDepth)

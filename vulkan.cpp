@@ -1345,6 +1345,7 @@ struct PipeState : public BaseState {
         auto fnc = func->micres(micro);
         for (int i = 0; fnc(i) != Resrcs; i++)
         switch (fnc(i)) {default:
+        break; case (PierceRes): return PierceBuf;
         break; case (DebugRes): return DebugBuf;
         break; case (SwapRes): return SwapBuf;}
         return Renders;
@@ -1871,7 +1872,7 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapRes,1> swapState;
-    ArrayState<PipeState,PipeRes,2/*TODO Micros*/> pipelineState;
+    ArrayState<PipeState,PipeRes,3/*TODO Micros*/> pipelineState;
     ArrayState<BufferState,IndexRes,StackState::frames> indexState;
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;

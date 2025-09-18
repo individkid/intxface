@@ -73,8 +73,8 @@ Resrc = { -- per variation of BaseState
 Micro = { -- what runs on gpu
 	"MicroTest", -- Bringup Plan
 	"MicroDebug", -- testing microcode
-	"MicroDisplay", -- indexed storage
 	"MicroPierce", -- fragment feedback
+	"MicroDisplay", -- indexed storage
 	"MicroDepth", -- fixed point
 }
 Constant = {
