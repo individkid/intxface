@@ -81,7 +81,8 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 struct PhysicalState {
     static const char *deviceExtensions[];
     static VkFormat vulkanFormat(Resrc i) {
-        switch (ResrcPacking__Resrc__Packing(i)) {default: ERROR();
+        switch (ResrcPacking__Resrc__Packing(i)) {
+        default: return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SintFrm): return VK_FORMAT_R32_SINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
@@ -1628,7 +1629,7 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = (res() == DebugRes || res() == PierceRes || res() == DepthRes /*TODO better way than listing every one that's valid*/ ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
+        VkFormat forms = PhysicalState::vulkanFormat(res());
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
@@ -1673,7 +1674,7 @@ struct ImageState : public BaseState {
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
         Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = DebugRes;
-        VkFormat forms = (res() == DebugRes ? PhysicalState::vulkanFormat(res()) : VK_FORMAT_R8G8B8A8_SRGB);
+        VkFormat forms = PhysicalState::vulkanFormat(res());
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
