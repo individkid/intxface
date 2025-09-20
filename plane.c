@@ -1227,7 +1227,7 @@ void initTest()
     for (int i = 0; i < frames; i++) {
     ptr->drw[3/*Micros*/+frames+i].con.tag = ResrcCon;
     ptr->drw[3/*Micros*/+frames+i].con.res = PierceRes;
-    int arg[] = {/*IDerIns PipeRes*/i};
+    int arg[] = {/*IDerIns PipeRes*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
     ptr->drw[3/*Micros*/+frames+i].siz = sizeof(arg)/sizeof(int);
     allocInt(&ptr->drw[3/*Micros*/+frames+i].arg,ptr->drw[3/*Micros*/+frames+i].siz);
     for (int j = 0; j < ptr->drw[3/*Micros*/+frames+i].siz; j++)

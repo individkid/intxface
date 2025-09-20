@@ -1048,7 +1048,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         count += 1; rsp.siz += 1;}
         return rsp;
     }
-    Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+    static Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default: EXIT
@@ -1079,9 +1079,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
-        break; case (SwapFrm):
-        req.tag = SizeReq; req.ext = ExtentExt;
-        req.base = read(WindowWidth); req.size = read(WindowHeight);
         break; case (SizeFrm):
         req.tag = SizeReq; req.ext = IntExt;
         req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
@@ -1102,9 +1099,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
         req.idx = get(arg,siz,idx);
         break; case (IndexFrm):
         req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx);
-        break; case (CastFrm):
-        req.tag = BothReq; req.ext = ExtentExt;
-        req.ptr = val; req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
         break; case (MicroFrm):
         req.tag = BothReq; req.ext = MicroExt;
         req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
@@ -1127,7 +1121,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
     static Con constant(Instr ins, Resrc typ, SmartState log) {
         return Con{.tag = ResrcCon, .res = typ};
     }
-    template <class Type> Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
         Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
@@ -1215,7 +1209,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
-            idx, // SwapFrm
+            idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
             idx,tot, // PierceFrm
             idx,tot, // PeekFrm
             idx,siz,wid,hei, // HighFrm
@@ -1226,7 +1220,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
-            idx, // SwapFrm
+            idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
             idx,tot, // PierceFrm
             idx,tot, // PokeFrm
             idx,siz,wid,hei, // HighFrm
