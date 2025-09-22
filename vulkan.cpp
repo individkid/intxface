@@ -84,7 +84,7 @@ struct PhysicalState {
         switch (ResrcPacking__Resrc__Packing(i)) {
         default: return VK_FORMAT_R8G8B8A8_SRGB;
         break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (SintFrm): return VK_FORMAT_R32_SINT;
+        break; case (UintFrm): return VK_FORMAT_R32_UINT;
         break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
     }
@@ -833,6 +833,7 @@ struct ThreadState : public DoneState {
     void push(Push push) {
         push.fence = VK_NULL_HANDLE;
         safe.wait();
+        // TODO if (!goon) ERROR();
         before.push_back(push);
         safe.post();
         wake.post();
@@ -868,7 +869,7 @@ struct ThreadState : public DoneState {
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) EXIT}
-        if (push.base) push.base->baseups(push.loc,push.log); slog.clr();
+        if (push.base) push.base->baseups(push.loc,push.log);
         if (push.fnc) push.fnc(push.ptr,push.sub);
         copy->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
@@ -1030,8 +1031,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // notify fail
         if (fnc.fnow) fnc.fnow(ptr,sub);
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
-        if (fnc.goon) {goon = true; log << "goon" << std::endl; slog.clr();}
-        }}
+        if (fnc.goon/*TODO && thread->goon*/) {goon = true; log << "goon" << std::endl;}}}
     }
     static Rsp response(HeapState<Arg> &dot, int i, int &count, SmartState log) {
         Rsp rsp = {};
@@ -1159,6 +1159,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
+        /*
+        char *db0 = 0; showResrc(dot.res,&db0);
+        char *db1 = 0; showInstr(dot.ins,&db1);
+        char *db2 = 0; showMicro(typ,&db2);
+        char *db3 = 0; showResrcLoc(dot.loc,&db3);
+        std::cerr << "iterate " << db2 << " " << db3 << " " << db1 << " " << db0 << std::endl;
+        free(db0); db0 = 0; free(db1); db1 = 0; free(db2); db2 = 0; free(db3); db3 = 0;
+        */
         return !done;
     }
     template <class Type> void push(Type typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
@@ -1632,7 +1640,7 @@ struct ImageState : public BaseState {
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         if (res() == ImageRes) {
         textureSampler = createTextureSampler(device,properties);}
-        if (res() == DebugRes) {
+        if (res() == DebugRes || res() == PierceRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,max(loc).extent,renderPass[PhysicalState::vulkanRender(res())],imageView,depthImageView,framebuffer);}}
@@ -1652,7 +1660,7 @@ struct ImageState : public BaseState {
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
         if (*loc == ResizeLoc) {
-        if (res() == DebugRes) {
+        if (res() == DebugRes || res() == PierceRes) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);

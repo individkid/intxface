@@ -130,7 +130,6 @@ Packing = { -- VkFormat
 	"VecFrm",
 	"UvecFrm",
 	"UintFrm",
-	"SintFrm",
 	"SfloatFrm",
 	"SrgbFrm",
 }
@@ -477,7 +476,7 @@ ResrcElement = {
 ResrcPacking = {
 	{"Resrc","SwapRes","Packing","SrgbFrm"},
 	{"Resrc","DebugRes","Packing","SfloatFrm"},
-	{"Resrc","PierceRes","Packing","SintFrm"},
+	{"Resrc","PierceRes","Packing","UintFrm"},
 	{"Resrc","DepthRes","Packing","SfloatFrm"},
 }
 ResrcPhase = {

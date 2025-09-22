@@ -867,6 +867,9 @@ void planeTest(enum Thread tag, int idx)
     int brg[] = {
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
+    int crg[] = {
+    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroPierce,
+    /*IDeeIns PipeRes*//*ins.idx*/MicroPierce};
     while (1) {
     struct Center *tmp = centerPull(Matrixz);
     if (tmp && tmp->siz == 4) {
@@ -883,8 +886,17 @@ void planeTest(enum Thread tag, int idx)
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {/*int idx = 0;
+    copy->push(MicroPierce,0,crg,sizeof(crg)/sizeof(int),idx,0,0,fun,SmartState());*/
+    /* TODO int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
+    freeCenter(drw); pull = (pull+1)%4;
+    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
+    drw->drw[0].con.tag = MicroCon;
+    drw->drw[0].con.mic = MicroPierce;
+    drw->drw[0].siz = sizeof(crg)/sizeof(int);
+    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = crg[i];
+    callCopy(drw,save,fun,0,"draw");*//*TODO issue RelateRes to copy from PierceRes*//*int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,fun,SmartState());*/
-    // TODO issue MicroPierce and RelateRes
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -1217,7 +1229,7 @@ void initTest()
     for (int i = 0; i < 3/*Micros*/; i++) {
     ptr->drw[i].con.tag = ResrcCon;
     ptr->drw[i].con.res = PipeRes;
-    int arg[] = {/*IDerIns PipeRes Micro*/i,/*req.base Micro*/i};
+    int arg[] = {/*IDerIns*/i,/*Micro*/i};
     ptr->drw[i].siz = sizeof(arg)/sizeof(int);
     allocInt(&ptr->drw[i].arg,ptr->drw[i].siz);
     for (int j = 0; j < ptr->drw[i].siz; j++) ptr->drw[i].arg[j] = arg[j];}
@@ -1227,7 +1239,7 @@ void initTest()
     for (int i = 0; i < frames; i++) {
     ptr->drw[3/*Micros*/+frames+i].con.tag = ResrcCon;
     ptr->drw[3/*Micros*/+frames+i].con.res = PierceRes;
-    int arg[] = {/*IDerIns PipeRes*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
+    int arg[] = {/*IDerIns*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
     ptr->drw[3/*Micros*/+frames+i].siz = sizeof(arg)/sizeof(int);
     allocInt(&ptr->drw[3/*Micros*/+frames+i].arg,ptr->drw[3/*Micros*/+frames+i].siz);
     for (int j = 0; j < ptr->drw[3/*Micros*/+frames+i].siz; j++)
