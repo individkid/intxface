@@ -754,10 +754,13 @@ void planeSelf(struct Center *ptr, int sub) {
     callJnfo(RegisterMask,(1<<PassMsk),planeWots);}
 }
 void planeWait(struct Center *ptr, int sub) {
-    if (waitRead(0.0,(1<<tstwake)) == tstwake) readInt(tstwake);
+    if (centerCheck(0) && waitRead(0.0,(1<<tstwake)) == tstwake) readInt(tstwake);
 }
 void planeForce(struct Center *ptr, int sub) {
     ERROR();
+}
+int planeGoon(struct Center *ptr, int sub) {
+    return centerCheck(0);
 }
 
 // thread callbacks
@@ -855,8 +858,8 @@ void planeTest(enum Thread tag, int idx)
 {
     int count = 0; float time = 0.0; int tested = 0; int pull = 0;
     struct Fnc fnc = {0,planePass,0,planePass,0};
-    struct Fnc fun = {0,planePass,planeWait,0,1};
-    struct Fnc chk = {0,planeCheck,planeWait,0,1};
+    struct Fnc fun = {0,planePass,planeWait,0,planeGoon};
+    struct Fnc chk = {0,planeCheck,planeWait,0,planeGoon};
     int inds = 12;
     int arg[] = {
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
@@ -887,7 +890,7 @@ void planeTest(enum Thread tag, int idx)
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {/*int idx = 0;
     copy->push(MicroPierce,0,crg,sizeof(crg)/sizeof(int),idx,0,0,fun,SmartState());*/
-    /* TODO int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
+    {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
@@ -895,9 +898,9 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].siz = sizeof(crg)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = crg[i];
-    callCopy(drw,save,fun,0,"draw");*//*TODO issue RelateRes to copy from PierceRes*//*int idx = 0;
+    callCopy(drw,save,fun,0,0);}/*TODO issue RelateRes to copy from PierceRes*//*int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,fun,SmartState());*/
-    int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
+    {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
@@ -905,7 +908,7 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].siz = sizeof(arg)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = arg[i];
-    callCopy(drw,save,fun,0,0);}
+    callCopy(drw,save,fun,0,0);}}
     else if (count%8 == 1 || count%8 == 5) {/*int idx = 0;
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,fun,SmartState());*/
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
@@ -1213,8 +1216,8 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
-    struct Fnc fnc = {0,planeSelf,planeGlfw,0,1};
-    struct Fnc fun = {0,planePass,planeGlfw,0,1};
+    struct Fnc fnc = {0,planeSelf,planeGlfw,0,planeGoon};
+    struct Fnc fun = {0,planePass,planeGlfw,0,planeGoon};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
     ptr->mem = Drawz; ptr->siz = 1/*+2*//*Micros*//*+frames*//*+frames*/;

@@ -9,7 +9,8 @@ typedef void (*vftype)(enum Thread thd, int idx, mftype call, mftype done, mftyp
 typedef int (*yftype)(int *ref, int val);
 typedef int (*zftype)(enum Configure cfg, int val, yftype fnc);
 typedef const char *(*oftype)(int arg);
-struct Fnc {wftype pnow, pass, fnow, fail; int goon;};
+typedef int (*bftype)(struct Center *ptr, int sub);
+struct Fnc {wftype pnow, pass, fnow, fail; bftype goon;};
 typedef void (*uftype)(struct Center *ptr, int sub, struct Fnc fnc, int ary, const char *dbg);
 typedef void (*aftype)();
 void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype glfw);

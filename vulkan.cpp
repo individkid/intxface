@@ -833,7 +833,6 @@ struct ThreadState : public DoneState {
     void push(Push push) {
         push.fence = VK_NULL_HANDLE;
         safe.wait();
-        // TODO if (!goon) ERROR();
         before.push_back(push);
         safe.post();
         wake.post();
@@ -1002,8 +1001,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             if (first[res] == i) src(res)->advance(ins[i].idx);
             thread->push({log,ins[i].loc,dst(res,buffer)});}}
         // notify pass
-        if (fnc.pnow) fnc.pnow(ptr,sub);
         if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
+        if (fnc.pnow) fnc.pnow(ptr,sub);
         if (bind) stack[BindRes]->advance();
         log << "copy pass " << goon << std::endl;
         } else {
@@ -1031,7 +1030,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // notify fail
         if (fnc.fnow) fnc.fnow(ptr,sub);
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
-        if (fnc.goon/*TODO && thread->goon*/) {goon = true; log << "goon" << std::endl;}}}
+        if (fnc.goon && fnc.goon(ptr,sub)) {goon = true; log << "goon" << std::endl;}}}
     }
     static Rsp response(HeapState<Arg> &dot, int i, int &count, SmartState log) {
         Rsp rsp = {};
@@ -2028,7 +2027,7 @@ int main(int argc, const char **argv) {
     // TODO parse argv for arguments to main and push only unparsed to cfg
     for (int i = 1; i < argc; i++) cfg << argv[i];
     // TODO pass parsed arguments to main
-    slog.onof(0,10000,123,5);
+    slog.onof(10000,100000,123,5);
     MainState main;
     mptr = &main;
     main.copyState.write(ConstantFrames,StackState::frames);
