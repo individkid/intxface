@@ -737,9 +737,10 @@ void planePass(struct Center *ptr, int sub)
 }
 void planeFail(struct Center *ptr, int sub)
 {
+    if (sub >= 0) {
     centerPlace(ptr,sub);
     callJnfo(RegisterFail,sub,planeWcfg);
-    callJnfo(RegisterMask,(1<<FailMsk),planeWots);
+    callJnfo(RegisterMask,(1<<FailMsk),planeWots);}
 }
 // a response that does not place center needs goon, and thus fnow
 // also blocking not ok in ThreadState, since ThreadState wakes waiters after freeing resources
@@ -857,7 +858,7 @@ void planeTime(enum Thread tag, int idx)
 void planeTest(enum Thread tag, int idx)
 {
     int count = 0; float time = 0.0; int tested = 0; int pull = 0;
-    struct Fnc fnc = {0,planePass,0,planePass,0};
+    struct Fnc fnc = {0,planePass,0,planeFail,0};
     struct Fnc fun = {0,planePass,planeWait,0,planeGoon};
     struct Fnc chk = {0,planeCheck,planeWait,0,planeGoon};
     int inds = 12;

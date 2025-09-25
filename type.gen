@@ -604,7 +604,7 @@ ResrcAlt = {
 MicroIns = {
 	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
 	-- n>0: departures from n-1
-	-- TODO \"RelateRes\",
+	-- TODO \"RelateRes\",\"UniformRes\",
 	{"%(dee = {\"SwapRes\",\"ChainRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mic = {\"MicroTest\",\"MicroDisplay\"}\
 	deb = {\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
@@ -862,7 +862,8 @@ Uniform = {
 
 	{"bas","Int32",{},{}}, -- base of basises
 	{"mod","Int32",{},{}}, -- fetch/storage vertices/planes
-	{"pad","Int32",{},{2}},
+	{"wid","Int32",{},{}}, -- width of image
+	{"hei","Int32",{},{}}, -- height of image
 }
 Triangle = {
 	{"vtx","Int32",{},{4}}, -- points of triangle

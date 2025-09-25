@@ -12,8 +12,9 @@ struct Uniform {
     uint mat; // base of matrices
 
     uint bas; // base of basises
-    uint mod; // vertices or planes
-    uint pad[2];
+    uint mod; // fetch/storage vertices/planes
+    uint wid; // width of image
+    uint hei; // height of image
 };
 struct Matrix {
     mat4 buf;
