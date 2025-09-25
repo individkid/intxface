@@ -39,10 +39,6 @@ struct Vertex {
     uvec4 ref; // backreference to planes
 };
 
-layout (binding = 0) readonly uniform Uniforms {
-    Uniform buf;
-} inUni;
-
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
 {
     // acu is magnitude of cross over product of leg magnitudes
@@ -103,7 +99,6 @@ vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
 
 #if defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentTest) || defined(fragmentDebug)
 /*ResrcBinding = {
-    {"Resrc","UniformRes","Int","0"},
     {"Resrc","RelateRes","Int","6"},
     {"Resrc","ImageRes","Int","7"},
 }*/
@@ -161,12 +156,16 @@ void fragmentDebug()
 // TODO use versors (which leg feet plane is constructed from) to decide which permutation to use
 // TODO think of more approximate and efficient way to calculate acc-uracy
 /*ResrcBinding = {
+    {"Resrc","UniformRes","Int","0"},
     {"Resrc","MatrixRes","Int","1"},
     {"Resrc","BasisRes","Int","2"},
     {"Resrc","TriangleRes","Int","3"},
     {"Resrc","NumericRes","Int","4"},
     {"Resrc","VertexRes","Int","5"},
 }*/
+layout (binding = 0) readonly uniform Uniforms {
+    Uniform buf;
+} inUni;
 layout (binding = 1) readonly uniform Matrixs {
     Matrix buf[4]; // uniforms cannot be variable size
 } inMat;
@@ -259,6 +258,8 @@ void vertexDebug()
     fragColor = inOrdClr.xyz;
     fragTexCoord = inOrdClr.xy;
     test = inMat.buf[3].buf * vec4(-0.5,-0.5,0.2,1.0);
+    float z = (test.z > 0.4 ? float(inUni.buf.wid) : float(inUni.buf.hei));
+    test = vec4(0.0,0.0,z,0.0);
 }
 #endif
 #if defined(vertexPierce)

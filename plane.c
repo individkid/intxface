@@ -1252,6 +1252,10 @@ void initTest()
     while (!centerCheck(Drawz)) usleep(1000);
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
+    struct Center *uni = centerPull(Uniformz); freeCenter(uni);
+    uni->mem = Uniformz; uni->siz = 1; allocUniform(&uni->uni,uni->siz);
+    uni->uni[0].wid = width; uni->uni[0].hei = height;
+    callCopy(uni,Uniformz,fun,0,0);
     struct Center *vtx = centerPull(Bringupz); freeCenter(vtx);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
