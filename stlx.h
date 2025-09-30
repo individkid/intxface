@@ -51,20 +51,31 @@ struct SafeState {
 struct SmartState {
     static int seqnum;
     int num;
-    bool vld;
-    SmartState() : num(0), vld(false) {}
+    bool vld, rdy;
+    std::stringstream str;
+    SmartState() : num(0), vld(false), rdy(false), str("") {}
     SmartState(const SmartState &oth);
     SmartState(const SmartState &&oth) = delete;
     SmartState(SmartState &&oth) = delete;
     SmartState(const volatile SmartState &&oth) = delete;
     SmartState(volatile SmartState &&oth) = delete;
-    SmartState &operator=(const SmartState &oth);
+    SmartState &operator=(const SmartState &oth) = delete;
     SmartState(std::string str);
-    ~SmartState() {clr();}
-    std::ostream &set();
-    template<class Type> std::ostream &operator<<(Type val) {
-    std::ostream &str = set(); str << val; return str;}
-    void clr();
+    ~SmartState();
+    void wait();
+    void post();
+    void done();
+    SmartState &operator<<(char val) {
+        wait();
+        if (val == '\n' && vld) {str << std::endl; post();}
+        else if (vld) str << val;
+        return *this;
+    }
+    template<class Type> SmartState &operator<<(Type val) {
+        wait();
+        if (vld) str << val;
+        return *this;
+    }
 };
 struct SlogState : public std::ostream {
     SafeState safe;

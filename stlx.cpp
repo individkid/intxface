@@ -5,45 +5,48 @@
 SlogState slog; // TODO qualify with NDEBUG
 int SmartState::seqnum = 0;
 SmartState::SmartState(const SmartState &oth) {
-    num = oth.num; vld = oth.vld;
+    num = oth.num; vld = oth.vld; rdy = false; str.str("");
     if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
 }
-SmartState &SmartState::operator=(const SmartState &oth) {
-    clr(); num = oth.num; vld = oth.vld;
+/*SmartState &SmartState::operator=(const SmartState &oth) {
+    num = oth.num; vld = oth.vld; str = oth.str;
     if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
     return *this;
-}
+}*/
 SmartState::SmartState(std::string str) {
     slog.safe.wait();
-    num = slog.limnum++; vld = true;
+    num = slog.limnum++; vld = true; rdy = false; this->str.str("");
     slog.sstr[num] = new std::stringstream;
     slog.name[num] = str; slog.smart[num] = 1;
     slog.safe.post();
 }
-#define NUM(N) std::setw(slog.num) << std::setfill('0') << N << ":"
-#define STR(S) S << ":"
-std::ostream &SmartState::set() {
-    if (!vld) return slog;
-    slog.wait(num);
-    std::stringstream &ret = *slog.sstr[num];
-    switch (slog.ord) {
-    default: case (123): ret << NUM(seqnum) << NUM(num) << STR(slog.name[num]);
-    break; case (132): ret << NUM(seqnum) << STR(slog.name[num]) << NUM(num);
-    break; case (312): ret << STR(slog.name[num]) << NUM(seqnum) << NUM(num);
-    break; case (213): ret << NUM(num) << NUM(seqnum) << STR(slog.name[num]);
-    break; case (231): ret << NUM(num) << STR(slog.name[num]) << NUM(seqnum);
-    break; case (321): ret << STR(slog.name[num]) << NUM(num) << NUM(seqnum);}
-    seqnum++;
-    slog.safe.post();
-    return ret;
-}
-void SmartState::clr() {
+SmartState::~SmartState() {
     if (!vld) return;
     slog.wait(num);
     slog.smart[num]--; vld = false;
     bool zero = (slog.smart[num] == 0);
     slog.safe.post();
     if (zero) slog.clr(num);
+}
+#define NUM(N) std::setw(slog.num) << std::setfill('0') << N << ":"
+#define STR(S) S << ":"
+void SmartState::wait() {
+    if (!vld) return;
+    if (!rdy) {rdy = true;
+    slog.wait(num);
+    switch (slog.ord) {
+    default: case (123): str << NUM(seqnum) << NUM(num) << STR(slog.name[num]);
+    break; case (132): str << NUM(seqnum) << STR(slog.name[num]) << NUM(num);
+    break; case (312): str << STR(slog.name[num]) << NUM(seqnum) << NUM(num);
+    break; case (213): str << NUM(num) << NUM(seqnum) << STR(slog.name[num]);
+    break; case (231): str << NUM(num) << STR(slog.name[num]) << NUM(seqnum);
+    break; case (321): str << STR(slog.name[num]) << NUM(num) << NUM(seqnum);}
+    seqnum++;}
+}
+void SmartState::post() {
+    if (!vld) return;
+    *slog.sstr[num] << str.str(); str.str(""); rdy = false;
+    slog.safe.post();
 }
 
 void *allocDeque(int siz)
