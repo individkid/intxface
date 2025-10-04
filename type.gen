@@ -86,6 +86,7 @@ ResrcLoc = {
 	"ResizeLoc",
 	"ReformLoc",
 	"BeforeLoc", -- like Acquire
+	"ReforeLoc",
 	"MiddleLoc", -- like Draw
 	"AfterLoc", -- like Present
 	-- "Sync5Loc",
@@ -96,6 +97,7 @@ Extent = { -- resource initialization done on gpu thread
 	"IntExt", -- resize to base,size
 	"FormExt", -- reform to format
 	"ExtentExt", -- resize to 2d vk extent
+	"FillExt", -- record fill value
 	"MicroExt", -- resize to micro enum
 	"ResrcExt", -- resize to bind enum
 	"TrueExt", -- resize once for side effects
@@ -134,16 +136,19 @@ Packing = { -- VkFormat
 	"SrgbFrm",
 }
 Format = {
-	"ImageFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to readonly)
-	"WonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (readonly to dst)
-	"RonlyFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to readonly)
-	"PierceFrm", -- ExclReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (undefined to color)
-	"PeekFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to src)
-	"SourceFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (src to color)
-	"PokeFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (color to dst)
-	"DestFrm", -- BothReq FormExt siz(width*height*pixel_size) base(implied:src) size(implied:dst) (dst to color)
-	-- for Pierce (ImageState) and Relate (BufferState), we need (color to buf)
-	"ExtentFrm", -- SizeReq ExtentExt base(implied:width) size(implied:height)
+	"ImageFrm", -- ExclReq FormExt base(implied:src) size(implied:dst) (undefined to readonly)
+	"WonlyFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (readonly to dst)
+	"RonlyFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to readonly)
+	"PierceFrm", -- ExclReq FormExt base(implied:src) size(implied:dst) (undefined to color)
+	"PeekFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (color to src)
+	"SourceFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (src to color)
+	"PokeFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (color to dst)
+	"DestFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to color)
+	"RelateFrm", -- ExclReq FormExt base(implied:src) size(implied:dst) (undefined to src)
+	"RdwrFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (src to dst)
+	"WrrdFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to color)
+	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
+	"FillFrm", -- LockReq FillExt base(value)
 	"SizeFrm", -- SizeReq IntExt base size
 	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
 	"PartFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(from configure) size(from configure)
@@ -573,10 +578,31 @@ ResrcIns = {
 	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
-	{"Resrc","PierceRes","Int","0","Instr","IDerIns"},
+--	(SizeReq) {ExclReq} BothReq
+--	PierceRes: (resize)->{initial}->read->fill->render->read
+	{"Resrc","PierceRes","Int","0","Instr","PDerIns"},
 	 {"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
-	 {"Resrc","PierceRes","Int","0","ResrcLoc","ResizeLoc"},
 	 {"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
+--	break; case (RelateFrm): // initial to read
+--	req.tag = ExclReq; req.ext = FormExt; // ReformLoc
+	 {"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
+	 {"Resrc","PierceRes","Int","1","Format","RelateFrm"},
+--	break; case (RdwrFrm): // read to write,fill
+	 {"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
+	 {"Resrc","PierceRes","Int","1","Format","RdwrFrm"},
+--	FillFrm to initialize with fill value in BeforeLoc 
+	 {"Resrc","PierceRes","Int","2","ResrcLoc","BeforeLoc"},
+	 {"Resrc","PierceRes","Int","2","Format","FillFrm"},
+--	break; case (WrrdFrm): // write,fill to render
+--	req.tag = BothReq; req.ext = FormExt; // ReforeLoc
+	 {"Resrc","PierceRes","Int","3","ResrcLoc","ReforeLoc"},
+	 {"Resrc","PierceRes","Int","3","Format","WrrdFrm"},
+--	ConstFrm to start shader in MiddleLoc
+	 {"Resrc","PierceRes","Int","4","ResrcLoc","MiddleLoc"},
+	 {"Resrc","PierceRes","Int","4","Format","ConstFrm"},
+--	SourceFrm for render to read in AfterLoc
+	 {"Resrc","PierceRes","Int","5","ResrcLoc","AfterLoc"},
+	 {"Resrc","PierceRes","Int","5","Format","PeekFrm"},
 	{"Resrc","RelateRes","Int","0","Instr","PDerIns"},
 	 {"Resrc","RelateRes","Int","0","Resrc","RelateRes"},
 	 {"Resrc","RelateRes","Int","0","ResrcLoc","MiddleLoc"},

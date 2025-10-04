@@ -891,6 +891,7 @@ void planeTest(enum Thread tag, int idx)
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {/*int idx = 0;
     copy->push(MicroPierce,0,crg,sizeof(crg)/sizeof(int),idx,0,0,fun,SmartState());*/
+    if (0) // TODO when PierceRes is done
     {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -1228,7 +1229,7 @@ void initTest()
     callCopy(ptr,Drawz,fun,0,0);
     while (!centerCheck(Drawz)) usleep(1000);
     ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 3/*Micros*/+frames+frames;
+    ptr->mem = Drawz; ptr->siz = 3/*Micros*/+frames/*+frames*/; // TODO arg for each ResrcLoc of PierceRes
     allocDraw(&ptr->drw,ptr->siz);
     for (int i = 0; i < 3/*Micros*/; i++) {
     ptr->drw[i].con.tag = ResrcCon;
@@ -1240,7 +1241,7 @@ void initTest()
     for (int i = 0; i < frames; i++) {
     ptr->drw[3/*Micros*/+i].con.tag = ResrcCon;
     ptr->drw[3/*Micros*/+i].con.res = ChainRes;}
-    for (int i = 0; i < frames; i++) {
+    if (0) for (int i = 0; i < frames; i++) { // TODO arg for each ResrcLoc of PierceRes
     ptr->drw[3/*Micros*/+frames+i].con.tag = ResrcCon;
     ptr->drw[3/*Micros*/+frames+i].con.res = PierceRes;
     int arg[] = {/*IDerIns*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};

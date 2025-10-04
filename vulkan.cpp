@@ -390,6 +390,7 @@ struct SizeState {
     struct {int base,size;};
     struct {VkImageLayout src,dst;};
     VkExtent2D extent;
+    int value;
     Micro micro;
     Resrc resrc;};
     SizeState() {
@@ -402,6 +403,7 @@ struct SizeState {
         break; case (IntExt): this->base = base; this->size = size;
         break; case (FormExt): src = (VkImageLayout)base; dst = (VkImageLayout)size;
         break; case (ExtentExt): extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
+        break; case (FillExt): value = base;
         break; case (MicroExt): micro = (Micro)base;
         break; case (ResrcExt): resrc = (Resrc)base;
         break; case (TrueExt):
@@ -420,6 +422,10 @@ struct SizeState {
     SizeState(VkExtent2D extent) {
         tag = ExtentExt;
         this->extent = extent;
+    }
+    SizeState(int value) {
+        tag = FillExt;
+        this->value = value;
     }
     SizeState(Micro micro) {
         tag = MicroExt;
@@ -441,6 +447,8 @@ struct SizeState {
         if (tag == ExtentExt && other.tag == ExtentExt &&
         extent.width == other.extent.width &&
         extent.height == other.extent.height) return true;
+        if (tag == FillExt && other.tag == FillExt &&
+        value == other.value) return true;
         if (tag == MicroExt && other.tag == MicroExt &&
         micro == other.micro) return true;
         if (tag == ResrcExt && other.tag == ResrcExt &&
@@ -455,6 +463,7 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
     case (IntExt): os << "IntSize(" << size.base << "," << size.size << ")"; break;
     case (FormExt): os << "FormSize(" << size.src << "," << size.dst << ")"; break;
     case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
+    case (FillExt): os << "FillSize(" << size.value << ")"; break;
     case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
     case (ResrcExt): os << "ResrcSize(" << size.resrc << ")"; break;
     case (TrueExt): os << "TrueSize()"; break;
@@ -920,7 +929,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
         return stack[res];
     }
-    static int get(int *arg, int siz, int &idx) {
+    static int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
+        log << "get:" << str << ":" << idx << '\n';
         if (idx >= siz) {std::cerr << "not enough int arguments in struct Draw " << idx << ">=" << siz << std::endl; EXIT}
         return arg[idx++];
     }
@@ -1054,59 +1064,89 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default: EXIT
-        break; case (ImageFrm):
-        req.tag = ExclReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break; case (WonlyFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        break; case (RonlyFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        break; case (PierceFrm):
-        req.tag = ExclReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        break; case (PeekFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        break; case (SourceFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        break; case (PokeFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        break; case (DestFrm):
-        req.tag = BothReq; req.ext = FormExt;
-        req.siz = get(arg,siz,idx); req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        break; case (ExtentFrm):
+        // {"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
+        // "siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
+        // "ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
+        // "bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
+        // "mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
+        // "aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
+        // (SizeReq) {ExclReq} BothReq
+        // VK_IMAGE_LAYOUT_UNDEFINED(initial)
+        // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL(texture,shadow)
+        // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL(write,fill)
+        // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL(read)
+        // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR(render)
+        // Imagez: (resize)->{initial}->texture->write->texture
+        break; case (ImageFrm): // initial to texture,shadow
+        req.tag = ExclReq; req.ext = FormExt; // ReformLoc
+        req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        break; case (WonlyFrm): // texture,shadow to write,fill
+        req.tag = BothReq; req.ext = FormExt; // BeforeLoc
+        req.base = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break; case (RonlyFrm): // write,fill to texture,shadow
+        req.tag = BothReq; req.ext = FormExt; // AfterLoc
+        req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // Peekz: (resize)->{initial}->render->read->render
+        break; case (PierceFrm): // initial to render
+        req.tag = ExclReq; req.ext = FormExt; // ReformLoc
+        req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        break; case (PeekFrm): // render to read
+        req.tag = BothReq; req.ext = FormExt; // BeforeLoc
+        req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        break; case (SourceFrm): // read to render
+        req.tag = BothReq; req.ext = FormExt; // AfterLoc
+        req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        // Pokez: (resize)->{initial}->render->write->render
+        // PierceFrm for initial to render in ReformLoc
+        break; case (PokeFrm): // render to write,fill
+        req.tag = BothReq; req.ext = FormExt; // BeforeLoc
+        req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break; case (DestFrm): // write,fill to render
+        req.tag = BothReq; req.ext = FormExt; // AfterLoc
+        req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        // PierceRes: (resize)->{initial}->read->fill->render->read
+        // break; case (RelateFrm): // initial to read
+        // req.tag = ExclReq; req.ext = FormExt; // ReformLoc
+        // break; case (RdwrFrm): // read to write,fill
+        // FillFrm to initialize with fill value in BeforeLoc 
+        // break; case (WrrdFrm): // write,fill to render
+        // req.tag = BothReq; req.ext = FormExt; // ReforeLoc
+        // ConstFrm to start shader in MiddleLoc
+        // PeekFrm for render to read in AfterLoc
+        // RelateRes: (resize)->{initial}->shadow->write->shadow
+        break; case (ExtentFrm): // ResizeLoc
         req.tag = SizeReq; req.ext = ExtentExt;
-        req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        req.base = get(arg,siz,idx,log,"ExtentFrm.base"); req.size = get(arg,siz,idx,log,"ExtentFrm.size");
         break; case (SizeFrm):
         req.tag = SizeReq; req.ext = IntExt;
-        req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        req.base = get(arg,siz,idx,log,"SizeFrm.base"); req.size = get(arg,siz,idx,log,"SizeFrm.size");
         break; case (HighFrm):
         req.tag = BothReq; req.ext = ExtentExt;
-        req.ptr = val; req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx); req.size = get(arg,siz,idx);
+        req.ptr = val; req.siz = get(arg,siz,idx,log,"HighFrm.siz");
+        req.base = get(arg,siz,idx,log,"HighFrm.base"); req.size = get(arg,siz,idx,log,"HighFrm.size");;
         break; case (WholeFrm):
         req.tag = BothReq; req.ext = IntExt;
-        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
+        req.ptr = val; req.idx = get(arg,siz,idx,log,"WholeFrm.idx"); req.siz = get(arg,siz,idx,log,"WholeFrm.siz");
+        req.base = req.idx; req.size = req.siz;
         break; case (OnceFrm):
         req.tag = OnceReq; req.ext = IntExt;
-        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = req.idx; req.size = req.siz;
+        req.ptr = val; req.idx = get(arg,siz,idx,log,"OnceFrm.idx"); req.siz = get(arg,siz,idx,log,"OnceFrm.siz");
+        req.base = req.idx; req.size = req.siz;
         break; case (LockFrm):
         req.tag = LockReq; req.ext = IntExt;
-        req.ptr = val; req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx);
+        req.ptr = val; req.idx = get(arg,siz,idx,log,"LockFrm.idx"); req.siz = get(arg,siz,idx,log,"LockFrm.siz");
         break; case (ResrcFrm):
         req.tag = LockReq; req.ext = ResrcExt;
-        req.idx = get(arg,siz,idx);
+        req.idx = get(arg,siz,idx,log,"ResrcFrm.idx");
         break; case (IndexFrm):
-        req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx);
+        req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx,log,"IndexFrm.base");
         break; case (MicroFrm):
         req.tag = BothReq; req.ext = MicroExt;
-        req.idx = get(arg,siz,idx); req.siz = get(arg,siz,idx); req.base = get(arg,siz,idx);
+        req.idx = get(arg,siz,idx,log,"MicroFrm.idx"); req.siz = get(arg,siz,idx,log,"MicroFrm.siz");
+        req.base = get(arg,siz,idx,log,"MicroFrm.base");
         break; case (ConstFrm):
         req.tag = SizeReq; req.ext = MicroExt;
-        req.base = get(arg,siz,idx);
+        req.base = get(arg,siz,idx,log,"ConstFrm.base");
         break; case (FalseFrm):
         req.tag = SizeReq; req.ext = FalseExt;
         break; case (TrueFrm):
@@ -1124,7 +1164,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx) : 0);
+        int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx,log,"instruct.pre") : 0);
         Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
@@ -1209,10 +1249,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat); int marg[] = {
             idx,wid,hei, // ExtentFrm
-            idx,tot, // ImageFrm
-            idx,tot, // WonlyFrm
+            idx, // ImageFrm
+            idx, // WonlyFrm
             idx,tot,wid,hei, // HighFrm
-            idx,tot}; // RonlyFrm
+            idx}; // RonlyFrm
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
@@ -1220,10 +1260,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
             idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
-            idx,tot, // PierceFrm
-            idx,tot, // PeekFrm
+            idx, // PierceFrm
+            idx, // PeekFrm
             idx,siz,wid,hei, // HighFrm
-            idx,tot}; // SourceFrm
+            idx}; // SourceFrm
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->eek,marg,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
@@ -1231,10 +1271,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4; int marg[] = {
             idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
-            idx,tot, // PierceFrm
-            idx,tot, // PokeFrm
+            idx, // PierceFrm
+            idx, // PokeFrm
             idx,siz,wid,hei, // HighFrm
-            idx,tot}; // DestFrm
+            idx}; // DestFrm
             int msiz = sizeof(marg)/sizeof(int); int midx = 0;
             push(center->mem,(void*)center->oke,marg,msiz,midx,center,sub,fnc,ary,log);}}
     }
