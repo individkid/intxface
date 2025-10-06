@@ -1064,19 +1064,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Req req = {Requests,0,0,0,Extents,0,0,0};
         if (ins != DerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default: EXIT
-        // {"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
-        // "siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
-        // "ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
-        // "bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
-        // "mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
-        // "aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
-        // (SizeReq) {ExclReq} BothReq
         // VK_IMAGE_LAYOUT_UNDEFINED(initial)
         // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL(texture,shadow)
         // VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL(write,fill)
         // VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL(read)
         // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR(render)
+        // (SizeReq) {ExclReq} BothReq
         // Imagez: (resize)->{initial}->texture->write->texture
+        // RelateRes: (resize)->{initial}->shadow->write->shadow
         break; case (ImageFrm): // initial to texture,shadow
         req.tag = ExclReq; req.ext = FormExt; // ReformLoc
         req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1097,23 +1092,22 @@ struct CopyState : public ChangeState<Configure,Configures> {
         req.tag = BothReq; req.ext = FormExt; // AfterLoc
         req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         // Pokez: (resize)->{initial}->render->write->render
-        // PierceFrm for initial to render in ReformLoc
         break; case (PokeFrm): // render to write,fill
         req.tag = BothReq; req.ext = FormExt; // BeforeLoc
         req.base = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         break; case (DestFrm): // write,fill to render
         req.tag = BothReq; req.ext = FormExt; // AfterLoc
         req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        // PierceRes: (resize)->{initial}->read->fill->render->read
-        // break; case (RelateFrm): // initial to read
-        // req.tag = ExclReq; req.ext = FormExt; // ReformLoc
-        // break; case (RdwrFrm): // read to write,fill
-        // FillFrm to initialize with fill value in BeforeLoc 
-        // break; case (WrrdFrm): // write,fill to render
-        // req.tag = BothReq; req.ext = FormExt; // ReforeLoc
-        // ConstFrm to start shader in MiddleLoc
-        // PeekFrm for render to read in AfterLoc
-        // RelateRes: (resize)->{initial}->shadow->write->shadow
+        // PierceRes: (resize)->{initial}->read->read
+        break; case (RelateFrm): // initial to read
+        req.tag = ExclReq; req.ext = FormExt; // ReformLoc
+        req.base = VK_IMAGE_LAYOUT_UNDEFINED; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        break; case (RdwrFrm): // read to write,fill
+        req.tag = BothReq; req.ext = FormExt; // BeforeLoc
+        req.base = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        break; case (WrrdFrm): // write,fill to read
+        req.tag = BothReq; req.ext = FormExt; // AfterLoc
+        req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         break; case (ExtentFrm): // ResizeLoc
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx,log,"ExtentFrm.base"); req.size = get(arg,siz,idx,log,"ExtentFrm.size");
@@ -1124,6 +1118,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
         req.tag = BothReq; req.ext = ExtentExt;
         req.ptr = val; req.siz = get(arg,siz,idx,log,"HighFrm.siz");
         req.base = get(arg,siz,idx,log,"HighFrm.base"); req.size = get(arg,siz,idx,log,"HighFrm.size");;
+        break; case (FillFrm):
+        req.tag = BothReq; req.ext = FillExt;
+        req.base = get(arg,siz,idx,log,"FillFrm.base");
         break; case (WholeFrm):
         req.tag = BothReq; req.ext = IntExt;
         req.ptr = val; req.idx = get(arg,siz,idx,log,"WholeFrm.idx"); req.siz = get(arg,siz,idx,log,"WholeFrm.siz");
