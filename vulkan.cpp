@@ -301,89 +301,6 @@ VkQueue StackState::present;
 VkBufferUsageFlags StackState::flags;
 ConstState *StackState::constState;
 
-template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
-    SafeState safe;
-    int idx;
-    State state[Size];
-    ArrayState(
-        ChangeState<Configure,Configures> *copy,
-        GLFWwindow* window,
-        VkSurfaceKHR surface,
-        VkPhysicalDevice physical,
-        VkSurfaceFormatKHR surfaceFormat,
-        VkPresentModeKHR presentMode,
-        uint32_t graphicsFamily,
-        uint32_t presentFamily,
-        VkPhysicalDeviceProperties properties,
-        VkPhysicalDeviceMemoryProperties memProperties,
-        VkDevice device,
-        VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> renderPass,
-        std::array<VkFormat,LogicalState::passes> imageFormat,
-        VkFormat depthFormat,
-        VkQueue graphics,
-        VkQueue present) :
-    StackState(
-        copy,
-        window,
-        surface,
-        physical,
-        surfaceFormat,
-        presentMode,
-        graphicsFamily,
-        presentFamily,
-        properties,
-        memProperties,
-        device,
-        commandPool,
-        renderPass,
-        imageFormat,
-        depthFormat,
-        graphics,
-        present),
-        safe(1), idx(0) {
-    }
-    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
-    }
-    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
-    }
-    ArrayState() : safe(1), idx(0) {
-    }
-    BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
-    BaseState *prebuf() override {safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
-    BaseState *prebuf(int i) override {
-        if (i < 0 || i >= Size) EXIT
-        safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;}
-    void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
-    void advance(int i) override {
-        if (i < 0 || i >= Size) EXIT
-        safe.wait(); idx = i; safe.post();}
-    Resrc buftyp() override {return Type;}
-    const char *bufnam() override {
-        switch (Type) {
-        default: EXIT
-        case (SwapRes): return "SwapRes";
-        case (PipeRes): return "PipeRes";
-        case (IndexRes): return "IndexRes";
-        case (BringupRes): return "BringupRes";
-        case (ImageRes): return "ImageRes";
-        case (RelateRes): return "RelateRes";
-        case (UniformRes): return "UniformRes";
-        case (MatrixRes): return "MatrixRes";
-        case (TriangleRes): return "TriangleRes";
-        case (NumericRes): return "NumericRes";
-        case (VertexRes): return "VertexRes";
-        case (BasisRes): return "BasisRes";
-        case (DebugRes): return "DebugRes";
-        case (PierceRes): return "PierceRes";
-        case (DepthRes): return "DepthRes";
-        case (ChainRes): return "ChainRes";
-        case (DrawRes): return "DrawRes";
-        case (BindRes): return "BindRes";}
-        return 0;
-    }
-};
-
 struct SizeState {
     Extent tag;
     union {
@@ -494,6 +411,7 @@ struct BaseState {
     Loc ploc[ResrcLocs];
     int mask; // which ploc have valid max
     int nask; // which ploc setup called for
+    int qua[Qualitys]; // TODO use this instead of loc.con
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr),
@@ -694,6 +612,89 @@ struct BaseState {
     static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkBuffer& buffer, VkDeviceMemory& memory);
     static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
+};
+
+template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
+    SafeState safe;
+    int idx;
+    State state[Size];
+    ArrayState(
+        ChangeState<Configure,Configures> *copy,
+        GLFWwindow* window,
+        VkSurfaceKHR surface,
+        VkPhysicalDevice physical,
+        VkSurfaceFormatKHR surfaceFormat,
+        VkPresentModeKHR presentMode,
+        uint32_t graphicsFamily,
+        uint32_t presentFamily,
+        VkPhysicalDeviceProperties properties,
+        VkPhysicalDeviceMemoryProperties memProperties,
+        VkDevice device,
+        VkCommandPool commandPool,
+        std::array<VkRenderPass,LogicalState::passes> renderPass,
+        std::array<VkFormat,LogicalState::passes> imageFormat,
+        VkFormat depthFormat,
+        VkQueue graphics,
+        VkQueue present) :
+    StackState(
+        copy,
+        window,
+        surface,
+        physical,
+        surfaceFormat,
+        presentMode,
+        graphicsFamily,
+        presentFamily,
+        properties,
+        memProperties,
+        device,
+        commandPool,
+        renderPass,
+        imageFormat,
+        depthFormat,
+        graphics,
+        present),
+        safe(1), idx(0) {
+    }
+    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
+    }
+    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
+    }
+    ArrayState() : safe(1), idx(0) {
+    }
+    BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
+    BaseState *prebuf() override {safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
+    BaseState *prebuf(int i) override {
+        if (i < 0 || i >= Size) EXIT
+        safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;}
+    void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
+    void advance(int i) override {
+        if (i < 0 || i >= Size) EXIT
+        safe.wait(); idx = i; safe.post();}
+    Resrc buftyp() override {return Type;}
+    const char *bufnam() override {
+        switch (Type) {
+        default: EXIT
+        case (SwapRes): return "SwapRes";
+        case (PipeRes): return "PipeRes";
+        case (IndexRes): return "IndexRes";
+        case (BringupRes): return "BringupRes";
+        case (ImageRes): return "ImageRes";
+        case (RelateRes): return "RelateRes";
+        case (UniformRes): return "UniformRes";
+        case (MatrixRes): return "MatrixRes";
+        case (TriangleRes): return "TriangleRes";
+        case (NumericRes): return "NumericRes";
+        case (VertexRes): return "VertexRes";
+        case (BasisRes): return "BasisRes";
+        case (DebugRes): return "DebugRes";
+        case (PierceRes): return "PierceRes";
+        case (DepthRes): return "DepthRes";
+        case (ChainRes): return "ChainRes";
+        case (DrawRes): return "DrawRes";
+        case (BindRes): return "BindRes";}
+        return 0;
+    }
 };
 
 struct BindState : public BaseState {
@@ -1923,6 +1924,9 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
+    // TODO fold RelateState into ImageState.
+    // TODO after adding *TagIns, increase imageState size,
+    // and remove RelateRes PierceRes DebugRes.
     ArrayState<RelateState,RelateRes,StackState::frames> relateState;
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,DebugRes,StackState::frames> debugState;

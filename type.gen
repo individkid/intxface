@@ -168,6 +168,20 @@ Instr = {
 	"RDeeIns", -- increment read lock in current
 	"IRDeeIns", -- increment read lock in indexed
 	"WDeeIns", -- increment write lock in current
+	"RTagIns", -- toggle to get from following selected resource, value associated with given tag
+	"UTagIns", -- toggle to use given tag to select following resources
+	"WTagIns", -- toggle to use given tag to set value in following resources
+	"STagIns", -- toggle to increment in next selected resource, value associated with given tag
+	"ITagIns", -- toggle to initialize in next selected resource, given tag
+	"TagIns", -- clear all actions on following done by given tag
+	"RIncIns", -- include instructions from Resrc
+	"MIncIns", -- include instructions from Memory
+	"IncIns", -- include instructions from Micro
+}
+Quality = { -- quality of service tags for *TagIns
+	"SnumQua", -- sequence number to depend on resources that depend on same original resource
+	"RbutQua", -- radio button to use resource only after extracted processed or consumed
+	"RuseQua", -- resource use qualifier
 }
 Configure = {
 	"CenterMem", -- staged field
@@ -955,13 +969,12 @@ Draw = {
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
-	{"gon","Int",{},{}},
 }
 Ins = {
 	{"ins","Instr",{},""},
 	{"res","Resrc",{},{}},
 	{"loc","ResrcLoc",{},{}},
-	{"con","Con",{},{}},
+	{"con","Con",{},{}}, -- delete once RuseQua value available in BaseState
 	{"req","Req",{},{}},
 	{"rsp","Rsp",{},{}},
 	{"idx","Int",{},{}},
