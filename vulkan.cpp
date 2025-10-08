@@ -173,17 +173,26 @@ struct LogicalState {
 
 struct ConstState {
     decltype(MemoryIns__Memory__Int__Instr) *memins;
-    decltype(MemoryIns__Memory__Int__Resrc) *memres;
     decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
     decltype(MemoryIns__Memory__Int__Format) *memfmt;
+    decltype(MemoryIns__Memory__Int__Resrc) *memres;
+    decltype(MemoryIns__Memory__Int__Memory) *memmem;
+    decltype(MemoryIns__Memory__Int__Micro) *memmic;
+    decltype(MemoryIns__Memory__Int__Quality) *memtag;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
-    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
     decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
     decltype(ResrcIns__Resrc__Int__Format) *resfmt;
+    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
+    decltype(ResrcIns__Resrc__Int__Memory) *resmem;
+    decltype(ResrcIns__Resrc__Int__Micro) *resmic;
+    decltype(ResrcIns__Resrc__Int__Quality) *restag;
     decltype(MicroIns__Micro__Int__Instr) *micins;
-    decltype(MicroIns__Micro__Int__Resrc) *micres;
     decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
     decltype(MicroIns__Micro__Int__Format) *micfmt;
+    decltype(MicroIns__Micro__Int__Resrc) *micres;
+    decltype(MicroIns__Micro__Int__Memory) *micmem;
+    decltype(MicroIns__Micro__Int__Micro) *micmic;
+    decltype(MicroIns__Micro__Int__Quality) *mictag;
 };
 
 struct BaseState;
@@ -906,7 +915,8 @@ struct EnumState {
     Resrc key = Resrcs; StackState *val = 0;
 };
 struct Arg {
-    Instr ins = Instrs; Resrc res = Resrcs; ResrcLoc loc; Format fmt = Formats;
+    Instr ins = Instrs; ResrcLoc loc; Format fmt = Formats; Quality tag = Qualitys;
+    Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
 };
 struct CopyState : public ChangeState<Configure,Configures> {
     ThreadState *thread;
@@ -936,10 +946,12 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return arg[idx++];
     }
     void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
+        // four orderings, in same list: acquire reserve submit notify
         BaseState *buffer[Resrcs] = {0};
         int first[Resrcs];
         int final[Resrcs];
-        // four orderings, in same list: acquire reserve submit notify
+        int toggle[Qualitys] = {0}; // mask of Toggle
+        int value[Qualitys] = {0}; // state for toggled actions
         int num = ins.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
         // choose buffers
@@ -947,7 +959,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         log << "while" << '\n'; slog.clr();
         for (int i = 0; i < num; i++) {
             Resrc res = ins[i].res;
-            switch (ins[i].ins) {default:
+            switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
+            break; case (RTagIns): toggle[ins[i].tag] ^= 1<<GetTog;
+            break; case (UTagIns): toggle[ins[i].tag] ^= 1<<UseTog;
+            break; case (WTagIns): toggle[ins[i].tag] ^= 1<<SetTog;
+            break; case (ITagIns): toggle[ins[i].tag] ^= 1<<IncTog;
+            break; case (JTagIns): toggle[ins[i].tag] ^= 1<<ValTog;
+            break; case (TagIns): toggle[ins[i].tag] = 0;
+            // TODO following calls to src(res) need to be qualified by toggle and value
             break; case(DerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
             final[res] = i; count += 1;
@@ -1166,7 +1185,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
-        return Ins{dot[i].ins,dot[i].res,dot[i].loc,con,req,rsp,pre};
+        return Ins{dot[i].ins,dot[i].loc,con,req,rsp,dot[i].res,dot[i].mem,dot[i].mic,dot[i].tag,pre};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
         Type val = (fnc&&fnc(typ)?fnc(typ)(i):inv);
@@ -1176,29 +1195,38 @@ struct CopyState : public ChangeState<Configure,Configures> {
     }
     static bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {PDerIns,Resrcs,MiddleLoc,WholeFrm};
+        if (sub == 0) sav = {PDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.tag,dot.tag,ary->memtag,typ,sub,Qualitys,log)) done = false;
+        if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.mem,dot.mem,ary->memmem,typ,sub,Memorys,log)) done = false;
+        if (builtin(sav.mic,dot.mic,ary->memmic,typ,sub,Micros,log)) done = false;
         return !done;
     }
     static bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
+        if (sub == 0) sav = {DerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.tag,dot.tag,ary->restag,typ,sub,Qualitys,log)) done = false;
+        if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.mem,dot.mem,ary->resmem,typ,sub,Memorys,log)) done = false;
+        if (builtin(sav.mic,dot.mic,ary->resmic,typ,sub,Micros,log)) done = false;
         return !done;
     }
     static bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {DerIns,Resrcs,ResizeLoc,SizeFrm};
+        if (sub == 0) sav = {DerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
+        if (builtin(sav.tag,dot.tag,ary->mictag,typ,sub,Qualitys,log)) done = false;
+        if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
+        if (builtin(sav.mem,dot.mem,ary->micmem,typ,sub,Memorys,log)) done = false;
+        if (builtin(sav.mic,dot.mic,ary->micmic,typ,sub,Micros,log)) done = false;
         /*
         char *db0 = 0; showResrc(dot.res,&db0);
         char *db1 = 0; showInstr(dot.ins,&db1);
@@ -1209,10 +1237,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         */
         return !done;
     }
-    template <class Type> void push(Type typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
-        HeapState<Ins> lst; int count = 0; Ins ins; Arg sav; Arg tmp; HeapState<Arg> dot;
+    template <class Type> void push(HeapState<Ins> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
+        int count = 0; Arg sav; Arg tmp; HeapState<Arg> dot;
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
-        for (int i = 0; i < dot.size(); i++) lst << instruct(dot,i,typ,val,arg,siz,idx,count,log);
+        for (int i = 0; i < dot.size(); i++) {
+        Ins ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
+        switch (ins.ins) {default: lst << ins;
+        break; case (RIncIns): push(lst,ins.res,val,arg,siz,idx,ary,log);
+        break; case (MIncIns): push(lst,ins.mem,val,arg,siz,idx,ary,log);
+        break; case (IncIns): push(lst,ins.mic,val,arg,siz,idx,ary,log);}}
+    }
+    template <class Type> void push(Type typ, void *val, int *arg, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+        HeapState<Ins> lst;
+        push(lst,typ,val,arg,siz,idx,ary,log);
         if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
     }
@@ -1958,29 +1995,47 @@ struct MainState {
             {Resrcs,0}},
         constState{{
             MemoryIns__Memory__Int__Instr,
-            MemoryIns__Memory__Int__Resrc,
             MemoryIns__Memory__Int__ResrcLoc,
             MemoryIns__Memory__Int__Format,
+            MemoryIns__Memory__Int__Resrc,
+            MemoryIns__Memory__Int__Memory,
+            MemoryIns__Memory__Int__Micro,
+            MemoryIns__Memory__Int__Quality,
             ResrcIns__Resrc__Int__Instr,
-            ResrcIns__Resrc__Int__Resrc,
             ResrcIns__Resrc__Int__ResrcLoc,
             ResrcIns__Resrc__Int__Format,
+            ResrcIns__Resrc__Int__Resrc,
+            ResrcIns__Resrc__Int__Memory,
+            ResrcIns__Resrc__Int__Micro,
+            ResrcIns__Resrc__Int__Quality,
             MicroIns__Micro__Int__Instr,
-            MicroIns__Micro__Int__Resrc,
             MicroIns__Micro__Int__ResrcLoc,
-            MicroIns__Micro__Int__Format},{
+            MicroIns__Micro__Int__Format,
+            MicroIns__Micro__Int__Resrc,
+            MicroIns__Micro__Int__Memory,
+            MicroIns__Micro__Int__Micro,
+            MicroIns__Micro__Int__Quality},{
             MemoryAlt__Memory__Int__Instr,
-            MemoryAlt__Memory__Int__Resrc,
             MemoryAlt__Memory__Int__ResrcLoc,
             MemoryAlt__Memory__Int__Format,
+            MemoryAlt__Memory__Int__Resrc,
+            MemoryAlt__Memory__Int__Memory,
+            MemoryAlt__Memory__Int__Micro,
+            MemoryAlt__Memory__Int__Quality,
             ResrcAlt__Resrc__Int__Instr,
-            ResrcAlt__Resrc__Int__Resrc,
             ResrcAlt__Resrc__Int__ResrcLoc,
             ResrcAlt__Resrc__Int__Format,
+            ResrcAlt__Resrc__Int__Resrc,
+            ResrcAlt__Resrc__Int__Memory,
+            ResrcAlt__Resrc__Int__Micro,
+            ResrcAlt__Resrc__Int__Quality,
             MicroAlt__Micro__Int__Instr,
-            MicroAlt__Micro__Int__Resrc,
             MicroAlt__Micro__Int__ResrcLoc,
-            MicroAlt__Micro__Int__Format}},
+            MicroAlt__Micro__Int__Format,
+            MicroAlt__Micro__Int__Resrc,
+            MicroAlt__Micro__Int__Memory,
+            MicroAlt__Micro__Int__Micro,
+            MicroAlt__Micro__Int__Quality}},
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
         logicalState(physicalState.device,physicalState.graphicsFamily,

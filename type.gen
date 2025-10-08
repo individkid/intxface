@@ -171,8 +171,8 @@ Instr = {
 	"RTagIns", -- toggle to get from following selected resource, value associated with given tag
 	"UTagIns", -- toggle to use given tag to select following resources
 	"WTagIns", -- toggle to use given tag to set value in following resources
-	"STagIns", -- toggle to increment in next selected resource, value associated with given tag
-	"ITagIns", -- toggle to initialize in next selected resource, given tag
+	"ITagIns", -- toggle to increment in next selected resource, value associated with given tag
+	"JTagIns", -- toggle to initialize in next selected resource, given tag
 	"TagIns", -- clear all actions on following done by given tag
 	"RIncIns", -- include instructions from Resrc
 	"MIncIns", -- include instructions from Memory
@@ -182,6 +182,13 @@ Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
 	"RbutQua", -- radio button to use resource only after extracted processed or consumed
 	"RuseQua", -- resource use qualifier
+}
+Toggle = {
+	"GetTog",
+	"UseTog",
+	"SetTog",
+	"IncTog",
+	"ValTog",
 }
 Configure = {
 	"CenterMem", -- staged field
@@ -540,7 +547,7 @@ FragmentFile = {
 	{"Micro","MicroDepth","Str","fragmentDepthG"},
 }
 MemoryIns = {
-	-- n==0: departures from PDerIns,Resrcs,MiddleLoc,WholeFrm
+	-- n==0: departures from PDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
@@ -554,8 +561,11 @@ MemoryIns = {
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #mem then coroutine.yield(v) else return v end end end;"..
 	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","IDerIns"},
 	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
+	{"Memory","%(return fnc(mem))","Int","0","Memory","Memorys"},
+	{"Memory","%(return fnc(mem))","Int","0","Micro","Micros"},
 	{"Memory","%(return fnc(mem))","Int","0","ResrcLoc","ResizeLoc"},
 	{"Memory","%(return fnc(mem))","Int","0","Format","%(return fnc(siz))"},
+	{"Memory","%(return fnc(mem))","Int","0","Quality","Qualitys"},
 	{"Memory","%(return fnc(mem))","Int","1","ResrcLoc","ReformLoc"},
 	{"Memory","%(return fnc(mem))","Int","1","Format","%(return fnc(ref))"},
 	{"Memory","%(return fnc(mem))","Int","2","ResrcLoc","BeforeLoc"},
@@ -575,16 +585,22 @@ MemoryIns = {
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","PDerIns"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
+	{"Memory","Matrixz","Int","0","Memory","Memorys"},
+	{"Memory","Matrixz","Int","0","Micro","Micros"},
 	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","Format","WholeFrm"},
+	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
 }
 ResrcIns = {
-	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
+	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
 	 {"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
+	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
+	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
 	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
+	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
 	{"Resrc","PipeRes","Int","0","Instr","IDerIns"},
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
@@ -630,11 +646,14 @@ ResrcIns = {
 ResrcAlt = {
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
 	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
+	{"Resrc","SwapRes","Int","0","Memory","Memorys"},
+	{"Resrc","SwapRes","Int","0","Micro","Micros"},
 	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	{"Resrc","SwapRes","Int","0","Format","FalseFrm"},
+	{"Resrc","SwapRes","Int","0","Quality","Qualitys"},
 }
 MicroIns = {
-	-- n==0: departures from DerIns,Resrcs,ResizeLoc,SizeFrm
+	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
 	-- TODO \"RelateRes\",
 	{"%(dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
@@ -647,8 +666,11 @@ MicroIns = {
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num) else return i+num end end end\
 	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","DerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Resrc","ChainRes"},
+		{"Micro","%(return gnc(mic,dee))","Int","0","Memory","Memorys"},
+		{"Micro","%(return gnc(mic,dee))","Int","0","Micro","Micros"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Format","MicroFrm"},
+		{"Micro","%(return gnc(mic,dee))","Int","0","Quality","Qualitys"},
 	{"Micro","%(return gnc(mic,dee))","Int","1","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","2","Instr","DerIns"},
@@ -679,8 +701,11 @@ MicroIns = {
 MicroAlt = {
 	{"Micro","MicroTest","Int","0","Instr","DerIns"},
 		{"Micro","MicroTest","Int","0","Resrc","ChainRes"},
+		{"Micro","MicroTest","Int","0","Memory","Memorys"},
+		{"Micro","MicroTest","Int","0","Micro","Micros"},
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
+		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
@@ -970,13 +995,16 @@ Draw = {
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
 }
-Ins = {
+Ins = { -- apologies, some Instr have many parameters, others have few
 	{"ins","Instr",{},""},
-	{"res","Resrc",{},{}},
 	{"loc","ResrcLoc",{},{}},
 	{"con","Con",{},{}}, -- delete once RuseQua value available in BaseState
 	{"req","Req",{},{}},
 	{"rsp","Rsp",{},{}},
+	{"res","Resrc",{},{}},
+	{"mem","Memory",{},{}},
+	{"mic","Micro",{},{}},
+	{"tag","Quality",{},{}},
 	{"idx","Int",{},{}},
 }
 Center = {
