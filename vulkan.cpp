@@ -179,6 +179,8 @@ struct ConstState {
     decltype(MemoryIns__Memory__Int__Memory) *memmem;
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
     decltype(MemoryIns__Memory__Int__Quality) *memtag;
+    decltype(MemoryAlt__Memory__Int) *memsiz;
+    decltype(MemoryAlt__Memory__Int__Int) *memval;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
     decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
     decltype(ResrcIns__Resrc__Int__Format) *resfmt;
@@ -186,6 +188,8 @@ struct ConstState {
     decltype(ResrcIns__Resrc__Int__Memory) *resmem;
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
     decltype(ResrcIns__Resrc__Int__Quality) *restag;
+    decltype(ResrcAlt__Resrc__Int) *ressiz;
+    decltype(ResrcAlt__Resrc__Int__Int) *resval;
     decltype(MicroIns__Micro__Int__Instr) *micins;
     decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
     decltype(MicroIns__Micro__Int__Format) *micfmt;
@@ -193,6 +197,8 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Memory) *micmem;
     decltype(MicroIns__Micro__Int__Micro) *micmic;
     decltype(MicroIns__Micro__Int__Quality) *mictag;
+    decltype(MicroAlt__Micro__Int) *micsiz;
+    decltype(MicroAlt__Micro__Int__Int) *micval;
 };
 
 struct BaseState;
@@ -420,7 +426,7 @@ struct BaseState {
     Loc ploc[ResrcLocs];
     int mask; // which ploc have valid max
     int nask; // which ploc setup called for
-    int qua[Qualitys]; // TODO use this instead of loc.con
+    int qual[Qualitys]; // TODO use this instead of loc.con
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr),
@@ -915,7 +921,8 @@ struct EnumState {
     Resrc key = Resrcs; StackState *val = 0;
 };
 struct Arg {
-    Instr ins = Instrs; ResrcLoc loc; Format fmt = Formats; Quality tag = Qualitys;
+    Instr ins = Instrs;
+    ResrcLoc loc; Format fmt = Formats; Quality tag = Qualitys;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
 };
 struct CopyState : public ChangeState<Configure,Configures> {
@@ -965,6 +972,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case (WTagIns): toggle[ins[i].tag] ^= 1<<SetTog;
             break; case (ITagIns): toggle[ins[i].tag] ^= 1<<IncTog;
             break; case (JTagIns): toggle[ins[i].tag] ^= 1<<ValTog;
+            break; case (KTagIns): value[ins[i].tag] = ins[i].idx;
             break; case (TagIns): toggle[ins[i].tag] = 0;
             // TODO following calls to src(res) need to be qualified by toggle and value
             break; case(DerIns):
@@ -1181,7 +1189,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns ? get(arg,siz,idx,log,"instruct.pre") : 0);
+        int pre = (dot[i].ins == IDerIns || dot[i].ins == IRDeeIns || dot[i].ins == KTagIns ? get(arg,siz,idx,log,"instruct.pre") : 0);
         Con con = constant(dot[i].ins,typ,log);
         Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
@@ -1254,10 +1262,19 @@ struct CopyState : public ChangeState<Configure,Configures> {
         push(lst,fnc,ptr,sub,log);
     }
     void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+        int siz = 0; switch (drw.con.tag) {default: ERROR();
+        break; case (MicroCon): siz = array[ary].micsiz(drw.con.mic);
+        break; case (MemoryCon): siz = array[ary].memsiz(drw.con.mem);
+        break; case (ResrcCon): siz = array[ary].ressiz(drw.con.res);}
+        int arg[siz] = {0}; switch (drw.con.tag) {default: ERROR();
+        break; case (MicroCon): for (int i = 0; i < siz; i++) arg[i] = array[ary].micval(drw.con.mic)(i);
+        break; case (MemoryCon): for (int i = 0; i < siz; i++) arg[i] = array[ary].memval(drw.con.mem)(i);
+        break; case (ResrcCon): for (int i = 0; i < siz; i++) arg[i] = array[ary].resval(drw.con.res)(i);}
+        // TODO for (int i = 0; i < drw.siz; i++) arg[drw.arg[i]] = drw.val[i];
         switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);}
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,/*TODO arg,siz,*/drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,/*TODO arg,siz,*/drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,/*TODO arg,siz,*/drw.arg,drw.siz,idx,ptr,sub,fnc,ary,log);}
     }
     void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
         switch (center->mem) {default: {
@@ -2001,6 +2018,8 @@ struct MainState {
             MemoryIns__Memory__Int__Memory,
             MemoryIns__Memory__Int__Micro,
             MemoryIns__Memory__Int__Quality,
+            MemoryAlt__Memory__Int,
+            MemoryAlt__Memory__Int__Int,
             ResrcIns__Resrc__Int__Instr,
             ResrcIns__Resrc__Int__ResrcLoc,
             ResrcIns__Resrc__Int__Format,
@@ -2008,13 +2027,17 @@ struct MainState {
             ResrcIns__Resrc__Int__Memory,
             ResrcIns__Resrc__Int__Micro,
             ResrcIns__Resrc__Int__Quality,
+            ResrcAlt__Resrc__Int,
+            ResrcAlt__Resrc__Int__Int,
             MicroIns__Micro__Int__Instr,
             MicroIns__Micro__Int__ResrcLoc,
             MicroIns__Micro__Int__Format,
             MicroIns__Micro__Int__Resrc,
             MicroIns__Micro__Int__Memory,
             MicroIns__Micro__Int__Micro,
-            MicroIns__Micro__Int__Quality},{
+            MicroIns__Micro__Int__Quality,
+            MicroAlt__Micro__Int,
+            MicroAlt__Micro__Int__Int},{
             MemoryAlt__Memory__Int__Instr,
             MemoryAlt__Memory__Int__ResrcLoc,
             MemoryAlt__Memory__Int__Format,
@@ -2022,6 +2045,8 @@ struct MainState {
             MemoryAlt__Memory__Int__Memory,
             MemoryAlt__Memory__Int__Micro,
             MemoryAlt__Memory__Int__Quality,
+            MemoryAlt__Memory__Int,
+            MemoryAlt__Memory__Int__Int,
             ResrcAlt__Resrc__Int__Instr,
             ResrcAlt__Resrc__Int__ResrcLoc,
             ResrcAlt__Resrc__Int__Format,
@@ -2029,13 +2054,17 @@ struct MainState {
             ResrcAlt__Resrc__Int__Memory,
             ResrcAlt__Resrc__Int__Micro,
             ResrcAlt__Resrc__Int__Quality,
+            ResrcAlt__Resrc__Int,
+            ResrcAlt__Resrc__Int__Int,
             MicroAlt__Micro__Int__Instr,
             MicroAlt__Micro__Int__ResrcLoc,
             MicroAlt__Micro__Int__Format,
             MicroAlt__Micro__Int__Resrc,
             MicroAlt__Micro__Int__Memory,
             MicroAlt__Micro__Int__Micro,
-            MicroAlt__Micro__Int__Quality}},
+            MicroAlt__Micro__Int__Quality,
+            MicroAlt__Micro__Int,
+            MicroAlt__Micro__Int__Int}},
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),
         logicalState(physicalState.device,physicalState.graphicsFamily,

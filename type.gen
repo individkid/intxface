@@ -173,6 +173,7 @@ Instr = {
 	"WTagIns", -- toggle to use given tag to set value in following resources
 	"ITagIns", -- toggle to increment in next selected resource, value associated with given tag
 	"JTagIns", -- toggle to initialize in next selected resource, given tag
+	"KTagIns", -- set from constant, value associated with given tag
 	"TagIns", -- clear all actions on following done by given tag
 	"RIncIns", -- include instructions from Resrc
 	"MIncIns", -- include instructions from Memory
@@ -590,6 +591,8 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","Format","WholeFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
+	{"Memory","Matrixz","Int",--[["Int","0",--]]"0"},
+	{"Memory","Matrixz","Int",--[["Int","0",--]]"0","Int","0"},
 }
 ResrcIns = {
 	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
@@ -645,12 +648,14 @@ ResrcIns = {
 }
 ResrcAlt = {
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
-	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
-	{"Resrc","SwapRes","Int","0","Memory","Memorys"},
-	{"Resrc","SwapRes","Int","0","Micro","Micros"},
-	{"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
-	{"Resrc","SwapRes","Int","0","Format","FalseFrm"},
-	{"Resrc","SwapRes","Int","0","Quality","Qualitys"},
+	 {"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
+	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
+	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
+	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
+	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
+	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
+	 {"Resrc","SwapRes","Int",--[["Int","0",--]]"0"},
+	 {"Resrc","SwapRes","Int",--[["Int","0",--]]"0","Int","0"},
 }
 MicroIns = {
 	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
@@ -706,6 +711,8 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
+		{"Micro","MicroTest",--[["Int","0",--]]"Int","0"},
+		{"Micro","MicroTest",--[["Int","0",--]]"Int","0","Int","0"},
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
@@ -994,6 +1001,7 @@ Draw = {
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
 	{"arg","Int",{},"siz"},
+	{"val","Int",{},"siz"},
 }
 Ins = { -- apologies, some Instr have many parameters, others have few
 	{"ins","Instr",{},""},
