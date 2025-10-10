@@ -551,6 +551,8 @@ MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
+	{"Memory","Indexz","Int","0"},
+	{"Memory","Indexz","Int","0","Int","0"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
 	"res={\"ImageRes\",\"DebugRes\",\"DebugRes\"}"..
@@ -607,6 +609,9 @@ ResrcIns = {
 	{"Resrc","PipeRes","Int","0","Instr","IDerIns"},
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
+	 {"Resrc","PipeRes","Int","2"},
+	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IDerIns
+	 {"Resrc","PipeRes","Int","1","Int","0"}, -- Micro
 	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
@@ -634,6 +639,10 @@ ResrcIns = {
 	 {"Resrc","PierceRes","Int","3","Format","HighFrm"},
 	{"Resrc","PierceRes","Int","4","ResrcLoc","AfterLoc"},
 	 {"Resrc","PierceRes","Int","4","Format","RonlyFrm"},
+	 {"Resrc","PierceRes","Int","3"},
+	 {"Resrc","PierceRes","Int","0","Int","0"}, -- IDerIns
+	 {"Resrc","PierceRes","Int","1","Int","0"}, -- WindowWidth
+	 {"Resrc","PierceRes","Int","2","Int","0"}, -- WindowHeight
 	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
 	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
 	{"Resrc","TriangleRes","Int","0","Resrc","TriangleRes"},
@@ -692,6 +701,8 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Instr","IRDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Resrc","PipeRes"},
+	{"Micro","MicroTest","Int","0"}, -- TODO defaults for each Micro
+	{"Micro","MicroTest","Int","0","Int","0"}, -- TODO defaults
 	{"Micro","%(return fnc(mib))","Int","0","Instr","DerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},
