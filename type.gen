@@ -191,6 +191,11 @@ Toggle = {
 	"IncTog",
 	"ValTog",
 }
+Default = {
+	"TrivDef",
+	"BackDef",
+	"GiveDef",
+}
 Configure = {
 	"CenterMem", -- staged field
 	"CenterSiz",
@@ -552,6 +557,7 @@ MemoryIns = {
 	-- n>0: departures from n-1
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
 	{"Memory","Indexz","Int","0"},
+	{"Memory","Indexz","Int","0","Default","TrivDef"},
 	{"Memory","Indexz","Int","0","Int","0"},
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
@@ -593,8 +599,9 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","Format","WholeFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
-	{"Memory","Matrixz","Int",--[["Int","0",--]]"0"},
-	{"Memory","Matrixz","Int",--[["Int","0",--]]"0","Int","0"},
+	{"Memory","Matrixz","Int","0"},
+	{"Memory","Matrixz","Int","0","Default","TrivDef"},
+	{"Memory","Matrixz","Int","0","Int","0"},
 }
 ResrcIns = {
 	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
@@ -610,7 +617,9 @@ ResrcIns = {
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
 	 {"Resrc","PipeRes","Int","2"},
+	 {"Resrc","PipeRes","Int","0","Default","GiveDef"},
 	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IDerIns
+	 {"Resrc","PipeRes","Int","1","Default","BackDef"},
 	 {"Resrc","PipeRes","Int","1","Int","0"}, -- Micro
 	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
@@ -663,8 +672,9 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
-	 {"Resrc","SwapRes","Int",--[["Int","0",--]]"0"},
-	 {"Resrc","SwapRes","Int",--[["Int","0",--]]"0","Int","0"},
+	 {"Resrc","SwapRes","Int","0"},
+	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
+	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
 MicroIns = {
 	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
@@ -701,7 +711,8 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Instr","IRDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Resrc","PipeRes"},
-	{"Micro","MicroTest","Int","0"}, -- TODO defaults for each Micro
+	{"Micro","MicroTest","Int","0"}, -- TODO number of defaults
+	{"Micro","MicroTest","Int","0","Default","TrivDef"}, -- TODO how to interpret default
 	{"Micro","MicroTest","Int","0","Int","0"}, -- TODO defaults
 	{"Micro","%(return fnc(mib))","Int","0","Instr","DerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
@@ -722,8 +733,9 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
-		{"Micro","MicroTest",--[["Int","0",--]]"Int","0"},
-		{"Micro","MicroTest",--[["Int","0",--]]"Int","0","Int","0"},
+		{"Micro","MicroTest","Int","0"},
+		{"Micro","MicroTest","Int","0","Default","TrivDef"},
+		{"Micro","MicroTest","Int","0","Int","0"},
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
@@ -1011,8 +1023,9 @@ Draw = {
 	{"con","Con",{},{}},
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
+	{"sze","Int",{},{}},
 	{"arg","Int",{},"siz"},
-	{"val","Int",{},"siz"},
+	{"val","Int",{},"sze"},
 }
 Ins = { -- apologies, some Instr have many parameters, others have few
 	{"ins","Instr",{},""},
@@ -1026,6 +1039,18 @@ Ins = { -- apologies, some Instr have many parameters, others have few
 	{"tag","Quality",{},{}},
 	{"idx","Int",{},{}},
 }
+--[[Default = {
+	{"phy","Int",{},{}}, -- number of physical
+	{"vir","Int",{},{}}, -- number of virtual
+	{"siz","Int",{},{}}, -- number of default virtuals
+	{"def","Int",{},"siz"}, -- virtual index
+	{"val","Int",{},"siz"}, -- virtual value
+	{"giv","Int",{},{}}, -- number of given values
+	{"map","Int",{},"giv"}, -- index into virtual
+	{"num","Int",{},{}}, -- number of physical to virtual
+	{"dst","Int",{},"num"}, -- physical index
+	{"src","Int",{},"num"}, -- virtual index
+}--]]
 Center = {
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},

@@ -179,8 +179,9 @@ struct ConstState {
     decltype(MemoryIns__Memory__Int__Memory) *memmem;
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
     decltype(MemoryIns__Memory__Int__Quality) *memtag;
-    decltype(MemoryAlt__Memory__Int) *memsiz;
-    decltype(MemoryAlt__Memory__Int__Int) *memval;
+    decltype(MemoryIns__Memory__Int) *memsiz;
+    decltype(MemoryIns__Memory__Int__Default) *memdef;
+    decltype(MemoryIns__Memory__Int__Int) *memval;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
     decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
     decltype(ResrcIns__Resrc__Int__Format) *resfmt;
@@ -188,8 +189,9 @@ struct ConstState {
     decltype(ResrcIns__Resrc__Int__Memory) *resmem;
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
     decltype(ResrcIns__Resrc__Int__Quality) *restag;
-    decltype(ResrcAlt__Resrc__Int) *ressiz;
-    decltype(ResrcAlt__Resrc__Int__Int) *resval;
+    decltype(ResrcIns__Resrc__Int) *ressiz;
+    decltype(ResrcIns__Resrc__Int__Default) *resdef;
+    decltype(ResrcIns__Resrc__Int__Int) *resval;
     decltype(MicroIns__Micro__Int__Instr) *micins;
     decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
     decltype(MicroIns__Micro__Int__Format) *micfmt;
@@ -197,8 +199,9 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Memory) *micmem;
     decltype(MicroIns__Micro__Int__Micro) *micmic;
     decltype(MicroIns__Micro__Int__Quality) *mictag;
-    decltype(MicroAlt__Micro__Int) *micsiz;
-    decltype(MicroAlt__Micro__Int__Int) *micval;
+    decltype(MicroIns__Micro__Int) *micsiz;
+    decltype(MicroIns__Micro__Int__Default) *micdef;
+    decltype(MicroIns__Micro__Int__Int) *micval;
 };
 
 struct BaseState;
@@ -1265,44 +1268,95 @@ struct CopyState : public ChangeState<Configure,Configures> {
     int size(Resrc typ, int ary) {
         return array[ary].ressiz(typ);
     }
-    void fill(Micro typ, int *arg, int siz, int ary) {
-        for (int i = 0; i < siz; i++) arg[i] = (array[ary].micval(typ) ? array[ary].micval(typ)(i) : 0);
+    Default dflt(Micro typ, int idx, int ary) {
+        return (array[ary].micdef(typ) ? array[ary].micdef(typ)(idx) : Defaults);
     }
-    void fill(Memory typ, int *arg, int siz, int ary) {
-        for (int i = 0; i < siz; i++) arg[i] = (array[ary].memval(typ) ? array[ary].memval(typ)(i) : 0);
+    Default dflt(Memory typ, int idx, int ary) {
+        return (array[ary].memdef(typ) ? array[ary].memdef(typ)(idx) : Defaults);
     }
-    void fill(Resrc typ, int *arg, int siz, int ary) {
-        for (int i = 0; i < siz; i++) arg[i] = (array[ary].resval(typ) ? array[ary].resval(typ)(i) : 0);
+    Default dflt(Resrc typ, int idx, int ary) {
+        return (array[ary].resdef(typ) ? array[ary].resdef(typ)(idx) : Defaults);
+    }
+    int fill(Micro typ, int idx, int ary) {
+        return (array[ary].micval(typ) ? array[ary].micval(typ)(idx) : 0);
+    }
+    int fill(Memory typ, int idx, int ary) {
+        return (array[ary].memval(typ) ? array[ary].memval(typ)(idx) : 0);
+    }
+    int fill(Resrc typ, int idx, int ary) {
+        return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
     template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
         HeapState<Ins> lst;
-        int tot = (siz > size(typ,ary) ? siz : size(typ,ary));
-        int vlu[tot]; fill(typ,vlu,tot,ary);
-        for (int i = 0; i < siz; i++) vlu[arg[i]] = val[i];
+        int tot = 0;
+        if (arg && val) {for (int i = 0; i < siz; i++) if (arg[i] >= tot)
+        tot = arg[i]+1;}
+        else if (val)
+        tot = siz;
+        if (tot < size(typ,ary))
+        tot = size(typ,ary);
+        int vlu[tot];
+        if (arg && val) {for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
+            // with both arg and val, negative arg means profer the val, non-negative means force
+            default: std::cerr << "invalid arg/val default!" << std::endl; EXIT
+            break; case (Defaults): case (TrivDef): vlu[i] = fill(typ,i,ary);
+            break; case (BackDef): {
+            int idx = fill(typ,i,ary);
+            if (idx < 0 || idx >= tot) {std::cerr << "invalid arg/val back!" << std::endl; EXIT}
+            vlu[i] = vlu[idx];}
+            break; case (GiveDef): {
+            int count = fill(typ,i,ary); int idx = -1;
+            for (int j = 0; j < siz; j++)
+            if (arg[j] < 0 && --count == 0) idx = j;
+            if (idx < 0 || idx >= siz) {std::cerr << "invalid arg/val give!" << std::endl; EXIT}
+            vlu[i] = val[idx];}}
+            for (int i = 0; i < siz; i++)
+            if (arg[i] >= tot) {std::cerr << "invalid arg/val force!" << std::endl; EXIT}
+            else if (arg[i] >= 0) vlu[arg[i]] = val[i];}
+        else if (arg) for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
+            // arg only means profer only
+            default: std::cerr << "invalid arg default!" << std::endl; EXIT
+            break; case (TrivDef): vlu[i] = fill(typ,i,ary);
+            break; case (BackDef): {
+            int idx = fill(typ,i,ary);
+            if (idx < 0 || idx >= tot) {std::cerr << "invalid arg back!" << std::endl; EXIT}
+            vlu[i] = vlu[idx];}
+            break; case (GiveDef): {
+            int idx = fill(typ,i,ary);
+            if (idx < 0 || idx >= siz) {std::cerr << "invalid arg give!" << std::endl; EXIT}
+            vlu[i] = arg[idx];}}
+        else if (val) {
+            // val only means packed force
+            if (tot < siz) {std::cerr << "maximum not valid!" << std::endl; EXIT}
+            for (int i = 0; i < tot; i++) vlu[i] = fill(typ,i,ary);
+            for (int i = 0; i < siz; i++) vlu[i] = val[i];}
+        else for (int i = 0; i < tot; i++) vlu[i] = fill(typ,i,ary); // neither means default only
         push(lst,typ,dat,vlu,tot,idx,ary,log);
         if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+        int siz = 0;
+        if (drw.siz && drw.sze) siz = (drw.siz < drw.sze ? drw.siz : drw.sze);
+        else siz = (drw.siz ? drw.siz : drw.sze);
         switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.val,drw.siz,idx,ptr,sub,fnc,ary,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,idx,ptr,sub,fnc,ary,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,idx,ptr,sub,fnc,ary,log);}
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,(drw.siz?drw.arg:0),(drw.sze?drw.val:0),siz,idx,ptr,sub,fnc,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,(drw.siz?drw.arg:0),(drw.sze?drw.val:0),siz,idx,ptr,sub,fnc,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,(drw.siz?drw.arg:0),(drw.sze?drw.val:0),siz,idx,ptr,sub,fnc,ary,log);}
     }
     void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
         switch (center->mem) {default: {
         int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
-        int arg[] = {0,1}; int val[] = {idx,siz}; int aiz = sizeof(arg)/sizeof(int); int adx = 0;
-        if (sizeof(arg) != sizeof(val)) {std::cerr << "arg val mismatch" << std::endl; EXIT}
+        int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int); int adx = 0;
         switch (center->mem) {default: EXIT
-        break; case (Indexz): push(center->mem,(void*)center->ind,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Bringupz): push(center->mem,(void*)center->ver,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Uniformz): push(center->mem,(void*)center->uni,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Matrixz): push(center->mem,(void*)center->mat,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Trianglez): push(center->mem,(void*)center->tri,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Numericz): push(center->mem,(void*)center->num,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Vertexz): push(center->mem,(void*)center->vtx,arg,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Basisz): push(center->mem,(void*)center->bas,arg,val,aiz,adx,center,sub,fnc,ary,log);}}
+        break; case (Indexz): push(center->mem,(void*)center->ind,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Bringupz): push(center->mem,(void*)center->ver,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Uniformz): push(center->mem,(void*)center->uni,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Matrixz): push(center->mem,(void*)center->mat,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Trianglez): push(center->mem,(void*)center->tri,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Numericz): push(center->mem,(void*)center->num,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Vertexz): push(center->mem,(void*)center->vtx,0,val,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Basisz): push(center->mem,(void*)center->bas,0,val,aiz,adx,center,sub,fnc,ary,log);}}
         break; case (Drawz): for (int i = 0; i < center->siz; i++) {int didx = 0;
         push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
@@ -1314,43 +1368,38 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat);
-            int marg[] = {0,1,2,3,4,5,6,7,8,9};
             int mval[] = {
             idx,wid,hei, // ExtentFrm
             idx, // ImageFrm
             idx, // WonlyFrm
             idx,tot,wid,hei, // HighFrm
             idx}; // RonlyFrm
-            if (sizeof(marg) != sizeof(mval)) {std::cerr << "arg val mismatch" << std::endl; EXIT}
-            int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),marg,mval,msiz,midx,center,sub,fnc,ary,log);}
+            int msiz = sizeof(mval)/sizeof(int); int midx = 0;
+            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),0,mval,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4;
-            int marg[] = {0,1,2,3,4,5,6,7,8,9};
             int mval[] = {
             idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
             idx, // PierceFrm
             idx, // PeekFrm
             idx,siz,wid,hei, // HighFrm
             idx}; // SourceFrm
-            if (sizeof(marg) != sizeof(mval)) {std::cerr << "arg val mismatch" << std::endl; EXIT}
-            int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->eek,marg,mval,msiz,midx,center,sub,fnc,ary,log);}
+            int msiz = sizeof(mval)/sizeof(int); int midx = 0;
+            push(center->mem,(void*)center->eek,0,mval,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4;
-            int marg[] = {0,1,2,3,4,5,6,7,8,9};
             int mval[] = {
             idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
             idx, // PierceFrm
             idx, // PokeFrm
             idx,siz,wid,hei, // HighFrm
             idx}; // DestFrm
-            int msiz = sizeof(marg)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->oke,marg,mval,msiz,midx,center,sub,fnc,ary,log);}}
+            int msiz = sizeof(mval)/sizeof(int); int midx = 0;
+            push(center->mem,(void*)center->oke,0,mval,msiz,midx,center,sub,fnc,ary,log);}}
     }
 };
 
@@ -2041,6 +2090,7 @@ struct MainState {
             MemoryIns__Memory__Int__Micro,
             MemoryIns__Memory__Int__Quality,
             MemoryIns__Memory__Int,
+            MemoryIns__Memory__Int__Default,
             MemoryIns__Memory__Int__Int,
             ResrcIns__Resrc__Int__Instr,
             ResrcIns__Resrc__Int__ResrcLoc,
@@ -2050,6 +2100,7 @@ struct MainState {
             ResrcIns__Resrc__Int__Micro,
             ResrcIns__Resrc__Int__Quality,
             ResrcIns__Resrc__Int,
+            ResrcIns__Resrc__Int__Default,
             ResrcIns__Resrc__Int__Int,
             MicroIns__Micro__Int__Instr,
             MicroIns__Micro__Int__ResrcLoc,
@@ -2059,6 +2110,7 @@ struct MainState {
             MicroIns__Micro__Int__Micro,
             MicroIns__Micro__Int__Quality,
             MicroIns__Micro__Int,
+            MicroIns__Micro__Int__Default,
             MicroIns__Micro__Int__Int},{
             MemoryAlt__Memory__Int__Instr,
             MemoryAlt__Memory__Int__ResrcLoc,
@@ -2068,6 +2120,7 @@ struct MainState {
             MemoryAlt__Memory__Int__Micro,
             MemoryAlt__Memory__Int__Quality,
             MemoryAlt__Memory__Int,
+            MemoryAlt__Memory__Int__Default,
             MemoryAlt__Memory__Int__Int,
             ResrcAlt__Resrc__Int__Instr,
             ResrcAlt__Resrc__Int__ResrcLoc,
@@ -2077,6 +2130,7 @@ struct MainState {
             ResrcAlt__Resrc__Int__Micro,
             ResrcAlt__Resrc__Int__Quality,
             ResrcAlt__Resrc__Int,
+            ResrcAlt__Resrc__Int__Default,
             ResrcAlt__Resrc__Int__Int,
             MicroAlt__Micro__Int__Instr,
             MicroAlt__Micro__Int__ResrcLoc,
@@ -2086,6 +2140,7 @@ struct MainState {
             MicroAlt__Micro__Int__Micro,
             MicroAlt__Micro__Int__Quality,
             MicroAlt__Micro__Int,
+            MicroAlt__Micro__Int__Default,
             MicroAlt__Micro__Int__Int}},
         vulkanState(windowState.window),
         physicalState(vulkanState.instance,vulkanState.surface),

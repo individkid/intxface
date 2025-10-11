@@ -904,9 +904,11 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroPierce;
     drw->drw[0].siz = sizeof(crg)/sizeof(int);
+    drw->drw[0].sze = sizeof(cal)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    allocInt(&drw->drw[0].val,drw->drw[0].siz);
-    for (int i = 0; i < drw->drw[0].siz; i++) {drw->drw[0].arg[i] = crg[i]; drw->drw[0].val[i] = cal[i];}
+    allocInt(&drw->drw[0].val,drw->drw[0].sze);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = crg[i];
+    for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = cal[i];
     callCopy(drw,save,fun,0,0);}/*TODO issue RelateRes to copy from PierceRes*//*int idx = 0;
     copy->push(MicroTest,0,arg,sizeof(arg)/sizeof(int),idx,0,0,fun,SmartState());*/
     {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {planeWait(0,0); continue;}
@@ -915,9 +917,11 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroTest;
     drw->drw[0].siz = sizeof(arg)/sizeof(int);
+    drw->drw[0].sze = sizeof(val)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    allocInt(&drw->drw[0].val,drw->drw[0].siz);
-    for (int i = 0; i < drw->drw[0].siz; i++) {drw->drw[0].arg[i] = arg[i]; drw->drw[0].val[i] = val[i];}
+    allocInt(&drw->drw[0].val,drw->drw[0].sze);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = arg[i];
+    for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = val[i];
     callCopy(drw,save,fun,0,0);}}
     else if (count%8 == 1 || count%8 == 5) {/*int idx = 0;
     copy->push(MicroDebug,0,brg,sizeof(brg)/sizeof(int),idx,0,0,fun,SmartState());*/
@@ -927,9 +931,11 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroDebug;
     drw->drw[0].siz = sizeof(brg)/sizeof(int);
+    drw->drw[0].sze = sizeof(bal)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    allocInt(&drw->drw[0].val,drw->drw[0].siz);
-    for (int i = 0; i < drw->drw[0].siz; i++) {drw->drw[0].arg[i] = brg[i]; drw->drw[0].val[i] = bal[i];}
+    allocInt(&drw->drw[0].val,drw->drw[0].sze);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = brg[i];
+    for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = bal[i];
     callCopy(drw,save,fun,0,0);}
     else if (count%8 == 2 || count%8 == 6) {
     int width = callInfo(WindowWidth,0,planeRcfg);
@@ -1243,14 +1249,10 @@ void initTest()
     for (int i = 0; i < 3/*Micros*/; i++) {
     ptr->drw[i].con.tag = ResrcCon;
     ptr->drw[i].con.res = PipeRes;
-    int arg[] = {0,1};
     int val[] = {/*IDerIns*/i,/*Micro*/i};
-    ptr->drw[i].siz = sizeof(arg)/sizeof(int);
-    if (sizeof(arg) != sizeof(val)) ERROR();
-    allocInt(&ptr->drw[i].arg,ptr->drw[i].siz);
-    allocInt(&ptr->drw[i].val,ptr->drw[i].siz);
-    for (int j = 0; j < ptr->drw[i].siz; j++) {
-    ptr->drw[i].arg[j] = arg[j];
+    ptr->drw[i].sze = sizeof(val)/sizeof(int);
+    allocInt(&ptr->drw[i].val,ptr->drw[i].sze);
+    for (int j = 0; j < ptr->drw[i].sze; j++) {
     ptr->drw[i].val[j] = val[j];}}
     for (int i = 0; i < frames; i++) {
     ptr->drw[3/*Micros*/+i].con.tag = ResrcCon;
@@ -1258,13 +1260,10 @@ void initTest()
     if (0) for (int i = 0; i < frames; i++) { // TODO arg for each ResrcLoc of PierceRes
     ptr->drw[3/*Micros*/+frames+i].con.tag = ResrcCon;
     ptr->drw[3/*Micros*/+frames+i].con.res = PierceRes;
-    int arg[] = {0,1,2};
     int val[] = {/*IDerIns*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
-    ptr->drw[3/*Micros*/+frames+i].siz = sizeof(arg)/sizeof(int);
-    allocInt(&ptr->drw[3/*Micros*/+frames+i].arg,ptr->drw[3/*Micros*/+frames+i].siz);
-    allocInt(&ptr->drw[3/*Micros*/+frames+i].val,ptr->drw[3/*Micros*/+frames+i].siz);
-    for (int j = 0; j < ptr->drw[3/*Micros*/+frames+i].siz; j++) {
-    ptr->drw[3/*Micros*/+frames+i].arg[j] = arg[j];
+    ptr->drw[3/*Micros*/+frames+i].sze = sizeof(val)/sizeof(int);
+    allocInt(&ptr->drw[3/*Micros*/+frames+i].val,ptr->drw[3/*Micros*/+frames+i].sze);
+    for (int j = 0; j < ptr->drw[3/*Micros*/+frames+i].sze; j++) {
     ptr->drw[3/*Micros*/+frames+i].val[j] = val[j];}}
     callCopy(ptr,Drawz,fun,0,0);
     while (!centerCheck(Drawz)) usleep(1000);
