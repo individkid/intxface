@@ -632,9 +632,20 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
+struct Tree {
+	int key[Qualitys];
+	int link[Qualitys];
+	int back[Qualitys];
+	int down[Qualitys];
+};
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx;
+    int start,  pool;
+    Tree tree[Size];
+    // Each node is a leaf, some leaves are also internal, and one is root.
+    // As leaves, nodes are in a linked list, started by their parent, indicated by link[Qualitys-1] and back[Qualitys-1]
+    // The first in a leaf linked list is the newest. Back from the first is the oldest.
     State state[Size];
     ArrayState(
         ChangeState<Configure,Configures> *copy,
@@ -674,19 +685,45 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         present),
         safe(1), idx(0) {
     }
-    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
+    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0), start(0), pool(0), tree{0} {
     }
-    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
+    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0), start(0), pool(0), tree{0} {
     }
-    ArrayState() : safe(1), idx(0) {
+    ArrayState() : safe(1), idx(0), start(0), pool(0), tree{0} {
     }
-    BaseState *buffer() override {safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;}
-    BaseState *prebuf() override {safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;}
-    BaseState *prebuf(int i) override {
+    int insert(int *key) {
+	// return -1 if pool empty
+	return -1;
+    }
+    int oldest(int *key) {
+	// if no linked list found, return insert
+	// pull from pool and add to found linked list if pool is not empty
+	// othewise return back from start of found linked list
+	return -1;
+    }
+    int newest(int *key) {
+	int idx = start;
+	for (int i = 0; i < Qualitys; i++) {
+	int save = idx;
+	while (tree[idx].key[i] != key[i]) {
+	idx = tree[idx].link[i];
+	if (idx == save) return insert(key);}
+	idx = tree[idx].down[i];}
+	return idx;
+    }
+    BaseState *buffer() override { // buffer of newest, with given tags
+	safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;
+    }
+    BaseState *prebuf() override { // buffer of oldest, with given tags
+	safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;
+    }
+    BaseState *prebuf(int i) override { // buffer of particular, checking tags
         if (i < 0 || i >= Size) EXIT
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;}
-    void advance() override {safe.wait(); idx = (idx+1)%Size; safe.post();}
-    void advance(int i) override {
+    void advance() override { // make oldest into newest, with given tags
+	safe.wait(); idx = (idx+1)%Size; safe.post();
+    }
+    void advance(int i) override { // remove and insert particular as newest, checking tags
         if (i < 0 || i >= Size) EXIT
         safe.wait(); idx = i; safe.post();}
     Resrc buftyp() override {return Type;}
@@ -2250,7 +2287,7 @@ GLFWwindow* WindowState::createWindow(uint32_t WIDTH, uint32_t HEIGHT) {
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanState::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cout << "validation layer: " << pCallbackData->pMessage << " severity:0x" << std::hex << messageSeverity << std::dec << std::endl;
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) *(int*)0=0;
+    // if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) *(int*)0=0;
     return VK_FALSE;
 }
 VkDebugUtilsMessengerCreateInfoEXT VulkanState::createInfo(const char **validationLayers) {
