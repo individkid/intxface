@@ -1293,26 +1293,33 @@ struct CopyState : public ChangeState<Configure,Configures> {
         // neither means default only
         HeapState<Ins> lst;
         int tot = 0;
-        if (arg && val) {for (int i = 0; i < siz; i++) if (arg[i] >= tot) tot = arg[i]+1;}
+        if (arg && val) {
+            for (int i = 0; i < siz; i++)
+            if (arg[i] >= tot) tot = arg[i]+1;}
         else if (val) tot = siz;
         if (tot < size(typ,ary)) tot = size(typ,ary);
         int vlu[tot];
         // initialize with defaults
-        for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
-        default: vlu[i] = 0;
-        break; case (Defaults): case (TrivDef): vlu[i] = fill(typ,i,ary);}
+        for (int i = 0; i < tot; i++) {
+            Default def = dflt(typ,i,ary);
+            if (def == TrivDef || def == Defaults) vlu[i] = fill(typ,i,ary);
+            else vlu[i] = 0;}
         // copy from given
-        if (arg) for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
-        default: break; case (GiveDef): {int idx = fill(typ,i,ary);
-        if (val) {for (int j = 0; j < siz; j++) if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
-        else if (idx >= 0 && idx < siz) vlu[i] = arg[idx];}}
+        if (arg) for (int i = 0; i < tot; i++)
+            if (dflt(typ,i,ary) == GiveDef) {
+            int idx = fill(typ,i,ary);
+            if (val) {for (int j = 0; j < siz; j++)
+                if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
+            else if (idx >= 0 && idx < siz) vlu[i] = arg[idx];}
         // force from given
-        if (val) for (int i = 0; i < siz; i++) {int idx = (arg ? arg[i] : i);
-        if (idx >= 0 && idx < tot) vlu[idx] = val[i];}
+        if (val) for (int i = 0; i < siz; i++) {
+            int idx = (arg ? arg[i] : i);
+            if (idx >= 0 && idx < tot) vlu[idx] = val[i];}
         // alias from prior
-        for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
-        default: break; case (BackDef): {int idx = fill(typ,i,ary);
-        if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}}
+        for (int i = 0; i < tot; i++)
+            if (dflt(typ,i,ary) == BackDef) {
+            int idx = fill(typ,i,ary);
+            if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
         push(lst,typ,dat,vlu,tot,idx,ary,log);
         if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
