@@ -1287,50 +1287,32 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
     template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+        // with both arg and val, negative arg means profer the val, non-negative means force
+        // arg only means profer only
+        // val only means packed force
+        // neither means default only
         HeapState<Ins> lst;
         int tot = 0;
-        if (arg && val) {for (int i = 0; i < siz; i++) if (arg[i] >= tot)
-        tot = arg[i]+1;}
-        else if (val)
-        tot = siz;
-        if (tot < size(typ,ary))
-        tot = size(typ,ary);
+        if (arg && val) {for (int i = 0; i < siz; i++) if (arg[i] >= tot) tot = arg[i]+1;}
+        else if (val) tot = siz;
+        if (tot < size(typ,ary)) tot = size(typ,ary);
         int vlu[tot];
-        if (arg && val) {for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
-            // with both arg and val, negative arg means profer the val, non-negative means force
-            default: std::cerr << "invalid arg/val default!" << std::endl; EXIT
-            break; case (Defaults): case (TrivDef): vlu[i] = fill(typ,i,ary);
-            break; case (BackDef): {
-            int idx = fill(typ,i,ary);
-            if (idx < 0 || idx >= tot) {std::cerr << "invalid arg/val back!" << std::endl; EXIT}
-            vlu[i] = vlu[idx];}
-            break; case (GiveDef): {
-            int count = fill(typ,i,ary); int idx = -1;
-            for (int j = 0; j < siz; j++)
-            if (arg[j] < 0 && --count == 0) idx = j;
-            if (idx < 0 || idx >= siz) {std::cerr << "invalid arg/val give!" << std::endl; EXIT}
-            vlu[i] = val[idx];}}
-            for (int i = 0; i < siz; i++)
-            if (arg[i] >= tot) {std::cerr << "invalid arg/val force!" << std::endl; EXIT}
-            else if (arg[i] >= 0) vlu[arg[i]] = val[i];}
-        else if (arg) for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
-            // arg only means profer only
-            default: std::cerr << "invalid arg default!" << std::endl; EXIT
-            break; case (TrivDef): vlu[i] = fill(typ,i,ary);
-            break; case (BackDef): {
-            int idx = fill(typ,i,ary);
-            if (idx < 0 || idx >= tot) {std::cerr << "invalid arg back!" << std::endl; EXIT}
-            vlu[i] = vlu[idx];}
-            break; case (GiveDef): {
-            int idx = fill(typ,i,ary);
-            if (idx < 0 || idx >= siz) {std::cerr << "invalid arg give!" << std::endl; EXIT}
-            vlu[i] = arg[idx];}}
-        else if (val) {
-            // val only means packed force
-            if (tot < siz) {std::cerr << "maximum not valid!" << std::endl; EXIT}
-            for (int i = 0; i < tot; i++) vlu[i] = fill(typ,i,ary);
-            for (int i = 0; i < siz; i++) vlu[i] = val[i];}
-        else for (int i = 0; i < tot; i++) vlu[i] = fill(typ,i,ary); // neither means default only
+        // initialize with defaults
+        for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
+        default: vlu[i] = 0;
+        break; case (Defaults): case (TrivDef): vlu[i] = fill(typ,i,ary);}
+        // copy from given
+        if (arg) for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
+        default: break; case (GiveDef): {int idx = fill(typ,i,ary);
+        if (val) {for (int j = 0; j < siz; j++) if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
+        else if (idx >= 0 && idx < siz) vlu[i] = arg[idx];}}
+        // force from given
+        if (val) for (int i = 0; i < siz; i++) {int idx = (arg ? arg[i] : i);
+        if (idx >= 0 && idx < tot) vlu[idx] = val[i];}
+        // alias from prior
+        for (int i = 0; i < tot; i++) switch (dflt(typ,i,ary)) {
+        default: break; case (BackDef): {int idx = fill(typ,i,ary);
+        if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}}
         push(lst,typ,dat,vlu,tot,idx,ary,log);
         if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
