@@ -1039,18 +1039,6 @@ Ins = { -- apologies, some Instr have many parameters, others have few
 	{"tag","Quality",{},{}},
 	{"idx","Int",{},{}},
 }
---[[Default = {
-	{"phy","Int",{},{}}, -- number of physical
-	{"vir","Int",{},{}}, -- number of virtual
-	{"siz","Int",{},{}}, -- number of default virtuals
-	{"def","Int",{},"siz"}, -- virtual index
-	{"val","Int",{},"siz"}, -- virtual value
-	{"giv","Int",{},{}}, -- number of given values
-	{"map","Int",{},"giv"}, -- index into virtual
-	{"num","Int",{},{}}, -- number of physical to virtual
-	{"dst","Int",{},"num"}, -- physical index
-	{"src","Int",{},"num"}, -- virtual index
-}--]]
 Center = {
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},
