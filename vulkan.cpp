@@ -1194,12 +1194,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (fnc.goon && fnc.goon(ptr,sub)) {goon = true; log << "goon" << '\n';}}}
     }
     static Rsp response(HeapState<Arg> &dot, int i, int &count, SmartState log) {
-        Rsp rsp = {};
-        switch (dot[i].ins) {default:
-        break; case (QDerIns): case (IDerIns): case(PDerIns):
-        break; case (RDeeIns): case (IDeeIns): case(WDeeIns):
-        return rsp;}
-        rsp.idx = count;
+        Rsp rsp = {.idx=count,.siz=0};
         for (int j = i+1; j < dot.size(); j++)
         switch (dot[j].ins) {default:
         break; case (QDerIns): case (IDerIns): case(PDerIns):
@@ -1208,9 +1203,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         count += 1; rsp.siz += 1;}
         return rsp;
     }
-    static Req request(Instr ins, Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+    static Req request(Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         Req req = {Requests,0,0,0,Extents,0,0,0};
-        if (ins != QDerIns && ins != IDerIns && ins != PDerIns) return req;
         switch (frm) {default: EXIT
         // VK_IMAGE_LAYOUT_UNDEFINED(initial)
         // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL(texture,shadow)
@@ -1299,21 +1293,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
         }
         return req;
     }
-    static Con constant(Instr ins, Micro typ, SmartState log) {
+    static Con constant(Micro typ, SmartState log) {
         return Con{.tag = MicroCon, .mic = typ};
     }
-    static Con constant(Instr ins, Memory typ, SmartState log) {
+    static Con constant(Memory typ, SmartState log) {
         return Con{.tag = MemoryCon, .mem = typ};
     }
-    static Con constant(Instr ins, Resrc typ, SmartState log) {
+    static Con constant(Resrc typ, SmartState log) {
         return Con{.tag = ResrcCon, .res = typ};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         switch (dot[i].ins) {default: EXIT
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
         int pre = (dot[i].ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
-        Con con = constant(dot[i].ins,typ,log);
-        Req req = request(dot[i].ins,dot[i].fmt,val,arg,siz,idx,log);
+        Con con = constant(typ,log);
+        Req req = request(dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
         return Ins{.ins=dot[i].ins,.der=DerIns{dot[i].loc,dot[i].res,con,req,rsp,pre}};}
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): {
