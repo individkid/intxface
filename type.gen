@@ -1048,12 +1048,12 @@ IncIns = {
 	{"mem","Memory",{},{}},
 	{"mic","Micro",{},{}},
 }
-Ins = { -- TODO add TstIns and change to union
+Ins = { -- TODO add TstIns
 	{"ins","Instr",{},""},
-	{"der","DerIns",{},{}},
-	{"dee","DeeIns",{},{}},
-	{"tag","TagIns",{},{}},
-	{"inc","IncIns",{},{}},
+	{"der","DerIns",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["IDerIns"]=true}},{}},
+	{"dee","DeeIns",{["ins"]={["RDeeIns"]=true,["IDeeIns"]=true,["WDeeIns"]=true}},{}},
+	{"tag","TagIns",{["ins"]={["RTagIns"]=true,["UTagIns"]=true,["WTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true,["KTagIns"]=true,["CTagIns"]=true}},{}},
+	{"inc","IncIns",{["ins"]={["RIncIns"]=true,["EIncIns"]=true,["IIncIns"]=true}},{}},
 }
 Center = {
 	{"mem","Memory",{},""},
