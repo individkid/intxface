@@ -162,11 +162,11 @@ Format = {
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
 Instr = {
-	"DerIns",  -- advance before push to thread
+	"QDerIns",  -- advance before push to thread
 	"PDerIns", -- advance after fence in thread
 	"IDerIns", -- process a particular instance
 	"RDeeIns", -- increment read lock in current
-	"IRDeeIns", -- increment read lock in indexed
+	"IDeeIns", -- increment read lock in indexed
 	"WDeeIns", -- increment write lock in current
 	"RTagIns", -- toggle to get from following selected resource, value associated with given tag
 	"UTagIns", -- toggle to use given tag to select following resources
@@ -174,10 +174,10 @@ Instr = {
 	"ITagIns", -- toggle to increment in next selected resource, value associated with given tag
 	"JTagIns", -- toggle to initialize in next selected resource, given tag
 	"KTagIns", -- set from constant, value associated with given tag
-	"TagIns", -- clear all actions on following done by given tag
+	"CTagIns", -- clear all actions on following done by given tag
 	"RIncIns", -- include instructions from Resrc
-	"MIncIns", -- include instructions from Memory
-	"IncIns", -- include instructions from Micro
+	"EIncIns", -- include instructions from Memory
+	"IIncIns", -- include instructions from Micro
 }
 Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
@@ -604,7 +604,7 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Int","0"},
 }
 ResrcIns = {
-	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
+	-- n==0: departures from QDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
 	 {"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
@@ -677,7 +677,7 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
 MicroIns = {
-	-- n==0: departures from DerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
+	-- n==0: departures from QDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
 	-- TODO \"RelateRes\",
 	{"%(dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
@@ -688,7 +688,7 @@ MicroIns = {
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num) else return i+num end end end\
-	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","DerIns"},
+	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","QDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Resrc","ChainRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Memory","Memorys"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Micro","Micros"},
@@ -697,24 +697,24 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","0","Quality","Qualitys"},
 	{"Micro","%(return gnc(mic,dee))","Int","1","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","Resrc","SwapRes"},
-	{"Micro","%(return gnc(mic,dee))","Int","2","Instr","DerIns"},
+	{"Micro","%(return gnc(mic,dee))","Int","2","Instr","QDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","2","Resrc","DrawRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","2","ResrcLoc","MiddleLoc"},
 	{"Micro","%(return gnc(mic,dee))","Int","3","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return hnc(dee,2))","Resrc","%(return fnc(dee))"},
-	{"Micro","%(return gnc(mic,dee))","Int","%(return 3+#dee)","Instr","IRDeeIns"},
+	{"Micro","%(return gnc(mic,dee))","Int","%(return 3+#dee)","Instr","IDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 3+#dee)","Resrc","PipeRes"},
-	{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Instr","DerIns"},
+	{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Instr","QDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Resrc","ChainRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","ResrcLoc","AfterLoc"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Resrc","SwapRes"},
-	{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Instr","IRDeeIns"},
+	{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Instr","IDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Resrc","PipeRes"},
 	{"Micro","MicroTest","Int","0"}, -- TODO number of defaults
 	{"Micro","MicroTest","Int","0","Default","TrivDef"}, -- TODO how to interpret default
 	{"Micro","MicroTest","Int","0","Int","0"}, -- TODO defaults
-	{"Micro","%(return fnc(mib))","Int","0","Instr","DerIns"},
+	{"Micro","%(return fnc(mib))","Int","0","Instr","QDerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},
 		{"Micro","%(return fnc(mib))","Int","0","Format","MicroFrm"},
@@ -722,11 +722,11 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","1","Resrc","%(return fnc(web))"},
 	{"Micro","%(return fnc(mib))","Int","2","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mib,deb))","Int","%(return hnc(deb,1))","Resrc","%(return fnc(deb))"},
-	{"Micro","%(return fnc(mib))","Int","%(return 2+#deb)","Instr","IRDeeIns"},
+	{"Micro","%(return fnc(mib))","Int","%(return 2+#deb)","Instr","IDeeIns"},
 		{"Micro","%(return fnc(mib))","Int","%(return 2+#deb)","Resrc","PipeRes"},
 }
 MicroAlt = {
-	{"Micro","MicroTest","Int","0","Instr","DerIns"},
+	{"Micro","MicroTest","Int","0","Instr","QDerIns"},
 		{"Micro","MicroTest","Int","0","Resrc","ChainRes"},
 		{"Micro","MicroTest","Int","0","Memory","Memorys"},
 		{"Micro","MicroTest","Int","0","Micro","Micros"},
@@ -1027,17 +1027,33 @@ Draw = {
 	{"arg","Int",{},"siz"},
 	{"val","Int",{},"sze"},
 }
-Ins = { -- apologies, some Instr have many parameters, others have few
-	{"ins","Instr",{},""},
+DerIns = {
 	{"loc","ResrcLoc",{},{}},
+	{"res","Resrc",{},{}},	
 	{"con","Con",{},{}}, -- delete once RuseQua value available in BaseState
 	{"req","Req",{},{}},
 	{"rsp","Rsp",{},{}},
+	{"idx","Int",{},{}},
+}
+DeeIns = {
+	{"res","Resrc",{},{}},
+	{"idx","Int",{},{}},
+}
+TagIns = {
+	{"tag","Quality",{},{}},
+	{"idx","Int",{},{}},
+}
+IncIns = {
 	{"res","Resrc",{},{}},
 	{"mem","Memory",{},{}},
 	{"mic","Micro",{},{}},
-	{"tag","Quality",{},{}},
-	{"idx","Int",{},{}},
+}
+Ins = { -- TODO add TstIns and change to union
+	{"ins","Instr",{},""},
+	{"der","DerIns",{},{}},
+	{"dee","DeeIns",{},{}},
+	{"tag","TagIns",{},{}},
+	{"inc","IncIns",{},{}},
 }
 Center = {
 	{"mem","Memory",{},""},
