@@ -210,6 +210,8 @@ struct StackState {
     static const int frames = 2;
     static const int images = 2;
     static const int comnds = 20;
+    virtual void qualify(Instr ins, TagIns tag, int *acu) = 0;
+    virtual void test(Instr ins, TstIns tst, int *acu) = 0;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
@@ -637,7 +639,8 @@ struct BaseState {
 // The first in a leaf linked list is the newest. Back from the first is the oldest.
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
-    int idx; // TODO use root instead
+    int idx; // TODO use qual instead
+    int qual[Qualitys]; // TODO use this instead of idx
     int next[Size]; int pool; // stack of those without key yet
     int newer[Size]; int older[Size]; int newest; int oldest; // newest to oldest of all with key
     int key[Size][Qualitys]; int size; // size < Size
@@ -693,6 +696,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         init();
     }
     void init() {
+        for (int i = 0; i < Qualitys; i++) qual[i] = 0;
         for (int i = 0; i < Size-1; i++) next[i] = i+1; next[Size-1] = -1; pool = 0;
         for (int i = 0; i < Size; i++) newer[i] = older[i] = -1; newest = oldest = -1;
         for (int i = 0; i < Size; i++) for (int j = 0; j < Qualitys; j++) key[i][j] = 0; size = 0;
@@ -766,6 +770,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         return idx;
     }
     int oldbuf(int *key) {
+        if (pool >= 0) return insert(key);
         int found = find(key);
         if (found < 0) return insert(key);
         return fin[found];
@@ -775,22 +780,40 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (found < 0) return insert(key);
         return fst[found];
     }
-    BaseState *buffer() override { // buffer of newest, with given tags
-       safe.wait(); BaseState *ptr = &state[idx]; safe.post(); return ptr;
+    void qualify(Instr ins, TagIns tag, int *acu) override { // set current tags
+        safe.wait();
+        switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
+        break; case (RTagIns): acu[tag.tag] = qual[tag.tag];
+        break; case (WTagIns): qual[tag.tag] = acu[tag.tag];
+        break; case (ATagIns): acu[tag.tag] += tag.val;
+        break; case (BTagIns): qual[tag.tag] += tag.val;
+        break; case (ITagIns): acu[tag.tag] = tag.val;
+        break; case (JTagIns): qual[tag.tag] = tag.val;}
+        safe.post();
     }
-    BaseState *prebuf() override { // buffer of oldest, with given tags
-       safe.wait(); BaseState *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;
+    void test(Instr ins, TstIns tst, int *acu) override { // test current tags
+        safe.wait();
+        switch (ins) {default: {std::cerr << "invalid tst instruction" << std::endl; EXIT}
+        break; case (STstIns):
+        break; case (TTstIns):;}
+        safe.post();
     }
-    BaseState *prebuf(int i) override { // buffer of particular, checking tags
+    BaseState *buffer() override { // buffer of newest, with current tags
+       safe.wait(); BaseState *ptr = &state[idx/*newbuf(qual)*/]; safe.post(); return ptr;
+    }
+    BaseState *prebuf() override { // buffer of oldest, with current tags
+       safe.wait(); BaseState *ptr = &state[(idx+1)%Size/*oldbuf(qual)*/]; safe.post(); return ptr;
+    }
+    BaseState *prebuf(int i) override { // buffer of particular
         if (i < 0 || i >= Size) EXIT
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;
     }
-    void advance() override { // make oldest into newest, with given tags
-       safe.wait(); idx = (idx+1)%Size; safe.post();
+    void advance() override { // make oldest into newest, with current tags
+       safe.wait(); idx = (idx+1)%Size/*oldbuf(qual)*/; /*remove(idx); assert(insert(qual)==idx);*/ safe.post();
     }
-    void advance(int i) override { // remove and insert particular as newest, checking tags
+    void advance(int i) override { // remove and insert particular as newest, with current tags
         if (i < 0 || i >= Size) EXIT
-        safe.wait(); idx = i; safe.post();
+        safe.wait(); idx = i; /*remove(idx); assert(insert(qual)==idx);*/ safe.post();
     }
     Resrc buftyp() override {
         return Type;
@@ -1064,7 +1087,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         Resrc res = Resrcs;
         switch (ins.ins) {default:
         break; case (QDerIns): case (PDerIns): case (IDerIns): res = ins.der.res;
-        break; case (RDeeIns): case (IDeeIns): case (WDeeIns): res = ins.dee.res;}
+        break; case (RDeeIns): case (IDeeIns): case (WDeeIns): res = ins.dee.res;
+        break; case (ATagIns): case (BTagIns): res = ins.tag.res;
+        break; case (ITagIns): case (JTagIns): res = ins.tag.res;
+        break; case (STstIns): case (TTstIns): res = ins.tst.res;}
         return res;
     }
     void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
@@ -1072,8 +1098,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         BaseState *buffer[Resrcs] = {0};
         int first[Resrcs];
         int final[Resrcs];
-        int toggle[Qualitys] = {0}; // mask of Toggle
-        int value[Qualitys] = {0}; // state for toggled actions
+        int value[Qualitys] = {0};
         int num = ins.size(); // number that might be reserved
         // TODO expand *IncIns with default arguments
         bool goon = true; while (goon) {goon = false;
@@ -1083,13 +1108,10 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < num; i++) {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
-            break; case (RTagIns): toggle[ins[i].tag.tag] ^= 1<<GetTog;
-            break; case (UTagIns): toggle[ins[i].tag.tag] ^= 1<<UseTog;
-            break; case (WTagIns): toggle[ins[i].tag.tag] ^= 1<<SetTog;
-            break; case (ITagIns): toggle[ins[i].tag.tag] ^= 1<<IncTog;
-            break; case (JTagIns): toggle[ins[i].tag.tag] ^= 1<<ValTog;
-            break; case (KTagIns): value[ins[i].tag.tag] = ins[i].tag.idx;
-            break; case (CTagIns): toggle[ins[i].tag.tag] = 0;
+            break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
+            src(res)->qualify(ins[i].ins,ins[i].tag,value);
+            break; case (STstIns): case (TTstIns):
+            src(res)->test(ins[i].ins,ins[i].tst,value);
             // TODO following calls to src(res) need to be qualified by toggle and value
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
@@ -1306,7 +1328,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         switch (dot[i].ins) {default: EXIT
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
         int pre = (dot[i].ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
-        Con con = constant(typ,log);
+        Con con = constant(typ,log); // TODO remove once RuseQua is being used
         Req req = request(dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
         return Ins{.ins=dot[i].ins,.der=DerIns{dot[i].loc,dot[i].res,con,req,rsp,pre}};}

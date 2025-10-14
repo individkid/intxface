@@ -168,16 +168,17 @@ Instr = {
 	"RDeeIns", -- increment read lock in current
 	"IDeeIns", -- increment read lock in indexed
 	"WDeeIns", -- increment write lock in current
-	"RTagIns", -- toggle to get from following selected resource, value associated with given tag
-	"UTagIns", -- toggle to use given tag to select following resources
-	"WTagIns", -- toggle to use given tag to set value in following resources
-	"ITagIns", -- toggle to increment in next selected resource, value associated with given tag
-	"JTagIns", -- toggle to initialize in next selected resource, given tag
-	"KTagIns", -- set from constant, value associated with given tag
-	"CTagIns", -- clear all actions on following done by given tag
+	"RTagIns", -- read Quality value from Resrc array
+	"WTagIns", -- write Quality value to Resrc array
+	"ATagIns", -- read next Quality value
+	"BTagIns", -- write next Quality value to Resrc array
+	"ITagIns", -- read constant Quality value
+	"JTagIns", -- write constant Quality value to Resrc array
 	"RIncIns", -- include instructions from Resrc
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
+	"STstIns", -- stimulate resource array
+	"TTstIns", -- check that resource array was stimulated
 }
 Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
@@ -1040,20 +1041,26 @@ DeeIns = {
 	{"idx","Int",{},{}},
 }
 TagIns = {
+	{"res","Resrc",{},{}},
 	{"tag","Quality",{},{}},
-	{"idx","Int",{},{}},
+	{"val","Int",{},{}},
 }
 IncIns = {
 	{"res","Resrc",{},{}},
 	{"mem","Memory",{},{}},
 	{"mic","Micro",{},{}},
 }
+TstIns = {
+	{"res","Resrc",{},{}},
+	{"idx","Int",{},{}},
+}
 Ins = { -- TODO add TstIns
 	{"ins","Instr",{},""},
 	{"der","DerIns",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["IDerIns"]=true}},{}},
 	{"dee","DeeIns",{["ins"]={["RDeeIns"]=true,["IDeeIns"]=true,["WDeeIns"]=true}},{}},
-	{"tag","TagIns",{["ins"]={["RTagIns"]=true,["UTagIns"]=true,["WTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true,["KTagIns"]=true,["CTagIns"]=true}},{}},
+	{"tag","TagIns",{["ins"]={["RTagIns"]=true,["WTagIns"]=true,["ATagIns"]=true,["BTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true}},{}},
 	{"inc","IncIns",{["ins"]={["RIncIns"]=true,["EIncIns"]=true,["IIncIns"]=true}},{}},
+	{"tst","TstIns",{["ins"]={["STstIns"]=true,["TTstIns"]=true}},{}},
 }
 Center = {
 	{"mem","Memory",{},""},

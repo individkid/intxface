@@ -1,7 +1,9 @@
 
-Bringup: Remove coroutines from show.lua. Change to indexed buffers instead of fetched buffers. Change to depth color. Get pierce point and transformation to work. Add coincidence color. Demonstrate depth and coincidence color with irregular triangles.
+Bringup: Combine ImageState RelateState, using Quality tags. Combine ImageRes RelateRes PierceRes DebugRes, using Quality tags instead. Add option for indexed buffers instead of fetched buffers. Change to depth color. Get pierce point and transformation to work. Add coincidence color. Demonstrate depth and coincidence color with irregular triangles.
 
-Builtin: Test each Transfer from planer.lua. Test modes with writes to Configure.
+Build: Fix conditional generate in show.lua, and integrate with depend.lua.
+
+Demo: Test each Transfer from planer.lua. Test modes with writes to Configure.
 Mouse transformations include
  — (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
  — (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
@@ -19,8 +21,6 @@ Click actions include
  — (B) random boundary through point,
  — (M) send pierce point as metric,
  — (W) warp to last metric sent.
-
-Release: Write plane.lua that starts share, file, space, plane.
 
 Suite: In plane.lua, share, file, space, plane, side to manipulate polytopes. In space.lua, share, file, space, plane, to display tetrahedron overlaps as they are found and optimized. In line.lua, share, file, space, plane, line, side, to decorate polytopes with sound. In point.lua, share, file, space, plane, line, side, frame, to decorate facets with little language for textures, sound, frames, text, graffiti, permissions, wormholes, transparency. Share connects processes by pipe. Side displays and edits fields in file. Frame displays and edits video and interfaces to hdmi over usbc. 
 
