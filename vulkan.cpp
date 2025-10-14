@@ -210,8 +210,8 @@ struct StackState {
     static const int frames = 2;
     static const int images = 2;
     static const int comnds = 20;
-    virtual void qualify(Instr ins, TagIns tag, int *acu) = 0;
-    virtual void test(Instr ins, TstIns tst, int *acu) = 0;
+    virtual void qualify(Instr ins, Quality tag, int val, int *acu) = 0;
+    virtual void test(Instr ins, int idx, int *acu) = 0;
     virtual BaseState *buffer() = 0; // no block beween push and advance
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
@@ -644,72 +644,16 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-// Each node is a leaf, some leaves are also internal, and one is root.
-// As leaves, nodes are in a linked list, started by their parent, indicated by link[Qualitys-1] and back[Qualitys-1]
-// The first in a leaf linked list is the newest. Back from the first is the oldest.
-template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
-    SafeState safe;
-    int idx; // TODO use qual instead
-    int qual[Qualitys]; // TODO use this instead of idx
-    int next[Size]; int pool; // stack of those without key yet
+template <int Size, int Dim> struct TagState {    int next[Size]; int pool; // stack of those without key yet
     int newer[Size]; int older[Size]; int newest; int oldest; // newest to oldest of all with key
-    int key[Size][Qualitys]; int size; // size < Size
+    int key[Size][Dim]; int size; // size < Size
     int fst[Size]; int fin[Size]; // size to Size
     int nxt[Size]; int lst[Size]; // Size to Size
     int ref[Size]; // Size to size
-    State state[Size];
-    ArrayState(
-        ChangeState<Configure,Configures> *copy,
-        GLFWwindow* window,
-        VkSurfaceKHR surface,
-        VkPhysicalDevice physical,
-        VkSurfaceFormatKHR surfaceFormat,
-        VkPresentModeKHR presentMode,
-        uint32_t graphicsFamily,
-        uint32_t presentFamily,
-        VkPhysicalDeviceProperties properties,
-        VkPhysicalDeviceMemoryProperties memProperties,
-        VkDevice device,
-        VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> renderPass,
-        std::array<VkFormat,LogicalState::passes> imageFormat,
-        VkFormat depthFormat,
-        VkQueue graphics,
-        VkQueue present) :
-    StackState(
-        copy,
-        window,
-        surface,
-        physical,
-        surfaceFormat,
-        presentMode,
-        graphicsFamily,
-        presentFamily,
-        properties,
-        memProperties,
-        device,
-        commandPool,
-        renderPass,
-        imageFormat,
-        depthFormat,
-        graphics,
-        present),
-        safe(1), idx(0) {
-    }
-    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
-        init();
-    }
-    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
-        init();
-    }
-    ArrayState() : safe(1), idx(0) {
-        init();
-    }
-    void init() {
-        for (int i = 0; i < Qualitys; i++) qual[i] = 0;
+    TagState() {
         for (int i = 0; i < Size-1; i++) next[i] = i+1; next[Size-1] = -1; pool = 0;
         for (int i = 0; i < Size; i++) newer[i] = older[i] = -1; newest = oldest = -1;
-        for (int i = 0; i < Size; i++) for (int j = 0; j < Qualitys; j++) key[i][j] = 0; size = 0;
+        for (int i = 0; i < Size; i++) for (int j = 0; j < Dim; j++) key[i][j] = 0; size = 0;
         for (int i = 0; i < Size; i++) fst[i] = fin[i] = -1;
         for (int i = 0; i < Size; i++) nxt[i] = lst[i] = -1;
         for (int i = 0; i < Size; i++) ref[i] = -1;
@@ -749,7 +693,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         int found = -1;
         for (int i = 0; i < size && found < 0; i++) {
         found = i;
-        for (int j = 0; j < Qualitys; j++) if (this->key[i][j] != key[j]) found = -1;}
+        for (int j = 0; j < Dim; j++) if (this->key[i][j] != key[j]) found = -1;}
         return found;
     }
     void remove(int idx) {
@@ -763,7 +707,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         size -= 1;
         for (int i = found; i < size; i++) {
         fst[i] = fst[i+1]; fin[i] = fin[i+1];
-        for (int j = 0; j < Qualitys; j++) key[i][j] = key[i+1][j];}}
+        for (int j = 0; j < Dim; j++) key[i][j] = key[i+1][j];}}
         push(idx); unqu(idx);
     }
     int insert(int *key) {
@@ -772,7 +716,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         int found = find(key);
         if (found < 0) {
         found = size++;
-        for (int j = 0; j < Qualitys; j++) this->key[found][j] = key[j];
+        for (int j = 0; j < Dim; j++) this->key[found][j] = key[j];
         fst[found] = idx; fin[found] = idx; nxt[idx] = -1;} else {
         lst[fst[found]] = idx; nxt[idx] = fst[found]; fst[found] = idx;}
         lst[idx] = -1; ref[idx] = found;
@@ -790,18 +734,74 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (found < 0) return insert(key);
         return fst[found];
     }
-    void qualify(Instr ins, TagIns tag, int *acu) override { // set current tags
+    int get(int idx, int tag) {
+        int i = ref[idx];
+        if (i < 0 || i >= size) return -1;
+        return key[i][tag];
+    }
+};
+template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
+    SafeState safe;
+    int idx; // TODO use qual instead
+    int qual[Qualitys]; // TODO use this instead of idx
+    TagState<Size,Qualitys> tag;
+    State state[Size];
+    ArrayState(
+        ChangeState<Configure,Configures> *copy,
+        GLFWwindow* window,
+        VkSurfaceKHR surface,
+        VkPhysicalDevice physical,
+        VkSurfaceFormatKHR surfaceFormat,
+        VkPresentModeKHR presentMode,
+        uint32_t graphicsFamily,
+        uint32_t presentFamily,
+        VkPhysicalDeviceProperties properties,
+        VkPhysicalDeviceMemoryProperties memProperties,
+        VkDevice device,
+        VkCommandPool commandPool,
+        std::array<VkRenderPass,LogicalState::passes> renderPass,
+        std::array<VkFormat,LogicalState::passes> imageFormat,
+        VkFormat depthFormat,
+        VkQueue graphics,
+        VkQueue present) :
+    StackState(
+        copy,
+        window,
+        surface,
+        physical,
+        surfaceFormat,
+        presentMode,
+        graphicsFamily,
+        presentFamily,
+        properties,
+        memProperties,
+        device,
+        commandPool,
+        renderPass,
+        imageFormat,
+        depthFormat,
+        graphics,
+        present),
+        safe(1), idx(0) {
+    }
+    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0), qual{0} {
+    }
+    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0), qual{0} {
+    }
+    ArrayState() : safe(1), idx(0), qual{0} {
+    }
+    void qualify(Instr ins, Quality tag, int val, int *acu) override { // set current tags
         safe.wait();
         switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
-        break; case (RTagIns): acu[tag.tag] = qual[tag.tag];
-        break; case (WTagIns): qual[tag.tag] = acu[tag.tag];
-        break; case (ATagIns): acu[tag.tag] += tag.val;
-        break; case (BTagIns): qual[tag.tag] += tag.val;
-        break; case (ITagIns): acu[tag.tag] = tag.val;
-        break; case (JTagIns): qual[tag.tag] = tag.val;}
+        break; case (RTagIns): acu[tag] = qual[tag];
+        break; case (WTagIns): qual[tag] = acu[tag];
+        break; case (ATagIns): acu[tag] += val;
+        break; case (BTagIns): qual[tag] += val;
+        break; case (ITagIns): acu[tag] = val;
+        break; case (JTagIns): qual[tag] = val;}
         safe.post();
     }
-    void test(Instr ins, TstIns tst, int *acu) override { // test current tags
+    void test(Instr ins, int idx, int *acu) override { // test current tags
         safe.wait();
         switch (ins) {default: {std::cerr << "invalid tst instruction" << std::endl; EXIT}
         break; case (STstIns):
@@ -809,27 +809,25 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.post();
     }
     BaseState *buffer() override { // buffer of newest, with current tags
-       safe.wait(); BaseState *ptr = &state[idx/*newbuf(qual)*/]; safe.post(); return ptr;
+       safe.wait(); BaseState *ptr = &state[idx/*tag.newbuf(qual)*/]; safe.post(); return ptr;
     }
     BaseState *prebuf() override { // buffer of oldest, with current tags
-       safe.wait(); BaseState *ptr = &state[(idx+1)%Size/*oldbuf(qual)*/]; safe.post(); return ptr;
+       safe.wait(); BaseState *ptr = &state[(idx+1)%Size/*tag.oldbuf(qual)*/]; safe.post(); return ptr;
     }
     BaseState *prebuf(int i) override { // buffer of particular
         if (i < 0 || i >= Size) EXIT
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;
     }
     void advance() override { // make oldest into newest, with current tags
-       safe.wait(); idx = (idx+1)%Size/*oldbuf(qual)*/; /*remove(idx); assert(insert(qual)==idx);*/ safe.post();
+       safe.wait(); idx = (idx+1)%Size/*tag.oldbuf(qual)*/; /*tag.remove(idx); assert(tag.insert(qual)==idx);*/ safe.post();
     }
     void advance(int i) override { // remove and insert particular as newest, with current tags
         if (i < 0 || i >= Size) EXIT
-        safe.wait(); idx = i; /*remove(idx); assert(insert(qual)==idx);*/ safe.post();
+        safe.wait(); idx = i; /*tag.remove(idx); assert(tag.insert(qual)==idx);*/ safe.post();
     }
     int tagval(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
-        int j = ref[i];
-        if (j < 0 || j >= size) return -1;
-        return key[j][t];
+        safe.wait(); int val = tag.get(i,t); safe.post(); return val;
     }
     Resrc buftyp() override {
         return Type;
@@ -1125,9 +1123,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
-            src(res)->qualify(ins[i].ins,ins[i].tag,value);
+            src(res)->qualify(ins[i].ins,ins[i].tag.tag,ins[i].tag.val,value);
             break; case (STstIns): case (TTstIns):
-            src(res)->test(ins[i].ins,ins[i].tst,value);
+            src(res)->test(ins[i].ins,ins[i].tst.idx,value);
             // TODO following calls to src(res) need to be qualified by toggle and value
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
