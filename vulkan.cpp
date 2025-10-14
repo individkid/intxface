@@ -217,11 +217,13 @@ struct StackState {
     virtual BaseState *prebuf(int i) = 0;
     virtual void advance() = 0;
     virtual void advance(int i) = 0;
+    virtual int tagval(int i, Quality t) = 0;
     virtual Resrc buftyp() = 0;
     virtual const char *bufnam() = 0;
     static StackState* self;
     static int debug;
     static int micro;
+    static int index;
     static ChangeState<Configure,Configures> *copy;
     static GLFWwindow* window;
     static VkSurfaceKHR surface;
@@ -262,6 +264,7 @@ struct StackState {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;
+        StackState::index = 0;
         StackState::copy = copy;
         StackState::window = window;
         StackState::surface = surface;
@@ -284,23 +287,27 @@ struct StackState {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;
+        StackState::index = 0;
         StackState::constState = constState;
     }
     StackState(VkBufferUsageFlags flags) {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;
+        StackState::index = 0;
         StackState::flags = flags;        
     }
     StackState() {
         StackState::self = this;
         StackState::debug = 0;
         StackState::micro = 0;        
+        StackState::index = 0;
     }
 };
 StackState* StackState::self;
 int StackState::debug;
 int StackState::micro;
+int StackState::index;
 ChangeState<Configure,Configures> *StackState::copy;
 GLFWwindow* StackState::window;
 VkSurfaceKHR StackState::surface;
@@ -424,6 +431,7 @@ ResrcLoc &operator*(Loc &loc) {
 struct BindState;
 struct BaseState {
     StackState *item;
+    int indx;
     SafeState safe;
     bool valid;
     int plock, rlock, wlock;
@@ -435,6 +443,7 @@ struct BaseState {
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr),
+        indx(StackState::index++),
         safe(1),
         valid(false),
         plock(0),
@@ -586,6 +595,7 @@ struct BaseState {
         return ploc[loc].req.tag;
     }
     Resrc res() {return item->buftyp();}
+    int tag(Quality tag) {return item->tagval(indx,tag);}
     bool msk(ResrcLoc loc) {return ((mask&(1<<loc)) != 0);}
     bool nsk(ResrcLoc loc) {return ((nask&(1<<loc)) != 0);}
     static Loc &lst(Loc &loc) {return loc.lst.ptr->get(loc.lst.loc);}
@@ -600,7 +610,7 @@ struct BaseState {
     static int &siz(Loc &loc) {return loc.req.siz;}
     static SizeState &max(Loc &loc) {return loc.max;}
     static Extent &ext(Loc &loc) {return loc.max.tag;}
-    static Memory mem(Loc &loc) {return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);}
+    static Memory mem(Loc &loc) {return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);} // TODO delete this when tag() works
     static ConstState *ary(Loc &loc) {return loc.ary;}
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
@@ -814,6 +824,12 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void advance(int i) override { // remove and insert particular as newest, with current tags
         if (i < 0 || i >= Size) EXIT
         safe.wait(); idx = i; /*remove(idx); assert(insert(qual)==idx);*/ safe.post();
+    }
+    int tagval(int i, Quality t) override {
+        if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
+        int j = ref[i];
+        if (j < 0 || j >= size) return -1;
+        return key[j][t];
     }
     Resrc buftyp() override {
         return Type;
