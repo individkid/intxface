@@ -177,18 +177,23 @@ Instr = {
 	"RIncIns", -- include instructions from Resrc
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
-	"STstIns", -- stimulate resource array
-	"TTstIns", -- check that resource array was stimulated
+	"RTstIns", -- void remove(int idx);
+	"ITstIns", -- int insert(int *key);
+	"OTstIns", -- int oldbuf(int *key);
+	"NTstIns", -- int newbuf(int *key);
+	"GTstIns", -- int get(int idx, int tag);
+	"VTstIns", -- check last return value
+	"WTstIns", -- set last value for use int GTstIns and RTstIns
 }
 Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
 	"RbutQua", -- radio button to use resource only after extracted processed or consumed
 	"RuseQua", -- resource use qualifier
 }
-Default = {
-	"TrivDef",
-	"BackDef",
-	"GiveDef",
+Default = { -- for value, interpret constant array as
+	"TrivDef", -- builtin
+	"BackDef", -- prior
+	"GiveDef", -- given
 }
 Configure = {
 	"CenterMem", -- staged field
@@ -1045,15 +1050,15 @@ IncIns = {
 }
 TstIns = {
 	{"res","Resrc",{},{}},
-	{"idx","Int",{},{}},
+	{"val","Int",{},{}},
 }
-Ins = { -- TODO add TstIns
+Ins = {
 	{"ins","Instr",{},""},
 	{"der","DerIns",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["IDerIns"]=true}},{}},
 	{"dee","DeeIns",{["ins"]={["RDeeIns"]=true,["IDeeIns"]=true,["WDeeIns"]=true}},{}},
 	{"tag","TagIns",{["ins"]={["RTagIns"]=true,["WTagIns"]=true,["ATagIns"]=true,["BTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true}},{}},
 	{"inc","IncIns",{["ins"]={["RIncIns"]=true,["EIncIns"]=true,["IIncIns"]=true}},{}},
-	{"tst","TstIns",{["ins"]={["STstIns"]=true,["TTstIns"]=true}},{}},
+	{"tst","TstIns",{["ins"]={["RTstIns"]=true,["ITstIns"]=true,["OTstIns"]=true,["NTstIns"]=true,["GTstIns"]=true,["VTstIns"]=true,["WTstIns"]=true}},{}},
 }
 Center = {
 	{"mem","Memory",{},""},

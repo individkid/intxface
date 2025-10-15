@@ -736,7 +736,7 @@ template <int Size, int Dim> struct TagState {    int next[Size]; int pool; // s
     }
     int get(int idx, int tag) {
         int i = ref[idx];
-        if (i < 0 || i >= size) return -1;
+        if (i < 0 || i >= size || tag < 0 || tag >= Dim) return -1;
         return key[i][tag];
     }
 };
@@ -744,6 +744,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     SafeState safe;
     int idx; // TODO use qual instead
     int qual[Qualitys]; // TODO use this instead of idx
+    int tst;
     TagState<Size,Qualitys> tag;
     State state[Size];
     ArrayState(
@@ -782,15 +783,16 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         depthFormat,
         graphics,
         present),
-        safe(1), idx(0) {
+        safe(1), idx(0), qual{0}, tst(0) {
     }
-    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0), qual{0} {
+    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0), qual{0}, tst(0) {
     }
-    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0), qual{0} {
+    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0), qual{0}, tst(0) {
     }
-    ArrayState() : safe(1), idx(0), qual{0} {
+    ArrayState() : safe(1), idx(0), qual{0}, tst(0) {
     }
     void qualify(Instr ins, Quality tag, int val, int *acu) override { // set current tags
+        if (tag < 0 || tag >= Qualitys) EXIT
         safe.wait();
         switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
         break; case (RTagIns): acu[tag] = qual[tag];
@@ -804,8 +806,14 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void test(Instr ins, int idx, int *acu) override { // test current tags
         safe.wait();
         switch (ins) {default: {std::cerr << "invalid tst instruction" << std::endl; EXIT}
-        break; case (STstIns):
-        break; case (TTstIns):;}
+        break; case (RTstIns): tag.remove(idx);
+        break; case (ITstIns): tst = tag.insert(qual);
+        break; case (OTstIns): tst = tag.oldbuf(qual);
+        break; case (NTstIns): tst = tag.newbuf(qual);
+        break; case (GTstIns): tst = tag.get(tst,idx);
+        break; case (VTstIns): if (tst != idx) {std::cerr << "test failed!" << std::endl; EXIT}
+        break; case (WTstIns): tst = idx;
+        }
         safe.post();
     }
     BaseState *buffer() override { // buffer of newest, with current tags
@@ -1104,7 +1112,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): res = ins.dee.res;
         break; case (ATagIns): case (BTagIns): res = ins.tag.res;
         break; case (ITagIns): case (JTagIns): res = ins.tag.res;
-        break; case (STstIns): case (TTstIns): res = ins.tst.res;}
+        break; case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns): res = ins.tst.res;
+        break; case (GTstIns): case (VTstIns): case (WTstIns): res = ins.tst.res;}
         return res;
     }
     void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
@@ -1124,9 +1133,9 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
             src(res)->qualify(ins[i].ins,ins[i].tag.tag,ins[i].tag.val,value);
-            break; case (STstIns): case (TTstIns):
-            src(res)->test(ins[i].ins,ins[i].tst.idx,value);
-            // TODO following calls to src(res) need to be qualified by toggle and value
+            break; case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
+            break; case (GTstIns): case (VTstIns): case (WTstIns):
+            src(res)->test(ins[i].ins,ins[i].tst.val,value);
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
             final[res] = i; count += 1;
@@ -1350,10 +1359,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): {
         int pre = (ins==IDeeIns?get(arg,siz,idx,log,"IDeeIns.idx"):0);
         return Ins{.ins=ins,.dee=DeeIns{dot[i].res,pre}};}
-        break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
+        break; case (RTagIns): case (WTagIns):
+        return Ins{.ins=ins,.tag=TagIns{dot[i].res,dot[i].tag,-1}};
+        break; case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
         return Ins{.ins=ins,.tag=TagIns{dot[i].res,dot[i].tag,get(arg,siz,idx,log,"TagIns.val")}};
-        break; case (STstIns): case (TTstIns):
-        return Ins{.ins=ins,.tst=TstIns{dot[i].res,get(arg,siz,idx,log,"TagIns.idx")}};}
+        break; case (ITstIns): case (OTstIns): case (NTstIns):
+        return Ins{.ins=ins,.tst=TstIns{dot[i].res,-1}};
+        break; case (RTstIns): case (GTstIns): case (VTstIns): case (WTstIns):
+        return Ins{.ins=ins,.tst=TstIns{dot[i].res,get(arg,siz,idx,log,"TstIns.idx")}};}
         return Ins{.ins=Instrs};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
@@ -1466,7 +1479,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             if (dflt(typ,i,ary) == GiveDef) {
             int idx = fill(typ,i,ary);
             if (val) {for (int j = 0; j < siz; j++)
-                if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
+            if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
             else if (idx >= 0 && idx < siz) vlu[i] = arg[idx];}
         // force from given
         if (val) for (int i = 0; i < siz; i++) {
