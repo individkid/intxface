@@ -185,13 +185,6 @@ Quality = { -- quality of service tags for *TagIns
 	"RbutQua", -- radio button to use resource only after extracted processed or consumed
 	"RuseQua", -- resource use qualifier
 }
-Toggle = {
-	"GetTog",
-	"UseTog",
-	"SetTog",
-	"IncTog",
-	"ValTog",
-}
 Default = {
 	"TrivDef",
 	"BackDef",

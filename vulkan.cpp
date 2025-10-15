@@ -1339,16 +1339,21 @@ struct CopyState : public ChangeState<Configure,Configures> {
         return Con{.tag = ResrcCon, .res = typ};
     }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
-        switch (dot[i].ins) {default: EXIT
+        Instr ins = dot[i].ins;
+        switch (ins) {default: EXIT
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
-        int pre = (dot[i].ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
+        int pre = (ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
         Con con = constant(typ,log); // TODO remove once RuseQua is being used
         Req req = request(dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
-        return Ins{.ins=dot[i].ins,.der=DerIns{dot[i].loc,dot[i].res,con,req,rsp,pre}};}
+        return Ins{.ins=ins,.der=DerIns{dot[i].loc,dot[i].res,con,req,rsp,pre}};}
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): {
-        int pre = (dot[i].ins==IDeeIns?get(arg,siz,idx,log,"IDeeIns.idx"):0);
-        return Ins{.ins=dot[i].ins,.dee=DeeIns{dot[i].res,pre}};}}
+        int pre = (ins==IDeeIns?get(arg,siz,idx,log,"IDeeIns.idx"):0);
+        return Ins{.ins=ins,.dee=DeeIns{dot[i].res,pre}};}
+        break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
+        return Ins{.ins=ins,.tag=TagIns{dot[i].res,dot[i].tag,get(arg,siz,idx,log,"TagIns.val")}};
+        break; case (STstIns): case (TTstIns):
+        return Ins{.ins=ins,.tst=TstIns{dot[i].res,get(arg,siz,idx,log,"TagIns.idx")}};}
         return Ins{.ins=Instrs};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
