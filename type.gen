@@ -1077,7 +1077,7 @@ Center = {
 	{"eek","Pierce",{["mem"]={["Peekz"]=true}},"siz"},
 	{"oke","Pierce",{["mem"]={["Pokez"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
-	{"com","Ins",{["mem"]={["Instrz"]=true}},"siz"},
+	{"ins","Ins",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},

@@ -209,7 +209,7 @@ struct StackState {
     static const int descrs = 4;
     static const int frames = 2;
     static const int images = 2;
-    static const int comnds = 20;
+    static const int instrs = 20;
     virtual void qualify(Instr ins, Quality tag, int val, int *acu) = 0;
     virtual void test(Instr ins, int idx, int *acu) = 0;
     virtual BaseState *buffer() = 0; // no block beween push and advance
@@ -876,7 +876,7 @@ struct BindState : public BaseState {
         BaseState("BindState",StackState::self),
         lock(0),
         excl(false),
-        rsp(StackState::comnds) {
+        rsp(StackState::instrs) {
         for (int i = 0; i < Resrcs; i++) {
         bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
     }
@@ -1518,8 +1518,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (Basisz): push(center->mem,(void*)center->bas,0,val,aiz,adx,center,sub,fnc,ary,log);}}
         break; case (Drawz): for (int i = 0; i < center->siz; i++) {int didx = 0;
         push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
-        break; case (Instrz): {HeapState<Ins> ins(StackState::comnds);
-        for (int i = 0; i < center->siz; i++) ins<<center->com[i];
+        break; case (Instrz): {HeapState<Ins> ins(StackState::instrs);
+        for (int i = 0; i < center->siz; i++) ins<<center->ins[i];
         push(ins,fnc,center,sub,log);}
         break; case (Configurez): for (int i = 0; i < center->siz; i++)
         write(center->cfg[i],center->val[i]);
@@ -2396,7 +2396,7 @@ int main(int argc, const char **argv) {
     mptr = &main;
     main.copyState.write(ConstantFrames,StackState::frames);
     main.copyState.write(ConstantImages,StackState::images);
-    main.copyState.write(ConstantComnds,StackState::comnds);
+    main.copyState.write(ConstantComnds,StackState::instrs);
     main.copyState.call(RegisterOpen,vulkanBack);
     main.copyState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);

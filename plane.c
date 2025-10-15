@@ -1233,6 +1233,7 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
+    // TODO issue Instrz to exercise TagState
     struct Fnc fnc = {0,planeSelf,planeGlfw,0,planeGoon};
     struct Fnc fun = {0,planePass,planeGlfw,0,planeGoon};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
