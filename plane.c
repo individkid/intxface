@@ -1233,11 +1233,19 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
+    struct Fnc nil = {0,0,0,0,0};
+    struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
+    ptr->mem = Instrz; ptr->siz = 3;
+    allocIns(&ptr->ins,ptr->siz);
+    ptr->ins[0].ins = ITstIns; ptr->ins[0].tst.res = RelateRes; ptr->ins[0].tst.val = -1;
+    ptr->ins[1].ins = GTstIns; ptr->ins[1].tst.res = RelateRes; ptr->ins[1].tst.val = RuseQua;
+    ptr->ins[2].ins = VTstIns; ptr->ins[2].tst.res = RelateRes; ptr->ins[2].tst.val = 0;
+    callCopy(ptr,Instrz,nil,0,0);
     // TODO issue Instrz to exercise TagState
     struct Fnc fnc = {0,planeSelf,planeGlfw,0,planeGoon};
     struct Fnc fun = {0,planePass,planeGlfw,0,planeGoon};
     int frames = callInfo(ConstantFrames,0,planeRcfg);
-    struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
+    ptr = centerPull(Drawz); freeCenter(ptr);
     ptr->mem = Drawz; ptr->siz = 1/*+2*//*Micros*//*+frames*//*+frames*/;
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;

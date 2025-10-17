@@ -735,8 +735,9 @@ template <int Size, int Dim> struct TagState {    int next[Size]; int pool; // s
         return fst[found];
     }
     int get(int idx, int tag) {
+        if (idx < 0 || idx >= Size || tag < 0 || tag >= Dim) EXIT
         int i = ref[idx];
-        if (i < 0 || i >= size || tag < 0 || tag >= Dim) return -1;
+        if (i < 0 || i >= size) return -1;
         return key[i][tag];
     }
 };
@@ -1105,7 +1106,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (idx >= siz) {std::cerr << "not enough int arguments in struct Draw " << idx << ">=" << siz << std::endl; EXIT}
         return arg[idx++];
     }
-    Resrc get(Ins ins) {
+    Resrc get(Ins &ins) {
         Resrc res = Resrcs;
         switch (ins.ins) {default:
         break; case (QDerIns): case (PDerIns): case (IDerIns): res = ins.der.res;
@@ -1132,9 +1133,11 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
+            log << "TagIns res:" << res << " ins:" << ins[i].ins << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
             src(res)->qualify(ins[i].ins,ins[i].tag.tag,ins[i].tag.val,value);
             break; case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
-            break; case (GTstIns): case (VTstIns): case (WTstIns):
+            case (GTstIns): case (VTstIns): case (WTstIns):
+            log << "TstIns res:" << res << " ins:" << ins[i].ins << " val:" << ins[i].tst.val << '\n';
             src(res)->test(ins[i].ins,ins[i].tst.val,value);
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
@@ -1147,7 +1150,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(IDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(ins[i].der.idx); first[res] = i;}
             final[res] = i; count += 1;
-            log << "loc:" << ins[i].der.loc << " IDerIns idx:" << ins[i].der.idx << " " << dst(res,buffer)->debug << '\n'; slog.clr();
+            log << "loc:" << ins[i].der.loc << " IDerIns idx:" << ins[i].der.idx << " " << dst(res,buffer)->debug << '\n';
             break; case(RDeeIns):
             if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->buffer();
             count += 1;
@@ -1200,11 +1203,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(QDerIns):
             if (first[res] == i) src(res)->advance();
+            log << "QDerIns push " << dst(res,buffer)->debug << '\n';
             thread->push({log,ins[i].der.loc,dst(res,buffer)});
             break; case(PDerIns):
+            log << "PDerIns push " << dst(res,buffer)->debug << '\n';
             thread->push({log,ins[i].der.loc,dst(res,buffer)});
             break; case(IDerIns):
             if (first[res] == i) src(res)->advance(ins[i].der.idx);
+            log << "IDerIns push " << dst(res,buffer)->debug << '\n';
             thread->push({log,ins[i].der.loc,dst(res,buffer)});}}
         // notify pass
         if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
@@ -1494,7 +1500,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
     }
-    void push(Draw drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+    void push(Draw &drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
         int siz = 0;
         if (drw.siz && drw.sze) siz = (drw.siz < drw.sze ? drw.siz : drw.sze);
         else siz = (drw.siz ? drw.siz : drw.sze);
