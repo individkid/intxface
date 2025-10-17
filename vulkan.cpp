@@ -1142,15 +1142,15 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
             final[res] = i; count += 1;
-            log << "loc:" << ins[i].der.loc << " DerIns " << dst(res,buffer)->debug << '\n';
+            log << "DerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
             break; case(PDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(); first[res] = i;}
             final[res] = i; count += 1;
-            log << "loc:" << ins[i].der.loc << " PDerIns " << dst(res,buffer)->debug << '\n';
+            log << "PDerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
             break; case(IDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(ins[i].der.idx); first[res] = i;}
             final[res] = i; count += 1;
-            log << "loc:" << ins[i].der.loc << " IDerIns idx:" << ins[i].der.idx << " " << dst(res,buffer)->debug << '\n';
+            log << "IDerIns loc:" << ins[i].der.loc << " idx:" << ins[i].der.idx << " " << dst(res,buffer)->debug << '\n';
             break; case(RDeeIns):
             if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->buffer();
             count += 1;
