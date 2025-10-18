@@ -644,7 +644,8 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-template <int Size, int Dim> struct TagState {    int next[Size]; int pool; // stack of those without key yet
+template <int Size, int Dim> struct TagState {
+    int next[Size]; int pool; // stack of those without key yet
     int newer[Size]; int older[Size]; int newest; int oldest; // newest to oldest of all with key
     int key[Size][Dim]; int size; // size < Size
     int fst[Size]; int fin[Size]; // size to Size
@@ -658,13 +659,20 @@ template <int Size, int Dim> struct TagState {    int next[Size]; int pool; // s
         for (int i = 0; i < Size; i++) nxt[i] = lst[i] = -1;
         for (int i = 0; i < Size; i++) ref[i] = -1;
     }
+    void set(int siz) {
+        int size = 1;
+        for (int i = 0; i < Size; i++) if (next[i] >= 0) size += 1;
+        for (int i = 0; i < Size; i++) if (ref[i] >= 0) size += 1;
+        while (size > siz && pull() >= 0) size -= 1;
+        for (int i = 0; i < Size && size > siz; i++) if (ref[i] >= 0) {remove(i); pull();}
+    }
     void push(int idx) {
         next[idx] = pool;
         pool = idx;
     }
     int pull() {
         int idx = pool;
-        if (pool >= 0) pool = next[pool];
+        if (pool >= 0) {pool = next[pool]; next[idx] = -1;}
         return idx;
     }
     void enqu(int idx) {
@@ -715,7 +723,7 @@ template <int Size, int Dim> struct TagState {    int next[Size]; int pool; // s
         if (idx < 0 || idx >= Size) EXIT
         int found = find(key);
         if (found < 0) {
-        found = size++;
+        found = size; size += 1;
         for (int j = 0; j < Dim; j++) this->key[found][j] = key[j];
         fst[found] = idx; fin[found] = idx; nxt[idx] = -1;} else {
         lst[fst[found]] = idx; nxt[idx] = fst[found]; fst[found] = idx;}
@@ -795,6 +803,10 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void qualify(Instr ins, Quality tag, int val, int *acu) override { // set current tags
         if (tag < 0 || tag >= Qualitys) EXIT
         safe.wait();
+        /*{char *st0 = 0; showInstr(ins,&st0);
+        char *st1 = 0; showQuality(tag,&st1);
+        std::cerr << "qualify ins:" << st0 << " tag:" << st1 << " val:" << val << std::endl;
+        free(st0); free(st1);}*/
         switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
         break; case (RTagIns): acu[tag] = qual[tag];
         break; case (WTagIns): qual[tag] = acu[tag];
@@ -806,13 +818,19 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     void test(Instr ins, int idx, int *acu) override { // test current tags
         safe.wait();
+        /*{char *str = 0; showInstr(ins,&str);
+        std::cerr << "test ins:" << str << std::endl;
+        free(str);}*/
         switch (ins) {default: {std::cerr << "invalid tst instruction" << std::endl; EXIT}
+        break; case (STstIns): tag.set(idx);
         break; case (RTstIns): tag.remove(idx);
         break; case (ITstIns): tst = tag.insert(qual);
         break; case (OTstIns): tst = tag.oldbuf(qual);
         break; case (NTstIns): tst = tag.newbuf(qual);
         break; case (GTstIns): tst = tag.get(tst,idx);
-        break; case (VTstIns): if (tst != idx) {std::cerr << "test failed!" << std::endl; EXIT}
+        break; case (VTstIns): if (tst != idx) {std::cerr << "test failed! " << tst << "!=" << idx << std::endl; EXIT}
+        else {std::cout << "test passed " << tst << "==" << idx << std::endl;
+        /*std::cerr << "test passed! " << tst << "==" << idx << std::endl;*/}
         break; case (WTstIns): tst = idx;
         }
         safe.post();
@@ -1113,7 +1131,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): res = ins.dee.res;
         break; case (ATagIns): case (BTagIns): res = ins.tag.res;
         break; case (ITagIns): case (JTagIns): res = ins.tag.res;
-        break; case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns): res = ins.tst.res;
+        break; case (STstIns): case (RTstIns): case (ITstIns): res = ins.tst.res;
+        break; case (OTstIns): case (NTstIns): res = ins.tst.res;
         break; case (GTstIns): case (VTstIns): case (WTstIns): res = ins.tst.res;}
         return res;
     }
@@ -1135,14 +1154,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
             log << "TagIns res:" << res << " ins:" << ins[i].ins << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
             src(res)->qualify(ins[i].ins,ins[i].tag.tag,ins[i].tag.val,value);
-            break; case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
+            break; case (STstIns): case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
             case (GTstIns): case (VTstIns): case (WTstIns):
             log << "TstIns res:" << res << " ins:" << ins[i].ins << " val:" << ins[i].tst.val << '\n';
             src(res)->test(ins[i].ins,ins[i].tst.val,value);
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
             final[res] = i; count += 1;
-            log << "DerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
+            log << "QDerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
             break; case(PDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(); first[res] = i;}
             final[res] = i; count += 1;
@@ -1183,7 +1202,6 @@ struct CopyState : public ChangeState<Configure,Configures> {
             break; case(WDeeIns):
             if (!bind->winc(res,dst(res,buffer),log)) lim = i;}}
         if (lim == num) {
-        BaseState *last = 0;
         // link list
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
@@ -2217,7 +2235,7 @@ struct MainState {
     // TODO fold RelateState into ImageState.
     // TODO after adding *TagIns, increase imageState size,
     // and remove RelateRes PierceRes DebugRes.
-    ArrayState<RelateState,RelateRes,StackState::frames> relateState;
+    ArrayState<RelateState,RelateRes,10> relateState;
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,DebugRes,StackState::frames> debugState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;

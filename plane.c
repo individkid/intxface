@@ -1235,11 +1235,24 @@ void initTest()
     break; case (Bringup): {
     struct Fnc nil = {0,0,0,0,0};
     struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
-    ptr->mem = Instrz; ptr->siz = 3;
+    ptr->mem = Instrz; ptr->siz = 16;
     allocIns(&ptr->ins,ptr->siz);
-    ptr->ins[0].ins = ITstIns; ptr->ins[0].tst.res = RelateRes; ptr->ins[0].tst.val = -1;
-    ptr->ins[1].ins = GTstIns; ptr->ins[1].tst.res = RelateRes; ptr->ins[1].tst.val = RuseQua;
-    ptr->ins[2].ins = VTstIns; ptr->ins[2].tst.res = RelateRes; ptr->ins[2].tst.val = 0;
+    ptr->ins[0].ins = STstIns; ptr->ins[0].tst.res = RelateRes; ptr->ins[0].tst.val = 4;
+    ptr->ins[1].ins = ITstIns; ptr->ins[1].tst.res = RelateRes; ptr->ins[1].tst.val = -1;
+    ptr->ins[2].ins = ITstIns; ptr->ins[2].tst.res = RelateRes; ptr->ins[2].tst.val = -1;
+    ptr->ins[3].ins = JTagIns; ptr->ins[3].tag.res = RelateRes; ptr->ins[3].tag.tag = RuseQua; ptr->ins[3].tag.val = 1;
+    ptr->ins[4].ins = ITstIns; ptr->ins[4].tst.res = RelateRes; ptr->ins[4].tst.val = -1;
+    ptr->ins[5].ins = ITstIns; ptr->ins[5].tst.res = RelateRes; ptr->ins[5].tst.val = -1;
+    ptr->ins[6].ins = JTagIns; ptr->ins[6].tag.res = RelateRes; ptr->ins[6].tag.tag = RuseQua; ptr->ins[6].tag.val = 0;
+    ptr->ins[7].ins = OTstIns; ptr->ins[7].tst.res = RelateRes; ptr->ins[7].tst.val = -1;
+    ptr->ins[8].ins = VTstIns; ptr->ins[8].tst.res = RelateRes; ptr->ins[8].tst.val = 6;
+    ptr->ins[9].ins = NTstIns; ptr->ins[9].tst.res = RelateRes; ptr->ins[9].tst.val = -1;
+    ptr->ins[10].ins = VTstIns; ptr->ins[10].tst.res = RelateRes; ptr->ins[10].tst.val = 7;
+    ptr->ins[11].ins = JTagIns; ptr->ins[11].tag.res = RelateRes; ptr->ins[11].tag.tag = RuseQua; ptr->ins[11].tag.val = 1;
+    ptr->ins[12].ins = OTstIns; ptr->ins[12].tst.res = RelateRes; ptr->ins[12].tst.val = -1;
+    ptr->ins[13].ins = VTstIns; ptr->ins[13].tst.res = RelateRes; ptr->ins[13].tst.val = 8;
+    ptr->ins[14].ins = NTstIns; ptr->ins[14].tst.res = RelateRes; ptr->ins[14].tst.val = -1;
+    ptr->ins[15].ins = VTstIns; ptr->ins[15].tst.res = RelateRes; ptr->ins[15].tst.val = 9;
     callCopy(ptr,Instrz,nil,0,0);
     // TODO issue Instrz to exercise TagState
     struct Fnc fnc = {0,planeSelf,planeGlfw,0,planeGoon};
