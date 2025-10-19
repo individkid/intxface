@@ -664,7 +664,8 @@ template <int Size, int Dim> struct TagState {
         for (int i = 0; i < Size; i++) if (next[i] >= 0) size += 1;
         for (int i = 0; i < Size; i++) if (ref[i] >= 0) size += 1;
         while (size > siz && pull() >= 0) size -= 1;
-        for (int i = 0; i < Size && size > siz; i++) if (ref[i] >= 0) {remove(i); pull();}
+        for (int i = 0; i < Size && size > siz; i++) if (ref[i] >= 0) {remove(i); pull(); size -= 1;}
+        for (int i = 0; i < Size && size < siz; i++) if (next[i] < 0) {push(i); size += 1;}
     }
     void push(int idx) {
         next[idx] = pool;
@@ -732,9 +733,9 @@ template <int Size, int Dim> struct TagState {
         return idx;
     }
     int oldbuf(int *key) {
-        if (pool >= 0) return insert(key);
+        if (pool >= 0) insert(key);
         int found = find(key);
-        if (found < 0) return insert(key);
+        if (found < 0) {insert(key); found = find(key);}
         return fin[found];
     }
     int newbuf(int *key) {
