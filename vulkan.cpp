@@ -217,7 +217,7 @@ struct StackState {
     virtual BaseState *prebuf(int i) = 0;
     virtual void advance() = 0;
     virtual void advance(int i) = 0;
-    virtual int tagval(int i, Quality t) = 0;
+    virtual int buftag(int i, Quality t) = 0;
     virtual Resrc buftyp() = 0;
     virtual const char *bufnam() = 0;
     static StackState* self;
@@ -439,7 +439,6 @@ struct BaseState {
     Loc ploc[ResrcLocs];
     int mask; // which ploc have valid max
     int nask; // which ploc setup called for
-    int qual[Qualitys]; // TODO use this instead of loc.con
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr),
@@ -477,7 +476,7 @@ struct BaseState {
         ploc[loc].ary = ary;
         return true;
     }
-    void done(SmartState log) {
+    void done(SmartState log) { // called from baseups or from copy fail
         // unreserve after done in thread or upon error
         safe.wait();
         if (plock <= 0) EXIT
@@ -595,7 +594,7 @@ struct BaseState {
         return ploc[loc].req.tag;
     }
     Resrc res() {return item->buftyp();}
-    int tag(Quality tag) {return item->tagval(indx,tag);}
+    int tag(Quality tag) {return item->buftag(indx,tag);}
     bool msk(ResrcLoc loc) {return ((mask&(1<<loc)) != 0);}
     bool nsk(ResrcLoc loc) {return ((nask&(1<<loc)) != 0);}
     static Loc &lst(Loc &loc) {return loc.lst.ptr->get(loc.lst.loc);}
@@ -832,8 +831,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         break; case (VTstIns): if (tst != idx) {std::cerr << "test failed! " << tst << "!=" << idx << std::endl; EXIT}
         else {std::cout << "test passed " << tst << "==" << idx << std::endl;
         /*std::cerr << "test passed! " << tst << "==" << idx << std::endl;*/}
-        break; case (WTstIns): tst = idx;
-        }
+        break; case (WTstIns): tst = idx;}
         safe.post();
     }
     BaseState *buffer() override { // buffer of newest, with current tags
@@ -853,7 +851,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (i < 0 || i >= Size) EXIT
         safe.wait(); idx = i; /*tag.remove(idx); assert(tag.insert(qual)==idx);*/ safe.post();
     }
-    int tagval(int i, Quality t) override {
+    int buftag(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
         safe.wait(); int val = tag.get(i,t); safe.post(); return val;
     }
@@ -927,7 +925,7 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         rsp<<ins;
     }
-    void done(Resrc i, SmartState log) {
+    void done(Resrc i, SmartState log) { // called from unlock or from copy fail
         if (!excl) EXIT
         if (psav[i] <= 0) EXIT
         psav[i] -= 1;
@@ -936,7 +934,7 @@ struct BindState : public BaseState {
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
         if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
-    void done(Rsp rsp, SmartState log) {
+    void done(Rsp rsp, SmartState log) { // called from unlock only
         if (!excl) EXIT
         if (rsp.idx+rsp.siz > this->rsp.size()) EXIT
         for (int i = 0; i < rsp.siz; i++) {
@@ -945,17 +943,14 @@ struct BindState : public BaseState {
         break; case (RDeeIns): case (IDeeIns): rdec(res,log);
         break; case (WDeeIns): wdec(res,log);}}
     }
-    void done(SmartState log) {
+    void done(SmartState log) { // called from copy fail only
         if (!excl) EXIT
         safe.wait();
         if (lock == 0) excl = false;
         safe.post();
     }
     bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
-        if (!buf) {
-            log << "error" << '\n';
-            slog.clr();
-            *(int*)0=0;}
+        if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
         if (!excl) EXIT
         if (bind[i] != 0 && bind[i] != buf) EXIT
         if (!buf->incr(elock,psav[i],rsav[i],wsav[i])) {
@@ -996,7 +991,7 @@ BaseState *BaseState::res(Resrc typ) {
     if (lock == 0) EXIT
     return lock->get(typ);
 }
-void BaseState::unlock(Loc &loc, SmartState log) {
+void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
     if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
 }
 
@@ -1481,17 +1476,18 @@ struct CopyState : public ChangeState<Configure,Configures> {
     int fill(Resrc typ, int idx, int ary) {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
-    template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+    template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int sze, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
         // with both arg and val, negative arg means profer the val, non-negative means force
         // arg only means profer only
         // val only means packed force
         // neither means default only
         HeapState<Ins> lst;
         int tot = 0;
-        if (arg && val) {
+        if (siz && sze) {
+            tot = size(typ,ary);
             for (int i = 0; i < siz; i++)
             if (arg[i] >= tot) tot = arg[i]+1;}
-        else if (val) tot = siz;
+        else if (sze) tot = sze;
         if (tot < size(typ,ary)) tot = size(typ,ary);
         int vlu[tot];
         // initialize with defaults
@@ -1500,15 +1496,15 @@ struct CopyState : public ChangeState<Configure,Configures> {
             if (def == TrivDef || def == Defaults) vlu[i] = fill(typ,i,ary);
             else vlu[i] = 0;}
         // copy from given
-        if (arg) for (int i = 0; i < tot; i++)
+        if (siz) for (int i = 0; i < tot; i++)
             if (dflt(typ,i,ary) == GiveDef) {
             int idx = fill(typ,i,ary);
-            if (val) {for (int j = 0; j < siz; j++)
+            if (sze) {for (int j = 0; j < tot; j++)
             if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
-            else if (idx >= 0 && idx < siz) vlu[i] = arg[idx];}
+            else if (idx >= 0 && idx < tot) vlu[i] = arg[idx];}
         // force from given
-        if (val) for (int i = 0; i < siz; i++) {
-            int idx = (arg ? arg[i] : i);
+        if (sze) for (int i = 0; i < tot; i++) {
+            int idx = (siz ? arg[i] : i);
             if (idx >= 0 && idx < tot) vlu[idx] = val[i];}
         // alias from prior
         for (int i = 0; i < tot; i++)
@@ -1516,31 +1512,28 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = fill(typ,i,ary);
             if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
         push(lst,typ,dat,vlu,tot,idx,ary,log);
-        if (idx != siz) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << siz << std::endl; EXIT}
+        if (idx != tot) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << tot << std::endl; EXIT}
         push(lst,fnc,ptr,sub,log);
     }
     void push(Draw &drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
-        int siz = 0;
-        if (drw.siz && drw.sze) siz = (drw.siz < drw.sze ? drw.siz : drw.sze);
-        else siz = (drw.siz ? drw.siz : drw.sze);
         switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,(drw.siz?drw.arg:0),(drw.sze?drw.val:0),siz,idx,ptr,sub,fnc,ary,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,(drw.siz?drw.arg:0),(drw.sze?drw.val:0),siz,idx,ptr,sub,fnc,ary,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,(drw.siz?drw.arg:0),(drw.sze?drw.val:0),siz,idx,ptr,sub,fnc,ary,log);}
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);}
     }
     void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
         switch (center->mem) {default: {
         int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
         int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int); int adx = 0;
         switch (center->mem) {default: EXIT
-        break; case (Indexz): push(center->mem,(void*)center->ind,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Bringupz): push(center->mem,(void*)center->ver,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Uniformz): push(center->mem,(void*)center->uni,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Matrixz): push(center->mem,(void*)center->mat,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Trianglez): push(center->mem,(void*)center->tri,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Numericz): push(center->mem,(void*)center->num,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Vertexz): push(center->mem,(void*)center->vtx,0,val,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Basisz): push(center->mem,(void*)center->bas,0,val,aiz,adx,center,sub,fnc,ary,log);}}
+        break; case (Indexz): push(center->mem,(void*)center->ind,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Bringupz): push(center->mem,(void*)center->ver,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Uniformz): push(center->mem,(void*)center->uni,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Matrixz): push(center->mem,(void*)center->mat,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Trianglez): push(center->mem,(void*)center->tri,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Numericz): push(center->mem,(void*)center->num,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Vertexz): push(center->mem,(void*)center->vtx,0,val,0,aiz,adx,center,sub,fnc,ary,log);
+        break; case (Basisz): push(center->mem,(void*)center->bas,0,val,0,aiz,adx,center,sub,fnc,ary,log);}}
         break; case (Drawz): for (int i = 0; i < center->siz; i++) {int didx = 0;
         push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
         break; case (Instrz): {HeapState<Ins> ins(StackState::instrs);
@@ -1559,7 +1552,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,tot,wid,hei, // HighFrm
             idx}; // RonlyFrm
             int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),0,mval,msiz,midx,center,sub,fnc,ary,log);}
+            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),0,mval,0,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
@@ -1571,7 +1564,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,siz,wid,hei, // HighFrm
             idx}; // SourceFrm
             int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->eek,0,mval,msiz,midx,center,sub,fnc,ary,log);}
+            push(center->mem,(void*)center->eek,0,mval,0,msiz,midx,center,sub,fnc,ary,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
@@ -1583,7 +1576,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             idx,siz,wid,hei, // HighFrm
             idx}; // DestFrm
             int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->oke,0,mval,msiz,midx,center,sub,fnc,ary,log);}}
+            push(center->mem,(void*)center->oke,0,mval,0,msiz,midx,center,sub,fnc,ary,log);}}
     }
 };
 

@@ -556,9 +556,9 @@ MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
-	{"Memory","Indexz","Int","0"},
-	{"Memory","Indexz","Int","0","Default","TrivDef"},
-	{"Memory","Indexz","Int","0","Int","0"},
+	{"Memory","Indexz","Int","0"}, -- number of arguments
+	{"Memory","Indexz","Int","0","Default","TrivDef"}, -- how to modify arguments
+	{"Memory","Indexz","Int","0","Int","0"}, -- value to modify argument with
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
 	"res={\"ImageRes\",\"DebugRes\",\"DebugRes\"}"..
