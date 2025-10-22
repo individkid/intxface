@@ -862,8 +862,9 @@ void planeTest(enum Thread tag, int idx)
     struct Fnc fun = {0,planePass,planeWait,0,planeGoon};
     struct Fnc chk = {0,planeCheck,planeWait,0,planeGoon};
     int inds = 12;
-    int arg[] = {0,1,2, 3,4,5, 6, 7,8,9, 10};
+    int arg[] = {0, 1,2,3, 4,5,6, 7, 8,9,10, 11};
     int val[] = {
+    /*JTagIns ImageRes*//*RuseQua.val*/Imagez,
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest,

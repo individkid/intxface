@@ -1148,7 +1148,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
-            log << "TagIns res:" << res << " ins:" << ins[i].ins << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
+            log << "TagIns res:" << res << " ins:" << ins[i].ins << "(JTagIns:" << JTagIns << ")" << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
             src(res)->qualify(ins[i].ins,ins[i].tag.tag,ins[i].tag.val,value);
             break; case (STstIns): case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
             case (GTstIns): case (VTstIns): case (WTstIns):
@@ -1546,6 +1546,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat);
             int mval[] = {
+            Imagez, // RuseQua
             idx,wid,hei, // ExtentFrm
             idx, // ImageFrm
             idx, // WonlyFrm
@@ -1558,6 +1559,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4;
             int mval[] = {
+            Peekz, // RuseQua
             idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
             idx, // PierceFrm
             idx, // PeekFrm
@@ -1570,6 +1572,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
             int tot = wid*hei*4;
             int mval[] = {
+            Pokez, // RuseQua
             idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
             idx, // PierceFrm
             idx, // PokeFrm
@@ -1946,14 +1949,15 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {
+    void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {
         if (max(got).tag != ExtentExt) EXIT
         tw = max(got).extent.width;
         th = max(got).extent.height;
         is = tw * th * 4;
         pie = 0; x = 0; y = 0; w = tw; h = th;
         if (idx(loc) != 0) EXIT
-        if (mem(loc) == Pokez || mem(loc) == Peekz) {
+        log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
+        if (mem(loc)/*TODO tag(RuseQua)*/ == Pokez || mem(loc) == Peekz) {
         pie = (Pierce*)ptr(loc); x = tw; y = th; w = 0; h = 0;
         if (siz(loc) == 0) {x = 0; y = 0;}
         for (int i = 0; i < siz(loc); i++) {
