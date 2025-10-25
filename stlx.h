@@ -377,7 +377,7 @@ template <int Size, int Dim> struct SimpleState {
     }
     void remove(int idx) {
         auto itr = keyval.find(idx);
-        if (itr == keyval.end()) {*(int*)0=0;exit(-1);}
+        if (itr == keyval.end()) return;
         Only tmp = (*itr).second;
         Seqn num = seqnum[idx];
         Wseq seq = get(tmp,num);
@@ -385,9 +385,12 @@ template <int Size, int Dim> struct SimpleState {
         oldest.erase(tmp);
         newest.erase(tmp);}
         else if (oldest[tmp] == idx) {
+        Wseq seq = get(tmp,(num+1)%wrap);
         oldest[tmp] = (*ording.lower_bound(seq)).second;}
         else if (newest[tmp] == idx) {
+        Wseq seq = get(tmp,(num+wrap-1)%wrap);
         newest[tmp] = (*ording.upper_bound(seq)).second;}
+        // std::cerr << "remove idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording.erase(seq);
         keyval.erase(idx);
         seqnum.erase(idx);
@@ -399,8 +402,9 @@ template <int Size, int Dim> struct SimpleState {
         if (pool.empty() && !oldest.empty()) remove(oldest[tmp]);
         else if (pool.empty()) remove((*global.lower_bound((seqn+wrap)%wrap)).second);
         Indx idx = pool.front(); pool.pop_front();
-        if (oldest.empty()) oldest[tmp] = idx;
+        if (oldest.find(tmp) == oldest.end()) oldest[tmp] = idx;
         newest[tmp] = idx;
+        // std::cerr << "insert idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
         seqnum[idx] = seqn;
@@ -410,6 +414,7 @@ template <int Size, int Dim> struct SimpleState {
     }
     int oldbuf(int *key) {
         Only tmp = get(key);
+        // std::cerr << "oldbuf"; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         if (oldest.find(tmp) == oldest.end()) insert(key);
         return oldest[tmp];
     }

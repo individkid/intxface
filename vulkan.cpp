@@ -697,10 +697,10 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void qualify(Instr ins, Quality tag, int val, int *acu) override { // set current tags
         if (tag < 0 || tag >= Qualitys) EXIT
         safe.wait();
-        /*{char *st0 = 0; showInstr(ins,&st0);
+        if (0) {char *st0 = 0; showInstr(ins,&st0);
         char *st1 = 0; showQuality(tag,&st1);
         std::cerr << "qualify ins:" << st0 << " tag:" << st1 << " val:" << val << std::endl;
-        free(st0); free(st1);}*/
+        free(st0); free(st1);}
         switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
         break; case (RTagIns): acu[tag] = qual[tag];
         break; case (WTagIns): qual[tag] = acu[tag];
@@ -712,9 +712,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     void test(Instr ins, int idx, int *acu) override { // test current tags
         safe.wait();
-        /*{char *str = 0; showInstr(ins,&str);
-        std::cerr << "test ins:" << str << std::endl;
-        free(str);}*/
         switch (ins) {default: {std::cerr << "invalid tst instruction" << std::endl; EXIT}
         break; case (STstIns): tag.set(idx);
         break; case (RTstIns): tag.remove(idx);
@@ -722,10 +719,13 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         break; case (OTstIns): tst = tag.oldbuf(qual);
         break; case (NTstIns): tst = tag.newbuf(qual);
         break; case (GTstIns): tst = tag.get(tst,idx);
-        break; case (VTstIns): if (tst != idx) {std::cerr << "test failed! " << tst << "!=" << idx << std::endl; EXIT}
+        break; case (VTstIns): if (tst != idx) {std::cerr << "test failed! act:" << tst << "!=exp:" << idx << std::endl; EXIT}
         else {std::cout << "test passed " << tst << "==" << idx << std::endl;
         /*std::cerr << "test passed! " << tst << "==" << idx << std::endl;*/}
         break; case (WTstIns): tst = idx;}
+        if (0) {char *str = 0; showInstr(ins,&str);
+        std::cerr << "test ins:" << str << " idx:" << idx << " tst:" << tst << std::endl;
+        free(str);}
         safe.post();
     }
     BaseState *buffer() override { // buffer of newest, with current tags
@@ -2244,7 +2244,10 @@ struct MainState {
 };
 
 MainState *mptr = 0;
-// TODO glfw callbacks
+// glfw callbacks
+void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
+}
 // request
 void vulkanCopy(Center *ptr, int sub, Fnc fnc, int ary, const char *dbg) {
     if (dbg) mptr->copyState.push(ptr,sub,fnc,ary,SmartState(dbg));
@@ -2318,6 +2321,7 @@ int main(int argc, const char **argv) {
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
     // TODO move glfw functions to WindowState
+    glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
