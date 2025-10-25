@@ -312,6 +312,122 @@ template <class Type> struct HeapState {
         return vec[(i+bas)%vec.size()];
     }
 };
+
+template <int Size, int Dim> struct SimpleState {
+    typedef int Indx; // interface identifier
+    struct IndxLess {
+        bool operator()(const Indx &lhs, const Indx &rhs) const {
+            return lhs < rhs;
+        }
+    };
+    typedef int Seqn; // sequence number
+    static const Seqn wrap = 10000;
+    struct SeqnLess {
+        bool operator()(const Seqn &lhs, const Seqn &rhs) const {
+            if (lhs < rhs && rhs-lhs < wrap) return true;
+            if (lhs > rhs && lhs-rhs >= wrap) return true;
+            return false;
+        }
+    };
+    typedef std::array<int,Dim> Only; // key value only
+    struct OnlyLess {
+        bool operator()(const Only &lhs, const Only &rhs) const {
+            for (int i = 0; i < Dim; i++) if (lhs < rhs) return true;
+            return false;
+        }
+    };
+    typedef std::array<int,Dim+1> Wseq; // with sequence number
+    struct WseqLess {
+        bool operator()(const Wseq &lhs, const Wseq &rhs) const {
+            for (int i = 0; i < Dim; i++) if (lhs < rhs) return true;
+            for (int i = 0; i < Dim; i++) if (lhs > rhs) return false;
+            return SeqnLess()(lhs[Dim],rhs[Dim]);
+        }
+    };
+    std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
+    std::map<Wseq,Indx,WseqLess> ording; // to find next in sparse ording
+    std::map<Indx,Only,IndxLess> keyval; // which list index is in
+    std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
+    std::map<Seqn,Indx,SeqnLess> global; // sparse ordering in all lists
+    std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
+    Seqn seqn;
+    SimpleState() : seqn(0) {
+        for (int i = 0; i < Size; i++) pool.push_back(i);
+    }
+    Only get(int *key) {
+        Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; return tmp;
+    }
+    Wseq get(Only key, int num) {
+        Wseq tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; tmp[Dim] = num; return tmp;
+    }
+    void set(int siz) {
+        // remove any Indx not less than siz
+        for (int i = Size-1; i >= siz; i--) remove(i);
+        std::deque<Indx> temp;
+        for (auto i = pool.begin(); i != pool.end(); i++)
+        if (*i < siz) temp.push_back(*i);
+        pool = temp;
+        // add to pool to increase to siz
+        Indx size = 0;
+        for (auto i = pool.begin(); i != pool.end(); i++)
+        if (*i >= size) size = *i+1;
+        for (auto i = keyval.begin(); i != keyval.end(); i++)
+        if ((*i).first >= size) size = (*i).first+1;
+        for (int i = size; i < siz; i++) pool.push_back(i);
+    }
+    void remove(int idx) {
+        auto itr = keyval.find(idx);
+        if (itr == keyval.end()) {*(int*)0=0;exit(-1);}
+        Only tmp = (*itr).second;
+        Seqn num = seqnum[idx];
+        Wseq seq = get(tmp,num);
+        if (oldest[tmp] == idx && newest[tmp] == idx) {
+        oldest.erase(tmp);
+        newest.erase(tmp);}
+        else if (oldest[tmp] == idx) {
+        oldest[tmp] = (*ording.lower_bound(seq)).second;}
+        else if (newest[tmp] == idx) {
+        newest[tmp] = (*ording.upper_bound(seq)).second;}
+        ording.erase(seq);
+        keyval.erase(idx);
+        seqnum.erase(idx);
+        global.erase(num);
+    }
+    int insert(int *key) { // create a new newest
+        Only tmp = get(key);
+        if (pool.empty() && !oldest.empty()) remove(oldest[tmp]);
+        else if (pool.empty()) remove((*global.lower_bound((seqn+wrap)%wrap)).second);
+        Indx idx = pool.front(); pool.pop_front();
+        if (oldest.empty()) oldest[tmp] = idx;
+        newest[tmp] = idx;
+        ording[get(tmp,seqn)] = idx;
+        keyval[idx] = tmp;
+        seqnum[idx] = seqn;
+        global[seqn] = idx;
+        seqn = (seqn+1)%wrap;
+        return idx;
+    }
+    int oldbuf(int *key) {
+        Only tmp = get(key);
+        if (oldest.find(tmp) == oldest.end()) insert(key);
+        return oldest[tmp];
+    }
+    int newbuf(int *key) {
+        Only tmp = get(key);
+        if (newest.find(tmp) == newest.end()) insert(key);
+        return newest[tmp];
+    }
+    void idxbuf(int *key, int idx) {
+        Only tmp = get(key);
+        while (keyval.find(idx) == keyval.end()) insert(key);
+        if (tmp != keyval(idx)) {remove(idx); insert(key);}
+    }
+    int get(int idx, int tag) {
+        if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}
+        if (tag < 0 || tag >= Dim) {*(int*)0=0;exit(-1);}
+        return keyval[idx][tag];
+    }
+};
 #endif
 
 #ifdef __cplusplus
