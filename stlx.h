@@ -392,6 +392,7 @@ template <int Size, int Dim> struct SimpleState {
         keyval.erase(idx);
         seqnum.erase(idx);
         global.erase(num);
+        pool.push_front(idx);
     }
     int insert(int *key) { // create a new newest
         Only tmp = get(key);
