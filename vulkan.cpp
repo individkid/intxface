@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <limits>
 #include <array>
+#include <deque>
+#include <map>
 #include <stdio.h>
 #include <execinfo.h>
 #include <signal.h>
@@ -643,118 +645,128 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-template <int Size, int Dim> struct TagState {
-    int next[Size]; int pool; // stack of those without key yet
-    int newer[Size]; int older[Size]; int newest; int oldest; // newest to oldest of all with key
-    int key[Size][Dim]; int size; // size < Size
-    int fst[Size]; int fin[Size]; // size to Size
-    int nxt[Size]; int lst[Size]; // Size to Size
-    int ref[Size]; // Size to size
-    TagState() {
-        for (int i = 0; i < Size-1; i++) next[i] = i+1; next[Size-1] = -1; pool = 0;
-        for (int i = 0; i < Size; i++) newer[i] = older[i] = -1; newest = oldest = -1;
-        for (int i = 0; i < Size; i++) for (int j = 0; j < Dim; j++) key[i][j] = 0; size = 0;
-        for (int i = 0; i < Size; i++) fst[i] = fin[i] = -1;
-        for (int i = 0; i < Size; i++) nxt[i] = lst[i] = -1;
-        for (int i = 0; i < Size; i++) ref[i] = -1;
+template <int Size, int Dim> struct SimpleState {
+    typedef int Indx; // interface identifier
+    struct IndxLess {
+        bool operator()(const Indx &lhs, const Indx &rhs) const {
+            return lhs < rhs;
+        }
+    };
+    typedef int Seqn; // sequence number
+    static const Seqn wrap = 10000;
+    struct SeqnLess {
+        bool operator()(const Seqn &lhs, const Seqn &rhs) const {
+            if (lhs < rhs && rhs-lhs < wrap) return true;
+            if (lhs > rhs && lhs-rhs >= wrap) return true;
+            return false;
+        }
+    };
+    typedef std::array<int,Dim> Only; // key value only
+    struct OnlyLess {
+        bool operator()(const Only &lhs, const Only &rhs) const {
+            for (int i = 0; i < Dim; i++) if (lhs < rhs) return true;
+            return false;
+        }
+    };
+    typedef std::array<int,Dim+1> Wseq; // with sequence number
+    struct WseqLess {
+        bool operator()(const Wseq &lhs, const Wseq &rhs) const {
+            for (int i = 0; i < Dim; i++) if (lhs < rhs) return true;
+            for (int i = 0; i < Dim; i++) if (lhs > rhs) return false;
+            return SeqnLess()(lhs[Dim],rhs[Dim]);
+        }
+    };
+    std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
+    std::map<Wseq,Indx,WseqLess> ording; // to find next in sparse ording
+    std::map<Indx,Only,IndxLess> keyval; // which list index is in
+    std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
+    std::map<Seqn,Indx,SeqnLess> global; // sparse ordering in all lists
+    std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
+    Seqn seqn;
+    SimpleState() : seqn(0) {
+        for (int i = 0; i < Size; i++) pool.push_back(i);
+    }
+    Only get(int *key) {
+        Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; return tmp;
+    }
+    Wseq get(Only key, int num) {
+        Wseq tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; tmp[Dim] = num; return tmp;
     }
     void set(int siz) {
-        int size = 1;
-        for (int i = 0; i < Size; i++) if (next[i] >= 0) size += 1;
-        for (int i = 0; i < Size; i++) if (ref[i] >= 0) size += 1;
-        while (size > siz && pull() >= 0) size -= 1;
-        for (int i = 0; i < Size && size > siz; i++) if (ref[i] >= 0) {remove(i); pull(); size -= 1;}
-        for (int i = 0; i < Size && size < siz; i++) if (next[i] < 0) {push(i); size += 1;}
-    }
-    void push(int idx) {
-        next[idx] = pool;
-        pool = idx;
-    }
-    int pull() {
-        int idx = pool;
-        if (pool >= 0) {pool = next[pool]; next[idx] = -1;}
-        return idx;
-    }
-    void enqu(int idx) {
-        if (newest < 0) {
-        newest = oldest = idx;
-        newer[idx] = older[idx] = -1;} else {
-        newer[idx] = -1; older[idx] = newest; newer[newest] = idx; newest = idx;}
-    }
-    int dequ() {
-        int idx = oldest;
-        int tmp = newer[oldest];
-        if (tmp >= 0) older[tmp] = -1;
-        oldest = newer[oldest];
-        newer[idx] = older[idx] = -1;
-        if (newest == idx) newest = -1;
-        return idx;
-    }
-    void unqu(int idx) {
-        if (newer[idx] >= 0) older[newer[idx]] = older[idx];
-        if (older[idx] >= 0) newer[older[idx]] = newer[idx];
-        if (newest == idx) newest = older[idx];
-        if (oldest == idx) oldest = newer[idx];
-        newer[idx] = older[idx] = -1;
-    }
-    int find(int *key) {
-        int found = -1;
-        for (int i = 0; i < size && found < 0; i++) {
-        found = i;
-        for (int j = 0; j < Dim; j++) if (this->key[i][j] != key[j]) found = -1;}
-        return found;
+        // remove any Indx not less than siz
+        for (int i = Size-1; i >= siz; i--) remove(i);
+        std::deque<Indx> temp;
+        for (auto i = pool.begin(); i != pool.end(); i++)
+        if (*i < siz) temp.push_back(*i);
+        pool = temp;
+        // add to pool to increase to siz
+        Indx size = 0;
+        for (auto i = pool.begin(); i != pool.end(); i++)
+        if (*i >= size) size = *i+1;
+        for (auto i = keyval.begin(); i != keyval.end(); i++)
+        if ((*i).first >= size) size = (*i).first+1;
+        for (int i = size; i < siz; i++) pool.push_back(i);
     }
     void remove(int idx) {
-        int found = ref[idx];
-        if (nxt[idx] >= 0) lst[nxt[idx]] = lst[idx];
-        if (lst[idx] >= 0) nxt[lst[idx]] = nxt[idx];
-        if (fst[found] == idx) fst[found] = nxt[idx];
-        if (fin[found] == idx) fin[found] = lst[idx];
-        nxt[idx] = lst[idx] = ref[idx] = -1;
-        if (fst[found] < 0) {
-        size -= 1;
-        for (int i = found; i < size; i++) {
-        fst[i] = fst[i+1]; fin[i] = fin[i+1];
-        for (int j = 0; j < Dim; j++) key[i][j] = key[i+1][j];}}
-        push(idx); unqu(idx);
+        auto itr = keyval.find(idx);
+        if (itr == keyval.end()) EXIT
+        Only tmp = (*itr).second;
+        Seqn num = seqnum[idx];
+        Wseq seq = get(tmp,num);
+        if (oldest[tmp] == idx && newest[tmp] == idx) {
+        oldest.erase(tmp);
+        newest.erase(tmp);}
+        else if (oldest[tmp] == idx) {
+        oldest[tmp] = (*ording.lower_bound(seq)).second;}
+        else if (newest[tmp] == idx) {
+        newest[tmp] = (*ording.upper_bound(seq)).second;}
+        ording.erase(seq);
+        keyval.erase(idx);
+        seqnum.erase(idx);
+        global.erase(num);
     }
-    int insert(int *key) {
-        int idx = pull(); if (idx < 0) {idx = dequ(); remove(idx); idx = pull();}
-        if (idx < 0 || idx >= Size) EXIT
-        int found = find(key);
-        if (found < 0) {
-        found = size; size += 1;
-        for (int j = 0; j < Dim; j++) this->key[found][j] = key[j];
-        fst[found] = idx; fin[found] = idx; nxt[idx] = -1;} else {
-        lst[fst[found]] = idx; nxt[idx] = fst[found]; fst[found] = idx;}
-        lst[idx] = -1; ref[idx] = found;
-        enqu(idx);
+    int insert(int *key) { // create a new newest
+        Only tmp = get(key);
+        if (pool.empty() && !oldest.empty()) remove(oldest[tmp]);
+        else if (pool.empty()) remove((*global.lower_bound((seqn+wrap)%wrap)).second);
+        Indx idx = pool.front(); pool.pop_front();
+        if (oldest.empty()) oldest[tmp] = idx;
+        newest[tmp] = idx;
+        ording[get(tmp,seqn)] = idx;
+        keyval[idx] = tmp;
+        seqnum[idx] = seqn;
+        global[seqn] = idx;
+        seqn = (seqn+1)%wrap;
         return idx;
     }
     int oldbuf(int *key) {
-        if (pool >= 0) insert(key);
-        int found = find(key);
-        if (found < 0) {insert(key); found = find(key);}
-        return fin[found];
+        Only tmp = get(key);
+        if (oldest.find(tmp) == oldest.end()) insert(key);
+        return oldest[tmp];
     }
     int newbuf(int *key) {
-        int found = find(key);
-        if (found < 0) return insert(key);
-        return fst[found];
+        Only tmp = get(key);
+        if (newest.find(tmp) == newest.end()) insert(key);
+        return newest[tmp];
+    }
+    void idxbuf(int *key, int idx) {
+        Only tmp = get(key);
+        while (keyval.find(idx) == keyval.end()) insert(key);
+        if (tmp != keyval(idx)) {remove(idx); insert(key);}
     }
     int get(int idx, int tag) {
-        if (idx < 0 || idx >= Size || tag < 0 || tag >= Dim) EXIT
-        int i = ref[idx];
-        if (i < 0 || i >= size) return -1;
-        return key[i][tag];
+        if (keyval.find(idx) == keyval.end()) EXIT
+        if (tag < 0 || tag >= Dim) EXIT
+        return keyval[idx][tag];
     }
 };
+
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx; // TODO use qual instead
     int qual[Qualitys]; // TODO use this instead of idx
     int tst;
-    TagState<Size,Qualitys> tag;
+    SimpleState<Size,Qualitys> tag;
     State state[Size];
     ArrayState(
         ChangeState<Configure,Configures> *copy,
@@ -1956,7 +1968,7 @@ struct ImageState : public BaseState {
         is = tw * th * 4;
         pie = 0; x = 0; y = 0; w = tw; h = th;
         if (idx(loc) != 0) EXIT
-        log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
+        // log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
         if (mem(loc)/*TODO tag(RuseQua)*/ == Pokez || mem(loc) == Peekz) {
         pie = (Pierce*)ptr(loc); x = tw; y = th; w = 0; h = 0;
         if (siz(loc) == 0) {x = 0; y = 0;}
