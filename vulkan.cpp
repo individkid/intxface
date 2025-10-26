@@ -224,7 +224,7 @@ struct StackState {
     static int debug;
     static int micro;
     static int index;
-    static ChangeState<Configure,Configures> *copy;
+    static ChangeState<Configure,Configures> *change;
     static GLFWwindow* window;
     static VkSurfaceKHR surface;
     static VkPhysicalDevice physical;
@@ -244,7 +244,7 @@ struct StackState {
     static VkBufferUsageFlags flags;
     static ConstState *constState;
     StackState(
-        ChangeState<Configure,Configures> *copy,
+        ChangeState<Configure,Configures> *change,
         GLFWwindow* window,
         VkSurfaceKHR surface,
         VkPhysicalDevice physical,
@@ -265,7 +265,7 @@ struct StackState {
         StackState::debug = 0;
         StackState::micro = 0;
         StackState::index = 0;
-        StackState::copy = copy;
+        StackState::change = change;
         StackState::window = window;
         StackState::surface = surface;
         StackState::physical = physical;
@@ -308,7 +308,7 @@ StackState* StackState::self;
 int StackState::debug;
 int StackState::micro;
 int StackState::index;
-ChangeState<Configure,Configures> *StackState::copy;
+ChangeState<Configure,Configures> *StackState::change;
 GLFWwindow* StackState::window;
 VkSurfaceKHR StackState::surface;
 VkPhysicalDevice StackState::physical;
@@ -649,7 +649,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     SimpleState<Size,Qualitys> tag;
     State state[Size];
     ArrayState(
-        ChangeState<Configure,Configures> *copy,
+        ChangeState<Configure,Configures> *change,
         GLFWwindow* window,
         VkSurfaceKHR surface,
         VkPhysicalDevice physical,
@@ -667,7 +667,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkQueue graphics,
         VkQueue present) :
     StackState(
-        copy,
+        change,
         window,
         surface,
         physical,
@@ -900,16 +900,16 @@ struct Push {
 };
 struct ThreadState : public DoneState {
     const VkDevice device;
-    ChangeState<Configure,Configures> *copy;
+    ChangeState<Configure,Configures> *change;
     SafeState safe; SafeState wake;
     std::deque<Push> before;
     std::deque<Push> after;
     std::map<int,Push> topush;
     int seqnum;
     bool goon;
-    ThreadState(VkDevice device, ChangeState<Configure,Configures> *copy) :
+    ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
         device(device),
-        copy(copy),
+        change(change),
         safe(1),
         wake(0),
         seqnum(0),
@@ -960,7 +960,7 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) EXIT}
         if (push.base) push.base->baseups(push.loc,push.log);
         if (push.fnc) push.fnc(push.ptr,push.sub);
-        copy->wots(RegisterMask,1<<FnceMsk);}
+        change->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
     void done() override {
@@ -987,11 +987,14 @@ struct Arg {
     ResrcLoc loc; Format fmt = Formats; Quality tag = Qualitys;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
 };
-struct CopyState : public ChangeState<Configure,Configures> {
+struct CopyState {
+    ChangeState<Configure,Configures> *change;
     ThreadState *thread;
     StackState *stack[Resrcs];
     ConstState *array;
-    CopyState(ThreadState *thread, EnumState *stack, ConstState *ary) :
+    CopyState(ChangeState<Configure,Configures> *change,
+        ThreadState *thread, EnumState *stack, ConstState *ary) :
+        change(change),
         thread(thread),
         stack{0},
         array(ary) {
@@ -1424,7 +1427,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
         for (int i = 0; i < center->siz; i++) ins<<center->ins[i];
         push(ins,fnc,center,sub,log);}
         break; case (Configurez): for (int i = 0; i < center->siz; i++)
-        write(center->cfg[i],center->val[i]);
+        change->write(center->cfg[i],center->val[i]);
         if (fnc.pass) thread->push({log,ResrcLocs,0,center,sub,fnc.pass});
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
@@ -1444,7 +1447,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int tot = wid*hei*4;
             int mval[] = {
             Peekz, // RuseQua
-            idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
+            idx,change->read(WindowWidth),change->read(WindowHeight), // ExtentFrm
             idx, // PierceFrm
             idx, // PeekFrm
             idx,siz,wid,hei, // HighFrm
@@ -1457,7 +1460,7 @@ struct CopyState : public ChangeState<Configure,Configures> {
             int tot = wid*hei*4;
             int mval[] = {
             Pokez, // RuseQua
-            idx,read(WindowWidth),read(WindowHeight), // ExtentFrm
+            idx,change->read(WindowWidth),change->read(WindowHeight), // ExtentFrm
             idx, // PierceFrm
             idx, // PokeFrm
             idx,siz,wid,hei, // HighFrm
@@ -1480,7 +1483,7 @@ struct ForkState : public DoneState {
 };
 
 struct SwapState : public BaseState {
-    ChangeState<Configure,Configures> *copy;
+    ChangeState<Configure,Configures> *change;
     GLFWwindow* window;
     const VkSurfaceKHR surface;
     const VkPhysicalDevice physical;
@@ -1504,7 +1507,7 @@ struct SwapState : public BaseState {
     VkSurfaceCapabilitiesKHR capabilities;
     SwapState() :
         BaseState("SwapState",StackState::self),
-    copy(StackState::copy),
+        change(StackState::change),
         window(StackState::window),
         surface(StackState::surface),
         physical(StackState::physical),
@@ -1526,7 +1529,7 @@ struct SwapState : public BaseState {
     VkExtent2D getExtent() override {return capabilities.currentExtent;}
     void resize(Loc &loc, SmartState log) override {
         capabilities = findCapabilities(window,surface,physical);
-        copy->write(WindowWidth,getExtent().width); copy->write(WindowHeight,getExtent().height);
+        change->write(WindowWidth,getExtent().width); change->write(WindowHeight,getExtent().height);
         std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode, capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
@@ -1949,7 +1952,7 @@ struct ImageState : public BaseState {
 struct ChainState : public BaseState {
     const VkDevice device;
     const VkQueue present;
-    ChangeState<Configure,Configures> *copy;
+    ChangeState<Configure,Configures> *change;
     uint32_t imageIndex;
     ResrcLoc imageLoc;
     VkFramebuffer framebuffer;
@@ -1957,7 +1960,7 @@ struct ChainState : public BaseState {
         BaseState("ChainState",StackState::self),
         device(StackState::device),
         present(StackState::present),
-        copy(StackState::copy) {}
+        change(StackState::change) {}
     ~ChainState() {
         reset(SmartState());
     }
@@ -1981,13 +1984,13 @@ struct ChainState : public BaseState {
         res(SwapRes)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
         imageLoc = (ResrcLoc)imageIndex;
         if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) copy->wots(RegisterMask,1<<SizeMsk);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
         framebuffer = res(SwapRes)->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
         VkSemaphore before = sem(lst(loc,(ResrcLoc)(imageIndex%(uint32_t)ResrcLocs)));
         if (!presentFrame(present,res(SwapRes)->getSwapChain(),imageIndex,before))
-        copy->wots(RegisterMask,1<<SizeMsk);}
+        change->wots(RegisterMask,1<<SizeMsk);}
         return VK_NULL_HANDLE;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2001,7 +2004,6 @@ struct DrawState : public BaseState {
     const VkQueue graphics;
     const VkCommandPool commandPool;
     const int frames;
-    ChangeState<Configure,Configures> *copy;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorLayout;
     VkDescriptorSet descriptorSet;
@@ -2011,8 +2013,7 @@ struct DrawState : public BaseState {
         device(StackState::device),
         graphics(StackState::graphics),
         commandPool(StackState::commandPool),
-        frames(StackState::frames),
-        copy(StackState::copy) {
+        frames(StackState::frames) {
         for (int i = 0; i < ResrcLocs; i++) sem(get((ResrcLoc)i)) = createSemaphore(device);
     }
     ~DrawState() {
@@ -2125,6 +2126,7 @@ struct MainState {
     ArrayState<BindState,BindRes,StackState::frames> bindState;
     ThreadState threadState;
     CopyState copyState;
+    ChangeState<Configure,Configures> changeState;
     CallState callState;
     MainState() :
         enumState{
@@ -2212,7 +2214,7 @@ struct MainState {
         logicalState(physicalState.device,physicalState.graphicsFamily,
             physicalState.presentFamily,vulkanState.validationLayers,
             physicalState.deviceExtensions),
-        swapState(&copyState,
+        swapState(&changeState,
             windowState.window,vulkanState.surface,physicalState.device,
             physicalState.surfaceFormat,physicalState.presentMode,
             physicalState.graphicsFamily,physicalState.presentFamily,
@@ -2224,8 +2226,8 @@ struct MainState {
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-        threadState(logicalState.device,&copyState),
-        copyState(&threadState,enumState,constState) {
+        threadState(logicalState.device,&changeState),
+        copyState(&changeState,&threadState,enumState,constState) {
         std::cout << "MainState" << std::endl;
     }
     ~MainState() {
@@ -2245,7 +2247,7 @@ void vulkanCopy(Center *ptr, int sub, Fnc fnc, int ary, const char *dbg) {
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {
-    mptr->copyState.call(cfg,back);
+    mptr->changeState.call(cfg,back);
 }
 // add thread
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftype wake) {
@@ -2253,13 +2255,13 @@ void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftyp
 }
 // register access
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
-    return mptr->copyState.info(cfg,val,fnc);
+    return mptr->changeState.info(cfg,val,fnc);
 }
 int vulkanJnfo(Configure cfg, int val, yftype fnc) {
-    return mptr->copyState.jnfo(cfg,val,fnc);
+    return mptr->changeState.jnfo(cfg,val,fnc);
 }
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
-    return mptr->copyState.knfo(cfg,val,fnc);
+    return mptr->changeState.knfo(cfg,val,fnc);
 }
 // builtin callback
 void vulkanBack(Configure cfg, int sav, int val, int act) {
@@ -2273,7 +2275,7 @@ const char *vulkanCmnd(int req) {
     return cfg[req];
 }
 void vulkanGlfw() {
-    glfwWaitEventsTimeout(mptr->copyState.read(RegisterPoll)*0.001);
+    glfwWaitEventsTimeout(mptr->changeState.read(RegisterPoll)*0.001);
 }
 // c debug
 void vulkanExit() {
@@ -2303,21 +2305,21 @@ int main(int argc, const char **argv) {
     slog.onof(0,10000,123,5);
     MainState main;
     mptr = &main;
-    main.copyState.write(ConstantFrames,StackState::frames);
-    main.copyState.write(ConstantImages,StackState::images);
-    main.copyState.write(ConstantComnds,StackState::instrs);
-    main.copyState.call(RegisterOpen,vulkanBack);
-    main.copyState.call(RegisterWake,vulkanBack);
+    main.changeState.write(ConstantFrames,StackState::frames);
+    main.changeState.write(ConstantImages,StackState::images);
+    main.changeState.write(ConstantComnds,StackState::instrs);
+    main.changeState.call(RegisterOpen,vulkanBack);
+    main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
     // TODO move glfw functions to WindowState
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
-    if (main.copyState.read(RegisterPoll) == 0) glfwWaitEvents();
-    else glfwWaitEventsTimeout(main.copyState.read(RegisterPoll)*0.001);}
+    if (main.changeState.read(RegisterPoll) == 0) glfwWaitEvents();
+    else glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);}
     planeDone();
-    int ret = main.copyState.read(RegisterExit);
+    int ret = main.changeState.read(RegisterExit);
     return (ret > 0 ? ret-1 : ret);
 }
 
