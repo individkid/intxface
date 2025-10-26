@@ -378,9 +378,9 @@ template <int Size, int Dim> struct SimpleState {
         if ((*i).first >= size) size = (*i).first+1;
         for (int i = size; i < siz; i++) pool.push_back(i);
     }
-    void set(int *key, int lim) {
+    void set(int *key, int min) {
         Only tmp = get(key);
-        keymin[tmp] = lim;
+        keymin[tmp] = min;
     }
     void remove(int idx) {
         auto itr = keyval.find(idx);

@@ -712,6 +712,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait();
         switch (ins) {default: {std::cerr << "invalid tst instruction" << std::endl; EXIT}
         break; case (STstIns): tag.set(idx);
+        break; case (TTstIns): tag.set(qual,idx);
         break; case (RTstIns): tag.remove(idx);
         break; case (ITstIns): tst = tag.insert(qual);
         break; case (OTstIns): tst = tag.oldbuf(qual);

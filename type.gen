@@ -177,7 +177,8 @@ Instr = {
 	"RIncIns", -- include instructions from Resrc
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
-	"STstIns", -- number of resources
+	"STstIns", -- void set(int siz);
+	"TTstIns", -- void set(int *key, int min);
 	"RTstIns", -- void remove(int idx);
 	"ITstIns", -- int insert(int *key);
 	"OTstIns", -- int oldbuf(int *key);
