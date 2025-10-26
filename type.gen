@@ -1035,7 +1035,6 @@ Draw = {
 DerIns = {
 	{"loc","ResrcLoc",{},{}},
 	{"res","Resrc",{},{}},	
-	{"con","Con",{},{}}, -- delete once RuseQua value available in BaseState
 	{"req","Req",{},{}},
 	{"rsp","Rsp",{},{}},
 	{"idx","Int",{},{}},

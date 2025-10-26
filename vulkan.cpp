@@ -423,7 +423,7 @@ struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
 };
 struct Loc {
-    ResrcLoc loc; SizeState max; Con con; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
+    ResrcLoc loc; SizeState max; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -458,7 +458,7 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Con con, Req req, Rsp rsp, ConstState *ary, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Req req, Rsp rsp, ConstState *ary, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -471,7 +471,6 @@ struct BaseState {
         lock = ptr;
         ploc[loc].req = req;
         ploc[loc].rsp = rsp;
-        ploc[loc].con = con;
         ploc[loc].loc = loc;
         ploc[loc].ary = ary;
         return true;
@@ -609,7 +608,6 @@ struct BaseState {
     static int &siz(Loc &loc) {return loc.req.siz;}
     static SizeState &max(Loc &loc) {return loc.max;}
     static Extent &ext(Loc &loc) {return loc.max.tag;}
-    static Memory mem(Loc &loc) {return (loc.con.tag == MemoryCon ? loc.con.mem : Memorys);} // TODO delete this when tag() works
     static ConstState *ary(Loc &loc) {return loc.ary;}
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
@@ -806,9 +804,9 @@ struct BindState : public BaseState {
         if (bind[i] == 0) EXIT
         return bind[i];
     }
-    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Con con, Req req, Rsp rsp, ConstState *ary, SmartState log) {
+    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Req req, Rsp rsp, ConstState *ary, SmartState log) {
         if (!excl) EXIT
-        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,con,req,rsp,ary,log)) return false;
+        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,req,rsp,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (bind[i] == 0) lock += 1;
         if (bind[i] != 0 && bind[i] != buf) EXIT
@@ -1084,8 +1082,8 @@ struct CopyState : public ChangeState<Configure,Configures> {
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(IDerIns):
             ins[i].der.req.pre = (ins[i].ins == PDerIns && final[res] == i);
-            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].der.con,ins[i].der.req,ins[i].der.rsp,array,log)) lim = i;}
-            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].der.con,ins[i].der.req,ins[i].der.rsp,array,log)) lim = i;}
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].der.req,ins[i].der.rsp,array,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].der.req,ins[i].der.rsp,array,log)) lim = i;}
             break; case(RDeeIns):
             if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(IDeeIns):
@@ -1253,24 +1251,14 @@ struct CopyState : public ChangeState<Configure,Configures> {
         }
         return req;
     }
-    static Con constant(Micro typ, SmartState log) {
-        return Con{.tag = MicroCon, .mic = typ};
-    }
-    static Con constant(Memory typ, SmartState log) {
-        return Con{.tag = MemoryCon, .mem = typ};
-    }
-    static Con constant(Resrc typ, SmartState log) {
-        return Con{.tag = ResrcCon, .res = typ};
-    }
     template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
         int pre = (ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
-        Con con = constant(typ,log); // TODO remove once RuseQua is being used
         Req req = request(dot[i].fmt,val,arg,siz,idx,log);
         Rsp rsp = response(dot,i,count,log);
-        return Ins{.ins=ins,.der=DerIns{dot[i].loc,dot[i].res,con,req,rsp,pre}};}
+        return Ins{.ins=ins,.der=DerIns{dot[i].loc,dot[i].res,req,rsp,pre}};}
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): {
         int pre = (ins==IDeeIns?get(arg,siz,idx,log,"IDeeIns.idx"):0);
         return Ins{.ins=ins,.dee=DeeIns{dot[i].res,pre}};}
@@ -1851,8 +1839,8 @@ struct ImageState : public BaseState {
         is = tw * th * 4;
         pie = 0; x = 0; y = 0; w = tw; h = th;
         if (idx(loc) != 0) EXIT
-        // log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
-        if (mem(loc)/*TODO tag(RuseQua)*/ == Pokez || mem(loc) == Peekz) {
+        log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
+        if (tag(RuseQua) == Pokez || tag(RuseQua) == Peekz) {
         pie = (Pierce*)ptr(loc); x = tw; y = th; w = 0; h = 0;
         if (siz(loc) == 0) {x = 0; y = 0;}
         for (int i = 0; i < siz(loc); i++) {
@@ -1863,7 +1851,7 @@ struct ImageState : public BaseState {
         w = w-x+1; h = h-y+1;}
         if (x < 0 || w < 0 || x + w > tw) EXIT
         if (y < 0 || h < 0 || y + h > th) EXIT
-        if (mem(loc) == Imagez && siz(loc) != is) EXIT
+        if (tag(RuseQua) == Imagez && siz(loc) != is) EXIT
         // log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << '\n';
     }
     void resize(Loc &loc, SmartState log) override {
@@ -1917,7 +1905,7 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        Resrc rsc = ImageRes; if (mem(loc) != Imagez) rsc = DebugRes;
+        Resrc rsc = ImageRes; if (tag(RuseQua) != Imagez) rsc = DebugRes;
         VkFormat forms = PhysicalState::vulkanFormat(res());
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
@@ -1932,18 +1920,18 @@ struct ImageState : public BaseState {
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
-        createBuffer(device, physical, imageSize, (mem(loc) == Peekz ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; if (mem(loc) == Imagez || mem(loc) == Pokez) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
-        if (mem(loc) == Imagez) memcpy(data, ptr(loc), siz(loc));
-        if (mem(loc) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
+        createBuffer(device, physical, imageSize, (tag(RuseQua) == Peekz ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
+        void* data; if (tag(RuseQua) == Imagez || tag(RuseQua) == Pokez) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
+        if (tag(RuseQua) == Imagez) memcpy(data, ptr(loc), siz(loc));
+        if (tag(RuseQua) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, mem(loc) == Peekz);}
+        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << " location:" << *loc << '\n';
         if (*loc == MiddleLoc) {
-        if (mem(loc) == Peekz) {
+        if (tag(RuseQua) == Peekz) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
