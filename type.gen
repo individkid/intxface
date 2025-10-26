@@ -168,6 +168,7 @@ Instr = {
 	"RDeeIns", -- increment read lock in current
 	"IDeeIns", -- increment read lock in indexed
 	"WDeeIns", -- increment write lock in current
+	"STagIns", -- prevent resource starvation
 	"RTagIns", -- read Quality value from Resrc array
 	"WTagIns", -- write Quality value to Resrc array
 	"ATagIns", -- read next Quality value
@@ -178,7 +179,6 @@ Instr = {
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
 	"STstIns", -- void set(int siz);
-	"TTstIns", -- void set(int *key, int min);
 	"RTstIns", -- void remove(int idx);
 	"ITstIns", -- int insert(int *key);
 	"OTstIns", -- int oldbuf(int *key);
