@@ -418,6 +418,14 @@ template <int Size, int Dim> struct SimpleState {
         if (oldest.find(tmp) == oldest.end()) insert(key);
         return oldest[tmp];
     }
+    int getbuf(int *key) {
+        if (pool.empty()) return oldbuf(key);
+        int idx = insert(key);
+        Only tmp = get(key);
+        for (Indx i = oldest[tmp]; i != idx; i = oldest[tmp]) {
+        remove(i); insert(key);}
+        return idx;
+    }
     int newbuf(int *key) {
         Only tmp = get(key);
         if (newest.find(tmp) == newest.end()) insert(key);

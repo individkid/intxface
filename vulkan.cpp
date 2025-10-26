@@ -462,7 +462,7 @@ struct BaseState {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
-        log << "push fail " << debug << '\n';
+        log << "push fail" << " plock-pdec:" << plock-pdec << " rlock-rdec:" << rlock-rdec << " wlock-wdec:" << wlock-wdec << " " << debug << '\n';
         safe.post(); return false;}
         log << "push pass " << debug << " loc:" << loc << '\n';
         plock += 1;
@@ -729,21 +729,22 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.post();
     }
     BaseState *buffer() override { // buffer of newest, with current tags
-       safe.wait(); BaseState *ptr = &state[idx/*tag.newbuf(qual)*/]; safe.post(); return ptr;
+        safe.wait(); BaseState *ptr = &state[tag.newbuf(qual)]; safe.post(); return ptr;
     }
     BaseState *prebuf() override { // buffer of oldest, with current tags
-       safe.wait(); BaseState *ptr = &state[(idx+1)%Size/*tag.oldbuf(qual)*/]; safe.post(); return ptr;
+        // TODO insert if pool not empty; think of pool as older than oldest
+        safe.wait(); BaseState *ptr = &state[tag.getbuf(qual)]; safe.post(); return ptr;
     }
     BaseState *prebuf(int i) override { // buffer of particular
         if (i < 0 || i >= Size) EXIT
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;
     }
     void advance() override { // make oldest into newest, with current tags
-       safe.wait(); idx = (idx+1)%Size/*tag.oldbuf(qual)*/; /*tag.remove(idx); assert(tag.insert(qual)==idx);*/ safe.post();
+        safe.wait(); int i = tag.oldbuf(qual); tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
     }
     void advance(int i) override { // remove and insert particular as newest, with current tags
         if (i < 0 || i >= Size) EXIT
-        safe.wait(); idx = i; /*tag.remove(idx); assert(tag.insert(qual)==idx);*/ safe.post();
+        safe.wait(); tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
     }
     int buftag(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
