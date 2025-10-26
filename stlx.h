@@ -329,6 +329,7 @@ template <int Size, int Dim> struct SimpleState {
             return false;
         }
     };
+    typedef int Keys; // size per key
     typedef std::array<int,Dim> Only; // key value only
     struct OnlyLess {
         bool operator()(const Only &lhs, const Only &rhs) const {
@@ -347,6 +348,8 @@ template <int Size, int Dim> struct SimpleState {
     std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
     std::map<Wseq,Indx,WseqLess> ording; // to find next in sparse ording
     std::map<Indx,Only,IndxLess> keyval; // which list index is in
+    std::map<Only,Keys,OnlyLess> keysiz; // how many index in list
+    std::map<Only,Keys,OnlyLess> keymin; // limit to index in list
     std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
     std::map<Seqn,Indx,SeqnLess> global; // sparse ordering in all lists
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
@@ -375,6 +378,10 @@ template <int Size, int Dim> struct SimpleState {
         if ((*i).first >= size) size = (*i).first+1;
         for (int i = size; i < siz; i++) pool.push_back(i);
     }
+    void set(int *key, int lim) {
+        Only tmp = get(key);
+        keymin[tmp] = lim;
+    }
     void remove(int idx) {
         auto itr = keyval.find(idx);
         if (itr == keyval.end()) return;
@@ -393,12 +400,13 @@ template <int Size, int Dim> struct SimpleState {
         // std::cerr << "remove idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording.erase(seq);
         keyval.erase(idx);
+        keysiz[tmp] -= 1;
+        if (keysiz[tmp] == 0) keysiz.erase(tmp);
         seqnum.erase(idx);
         global.erase(num);
         pool.push_front(idx);
     }
-    int insert(int *key) { // create a new newest
-        Only tmp = get(key);
+    int insert(Only &tmp) { // create a new newest
         if (pool.empty() && !oldest.empty()) remove(oldest[tmp]);
         else if (pool.empty()) remove((*global.lower_bound((seqn+wrap)%wrap)).second);
         Indx idx = pool.front(); pool.pop_front();
@@ -407,34 +415,61 @@ template <int Size, int Dim> struct SimpleState {
         // std::cerr << "insert idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
+        if (keysiz.find(tmp) == keysiz.end()) keysiz[tmp] = 1;
+        else keysiz[tmp] += 1;
         seqnum[idx] = seqn;
         global[seqn] = idx;
         seqn = (seqn+1)%wrap;
         return idx;
     }
-    int oldbuf(int *key) {
-        Only tmp = get(key);
+    int oldbuf(Only &tmp) {
         // std::cerr << "oldbuf"; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
-        if (oldest.find(tmp) == oldest.end()) insert(key);
+        if (oldest.find(tmp) == oldest.end()) insert(tmp);
         return oldest[tmp];
     }
-    int getbuf(int *key) {
-        if (pool.empty()) return oldbuf(key);
-        int idx = insert(key);
-        Only tmp = get(key);
+    int getbuf(Only &tmp, int min) {
+        while ((keysiz.find(tmp) == keysiz.end() && min > 0) || keysiz[tmp] < min) insert(tmp);
+        return oldbuf(tmp);
+    }
+    int getbuf(Only &tmp) {
+        if (keymin.find(tmp) != keymin.end()) return getbuf(tmp,keymin[tmp]);
+        if (pool.empty()) return oldbuf(tmp);
+        int idx = insert(tmp);
         for (Indx i = oldest[tmp]; i != idx; i = oldest[tmp]) {
-        remove(i); insert(key);}
-        return idx;
+        remove(i); insert(tmp);}
+        return oldest[tmp];
+    }
+    int newbuf(Only &tmp) {
+        if (newest.find(tmp) == newest.end()) insert(tmp);
+        return newest[tmp];
+    }
+    void idxbuf(Only &tmp, int idx) {
+        while (keyval.find(idx) == keyval.end()) insert(tmp);
+        if (tmp != keyval(idx)) {remove(idx); insert(tmp);}
+    }
+    int insert(int *key) {
+        Only tmp = get(key);
+        return insert(tmp);
+    }
+    int oldbuf(int *key) {
+        Only tmp = get(key);
+        return oldbuf(tmp);
+    }
+    int getbuf(int *key, int min) {
+        Only tmp = get(key);
+        return getbuf(tmp,min);
+    }
+    int getbuf(int *key) {
+        Only tmp = get(key);
+        return getbuf(tmp);
     }
     int newbuf(int *key) {
         Only tmp = get(key);
-        if (newest.find(tmp) == newest.end()) insert(key);
-        return newest[tmp];
+        return newbuf(tmp);
     }
     void idxbuf(int *key, int idx) {
         Only tmp = get(key);
-        while (keyval.find(idx) == keyval.end()) insert(key);
-        if (tmp != keyval(idx)) {remove(idx); insert(key);}
+        idxbuf(tmp,idx);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}
