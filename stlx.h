@@ -314,6 +314,12 @@ template <class Type> struct HeapState {
 };
 
 template <int Size, int Dim> struct SimpleState {
+    enum Prior {
+        PoolPri,
+        QualPri,
+        GlobPri,
+        Priors,
+    };
     typedef int Indx; // interface identifier
     struct IndxLess {
         bool operator()(const Indx &lhs, const Indx &rhs) const {
@@ -406,10 +412,7 @@ template <int Size, int Dim> struct SimpleState {
         global.erase(num);
         pool.push_front(idx);
     }
-    int insert(Only &tmp) { // create a new newest
-        if (pool.empty() && !oldest.empty()) remove(oldest[tmp]);
-        else if (pool.empty()) remove((*global.lower_bound((seqn+wrap)%wrap)).second);
-        Indx idx = pool.front(); pool.pop_front();
+    void insert(Only &tmp, int idx) {
         if (oldest.find(tmp) == oldest.end()) oldest[tmp] = idx;
         newest[tmp] = idx;
         // std::cerr << "insert idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
@@ -420,7 +423,29 @@ template <int Size, int Dim> struct SimpleState {
         seqnum[idx] = seqn;
         global[seqn] = idx;
         seqn = (seqn+1)%wrap;
+    }
+    int insert(Only &tmp, Prior pri[Priors]) {
+        Indx idx = -1;
+        for (int i = 0; i < Priors && idx < 0; i++) switch (pri[i]) {
+        default: std::cerr << "oops" << std::endl; exit(-1);
+        break; case (PoolPri): if (!pool.empty()) {
+        idx = pool.front(); pool.pop_front();}
+        break; case (QualPri): if (!oldest.empty()) {
+        remove(oldest[tmp]); idx = pool.front(); pool.pop_front();}
+        break; case (GlobPri): {
+        auto itr = global.lower_bound((seqn+wrap)%wrap);
+        if (itr != global.end()) {remove((*itr).second);
+        idx = pool.front(); pool.pop_front();}}}
+        if (idx >= 0) insert(tmp,idx);
         return idx;
+    }
+    int insert(Only &tmp) {
+        Prior pri[Priors] = {PoolPri,QualPri,GlobPri};
+        return insert(tmp,pri);
+    }
+    int insbuf(Only &tmp) {
+        Prior pri[Priors] = {PoolPri,Priors,Priors};
+        return insert(tmp,pri);
     }
     int oldbuf(Only &tmp) {
         // std::cerr << "oldbuf"; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
@@ -428,7 +453,8 @@ template <int Size, int Dim> struct SimpleState {
         return oldest[tmp];
     }
     int getbuf(Only &tmp, int min) {
-        while ((keysiz.find(tmp) == keysiz.end() && min > 0) || keysiz[tmp] < min) insert(tmp);
+        while ((keysiz.find(tmp) == keysiz.end() && min > 0) || keysiz[tmp] < min)
+        if (insbuf(tmp) < 0) break;
         return oldbuf(tmp);
     }
     int getbuf(Only &tmp) {
