@@ -335,51 +335,64 @@ template <int Size, int Dim> struct SimpleState {
             return false;
         }
     };
-    typedef int Keys; // size per key
     typedef std::array<int,Dim> Only; // key value only
     struct OnlyLess {
         bool operator()(const Only &lhs, const Only &rhs) const {
-            for (int i = 0; i < Dim; i++) if (lhs < rhs) return true;
+            for (int i = 0; i < Dim; i++) if (lhs[i] < rhs[i]) return true;
             return false;
         }
     };
     typedef std::array<int,Dim+1> Wseq; // with sequence number
     struct WseqLess {
         bool operator()(const Wseq &lhs, const Wseq &rhs) const {
-            for (int i = 0; i < Dim; i++) if (lhs < rhs) return true;
-            for (int i = 0; i < Dim; i++) if (lhs > rhs) return false;
+            for (int i = 0; i < Dim; i++) if (lhs[i] < rhs[i]) return true;
+            for (int i = 0; i < Dim; i++) if (lhs[i] > rhs[i]) return false;
             return SeqnLess()(lhs[Dim],rhs[Dim]);
+        }
+    };
+    typedef std::array<int,Dim+1> Wsiz; // with list size
+    struct WsizLess {
+        bool operator()(const Wsiz &lhs, const Wsiz &rhs) const {
+            if (lhs[Dim] < rhs[Dim]) return true;
+            if (lhs[Dim] > rhs[Dim]) return false;
+            return (lhs < rhs);
         }
     };
     std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
     std::map<Wseq,Indx,WseqLess> ording; // to find next in sparse ording
     std::map<Indx,Only,IndxLess> keyval; // which list index is in
     std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
+    std::map<Only,int,OnlyLess> keysiz; // number in list
+    std::set<Wsiz,WsizLess> keyord; // ordered by number
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
-    SimpleState() : seqn(0) {
-        for (int i = 0; i < Size; i++) pool.push_back(i);
+    Indx size;
+    SimpleState() : seqn(0), size(Size) {
+        for (int i = 0; i < size; i++) pool.push_back(i);
     }
     Only get(int *key) {
         Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; return tmp;
     }
-    Wseq get(Only key, int num) {
+    Wseq get(const Only &key, int num) {
         Wseq tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; tmp[Dim] = num; return tmp;
+    }
+    Only get(const Wsiz &ord) {
+        Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = ord[i]; return tmp;
     }
     void set(int siz) {
         // remove any Indx not less than siz
-        for (int i = Size-1; i >= siz; i--) remove(i);
+        for (int i = size-1; i >= siz; i--) remove(i); size = siz;
         std::deque<Indx> temp;
         for (auto i = pool.begin(); i != pool.end(); i++)
-        if (*i < siz) temp.push_back(*i);
+        if (*i < size) temp.push_back(*i);
         pool = temp;
         // add to pool to increase to siz
-        Indx size = 0;
+        Indx max = 0;
         for (auto i = pool.begin(); i != pool.end(); i++)
-        if (*i >= size) size = *i+1;
+        if (*i >= max) max = *i+1;
         for (auto i = keyval.begin(); i != keyval.end(); i++)
-        if ((*i).first >= size) size = (*i).first+1;
-        for (int i = size; i < siz; i++) pool.push_back(i);
+        if ((*i).first >= max) max = (*i).first+1;
+        for (int i = max; i < siz; i++) pool.push_back(i);
     }
     void remove(int idx) {
         auto itr = keyval.find(idx);
@@ -400,6 +413,8 @@ template <int Size, int Dim> struct SimpleState {
         ording.erase(seq);
         keyval.erase(idx);
         seqnum.erase(idx);
+        if (keysiz[tmp] == 1) {keyord.erase(get(tmp,1)); keysiz.erase(tmp);}
+        else {keyord.erase(get(tmp,keysiz[tmp])); keysiz[tmp] -= 1; keyord.insert(get(tmp,keysiz[tmp]));}
         pool.push_front(idx);
     }
     void insert(Only &tmp, int idx) {
@@ -409,12 +424,13 @@ template <int Size, int Dim> struct SimpleState {
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
         seqnum[idx] = seqn;
+        if (keysiz.find(tmp) == keysiz.end()) {keysiz[tmp] = 1; keyord.insert(get(tmp,1));}
+        else {keyord.erase(get(tmp,keysiz[tmp])); keysiz[tmp] += 1; keyord.insert(get(tmp,keysiz[tmp]));}
         seqn = (seqn+1)%wrap;
     }
     int insert(Only &tmp) {
-        // TODO instead of global, keep track of number and size of each Only
-        // TODO only search use pool or the other with the most if size*number<multiple
-        if (pool.empty()) remove(oldest[tmp]);
+        if (keysiz.find(tmp) != keysiz.end() && keysiz[tmp] >= size/keysiz.size()) remove(oldest[tmp]);
+        else if (pool.empty()) remove(oldest[get(*keyord.rbegin())]);;
         Indx idx = pool.front(); pool.pop_front();
         insert(tmp,idx);
         return idx;
@@ -425,8 +441,7 @@ template <int Size, int Dim> struct SimpleState {
         return oldest[tmp];
     }
     int getbuf(Only &tmp) {
-        // TODO insert while size*number<multiple
-        while (!pool.empty()) insert(tmp);
+        while (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < size/keysiz.size()) insert(tmp);
         return oldest[tmp];
     }
     int newbuf(Only &tmp) {
