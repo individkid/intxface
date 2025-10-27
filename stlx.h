@@ -426,8 +426,8 @@ template <int Size, int Dim> struct SimpleState {
     }
     int insert(Only &tmp, Prior pri[Priors]) {
         Indx idx = -1;
-        for (int i = 0; i < Priors && idx < 0; i++) switch (pri[i]) {
-        default: std::cerr << "oops" << std::endl; exit(-1);
+        for (int i = 0; i < Priors && idx < 0; i++)
+        switch (pri[i]) {default:
         break; case (PoolPri): if (!pool.empty()) {
         idx = pool.front(); pool.pop_front();}
         break; case (QualPri): if (!oldest.empty()) {
@@ -443,26 +443,19 @@ template <int Size, int Dim> struct SimpleState {
         Prior pri[Priors] = {PoolPri,QualPri,GlobPri};
         return insert(tmp,pri);
     }
-    int insbuf(Only &tmp) {
-        Prior pri[Priors] = {PoolPri,Priors,Priors};
-        return insert(tmp,pri);
-    }
     int oldbuf(Only &tmp) {
         // std::cerr << "oldbuf"; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         if (oldest.find(tmp) == oldest.end()) insert(tmp);
         return oldest[tmp];
     }
-    int getbuf(Only &tmp, int min) {
-        while ((keysiz.find(tmp) == keysiz.end() && min > 0) || keysiz[tmp] < min)
-        if (insbuf(tmp) < 0) break;
-        return oldbuf(tmp);
-    }
     int getbuf(Only &tmp) {
-        if (keymin.find(tmp) != keymin.end()) return getbuf(tmp,keymin[tmp]);
-        if (pool.empty()) return oldbuf(tmp);
-        int idx = insert(tmp);
-        for (Indx i = oldest[tmp]; i != idx; i = oldest[tmp]) {
-        remove(i); insert(tmp);}
+        Keys min = pool.size();
+        Keys num = min;
+        if (keymin.find(tmp) != keymin.end()) num = keymin[tmp];
+        if (num < min) min = num;
+        Keys siz = 0;
+        if (keysiz.find(tmp) != keysiz.end()) siz = keysiz[tmp];
+        for (int i = siz; i < min; i++) insert(tmp);
         return oldest[tmp];
     }
     int newbuf(Only &tmp) {
@@ -480,10 +473,6 @@ template <int Size, int Dim> struct SimpleState {
     int oldbuf(int *key) {
         Only tmp = get(key);
         return oldbuf(tmp);
-    }
-    int getbuf(int *key, int min) {
-        Only tmp = get(key);
-        return getbuf(tmp,min);
     }
     int getbuf(int *key) {
         Only tmp = get(key);
