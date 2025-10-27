@@ -700,7 +700,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         std::cerr << "qualify ins:" << st0 << " tag:" << st1 << " val:" << val << std::endl;
         free(st0); free(st1);}
         switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
-        break; case (STagIns): this->tag.set(qual,idx);
         break; case (RTagIns): acu[tag] = qual[tag];
         break; case (WTagIns): qual[tag] = acu[tag];
         break; case (ATagIns): acu[tag] += val;

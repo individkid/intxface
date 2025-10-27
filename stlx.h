@@ -354,10 +354,7 @@ template <int Size, int Dim> struct SimpleState {
     std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
     std::map<Wseq,Indx,WseqLess> ording; // to find next in sparse ording
     std::map<Indx,Only,IndxLess> keyval; // which list index is in
-    std::map<Only,Keys,OnlyLess> keysiz; // how many index in list
-    std::map<Only,Keys,OnlyLess> keymin; // limit to index in list
     std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
-    std::map<Seqn,Indx,SeqnLess> global; // sparse ordering in all lists
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
     SimpleState() : seqn(0) {
@@ -384,10 +381,6 @@ template <int Size, int Dim> struct SimpleState {
         if ((*i).first >= size) size = (*i).first+1;
         for (int i = size; i < siz; i++) pool.push_back(i);
     }
-    void set(int *key, int min) {
-        Only tmp = get(key);
-        keymin[tmp] = min;
-    }
     void remove(int idx) {
         auto itr = keyval.find(idx);
         if (itr == keyval.end()) return;
@@ -406,10 +399,7 @@ template <int Size, int Dim> struct SimpleState {
         // std::cerr << "remove idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording.erase(seq);
         keyval.erase(idx);
-        keysiz[tmp] -= 1;
-        if (keysiz[tmp] == 0) keysiz.erase(tmp);
         seqnum.erase(idx);
-        global.erase(num);
         pool.push_front(idx);
     }
     void insert(Only &tmp, int idx) {
@@ -418,30 +408,16 @@ template <int Size, int Dim> struct SimpleState {
         // std::cerr << "insert idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
-        if (keysiz.find(tmp) == keysiz.end()) keysiz[tmp] = 1;
-        else keysiz[tmp] += 1;
         seqnum[idx] = seqn;
-        global[seqn] = idx;
         seqn = (seqn+1)%wrap;
     }
-    int insert(Only &tmp, Prior pri[Priors]) {
-        Indx idx = -1;
-        for (int i = 0; i < Priors && idx < 0; i++)
-        switch (pri[i]) {default:
-        break; case (PoolPri): if (!pool.empty()) {
-        idx = pool.front(); pool.pop_front();}
-        break; case (QualPri): if (!oldest.empty()) {
-        remove(oldest[tmp]); idx = pool.front(); pool.pop_front();}
-        break; case (GlobPri): {
-        auto itr = global.lower_bound((seqn+wrap)%wrap);
-        if (itr != global.end()) {remove((*itr).second);
-        idx = pool.front(); pool.pop_front();}}}
-        if (idx >= 0) insert(tmp,idx);
-        return idx;
-    }
     int insert(Only &tmp) {
-        Prior pri[Priors] = {PoolPri,QualPri,GlobPri};
-        return insert(tmp,pri);
+        // TODO instead of global, keep track of number and size of each Only
+        // TODO only search use pool or the other with the most if size*number<multiple
+        if (pool.empty()) remove(oldest[tmp]);
+        Indx idx = pool.front(); pool.pop_front();
+        insert(tmp,idx);
+        return idx;
     }
     int oldbuf(Only &tmp) {
         // std::cerr << "oldbuf"; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
@@ -449,13 +425,8 @@ template <int Size, int Dim> struct SimpleState {
         return oldest[tmp];
     }
     int getbuf(Only &tmp) {
-        Keys min = pool.size();
-        Keys num = min;
-        if (keymin.find(tmp) != keymin.end()) num = keymin[tmp];
-        if (num < min) min = num;
-        Keys siz = 0;
-        if (keysiz.find(tmp) != keysiz.end()) siz = keysiz[tmp];
-        for (int i = siz; i < min; i++) insert(tmp);
+        // TODO insert while size*number<multiple
+        while (!pool.empty()) insert(tmp);
         return oldest[tmp];
     }
     int newbuf(Only &tmp) {
