@@ -441,7 +441,10 @@ template <int Size, int Dim> struct SimpleState {
         return oldest[tmp];
     }
     int getbuf(Only &tmp) {
-        while (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < size/keysiz.size()) insert(tmp);
+        if (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < size/keysiz.size()) {
+        int idx = insert(tmp);
+        while (oldest[tmp] != idx) {
+        remove(oldest[tmp]); insert(tmp);}}
         return oldest[tmp];
     }
     int newbuf(Only &tmp) {
