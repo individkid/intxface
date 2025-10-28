@@ -396,7 +396,7 @@ template <int Size, int Dim> struct SimpleState {
     }
     void remove(int idx) {
         auto itr = keyval.find(idx);
-        if (itr == keyval.end()) return;
+        if (itr == keyval.end()) return; // TODO move idx to front of pool
         Only tmp = (*itr).second;
         Seqn num = seqnum[idx];
         Wseq seq = get(tmp,num);
@@ -409,7 +409,6 @@ template <int Size, int Dim> struct SimpleState {
         else if (newest[tmp] == idx) {
         Wseq seq = get(tmp,(num+wrap-1)%wrap);
         newest[tmp] = (*ording.upper_bound(seq)).second;}
-        // std::cerr << "remove idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording.erase(seq);
         keyval.erase(idx);
         seqnum.erase(idx);
@@ -420,7 +419,6 @@ template <int Size, int Dim> struct SimpleState {
     void insert(Only &tmp, int idx) {
         if (oldest.find(tmp) == oldest.end()) oldest[tmp] = idx;
         newest[tmp] = idx;
-        // std::cerr << "insert idx:" << idx << " old:" << oldest[tmp] << " new:" << newest[tmp]; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
         seqnum[idx] = seqn;
@@ -435,25 +433,20 @@ template <int Size, int Dim> struct SimpleState {
         insert(tmp,idx);
         return idx;
     }
-    int oldbuf(Only &tmp) {
-        // std::cerr << "oldbuf"; for (int i = 0; i < Dim; i++) std::cerr << " " << tmp[i]; std::cerr << std::endl;
+    int oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
         if (oldest.find(tmp) == oldest.end()) insert(tmp);
         return oldest[tmp];
     }
-    int getbuf(Only &tmp) {
+    int getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
         if (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < size/keysiz.size()) {
         int idx = insert(tmp);
         while (oldest[tmp] != idx) {
         remove(oldest[tmp]); insert(tmp);}}
         return oldest[tmp];
     }
-    int newbuf(Only &tmp) {
+    int newbuf(Only &tmp) { // used for depend, so returns result of last advance
         if (newest.find(tmp) == newest.end()) insert(tmp);
         return newest[tmp];
-    }
-    void idxbuf(Only &tmp, int idx) {
-        while (keyval.find(idx) == keyval.end()) insert(tmp);
-        if (tmp != keyval(idx)) {remove(idx); insert(tmp);}
     }
     int insert(int *key) {
         Only tmp = get(key);
@@ -470,10 +463,6 @@ template <int Size, int Dim> struct SimpleState {
     int newbuf(int *key) {
         Only tmp = get(key);
         return newbuf(tmp);
-    }
-    void idxbuf(int *key, int idx) {
-        Only tmp = get(key);
-        idxbuf(tmp,idx);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}
