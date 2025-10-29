@@ -1268,7 +1268,7 @@ struct CopyState {
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
         break; case (TDerIns): {
-        int pre = get(arg,siz,idx,log,"TDerIns.val"); // punted here because other tag values punted
+        int pre = get(arg,siz,idx,log,"TDerIns.val");
         ReqInst req = request(dot[i].fmt,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.der=DerInst{dot[i].loc,dot[i].res,0,dot[i].tag,pre}};}
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
@@ -1280,8 +1280,9 @@ struct CopyState {
         return Inst{.ins=ins,.dee=DeeInst{dot[i].res,pre}};}
         break; case (RTagIns): case (WTagIns):
         return Inst{.ins=ins,.tag=TagInst{dot[i].res,dot[i].tag,-1}};
-        break; case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
-        return Inst{.ins=ins,.tag=TagInst{dot[i].res,dot[i].tag,get(arg,siz,idx,log,"TagInst.val")}};
+        break; case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns): {
+        int pre = get(arg,siz,idx,log,"TagInst.val");
+        return Inst{.ins=ins,.tag=TagInst{dot[i].res,dot[i].tag,pre}};}
         break; case (ITstIns): case (OTstIns): case (NTstIns):
         return Inst{.ins=ins,.tst=TstInst{dot[i].res,-1}};
         break; case (RTstIns): case (GTstIns): case (VTstIns): case (WTstIns):
