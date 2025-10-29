@@ -216,6 +216,7 @@ struct StackState {
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
     virtual void advance() = 0;
+    virtual void advance(Quality tag, int val) = 0;
     virtual void advance(int i) = 0;
     virtual int buftag(int i, Quality t) = 0;
     virtual Resrc buftyp() = 0;
@@ -422,8 +423,15 @@ struct BaseState;
 struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
 };
+struct Rsp {
+    int pre; // when to advance
+    int idx; // offset into bind->rsp
+    int siz; // number to unreserve of bind->rsp
+    Quality tag; // which to change upon advance
+    int val; // what to change to upon advance
+};
 struct Loc {
-    ResrcLoc loc; SizeState max; Req req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
+    ResrcLoc loc; SizeState max; ReqInst req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -458,7 +466,7 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Req req, Rsp rsp, ConstState *ary, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -737,6 +745,9 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void advance() override { // make oldest into newest, with current tags
         safe.wait(); int i = tag.oldbuf(qual); tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
     }
+    void advance(Quality idx, int val) override { // make oldest into newest with changed tag val
+        safe.wait(); int i = tag.oldbuf(qual); tag.remove(i); qual[idx] = val; if (tag.insert(qual)!=i) EXIT safe.post();
+    }
     void advance(int i) override { // remove and insert particular as newest, with current tags
         if (i < 0 || i >= Size) EXIT
         safe.wait(); tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
@@ -779,7 +790,7 @@ struct BindState : public BaseState {
     int rsav[Resrcs];
     int wsav[Resrcs];
     int lock; bool excl;
-    HeapState<Ins> rsp;
+    HeapState<Inst> rsp;
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0),
@@ -801,7 +812,7 @@ struct BindState : public BaseState {
         if (bind[i] == 0) EXIT
         return bind[i];
     }
-    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Req req, Rsp rsp, ConstState *ary, SmartState log) {
+    bool push(Resrc i, BaseState *buf, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
         if (!excl) EXIT
         if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,req,rsp,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
@@ -811,7 +822,7 @@ struct BindState : public BaseState {
         psav[i] += 1;
         return true;
     }
-    void push(Ins ins, SmartState log) {
+    void push(Inst ins, SmartState log) {
         if (!excl) EXIT
         rsp<<ins;
     }
@@ -883,8 +894,8 @@ BaseState *BaseState::res(Resrc typ) {
 }
 void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
     if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
-    //TODO else if (loc.rsp.pre && loc.rsp.tag != Qualitys) item->advance(loc.rsp.tag,loc.rsp.val);
-    /*TODO else*/ if (loc.rsp.pre) item->advance();
+    if (loc.rsp.pre == 2) item->advance(loc.rsp.tag,loc.rsp.val);
+    else if (loc.rsp.pre == 1) item->advance();
 }
 
 struct Push {
@@ -1015,7 +1026,7 @@ struct CopyState {
         if (idx >= siz) {std::cerr << "not enough int arguments in struct Draw " << idx << ">=" << siz << std::endl; EXIT}
         return arg[idx++];
     }
-    Resrc get(Ins &ins) {
+    Resrc get(Inst &ins) {
         Resrc res = Resrcs;
         switch (ins.ins) {default:
         break; case (QDerIns): case (PDerIns): case (IDerIns): res = ins.der.res;
@@ -1027,7 +1038,7 @@ struct CopyState {
         break; case (GTstIns): case (VTstIns): case (WTstIns): res = ins.tst.res;}
         return res;
     }
-    void push(HeapState<Ins> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
+    void push(HeapState<Inst> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         BaseState *buffer[Resrcs] = {0};
         int first[Resrcs];
@@ -1039,9 +1050,9 @@ struct CopyState {
         int count = 0;
         for (int i = 0; i < num; i++) {
             Rsp tmp = {.pre=0,.idx=count,.siz=0,.tag=Qualitys,.val=0};
-            switch (ins[i].ins) {default:
-            break; case (QDerIns): case (PDerIns): case (IDerIns):
+            switch (ins[i].ins) {default: break; case (QDerIns): case (PDerIns): case (IDerIns):
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
+            break; case (TDerIns): tmp.tag = ins[j].der.tag; tmp.val = ins[j].der.val; j = num-1;
             break; case (QDerIns): case (IDerIns): case(PDerIns): j = num-1;
             break; case (RDeeIns): case (IDeeIns): case (WDeeIns): count += 1; tmp.siz += 1;}}
             rsp[i] = tmp;}
@@ -1053,11 +1064,11 @@ struct CopyState {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
-            log << "TagIns res:" << res << " ins:" << ins[i].ins << "(JTagIns:" << JTagIns << ")" << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
+            log << "TagInst res:" << res << " ins:" << ins[i].ins << "(JTagIns:" << JTagIns << ")" << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
             src(res)->qualify(ins[i].ins,ins[i].tag.tag,ins[i].tag.val,value);
             break; case (STstIns): case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
             case (GTstIns): case (VTstIns): case (WTstIns):
-            log << "TstIns res:" << res << " ins:" << ins[i].ins << " val:" << ins[i].tst.val << '\n';
+            log << "TstInst res:" << res << " ins:" << ins[i].ins << " val:" << ins[i].tst.val << '\n';
             src(res)->test(ins[i].ins,ins[i].tst.val,value);
             break; case(QDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
@@ -1093,9 +1104,10 @@ struct CopyState {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(IDerIns):
-            rsp[i].pre = (ins[i].ins == PDerIns && final[res] == i);
-            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].der.req,rsp[i],array,log)) lim = i;}
-            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].der.req,rsp[i],array,log)) lim = i;}
+            if (ins[i].ins == PDerIns && final[res] == i) rsp[i].pre = 1;
+            if (ins[i].ins == TDerIns && final[res] == i) rsp[i].pre = 2;
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].req,rsp[i],array,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].req,rsp[i],array,log)) lim = i;}
             break; case(RDeeIns):
             if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(IDeeIns):
@@ -1163,8 +1175,8 @@ struct CopyState {
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon && fnc.goon(ptr,sub)) {goon = true; log << "goon" << '\n';}}}
     }
-    static Req request(Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
-        Req req = {Requests,0,0,0,Extents,0,0};
+    static ReqInst request(Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
+        ReqInst req = {Requests,0,0,0,Extents,0,0};
         switch (frm) {default: EXIT
         // VK_IMAGE_LAYOUT_UNDEFINED(initial)
         // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL(texture,shadow)
@@ -1253,25 +1265,29 @@ struct CopyState {
         }
         return req;
     }
-    template <class Type> static Ins instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type> static Inst instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
+        break; case (TDerIns): {
+        int pre = get(arg,siz,idx,log,"TDerIns.val"); // punted here because other tag values punted
+        ReqInst req = request(dot[i].fmt,val,arg,siz,idx,log);
+        return Inst{.ins=ins,.req=req,.der=DerInst{dot[i].loc,dot[i].res,0,dot[i].tag,pre}};}
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
         int pre = (ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
-        Req req = request(dot[i].fmt,val,arg,siz,idx,log);
-        return Ins{.ins=ins,.der=DerIns{dot[i].loc,dot[i].res,req,pre}};}
+        ReqInst req = request(dot[i].fmt,val,arg,siz,idx,log);
+        return Inst{.ins=ins,.req=req,.der=DerInst{dot[i].loc,dot[i].res,pre}};}
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): {
         int pre = (ins==IDeeIns?get(arg,siz,idx,log,"IDeeIns.idx"):0);
-        return Ins{.ins=ins,.dee=DeeIns{dot[i].res,pre}};}
+        return Inst{.ins=ins,.dee=DeeInst{dot[i].res,pre}};}
         break; case (RTagIns): case (WTagIns):
-        return Ins{.ins=ins,.tag=TagIns{dot[i].res,dot[i].tag,-1}};
+        return Inst{.ins=ins,.tag=TagInst{dot[i].res,dot[i].tag,-1}};
         break; case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
-        return Ins{.ins=ins,.tag=TagIns{dot[i].res,dot[i].tag,get(arg,siz,idx,log,"TagIns.val")}};
+        return Inst{.ins=ins,.tag=TagInst{dot[i].res,dot[i].tag,get(arg,siz,idx,log,"TagInst.val")}};
         break; case (ITstIns): case (OTstIns): case (NTstIns):
-        return Ins{.ins=ins,.tst=TstIns{dot[i].res,-1}};
+        return Inst{.ins=ins,.tst=TstInst{dot[i].res,-1}};
         break; case (RTstIns): case (GTstIns): case (VTstIns): case (WTstIns):
-        return Ins{.ins=ins,.tst=TstIns{dot[i].res,get(arg,siz,idx,log,"TstIns.idx")}};}
-        return Ins{.ins=Instrs};
+        return Inst{.ins=ins,.tst=TstInst{dot[i].res,get(arg,siz,idx,log,"TstInst.idx")}};}
+        return Inst{.ins=Instrs};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
         Type val = (fnc&&fnc(typ)?fnc(typ)(i):inv);
@@ -1323,11 +1339,11 @@ struct CopyState {
         */
         return !done;
     }
-    template <class Type> void push(HeapState<Ins> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
+    template <class Type> void push(HeapState<Inst> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
         int count = 0; Arg sav; Arg tmp; HeapState<Arg> dot;
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
-        Ins ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
+        Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
         switch (ins.ins) {default: lst << ins;
         break; case (RIncIns): push(lst,ins.inc.res,val,arg,siz,idx,ary,log);
         break; case (EIncIns): push(lst,ins.inc.mem,val,arg,siz,idx,ary,log);
@@ -1365,7 +1381,7 @@ struct CopyState {
         // arg only means profer only
         // val only means packed force
         // neither means default only
-        HeapState<Ins> lst;
+        HeapState<Inst> lst;
         int tot = 0;
         if (siz && sze) {
             tot = size(typ,ary);
@@ -1420,7 +1436,7 @@ struct CopyState {
         break; case (Basisz): push(center->mem,(void*)center->bas,0,val,0,aiz,adx,center,sub,fnc,ary,log);}}
         break; case (Drawz): for (int i = 0; i < center->siz; i++) {int didx = 0;
         push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
-        break; case (Instrz): {HeapState<Ins> ins(StackState::instrs);
+        break; case (Instrz): {HeapState<Inst> ins(StackState::instrs);
         for (int i = 0; i < center->siz; i++) ins<<center->ins[i];
         push(ins,fnc,center,sub,log);}
         break; case (Configurez): for (int i = 0; i < center->siz; i++)
@@ -2113,7 +2129,7 @@ struct MainState {
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
     // TODO fold RelateState into ImageState.
-    // TODO after adding *TagIns, increase imageState size,
+    // TODO after adding *TagInst, increase imageState size,
     // and remove RelateRes PierceRes DebugRes.
     ArrayState<RelateState,RelateRes,10> relateState;
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;

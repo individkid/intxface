@@ -162,8 +162,9 @@ Format = {
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
 Instr = {
-	"QDerIns",  -- advance before push to thread
+	"QDerIns", -- advance before push to thread
 	"PDerIns", -- advance after fence in thread
+	"TDerIns", -- advance with tag value change
 	"IDerIns", -- process a particular instance
 	"RDeeIns", -- increment read lock in current
 	"IDeeIns", -- increment read lock in indexed
@@ -1004,13 +1005,21 @@ Pierce = {
 	{"idx","Int32",{},{}},
 	{"val","Old",{},{}},
 }
-Con = {
+Const = {
 	{"tag","Constant",{},{}},
 	{"mic","Micro",{["tag"]={["MicroCon"]=true}},{}},
 	{"mem","Memory",{["tag"]={["MemoryCon"]=true}},{}},
 	{"res","Resrc",{["tag"]={["ResrcCon"]=true}},{}},
 }
-Req = {
+Draw = {
+	{"con","Const",{},{}},
+	{"ptr","Dat",{},{}},
+	{"siz","Int",{},{}},
+	{"sze","Int",{},{}},
+	{"arg","Int",{},"siz"},
+	{"val","Int",{},"sze"},
+}
+ReqInst = {
 	{"tag","Request",{},{}},
 	{"ptr","Dat",{},{}},
 	{"idx","Int",{},{}},
@@ -1019,52 +1028,39 @@ Req = {
 	{"base","Int",{},{}},
 	{"size","Int",{},{}},
 }
-Rsp = {
-	{"pre","Int",{},{}},
-	{"idx","Int",{--[[["pre"]={["0"]=true}--]]},{}}, -- offset into bind->rsp
-	{"siz","Int",{--[[["pre"]={["0"]=true}--]]},{}}, -- number to unreserve of bind->rsp
-	{"tag","Quality",{--[[["pre"]={["1"]=true}--]]},{}},
-	{"val","Int",{--[[["pre"]={["1"]=true}--]]},{}},
-}
-Draw = {
-	{"con","Con",{},{}},
-	{"ptr","Dat",{},{}},
-	{"siz","Int",{},{}},
-	{"sze","Int",{},{}},
-	{"arg","Int",{},"siz"},
-	{"val","Int",{},"sze"},
-}
-DerIns = {
+DerInst = {
 	{"loc","ResrcLoc",{},{}},
 	{"res","Resrc",{},{}},	
-	{"req","Req",{},{}},
 	{"idx","Int",{},{}},
+	{"tag","Quality",{},{}},
+	{"val","Int",{},{}},
 }
-DeeIns = {
+DeeInst = {
 	{"res","Resrc",{},{}},
 	{"idx","Int",{},{}},
 }
-TagIns = {
+TagInst = {
 	{"res","Resrc",{},{}},
 	{"tag","Quality",{},{}},
 	{"val","Int",{},{}},
 }
-IncIns = {
+IncInst = {
 	{"res","Resrc",{},{}},
 	{"mem","Memory",{},{}},
 	{"mic","Micro",{},{}},
 }
-TstIns = {
+TstInst = {
 	{"res","Resrc",{},{}},
 	{"val","Int",{},{}},
 }
-Ins = {
+Inst = {
 	{"ins","Instr",{},""},
-	{"der","DerIns",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["IDerIns"]=true}},{}},
-	{"dee","DeeIns",{["ins"]={["RDeeIns"]=true,["IDeeIns"]=true,["WDeeIns"]=true}},{}},
-	{"tag","TagIns",{["ins"]={["RTagIns"]=true,["WTagIns"]=true,["ATagIns"]=true,["BTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true}},{}},
-	{"inc","IncIns",{["ins"]={["RIncIns"]=true,["EIncIns"]=true,["IIncIns"]=true}},{}},
-	{"tst","TstIns",{["ins"]={["RTstIns"]=true,["ITstIns"]=true,["OTstIns"]=true,["NTstIns"]=true,["GTstIns"]=true,["VTstIns"]=true,["WTstIns"]=true}},{}},
+	{"req","ReqInst",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["TDerIns"]=true,["IDerIns"]=true}},{}},
+	{"der","DerInst",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["TDerIns"]=true,["IDerIns"]=true}},{}},
+	{"dee","DeeInst",{["ins"]={["RDeeIns"]=true,["IDeeIns"]=true,["WDeeIns"]=true}},{}},
+	{"tag","TagInst",{["ins"]={["RTagIns"]=true,["WTagIns"]=true,["ATagIns"]=true,["BTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true}},{}},
+	{"inc","IncInst",{["ins"]={["RIncIns"]=true,["EIncIns"]=true,["IIncIns"]=true}},{}},
+	{"tst","TstInst",{["ins"]={["RTstIns"]=true,["ITstIns"]=true,["OTstIns"]=true,["NTstIns"]=true,["GTstIns"]=true,["VTstIns"]=true,["WTstIns"]=true}},{}},
 }
 Center = {
 	{"mem","Memory",{},""},
@@ -1083,7 +1079,7 @@ Center = {
 	{"eek","Pierce",{["mem"]={["Peekz"]=true}},"siz"},
 	{"oke","Pierce",{["mem"]={["Pokez"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
-	{"ins","Ins",{["mem"]={["Instrz"]=true}},"siz"},
+	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},

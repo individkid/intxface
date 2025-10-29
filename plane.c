@@ -401,7 +401,7 @@ int centerMod(struct Center *ptr)
     break; case (Peekz): return sizeof(struct Pierce);
     break; case (Pokez): return sizeof(struct Pierce);
     break; case (Drawz): return sizeof(struct Draw);
-    break; case (Instrz): return sizeof(struct Ins);
+    break; case (Instrz): return sizeof(struct Inst);
     // Stringz
     break; case (Machinez): return sizeof(struct Machine);
     break; case (Expressz): return sizeof(struct Express);
@@ -1237,7 +1237,7 @@ void initTest()
     struct Fnc nil = {0,0,0,0,0};
     struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
     ptr->mem = Instrz; ptr->siz = 26;
-    allocIns(&ptr->ins,ptr->siz);
+    allocInst(&ptr->ins,ptr->siz);
     int idx = 0;
     ptr->ins[idx].ins = STstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 4; idx++;
     ptr->ins[idx].ins = ITstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
