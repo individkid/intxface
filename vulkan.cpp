@@ -1034,7 +1034,7 @@ struct CopyState {
     Resrc get(Inst &ins) {
         Resrc res = Resrcs;
         switch (ins.ins) {default:
-        break; case (QDerIns): case (PDerIns): case (IDerIns): res = ins.der.res;
+        break; case (QDerIns): case (PDerIns): case(TDerIns): case (IDerIns): res = ins.der.res;
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): res = ins.dee.res;
         break; case (ATagIns): case (BTagIns): res = ins.tag.res;
         break; case (ITagIns): case (JTagIns): res = ins.tag.res;
@@ -1068,7 +1068,7 @@ struct CopyState {
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
             final[res] = i; count += 1;
             log << "QDerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
-            break; case(PDerIns):
+            break; case(PDerIns): case(TDerIns):
             if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(); first[res] = i;}
             final[res] = i; count += 1;
             log << "PDerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
@@ -1119,7 +1119,7 @@ struct CopyState {
         for (int i = 0; i < num; i++) {
             Resrc res = get(ins[i]);
             switch(ins[i].ins) {default:
-            break; case(QDerIns): case (PDerIns): case (IDerIns):
+            break; case(QDerIns): case (PDerIns): case(TDerIns): case (IDerIns):
             lnk = dst(res,buffer)->lnk(ins[i].der.loc,bas,lst,lnk);
             bas = dst(res,buffer); lst = ins[i].der.loc;}}
         // record bindings
@@ -1135,7 +1135,7 @@ struct CopyState {
             if (first[res] == i) src(res)->advance();
             log << "QDerIns push " << dst(res,buffer)->debug << '\n';
             thread->push({log,ins[i].der.loc,dst(res,buffer)});
-            break; case(PDerIns):
+            break; case(PDerIns): case(TDerIns):
             log << "PDerIns push " << dst(res,buffer)->debug << '\n';
             thread->push({log,ins[i].der.loc,dst(res,buffer)});
             break; case(IDerIns):
@@ -1154,7 +1154,7 @@ struct CopyState {
         for (int i = 0; i < lim; i++) {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(IDerIns):
+            break; case(QDerIns): case(PDerIns): case(TDerIns): case(IDerIns):
             if (bind) bind->done(res,log);
             dst(res,buffer)->done(log);
             break; case(RDeeIns): case(IDeeIns):
@@ -1165,7 +1165,7 @@ struct CopyState {
         for (int i = 0; i < num; i++) {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(IDerIns):
+            break; case(QDerIns): case(PDerIns): case(TDerIns): case(IDerIns):
             dst(res,buffer) = 0;
             break; case(RDeeIns): case(WDeeIns): case(IDeeIns):
             dst(res,buffer) = 0;}}
