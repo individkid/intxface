@@ -423,8 +423,13 @@ struct BaseState;
 struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
 };
+enum Resp {
+    PushRsp,
+    FnceRsp,
+    QualRsp,
+};
 struct Rsp {
-    int pre; // when to advance
+    Resp pre; // when to advance
     int idx; // offset into bind->rsp
     int siz; // number to unreserve of bind->rsp
     Quality tag; // which to change upon advance
@@ -564,6 +569,8 @@ struct BaseState {
         if (plock <= 0) EXIT
         safe.post();
         log << "baseups " << debug << '\n';
+        if (ploc[loc].rsp.pre == QualRsp) item->advance(ploc[loc].rsp.tag,ploc[loc].rsp.val);
+        else if (ploc[loc].rsp.pre == FnceRsp) item->advance();
         upset(ploc[loc],log);
         unlock(ploc[loc],log);
         done(log);
@@ -894,8 +901,6 @@ BaseState *BaseState::res(Resrc typ) {
 }
 void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
     if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
-    if (loc.rsp.pre == 2) item->advance(loc.rsp.tag,loc.rsp.val);
-    else if (loc.rsp.pre == 1) item->advance();
 }
 
 struct Push {
@@ -1045,17 +1050,6 @@ struct CopyState {
         int final[Resrcs];
         int value[Qualitys] = {0};
         int num = ins.size(); // number that might be reserved
-        // find responses
-        HeapState<Rsp> rsp(num,num);
-        int count = 0;
-        for (int i = 0; i < num; i++) {
-            Rsp tmp = {.pre=0,.idx=count,.siz=0,.tag=Qualitys,.val=0};
-            switch (ins[i].ins) {default: break; case (QDerIns): case (PDerIns): case (IDerIns):
-            for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
-            break; case (TDerIns): tmp.tag = ins[j].der.tag; tmp.val = ins[j].der.val; j = num-1;
-            break; case (QDerIns): case (IDerIns): case(PDerIns): j = num-1;
-            break; case (RDeeIns): case (IDeeIns): case (WDeeIns): count += 1; tmp.siz += 1;}}
-            rsp[i] = tmp;}
         bool goon = true; while (goon) {goon = false;
         // choose buffers
         int count = 0; // actual number of reservations
@@ -1100,14 +1094,19 @@ struct CopyState {
         int lim = num; // number checked for reservation
         if (count > 1 && bind == 0) lim = -1;
         // reserve chosen
+        int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(IDerIns):
-            if (ins[i].ins == PDerIns && final[res] == i) rsp[i].pre = 1;
-            if (ins[i].ins == TDerIns && final[res] == i) rsp[i].pre = 2;
-            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].req,rsp[i],array,log)) lim = i;}
-            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].req,rsp[i],array,log)) lim = i;}
+            break; case(QDerIns): case(PDerIns): case (TDerIns): case(IDerIns): {
+            Rsp rsp = {.pre=PushRsp,.idx=resps,.siz=0,.tag=ins[i].der.tag,.val=ins[i].der.val};
+            for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
+            break; case (QDerIns): case(PDerIns): case (TDerIns): case (IDerIns): j = num-1;
+            break; case (RDeeIns): case (IDeeIns): case (WDeeIns): resps += 1; rsp.siz += 1;}
+            if (ins[i].ins == PDerIns && final[res] == i) rsp.pre = FnceRsp;
+            if (ins[i].ins == TDerIns && final[res] == i) rsp.pre = QualRsp;
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].req,rsp,array,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].req,rsp,array,log)) lim = i;}}
             break; case(RDeeIns):
             if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(IDeeIns):
