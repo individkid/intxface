@@ -1018,11 +1018,13 @@ Req = {
 	{"ext","Extent",{},{}},
 	{"base","Int",{},{}},
 	{"size","Int",{},{}},
-	{"pre","Int",{},{}},
 }
 Rsp = {
-	{"idx","Int",{},{}}, -- offset into bind->rsp
-	{"siz","Int",{},{}}, -- number to unreserve of bind->rsp
+	{"pre","Int",{},{}},
+	{"idx","Int",{--[[["pre"]={["0"]=true}--]]},{}}, -- offset into bind->rsp
+	{"siz","Int",{--[[["pre"]={["0"]=true}--]]},{}}, -- number to unreserve of bind->rsp
+	{"tag","Quality",{--[[["pre"]={["1"]=true}--]]},{}},
+	{"val","Int",{--[[["pre"]={["1"]=true}--]]},{}},
 }
 Draw = {
 	{"con","Con",{},{}},
@@ -1036,7 +1038,6 @@ DerIns = {
 	{"loc","ResrcLoc",{},{}},
 	{"res","Resrc",{},{}},	
 	{"req","Req",{},{}},
-	{"rsp","Rsp",{},{}},
 	{"idx","Int",{},{}},
 }
 DeeIns = {

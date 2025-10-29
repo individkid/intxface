@@ -556,7 +556,6 @@ struct BaseState {
         if (plock <= 0) EXIT
         safe.post();
         log << "baseups " << debug << '\n';
-        if (ploc[loc].req.pre) item->advance();
         upset(ploc[loc],log);
         unlock(ploc[loc],log);
         done(log);
@@ -697,7 +696,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait();
         if (0) {char *st0 = 0; showInstr(ins,&st0);
         char *st1 = 0; showQuality(tag,&st1);
-        std::cerr << "qualify ins:" << st0 << " tag:" << st1 << " val:" << val << std::endl;
         free(st0); free(st1);}
         switch (ins) {default: {std::cerr << "invalid tag instruction" << std::endl; EXIT}
         break; case (RTagIns): acu[tag] = qual[tag];
@@ -730,7 +728,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait(); BaseState *ptr = &state[tag.newbuf(qual)]; safe.post(); return ptr;
     }
     BaseState *prebuf() override { // buffer of oldest, with current tags
-        // TODO insert if pool not empty; think of pool as older than oldest
         safe.wait(); BaseState *ptr = &state[tag.getbuf(qual)]; safe.post(); return ptr;
     }
     BaseState *prebuf(int i) override { // buffer of particular
@@ -886,6 +883,8 @@ BaseState *BaseState::res(Resrc typ) {
 }
 void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
     if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
+    //TODO else if (loc.rsp.pre && loc.rsp.tag != Qualitys) item->advance(loc.rsp.tag,loc.rsp.val);
+    /*TODO else*/ if (loc.rsp.pre) item->advance();
 }
 
 struct Push {
@@ -1035,7 +1034,17 @@ struct CopyState {
         int final[Resrcs];
         int value[Qualitys] = {0};
         int num = ins.size(); // number that might be reserved
-        // TODO expand *IncIns with default arguments
+        // find responses
+        HeapState<Rsp> rsp(num,num);
+        int count = 0;
+        for (int i = 0; i < num; i++) {
+            Rsp tmp = {.pre=0,.idx=count,.siz=0,.tag=Qualitys,.val=0};
+            switch (ins[i].ins) {default:
+            break; case (QDerIns): case (PDerIns): case (IDerIns):
+            for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
+            break; case (QDerIns): case (IDerIns): case(PDerIns): j = num-1;
+            break; case (RDeeIns): case (IDeeIns): case (WDeeIns): count += 1; tmp.siz += 1;}}
+            rsp[i] = tmp;}
         bool goon = true; while (goon) {goon = false;
         // choose buffers
         int count = 0; // actual number of reservations
@@ -1084,9 +1093,9 @@ struct CopyState {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(IDerIns):
-            ins[i].der.req.pre = (ins[i].ins == PDerIns && final[res] == i);
-            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].der.req,ins[i].der.rsp,array,log)) lim = i;}
-            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].der.req,ins[i].der.rsp,array,log)) lim = i;}
+            rsp[i].pre = (ins[i].ins == PDerIns && final[res] == i);
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].der.req,rsp[i],array,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].der.req,rsp[i],array,log)) lim = i;}
             break; case(RDeeIns):
             if (!bind->rinc(res,dst(res,buffer),log)) lim = i;
             break; case(IDeeIns):
@@ -1154,18 +1163,8 @@ struct CopyState {
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
         if (fnc.goon && fnc.goon(ptr,sub)) {goon = true; log << "goon" << '\n';}}}
     }
-    static Rsp response(HeapState<Arg> &dot, int i, int &count, SmartState log) {
-        Rsp rsp = {.idx=count,.siz=0};
-        for (int j = i+1; j < dot.size(); j++)
-        switch (dot[j].ins) {default:
-        break; case (QDerIns): case (IDerIns): case(PDerIns):
-        return rsp;
-        break; case (RDeeIns): case (IDeeIns): case (WDeeIns):
-        count += 1; rsp.siz += 1;}
-        return rsp;
-    }
     static Req request(Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
-        Req req = {Requests,0,0,0,Extents,0,0,0};
+        Req req = {Requests,0,0,0,Extents,0,0};
         switch (frm) {default: EXIT
         // VK_IMAGE_LAYOUT_UNDEFINED(initial)
         // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL(texture,shadow)
@@ -1260,8 +1259,7 @@ struct CopyState {
         break; case (QDerIns): case (PDerIns): case (IDerIns): {
         int pre = (ins==IDerIns?get(arg,siz,idx,log,"IDerIns.idx"):0);
         Req req = request(dot[i].fmt,val,arg,siz,idx,log);
-        Rsp rsp = response(dot,i,count,log);
-        return Ins{.ins=ins,.der=DerIns{dot[i].loc,dot[i].res,req,rsp,pre}};}
+        return Ins{.ins=ins,.der=DerIns{dot[i].loc,dot[i].res,req,pre}};}
         break; case (RDeeIns): case (IDeeIns): case (WDeeIns): {
         int pre = (ins==IDeeIns?get(arg,siz,idx,log,"IDeeIns.idx"):0);
         return Ins{.ins=ins,.dee=DeeIns{dot[i].res,pre}};}
