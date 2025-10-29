@@ -1422,6 +1422,17 @@ struct CopyState {
         break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);
         break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);}
     }
+    void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+        int mval[] = {
+        mem, // RuseQua
+        idx,width,height, // ExtentFrm
+        idx, // PierceFrm
+        idx, // PeekFrm
+        idx,siz,wid,hei, // HighFrm
+        idx}; // SourceFrm
+        int msiz = sizeof(mval)/sizeof(int); int midx = 0;
+        push(mem,dat,0,mval,0,msiz,midx,ptr,sub,fnc,ary,log);
+    }
     void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
         switch (center->mem) {default: {
         int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
@@ -1446,41 +1457,15 @@ struct CopyState {
         break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
             int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
             int tot = datxVoids(center->img[k].dat);
-            int mval[] = {
-            Imagez, // RuseQua
-            idx,wid,hei, // ExtentFrm
-            idx, // ImageFrm
-            idx, // WonlyFrm
-            idx,tot,wid,hei, // HighFrm
-            idx}; // RonlyFrm
-            int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),0,mval,0,msiz,midx,center,sub,fnc,ary,log);}
+            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),idx,tot,wid,hei,wid,hei,center,sub,fnc,ary,log);}
         break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
-            int tot = wid*hei*4;
-            int mval[] = {
-            Peekz, // RuseQua
-            idx,change->read(WindowWidth),change->read(WindowHeight), // ExtentFrm
-            idx, // PierceFrm
-            idx, // PeekFrm
-            idx,siz,wid,hei, // HighFrm
-            idx}; // SourceFrm
-            int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->eek,0,mval,0,msiz,midx,center,sub,fnc,ary,log);}
+            push(center->mem,(void*)center->eek,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),center,sub,fnc,ary,log);}
         break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
-            int tot = wid*hei*4;
-            int mval[] = {
-            Pokez, // RuseQua
-            idx,change->read(WindowWidth),change->read(WindowHeight), // ExtentFrm
-            idx, // PierceFrm
-            idx, // PokeFrm
-            idx,siz,wid,hei, // HighFrm
-            idx}; // DestFrm
-            int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-            push(center->mem,(void*)center->oke,0,mval,0,msiz,midx,center,sub,fnc,ary,log);}}
+            push(center->mem,(void*)center->oke,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),center,sub,fnc,ary,log);}}
     }
 };
 
