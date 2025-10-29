@@ -1285,8 +1285,9 @@ struct CopyState {
         return Inst{.ins=ins,.tag=TagInst{dot[i].res,dot[i].tag,pre}};}
         break; case (ITstIns): case (OTstIns): case (NTstIns):
         return Inst{.ins=ins,.tst=TstInst{dot[i].res,-1}};
-        break; case (RTstIns): case (GTstIns): case (VTstIns): case (WTstIns):
-        return Inst{.ins=ins,.tst=TstInst{dot[i].res,get(arg,siz,idx,log,"TstInst.idx")}};}
+        break; case (RTstIns): case (GTstIns): case (VTstIns): case (WTstIns): {
+        int pre = get(arg,siz,idx,log,"TstInst.idx");
+        return Inst{.ins=ins,.tst=TstInst{dot[i].res,pre}};}}
         return Inst{.ins=Instrs};
     }
     template <class Type, class Fnc, class Arg> static bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {
