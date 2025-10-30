@@ -753,7 +753,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait(); int i = tag.oldbuf(qual); tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
     }
     void advance(Quality idx, int val) override { // make oldest into newest with changed tag val
-        safe.wait(); int i = tag.oldbuf(qual); tag.remove(i); qual[idx] = val; if (tag.insert(qual)!=i) EXIT safe.post();
+        safe.wait(); int tmp[Qualitys]; for (int i = 0; i < Qualitys; i++) tmp[i] = qual[i]; tmp[idx] = val;
+        int i = tag.oldbuf(qual); tag.remove(i); if (tag.insert(tmp)!=i) EXIT safe.post();
     }
     void advance(int i) override { // remove and insert particular as newest, with current tags
         if (i < 0 || i >= Size) EXIT
