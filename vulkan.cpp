@@ -209,6 +209,7 @@ struct StackState {
     static const int descrs = 4;
     static const int frames = 2;
     static const int images = 2;
+    static const int phases = 10;
     static const int instrs = 20;
     virtual void qualify(Instr ins, Quality tag, int val, int *acu) = 0;
     virtual void test(Instr ins, int idx, int *acu) = 0;
@@ -2116,10 +2117,8 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
-    // TODO fold RelateState into ImageState.
-    // TODO after adding *TagInst, increase imageState size,
-    // and remove RelateRes PierceRes DebugRes.
-    ArrayState<RelateState,RelateRes,10> relateState;
+    ArrayState<RelateState,RelateRes,StackState::phases> relateState;
+    // TODO fold PierceRes and DebugRes into RelateState.
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,DebugRes,StackState::frames> debugState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
@@ -2306,9 +2305,11 @@ int main(int argc, const char **argv) {
     slog.onof(0,10000,123,5);
     MainState main;
     mptr = &main;
+    main.changeState.write(ConstantDescrs,StackState::descrs);
     main.changeState.write(ConstantFrames,StackState::frames);
     main.changeState.write(ConstantImages,StackState::images);
-    main.changeState.write(ConstantComnds,StackState::instrs);
+    main.changeState.write(ConstantPhases,StackState::phases);
+    main.changeState.write(ConstantInstrs,StackState::instrs);
     main.changeState.call(RegisterOpen,vulkanBack);
     main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
