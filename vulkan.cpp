@@ -592,6 +592,7 @@ struct BaseState {
         safe.post();
     }
     BaseState *res(Resrc typ);
+    BaseState *res(Resrc typ, int sub);
     Lnk *lnk(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
@@ -794,11 +795,13 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
 };
 
+struct SaveState {
+    BaseState *bind;
+    int psav, rsav, wsav;
+    SaveState() : bind(0), psav(0), rsav(0), wsav(0) {}
+};
 struct BindState : public BaseState {
-    BaseState *bind[Resrcs];
-    int psav[Resrcs];
-    int rsav[Resrcs];
-    int wsav[Resrcs];
+    HeapState<SaveState> bind[Resrcs];
     int lock; bool excl;
     HeapState<Inst> rsp;
     BindState() :
@@ -806,8 +809,7 @@ struct BindState : public BaseState {
         lock(0),
         excl(false),
         rsp(StackState::instrs) {
-        for (int i = 0; i < Resrcs; i++) {
-        bind[i] = 0; psav[i] = rsav[i] = wsav[i] = 0;}
+        for (int i = 0; i < Resrcs; i++) bind[i].push(1);
     }
     BindState *getBind(SmartState log) override {
         safe.wait();
@@ -818,32 +820,43 @@ struct BindState : public BaseState {
         safe.post();
         return this;
     }
+    BaseState *get(Resrc i, int j) {
+        if (bind[i][j].bind == 0) EXIT
+        return bind[i][j].bind;
+    }
     BaseState *get(Resrc i) {
-        if (bind[i] == 0) EXIT
-        return bind[i];
+        return get(i,0);
+    }
+    bool push(Resrc i, int j, BaseState *buf, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
+        if (!excl) EXIT
+        SaveState &ref = bind[i][j];
+        if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,rsp,ary,log)) return false;
+        log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
+        if (ref.bind == 0) lock += 1;
+        if (ref.bind != 0 && ref.bind != buf) EXIT
+        ref.bind = buf;
+        ref.psav += 1;
+        return true;
     }
     bool push(Resrc i, BaseState *buf, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
-        if (!excl) EXIT
-        if (!buf->push(psav[i],rsav[i],wsav[i],this,loc,req,rsp,ary,log)) return false;
-        log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
-        if (bind[i] == 0) lock += 1;
-        if (bind[i] != 0 && bind[i] != buf) EXIT
-        bind[i] = buf;
-        psav[i] += 1;
-        return true;
+        return push(i,0,buf,loc,req,rsp,ary,log);
     }
     void push(Inst ins, SmartState log) {
         if (!excl) EXIT
         rsp<<ins;
     }
-    void done(Resrc i, SmartState log) { // called from unlock or from copy fail
+    void done(Resrc i, int j, SmartState log) { // called from unlock or from copy fail
         if (!excl) EXIT
-        if (psav[i] <= 0) EXIT
-        psav[i] -= 1;
-        BaseState *dbg = bind[i];
-        if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
+        SaveState &ref = bind[i][j];
+        if (ref.psav <= 0) EXIT
+        ref.psav -= 1;
+        BaseState *dbg = ref.bind;
+        if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {ref.bind = 0; lock -= 1;}
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
         if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
+    }
+    void done(Resrc i, SmartState log) {
+        done(i,0,log);
     }
     void done(Rsp rsp, SmartState log) { // called from unlock only
         if (!excl) EXIT
@@ -860,39 +873,59 @@ struct BindState : public BaseState {
         if (lock == 0) excl = false;
         safe.post();
     }
-    bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
+    bool incr(Resrc i, int j, BaseState *buf, bool elock, SmartState log) {
         if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
         if (!excl) EXIT
-        if (bind[i] != 0 && bind[i] != buf) EXIT
-        if (!buf->incr(elock,psav[i],rsav[i],wsav[i])) {
+        SaveState &ref = bind[i][j];
+        if (ref.bind && ref.bind != buf) EXIT
+        if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         if (lock == 0) {safe.wait(); excl = false; safe.post();}
         log << "incr fail " << buf->debug << '\n';
         return false;}
         log << "incr " << debug << " " << buf->debug << " lock:" << lock << '\n';
-        if (bind[i] == 0) lock += 1;
-        bind[i] = buf;
-        (elock ? wsav[i] : rsav[i]) += 1;
+        if (!bind[i](j) || ref.bind == 0) lock += 1;
+        ref.bind = buf;
+        (elock ? ref.wsav : ref.rsav) += 1;
         return true;
     }
-    void decr(Resrc i, bool elock, SmartState log) {
+    bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
+        return incr(i,0,buf,elock,log);
+    }
+    void decr(Resrc i, int j, bool elock, SmartState log) {
         if (!excl) EXIT
-        if (lock <= 0 || bind[i] == 0) EXIT
-        bind[i]->decr(elock);
-        if ((elock ? wsav[i] : rsav[i]) <= 0) EXIT
-        (elock ? wsav[i] : rsav[i]) -= 1;
-        BaseState *dbg = bind[i];
-        if (psav[i] == 0 && rsav[i] == 0 && wsav[i] == 0) {bind[i] = 0; lock -= 1;}
+        SaveState &ref = bind[i][j];
+        if (lock <= 0 || ref.bind == 0) EXIT
+        ref.bind->decr(elock);
+        if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
+        (elock ? ref.wsav : ref.rsav) -= 1;
+        BaseState *dbg = ref.bind;
+        if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {ref.bind = 0; lock -= 1;}
         log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
         if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
+    }
+    void decr(Resrc i, bool elock, SmartState log) {
+        decr(i,0,elock,log);
+    }
+    bool rinc(Resrc i, int j, BaseState *buf, SmartState log) {
+        return incr(i,j,buf,false,log);
     }
     bool rinc(Resrc i, BaseState *buf, SmartState log) {
         return incr(i,buf,false,log);
     }
+    bool winc(Resrc i, int j, BaseState *buf, SmartState log) {
+        return incr(i,j,buf,true,log);
+    }
     bool winc(Resrc i, BaseState *buf, SmartState log) {
         return incr(i,buf,true,log);
     }
+    void rdec(Resrc i, int j, SmartState log) {
+        decr(i,j,false,log);
+    }
     void rdec(Resrc i, SmartState log) {
         decr(i,false,log);
+    }
+    void wdec(Resrc i, int j, SmartState log) {
+        decr(i,j,true,log);
     }
     void wdec(Resrc i, SmartState log) {
         decr(i,true,log);
@@ -901,6 +934,10 @@ struct BindState : public BaseState {
 BaseState *BaseState::res(Resrc typ) {
     if (lock == 0) EXIT
     return lock->get(typ);
+}
+BaseState *BaseState::res(Resrc typ, int sub) {
+    if (lock == 0) EXIT
+    return lock->get(typ,sub);
 }
 void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
     if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
@@ -1911,18 +1948,17 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        Resrc rsc = ImageRes; if (tag(RuseQua) != Imagez) rsc = DebugRes;
         VkFormat forms = PhysicalState::vulkanFormat(res());
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandReform, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandReform, res(res())->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBefore, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandBefore, res(res())->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandAfter, res(rsc)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandAfter, res(res())->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
@@ -1931,7 +1967,7 @@ struct ImageState : public BaseState {
         if (tag(RuseQua) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (tag(RuseQua) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(rsc)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
+        copyTextureImage(device, graphics, memProperties, res(res())->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {

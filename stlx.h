@@ -263,6 +263,7 @@ struct CallState {
 
 template <class Type> struct HeapState {
     std::vector<Type> vec;
+    std::map<int,Type> map;
     int bas, siz;
     HeapState() : bas(0), siz(0) {
     }
@@ -275,10 +276,11 @@ template <class Type> struct HeapState {
     void push(int num) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        // TODO allow for negative num
         int size = vec.size();
         int wrap = bas+siz-size;
         vec.resize(bas+siz+num);
-        for (int i = 0; i < wrap; i++) vec[size++] = vec[i];
+        for (int i = 0; i < wrap; i++) vec[(size++)%vec.size()] = vec[i];
     }
     int size() {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
@@ -301,6 +303,8 @@ template <class Type> struct HeapState {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
         if (siz == vec.size()) push(1);
+        auto itr = map.find(siz);
+        if (itr != map.end()) map.erase(itr);
         vec[(siz+bas)%vec.size()] = val;
         siz += 1;
         return *this;
@@ -308,8 +312,13 @@ template <class Type> struct HeapState {
     Type &operator[](int i) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
-        if (i < 0 || i >= siz) {std::cerr << "invalid heap sub!" << std::endl; *(int*)0 = 0; exit(-1);}
+        if (i < 0 || i >= siz) return map[i];
         return vec[(i+bas)%vec.size()];
+    }
+    bool operator()(int i) {
+        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
+        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        return ((i >= 0 && i < siz) || map.find(i) != map.end());
     }
 };
 
