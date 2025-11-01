@@ -211,6 +211,7 @@ struct StackState {
     static const int images = 2;
     static const int phases = 10;
     static const int instrs = 20;
+    static const int resrcs = 2;
     virtual void qualify(Instr ins, Quality tag, int val, int *acu) = 0;
     virtual void test(Instr ins, int idx, int *acu) = 0;
     virtual BaseState *buffer() = 0; // no block beween push and advance
@@ -662,7 +663,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     int idx; // TODO use qual instead
     int qual[Qualitys]; // TODO use this instead of idx
     int tst;
-    SimpleState<Size,Qualitys> tag;
+    SimpleState<Size,Qualitys,StackState::resrcs> tag;
     State state[Size];
     ArrayState(
         ChangeState<Configure,Configures> *change,

@@ -322,7 +322,7 @@ template <class Type> struct HeapState {
     }
 };
 
-template <int Size, int Dim> struct SimpleState {
+template <int Size, int Dim, int Min> struct SimpleState {
     enum Prior {
         PoolPri,
         QualPri,
@@ -375,9 +375,8 @@ template <int Size, int Dim> struct SimpleState {
     std::set<Wsiz,WsizLess> keyord; // ordered by number
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
-    Indx size;
-    SimpleState() : seqn(0), size(Size) {
-        for (int i = 0; i < size; i++) pool.push_back(i);
+    SimpleState() : seqn(0) {
+        for (int i = 0; i < Size; i++) pool.push_back(i);
     }
     Only get(int *key) {
         Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; return tmp;
@@ -390,10 +389,11 @@ template <int Size, int Dim> struct SimpleState {
     }
     void set(int siz) {
         // remove any Indx not less than siz
-        for (int i = size-1; i >= siz; i--) remove(i); size = siz;
+        int size = pool.size() + keyval.size();
+        for (int i = size-1; i >= siz; i--) remove(i);
         std::deque<Indx> temp;
         for (auto i = pool.begin(); i != pool.end(); i++)
-        if (*i < size) temp.push_back(*i);
+        if (*i < siz) temp.push_back(*i);
         pool = temp;
         // add to pool to increase to siz
         Indx max = 0;
@@ -436,8 +436,10 @@ template <int Size, int Dim> struct SimpleState {
         seqn = (seqn+1)%wrap;
     }
     int insert(Only &tmp) {
-        if (keysiz.find(tmp) != keysiz.end() && keysiz[tmp] >= size/keysiz.size()) remove(oldest[tmp]);
-        else if (pool.empty()) remove(oldest[get(*keyord.rbegin())]);;
+        if (pool.empty()) {
+        auto itr = keyord.rbegin();
+        if (itr != keyord.rend() && (*itr)[Dim] > keysiz[tmp]+1)
+        remove(oldest[get(*itr)]); else remove(oldest[tmp]);}
         Indx idx = pool.front(); pool.pop_front();
         insert(tmp,idx);
         return idx;
@@ -447,7 +449,7 @@ template <int Size, int Dim> struct SimpleState {
         return oldest[tmp];
     }
     int getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
-        if (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < size/keysiz.size()) {
+        if (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < Min || !pool.empty()) {
         int idx = insert(tmp);
         while (oldest[tmp] != idx) {
         remove(oldest[tmp]); insert(tmp);}}
