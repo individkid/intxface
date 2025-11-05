@@ -490,8 +490,7 @@ struct BaseState {
         ploc[loc].ary = ary;
         return true;
     }
-    void done(SmartState log) { // called from baseups or from copy fail
-        // unreserve after done in thread or upon error
+    void done(SmartState log) {
         safe.wait();
         if (plock <= 0) EXIT
         plock -= 1;
@@ -817,8 +816,9 @@ struct BindState : public BaseState {
         if (excl) {log << "bind fail " << debug << '\n'; safe.post(); return 0;}
         log << "bind pass " << debug << '\n';
         excl = true;
-        if (lock != 0) EXIT
         safe.post();
+        if (lock != 0) EXIT
+        lock = 1;
         return this;
     }
     BaseState *get(Resrc i, int j) {
@@ -846,7 +846,7 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         rsp<<ins;
     }
-    void done(Resrc i, int j, SmartState log) { // called from unlock or from copy fail
+    void done(Resrc i, int j, SmartState log) {
         if (!excl) EXIT
         SaveState &ref = bind[i][j];
         if (ref.psav <= 0) EXIT
@@ -854,12 +854,11 @@ struct BindState : public BaseState {
         BaseState *dbg = ref.bind;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {ref.bind = 0; lock -= 1;}
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
-        if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
     void done(Resrc i, SmartState log) {
         done(i,0,log);
     }
-    void done(Rsp rsp, SmartState log) { // called from unlock only
+    void done(Rsp rsp, SmartState log) {
         if (!excl) EXIT
         if (rsp.idx+rsp.siz > this->rsp.size()) EXIT
         for (int i = 0; i < rsp.siz; i++) {
@@ -868,11 +867,11 @@ struct BindState : public BaseState {
         break; case (RDeeIns): case (IDeeIns): rdec(res,log);
         break; case (WDeeIns): wdec(res,log);}}
     }
-    void done(SmartState log) { // called from copy fail only
+    void done(SmartState log) {
         if (!excl) EXIT
-        safe.wait();
-        if (lock == 0) excl = false;
-        safe.post();
+        if (lock == 1) {
+        lock = 0; rsp.clear();
+        safe.wait(); excl = false; safe.post();}
     }
     bool incr(Resrc i, int j, BaseState *buf, bool elock, SmartState log) {
         if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
@@ -880,11 +879,10 @@ struct BindState : public BaseState {
         SaveState &ref = bind[i][j];
         if (ref.bind && ref.bind != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
-        if (lock == 0) {safe.wait(); excl = false; safe.post();}
         log << "incr fail " << buf->debug << '\n';
         return false;}
         log << "incr " << debug << " " << buf->debug << " lock:" << lock << '\n';
-        if (!bind[i](j) || ref.bind == 0) lock += 1;
+        if (ref.bind == 0) lock += 1;
         ref.bind = buf;
         (elock ? ref.wsav : ref.rsav) += 1;
         return true;
@@ -902,7 +900,6 @@ struct BindState : public BaseState {
         BaseState *dbg = ref.bind;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {ref.bind = 0; lock -= 1;}
         log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
-        if (lock == 0) {rsp.clear(); safe.wait(); excl = false; safe.post();}
     }
     void decr(Resrc i, bool elock, SmartState log) {
         decr(i,0,elock,log);
@@ -941,7 +938,7 @@ BaseState *BaseState::res(Resrc typ, int sub) {
     return lock->get(typ,sub);
 }
 void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
-    if (lock) {lock->done(loc.rsp,log); lock->done(res(),log);}
+    if (lock) {lock->done(loc.rsp,log); lock->done(res(),log); lock->done(log);}
 }
 
 struct Push {
@@ -1092,11 +1089,31 @@ struct CopyState {
         int value[Qualitys] = {0};
         int num = ins.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
-        // choose buffers
-        int count = 0; // actual number of reservations
         log << "while" << '\n'; slog.clr();
+        // count depends
+        int count = 0;
         for (int i = 0; i < num; i++) {
             Resrc res = get(ins[i]);
+            switch (ins[i].ins) {default:
+            break; case(QDerIns): case(PDerIns): case(TDerIns): case(IDerIns): count += 1;
+            break; case(RDeeIns): /*case(TDeeIns):*/ case(IDeeIns): case(WDeeIns): count += 1;}}
+        // choose binding
+        BindState *bind = 0;
+        if (count > 1) bind = stack[BindRes]->buffer()->getBind(log);
+        int lim = num; // number checked for reservation
+        if (count > 1 && bind == 0) lim = -1;
+        // check binding
+        for (int i = 0; i < num && i < lim; i++) {
+            Resrc res = get(ins[i]);
+            switch (ins[i].ins) {default:
+            break; case(QDerIns): case(PDerIns): case(TDerIns): if (dst(res,buffer)) EXIT
+            break; case(IDerIns): if (dst(res,buffer)) EXIT
+            break; case(RDeeIns): /*case(TDeeIns):*/ case(WDeeIns): if (dst(res,buffer)) EXIT
+            break; case(IDeeIns): if (dst(res,buffer)) EXIT}}
+        // choose buffers
+        for (int i = 0; i < num && i < lim; i++) {
+            Resrc res = get(ins[i]);
+            log << "ins:" << ins[i].ins << " res:" << res << '\n';
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (RTagIns): case (WTagIns): case (ATagIns): case (BTagIns): case (ITagIns): case (JTagIns):
             log << "TagInst res:" << res << " ins:" << ins[i].ins << "(JTagIns:" << JTagIns << ")" << " tag:" << ins[i].tag.tag << " val:" << ins[i].tag.val << '\n';
@@ -1106,34 +1123,23 @@ struct CopyState {
             log << "TstInst res:" << res << " ins:" << ins[i].ins << " val:" << ins[i].tst.val << '\n';
             src(res)->test(ins[i].ins,ins[i].tst.val,value);
             break; case(QDerIns):
-            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;}
-            final[res] = i; count += 1;
+            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->buffer(); first[res] = i;} final[res] = i;
             log << "QDerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
             break; case(PDerIns): case(TDerIns):
-            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(); first[res] = i;}
-            final[res] = i; count += 1;
+            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(); first[res] = i;} final[res] = i;
             log << "PDerIns loc:" << ins[i].der.loc << " " << dst(res,buffer)->debug << '\n';
             break; case(IDerIns):
-            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(ins[i].der.idx); first[res] = i;}
-            final[res] = i; count += 1;
+            if (dst(res,buffer) == 0) {dst(res,buffer) = src(res)->prebuf(ins[i].der.idx); first[res] = i;} final[res] = i;
             log << "IDerIns loc:" << ins[i].der.loc << " idx:" << ins[i].der.idx << " " << dst(res,buffer)->debug << '\n';
             break; case(RDeeIns):
             if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->buffer();
-            count += 1;
             log << "RDeeIns " << dst(res,buffer)->debug << '\n';
             break; case(IDeeIns):
             if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->prebuf(ins[i].dee.idx);
-            count += 1;
             log << "IDeeIns idx:" << ins[i].dee.idx << " " << dst(res,buffer)->debug << '\n';
             break; case(WDeeIns):
             if (dst(res,buffer) == 0) dst(res,buffer) = src(res)->buffer();
-            count += 1;
             log << "WDeeIns " << dst(res,buffer)->debug << '\n';}}
-        // choose binding
-        BindState *bind = 0;
-        if (count > 1) bind = stack[BindRes]->buffer()->getBind(log);
-        int lim = num; // number checked for reservation
-        if (count > 1 && bind == 0) lim = -1;
         // reserve chosen
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
@@ -1191,7 +1197,6 @@ struct CopyState {
         } else {
         log << "copy fail" << '\n';
         // release reserved
-        if (bind) bind->done(log);
         for (int i = 0; i < lim; i++) {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
@@ -1210,6 +1215,7 @@ struct CopyState {
             dst(res,buffer) = 0;
             break; case(RDeeIns): case(WDeeIns): case(IDeeIns):
             dst(res,buffer) = 0;}}
+        if (bind) bind->done(log);
         // notify fail
         if (fnc.fnow) fnc.fnow(ptr,sub);
         if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
