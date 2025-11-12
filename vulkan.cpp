@@ -143,9 +143,9 @@ struct LogicalState {
     VkQueue graphics;
     VkQueue present;
     VkCommandPool commandPool;
-    std::array<VkFormat,passes> imageFormat;
+    std::array<VkFormat,passes> imageFormat; // TODO use HeapState
     VkFormat depthFormat;
-    std::array<VkRenderPass,passes> renderPass;
+    std::array<VkRenderPass,passes> renderPass; // TODO use HeapState
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
@@ -218,6 +218,7 @@ struct StackState {
     virtual BaseState *prebuf() = 0; // current available for read while next is written
     virtual BaseState *prebuf(int i) = 0;
     virtual void advance() = 0;
+    virtual void advance(SmartState log) = 0;
     virtual void advance(Quality tag, int val) = 0;
     virtual void advance(int i) = 0;
     virtual int buftag(int i, Quality t) = 0;
@@ -239,8 +240,8 @@ struct StackState {
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkDevice device;
     static VkCommandPool commandPool;
-    static std::array<VkRenderPass,LogicalState::passes> renderPass;
-    static std::array<VkFormat,LogicalState::passes> imageFormat;
+    static std::array<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
+    static std::array<VkFormat,LogicalState::passes> imageFormat; // TODO use HeapState
     static VkFormat depthFormat;
     static VkQueue graphics;
     static VkQueue present;
@@ -259,8 +260,8 @@ struct StackState {
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> renderPass,
-        std::array<VkFormat,LogicalState::passes> imageFormat,
+        std::array<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
+        std::array<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) {
@@ -323,8 +324,8 @@ VkPhysicalDeviceProperties StackState::properties;
 VkPhysicalDeviceMemoryProperties StackState::memProperties;
 VkDevice StackState::device;
 VkCommandPool StackState::commandPool;
-std::array<VkRenderPass,LogicalState::passes> StackState::renderPass;
-std::array<VkFormat,LogicalState::passes> StackState::imageFormat;
+std::array<VkRenderPass,LogicalState::passes> StackState::renderPass; // TODO use HeapState
+std::array<VkFormat,LogicalState::passes> StackState::imageFormat; // TODO use HeapState
 VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
@@ -425,20 +426,20 @@ struct BaseState;
 struct Lnk {
     BaseState *ptr = 0; ResrcLoc loc;
 };
-enum Resp {
-    PushRsp,
-    FnceRsp,
-    QualRsp,
+enum Advance {
+    PushAdv,
+    FnceAdv,
+    QualAdv,
 };
-struct Rsp {
-    Resp pre; // when to advance
+struct Adv {
+    Advance adv; // when to advance
     int idx; // offset into bind->rsp
     int siz; // number to unreserve of bind->rsp
     Quality tag; // which to change upon advance
     int val; // what to change to upon advance
 };
 struct Loc {
-    ResrcLoc loc; SizeState max; ReqInst req; Rsp rsp; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
+    ResrcLoc loc; SizeState max; ReqInst req; Adv adv; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -473,7 +474,7 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, ReqInst req, Adv adv, ConstState *ary, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -485,7 +486,7 @@ struct BaseState {
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
         ploc[loc].req = req;
-        ploc[loc].rsp = rsp;
+        ploc[loc].adv = adv;
         ploc[loc].loc = loc;
         ploc[loc].ary = ary;
         return true;
@@ -570,11 +571,14 @@ struct BaseState {
         if (plock <= 0) EXIT
         safe.post();
         log << "baseups " << debug << '\n';
-        if (ploc[loc].rsp.pre == QualRsp) item->advance(ploc[loc].rsp.tag,ploc[loc].rsp.val);
-        else if (ploc[loc].rsp.pre == FnceRsp) item->advance();
+        Advance adv = ploc[loc].adv.adv;
+        Quality tag = ploc[loc].adv.tag;
+        int val = ploc[loc].adv.val;
         upset(ploc[loc],log);
         unlock(ploc[loc],log);
         done(log);
+        if (adv == QualAdv) item->advance(tag,val);
+        else if (adv == FnceAdv) item->advance(log);
     }
     bool incr(bool elock, int psav, int rsav, int wsav) {
         safe.wait();
@@ -677,8 +681,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> renderPass,
-        std::array<VkFormat,LogicalState::passes> imageFormat,
+        std::array<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
+        std::array<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) :
@@ -754,6 +758,9 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void advance() override { // make oldest into newest, with current tags
         safe.wait(); int i = tag.oldbuf(qual); tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
     }
+    void advance(SmartState log) override {
+        safe.wait(); int i = tag.oldbuf(qual); log << "advance " << state[i].debug << '\n'; tag.remove(i); if (tag.insert(qual)!=i) EXIT safe.post();
+    }
     void advance(Quality idx, int val) override { // make oldest into newest with changed tag val
         if (idx < 0 || idx >= Qualitys) EXIT
         safe.wait(); int tmp[Qualitys]; for (int i = 0; i < Qualitys; i++) tmp[i] = qual[i]; tmp[idx] = val;
@@ -828,10 +835,10 @@ struct BindState : public BaseState {
     BaseState *get(Resrc i) {
         return get(i,0);
     }
-    bool push(Resrc i, int j, BaseState *buf, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
+    bool push(Resrc i, int j, BaseState *buf, ResrcLoc loc, ReqInst req, Adv adv, ConstState *ary, SmartState log) {
         if (!excl) EXIT
         SaveState &ref = bind[i][j];
-        if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,rsp,ary,log)) return false;
+        if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,adv,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
         if (ref.bind != 0 && ref.bind != buf) EXIT
@@ -839,8 +846,8 @@ struct BindState : public BaseState {
         ref.psav += 1;
         return true;
     }
-    bool push(Resrc i, BaseState *buf, ResrcLoc loc, ReqInst req, Rsp rsp, ConstState *ary, SmartState log) {
-        return push(i,0,buf,loc,req,rsp,ary,log);
+    bool push(Resrc i, BaseState *buf, ResrcLoc loc, ReqInst req, Adv adv, ConstState *ary, SmartState log) {
+        return push(i,0,buf,loc,req,adv,ary,log);
     }
     void push(Inst ins, SmartState log) {
         if (!excl) EXIT
@@ -858,12 +865,12 @@ struct BindState : public BaseState {
     void done(Resrc i, SmartState log) {
         done(i,0,log);
     }
-    void done(Rsp rsp, SmartState log) {
+    void done(Adv adv, SmartState log) {
         if (!excl) EXIT
-        if (rsp.idx+rsp.siz > this->rsp.size()) EXIT
-        for (int i = 0; i < rsp.siz; i++) {
-        Resrc res = this->rsp[rsp.idx+i].dee.res;
-        switch (this->rsp[rsp.idx+i].ins) {default:
+        if (adv.idx+adv.siz > this->rsp.size()) EXIT
+        for (int i = 0; i < adv.siz; i++) {
+        Resrc res = this->rsp[adv.idx+i].dee.res;
+        switch (this->rsp[adv.idx+i].ins) {default:
         break; case (RDeeIns): case (IDeeIns): rdec(res,log);
         break; case (WDeeIns): wdec(res,log);}}
     }
@@ -937,26 +944,23 @@ BaseState *BaseState::res(Resrc typ, int sub) {
     if (lock == 0) EXIT
     return lock->get(typ,sub);
 }
-void BaseState::unlock(Loc &loc, SmartState log) { // called from baseups
-    if (lock) {lock->done(loc.rsp,log); lock->done(res(),log); lock->done(log);}
+void BaseState::unlock(Loc &loc, SmartState log) {
+    if (lock) {lock->done(loc.adv,log); lock->done(res(),log); lock->done(log);}
 }
 
 struct Push {
     SmartState log;
-    ResrcLoc loc;
-    BaseState *base;
-    Center *ptr;
-    int sub;
-    void (*fnc)(Center*,int);
+    BaseState *base; ResrcLoc loc;
+    Center *ptr; int sub;
     VkFence fence;
 };
 struct ThreadState : public DoneState {
     const VkDevice device;
     ChangeState<Configure,Configures> *change;
     SafeState safe; SafeState wake;
-    std::deque<Push> before;
-    std::deque<Push> after;
-    std::map<int,Push> topush;
+    std::deque<Push> before; // TODO maybe use HeapState
+    std::deque<Push> after; // TODO maybe use HeapState
+    std::map<int,Push> topush; // TODO maybe use HeapState
     int seqnum;
     bool goon;
     ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
@@ -978,6 +982,12 @@ struct ThreadState : public DoneState {
         before.push_back(push);
         safe.post();
         wake.post();
+    }
+    void push(SmartState log, BaseState *base, ResrcLoc loc) {
+        push({log,base,loc});
+    }
+    void push(SmartState log, Center *ptr, int sub) {
+        push({log,0,ResrcLocs,ptr,sub});
     }
     bool stage() {
         while (1) {while (1) {
@@ -1010,8 +1020,10 @@ struct ThreadState : public DoneState {
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) EXIT}
-        if (push.base) push.base->baseups(push.loc,push.log);
-        if (push.fnc) push.fnc(push.ptr,push.sub);
+        if (push.base) {
+        push.base->baseups(push.loc,push.log);}
+        if (push.ptr) {
+        centerPlace(push.ptr,push.sub);}
         change->wots(RegisterMask,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
@@ -1031,6 +1043,7 @@ extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
+void vulkanWait();
 struct EnumState {
     Resrc key = Resrcs; StackState *val = 0;
 };
@@ -1069,7 +1082,7 @@ struct CopyState {
         if (idx >= siz) {std::cerr << "not enough int arguments in struct Draw " << idx << ">=" << siz << std::endl; EXIT}
         return arg[idx++];
     }
-    Resrc get(Inst &ins) {
+    Resrc get(Inst &ins) { // TODO move .res ouside of .dee .der etc
         Resrc res = Resrcs;
         switch (ins.ins) {default:
         break; case (QDerIns): case (PDerIns): case(TDerIns): case (IDerIns): res = ins.der.res;
@@ -1081,7 +1094,7 @@ struct CopyState {
         break; case (GTstIns): case (VTstIns): case (WTstIns): res = ins.tst.res;}
         return res;
     }
-    void push(HeapState<Inst> &ins, Fnc fnc, Center *ptr, int sub, SmartState log) {
+    void push(HeapState<Inst> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         BaseState *buffer[Resrcs] = {0};
         int first[Resrcs];
@@ -1098,10 +1111,10 @@ struct CopyState {
             break; case(QDerIns): case(PDerIns): case(TDerIns): case(IDerIns): count += 1;
             break; case(RDeeIns): /*case(TDeeIns):*/ case(IDeeIns): case(WDeeIns): count += 1;}}
         // choose binding
-        BindState *bind = 0;
-        if (count > 1) bind = stack[BindRes]->buffer()->getBind(log);
+        BindState *bind = 0; int min = 1; // TODO change to 0 and allow for BindRes dependence between pushes from builtin test
+        if (count > min) bind = stack[BindRes]->prebuf()->getBind(log);
         int lim = num; // number checked for reservation
-        if (count > 1 && bind == 0) lim = -1;
+        if (count > min && bind == 0) lim = -1;
         // check binding
         for (int i = 0; i < num && i < lim; i++) {
             Resrc res = get(ins[i]);
@@ -1146,12 +1159,12 @@ struct CopyState {
             Resrc res = get(ins[i]);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case (TDerIns): case(IDerIns): {
-            Rsp rsp = {.pre=PushRsp,.idx=resps,.siz=0,.tag=ins[i].der.tag,.val=ins[i].der.val};
+            Adv rsp = {.adv=PushAdv,.idx=resps,.siz=0,.tag=ins[i].der.tag,.val=ins[i].der.val};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case (QDerIns): case(PDerIns): case (TDerIns): case (IDerIns): j = num-1;
             break; case (RDeeIns): case (IDeeIns): case (WDeeIns): resps += 1; rsp.siz += 1;}
-            if (ins[i].ins == PDerIns && final[res] == i) rsp.pre = FnceRsp;
-            if (ins[i].ins == TDerIns && final[res] == i) rsp.pre = QualRsp;
+            if (ins[i].ins == PDerIns && final[res] == i) rsp.adv = FnceAdv;
+            if (ins[i].ins == TDerIns && final[res] == i) rsp.adv = QualAdv;
             if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].der.loc,ins[i].req,rsp,array,log)) lim = i;}
             else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].der.loc,ins[i].req,rsp,array,log)) lim = i;}}
             break; case(RDeeIns):
@@ -1181,19 +1194,20 @@ struct CopyState {
             break; case(QDerIns):
             if (first[res] == i) src(res)->advance();
             log << "QDerIns push " << dst(res,buffer)->debug << '\n';
-            thread->push({log,ins[i].der.loc,dst(res,buffer)});
+            thread->push(log,dst(res,buffer),ins[i].der.loc);
             break; case(PDerIns): case(TDerIns):
             log << "PDerIns push " << dst(res,buffer)->debug << '\n';
-            thread->push({log,ins[i].der.loc,dst(res,buffer)});
+            thread->push(log,dst(res,buffer),ins[i].der.loc);
             break; case(IDerIns):
             if (first[res] == i) src(res)->advance(ins[i].der.idx);
             log << "IDerIns push " << dst(res,buffer)->debug << '\n';
-            thread->push({log,ins[i].der.loc,dst(res,buffer)});}}
+            thread->push(log,dst(res,buffer),ins[i].der.loc);}}
         // notify pass
-        if (fnc.pass) thread->push({log,ResrcLocs,0,ptr,sub,fnc.pass});
-        if (fnc.pnow) fnc.pnow(ptr,sub);
+        ptr->slf = 0;
+        switch (rsp) {default:
+        break; case (RetRsp): case (RptRsp): log << "RptRsp" << '\n'; thread->push(log,ptr,sub);}
         if (bind) stack[BindRes]->advance();
-        log << "copy pass " << goon << '\n';
+        log << "copy pass " << '\n';
         } else {
         log << "copy fail" << '\n';
         // release reserved
@@ -1217,9 +1231,10 @@ struct CopyState {
             dst(res,buffer) = 0;}}
         if (bind) bind->done(log);
         // notify fail
-        if (fnc.fnow) fnc.fnow(ptr,sub);
-        if (fnc.fail) thread->push({log,ResrcLocs,0,ptr,sub,fnc.fail});
-        if (fnc.goon && fnc.goon(ptr,sub)) {goon = true; log << "goon" << '\n';}}}
+        switch (rsp) {default:
+        break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
+        break; case (MltRsp): ptr->slf = -1;
+        break; case (RetRsp): ptr->slf = -1; thread->push(log,ptr,sub);}}}
     }
     static ReqInst request(Format frm, void *val, int *arg, int siz, int &idx, SmartState log) {
         ReqInst req = {Requests,0,0,0,Extents,0,0};
@@ -1357,7 +1372,7 @@ struct CopyState {
     }
     static bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {QDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {PDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
@@ -1424,11 +1439,13 @@ struct CopyState {
     int fill(Resrc typ, int idx, int ary) {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
-    template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int sze, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+    template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int sze, int &idx, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         // with both arg and val, negative arg means profer the val, non-negative means force
         // arg only means profer only
         // val only means packed force
         // neither means default only
+        if ((arg == 0) != (siz == 0)) EXIT
+        if ((val == 0) != (sze == 0)) EXIT
         HeapState<Inst> lst;
         int tot = 0;
         if (siz && sze) {
@@ -1461,15 +1478,15 @@ struct CopyState {
             if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
         push(lst,typ,dat,vlu,tot,idx,ary,log);
         if (idx != tot) {std::cerr << "wrong number of int arguments in struct Draw " << idx << "!=" << tot << std::endl; EXIT}
-        push(lst,fnc,ptr,sub,log);
+        push(lst,ptr,sub,rsp,log);
     }
-    void push(Draw &drw, int &idx, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
-        switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,fnc,ary,log);}
+    void push(Draw &drw, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+        int idx = 0; switch (drw.con.tag) {default: ERROR();
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);}
     }
-    void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Fnc fnc, int ary, SmartState log) {
+    void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         int mval[] = {
         mem, // RuseQua
         idx,width,height, // ExtentFrm
@@ -1478,41 +1495,47 @@ struct CopyState {
         idx,siz,wid,hei, // HighFrm
         idx}; // SourceFrm
         int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-        push(mem,dat,0,mval,0,msiz,midx,ptr,sub,fnc,ary,log);
+        push(mem,dat,0,mval,0,msiz,midx,ptr,sub,rsp,ary,log);
     }
-    void push(Center *center, int sub, Fnc fnc, int ary, SmartState log) {
-        switch (center->mem) {default: {
-        int mod = centerMod(center); int idx = center->idx*mod; int siz = center->siz*mod;
+    void push(Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+        switch (ptr->mem) {default: {
+        int mod = centerMod(ptr); int idx = ptr->idx*mod; int siz = ptr->siz*mod;
         int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int); int adx = 0;
-        switch (center->mem) {default: EXIT
-        break; case (Indexz): push(center->mem,(void*)center->ind,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Bringupz): push(center->mem,(void*)center->ver,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Uniformz): push(center->mem,(void*)center->uni,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Matrixz): push(center->mem,(void*)center->mat,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Trianglez): push(center->mem,(void*)center->tri,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Numericz): push(center->mem,(void*)center->num,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Vertexz): push(center->mem,(void*)center->vtx,0,val,0,aiz,adx,center,sub,fnc,ary,log);
-        break; case (Basisz): push(center->mem,(void*)center->bas,0,val,0,aiz,adx,center,sub,fnc,ary,log);}}
-        break; case (Drawz): for (int i = 0; i < center->siz; i++) {int didx = 0;
-        push(center->drw[i],didx,center,(i<center->siz-1?-1:sub),fnc,ary,log);}
-        break; case (Instrz): {HeapState<Inst> ins(StackState::instrs);
-        for (int i = 0; i < center->siz; i++) ins<<center->ins[i];
-        push(ins,fnc,center,sub,log);}
-        break; case (Configurez): for (int i = 0; i < center->siz; i++)
-        change->write(center->cfg[i],center->val[i]);
-        if (fnc.pass) thread->push({log,ResrcLocs,0,center,sub,fnc.pass});
-        break; case (Imagez): for (int k = 0; k < center->siz; k++) { // center->idx/center->siz is a range of resources
-            int idx = center->idx+k; int wid = center->img[k].wid; int hei = center->img[k].hei;
-            int tot = datxVoids(center->img[k].dat);
-            push(center->mem,(void*)datxVoidz(0,center->img[k].dat),idx,tot,wid,hei,wid,hei,center,sub,fnc,ary,log);}
-        break; case (Peekz): { // center->idx is the resource and center->siz is number of locations in the resource
+        switch (ptr->mem) {default: EXIT
+        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Numericz): push(ptr->mem,(void*)ptr->num,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
+        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);}}
+        break; case (Drawz): {
+            int mask = 0;
+            for (int i = 0; i < ptr->siz; i++) {
+            push(ptr->drw[i],ptr,sub,rsp,ary,log);
+            if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
+        break; case (Instrz): {
+            HeapState<Inst> ins(StackState::instrs);
+            for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
+            push(ins,ptr,sub,rsp,log);}
+        break; case (Configurez): {
+            for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);}
+        break; case (Imagez): {int mask = 0;
+            for (int i = 0; i < ptr->siz; i++) { // ptr->idx/ptr->siz is a range of resources
+            int idx = ptr->idx+i; int wid = ptr->img[i].wid; int hei = ptr->img[i].hei;
+            int tot = datxVoids(ptr->img[i].dat);
+            push(ptr->mem,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
+            if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
+        break; case (Peekz): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
-            int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
-            push(center->mem,(void*)center->eek,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),center,sub,fnc,ary,log);}
-        break; case (Pokez): { // center->idx is the resource and center->siz is number of locations in the resource
+            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
+            push(ptr->mem,(void*)ptr->eek,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+        break; case (Pokez): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->buffer()->getExtent(); // TODO unsafe if SwapRes is changing
-            int idx = center->idx; int siz = center->siz; int wid = ext.width; int hei = ext.height;
-            push(center->mem,(void*)center->oke,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),center,sub,fnc,ary,log);}}
+            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
+            push(ptr->mem,(void*)ptr->oke,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}}
+        switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
 };
 
@@ -1543,7 +1566,7 @@ struct SwapState : public BaseState {
     const VkRenderPass renderPass;
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkSwapchainKHR swapChain;
-    // TODO change vectors to number initialized and array of maximum supported size
+    // TODO change vectors to number initialized and HeapState of maximum supported size
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
     VkImage depthImage;
@@ -1845,7 +1868,7 @@ struct ImageState : public BaseState {
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkFormat depthFormat;
-    const std::array<VkRenderPass,LogicalState::passes> renderPass;
+    const std::array<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
@@ -2283,10 +2306,10 @@ MainState *mptr = 0;
 void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
 }
-// request
-void vulkanCopy(Center *ptr, int sub, Fnc fnc, int ary, const char *dbg) {
-    if (dbg) mptr->copyState.push(ptr,sub,fnc,ary,SmartState(dbg));
-    else mptr->copyState.push(ptr,sub,fnc,ary,SmartState());
+// copy request
+void vulkanCopy(Center *ptr, int sub, Rsp rsp, int ary, const char *dbg) {
+    if (dbg) mptr->copyState.push(ptr,sub,rsp,ary,SmartState(dbg));
+    else mptr->copyState.push(ptr,sub,rsp,ary,SmartState());
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {
@@ -2317,8 +2340,10 @@ const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
-void vulkanGlfw() {
-    glfwWaitEventsTimeout(mptr->changeState.read(RegisterPoll)*0.001);
+// mptr wrapper
+void vulkanWait() {
+    if (mptr->callState.self()) glfwWaitEventsTimeout(mptr->changeState.read(RegisterPoll)*0.001);
+    else sleepSec(mptr->changeState.read(RegisterPoll)*0.001);
 }
 // c debug
 void vulkanExit() {
@@ -2353,10 +2378,11 @@ int main(int argc, const char **argv) {
     main.changeState.write(ConstantImages,StackState::images);
     main.changeState.write(ConstantPhases,StackState::phases);
     main.changeState.write(ConstantInstrs,StackState::instrs);
+    main.changeState.write(ConstantResrcs,StackState::resrcs);
     main.changeState.call(RegisterOpen,vulkanBack);
     main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanGlfw);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanWait);
     // TODO move glfw functions to WindowState
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     int count = 0;

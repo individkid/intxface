@@ -194,7 +194,10 @@ struct CallState {
     std::vector<DoneState*> mask;
     bool lock;
     SafeState safe;
-    CallState() : lock(false), safe(1) {std::cout << "CallState" << std::endl;}
+    pthread_t thrd;
+    CallState() : lock(false), safe(1), thrd(pthread_self()) {
+        std::cout << "CallState" << std::endl;
+    }
     ~CallState() {std::cout << "~CallState" << std::endl;
         safe.wait(); lock = true; safe.post();
         while (1) {
@@ -204,6 +207,9 @@ struct CallState {
         safe.post();
         ptr->done();}
         clear();
+    }
+    bool self() {
+        return (pthread_self() == thrd);
     }
     void clear() {
         safe.wait();

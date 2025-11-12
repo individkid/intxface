@@ -161,7 +161,7 @@ Format = {
 	"FalseFrm", -- SizeReq FalseExt(always resize)
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
-Instr = {
+Instr = { -- TODO remove IDerIns and IDeeIns, add DerIns for the various *Rsp and to set tag before processing *DerIns in addition to after by TDerIns
 	"QDerIns", -- advance before push to thread
 	"PDerIns", -- advance after fence in thread
 	"TDerIns", -- advance with tag value change
@@ -202,6 +202,7 @@ Configure = {
 	"CenterSiz",
 	"CenterIdx",
 	"CenterSlf",
+	"CenterPtr",
 	"ArgumentInp", -- staged field
 	"ArgumentOut",
 	"MachineIndex", -- running machine
@@ -249,6 +250,7 @@ Configure = {
 	"ConstantImages",
 	"ConstantPhases",
 	"ConstantInstrs",
+	"ConstantResrcs",
 }
 Transfer = {
 	"Stage", -- center fields to configure
@@ -610,10 +612,9 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Int","0"},
 }
 ResrcIns = {
-	-- n==0: departures from QDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
+	-- n==0: departures from PDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
-	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},
-	 {"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
+	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
 	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
 	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
@@ -631,8 +632,7 @@ ResrcIns = {
 	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
 	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
 --	PierceRes: (resize)->{initial}->read->fill->read
-	{"Resrc","PierceRes","Int","0","Instr","PDerIns"},
-	 {"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
+	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
 	 {"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
 	 {"Resrc","PierceRes","Int","1","Format","RelateFrm"},
@@ -643,7 +643,6 @@ ResrcIns = {
 	{"Resrc","PierceRes","Int","4","ResrcLoc","AfterLoc"},
 	 {"Resrc","PierceRes","Int","4","Format","WrrdFrm"},
 -- RelateRes: (resize)->{initial}->shadow->write->shadow
-	{"Resrc","RelateRes","Int","0","Instr","PDerIns"},
 	 {"Resrc","RelateRes","Int","0","Resrc","RelateRes"},
 	 {"Resrc","RelateRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
@@ -755,7 +754,6 @@ MicroAlt = {
 -- TODO in Release, use mouse and roller instead of Center spoofs.
 Bootstrap = {
 	{"Int","0","Str","Indexz(siz:0idx:0slf:0)"},
-	-- also used for centerCheck in main loop of planeTest
 	{"Int","1","Str","Bringupz(siz:0idx:0slf:0)"},
 	{"Int","2","Str","Imagez(siz:0idx:0slf:0)"},
 	{"Int","3","Str","Uniformz(siz:0idx:0slf:0)"},
