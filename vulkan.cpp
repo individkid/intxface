@@ -445,8 +445,8 @@ struct Unl {
     int dee; // offset into bind->rsp
     int siz; // number to unreserve of bind->rsp
 };
-struct Loc { // TODO Adv does not need to be per Loc
-    ResrcLoc loc; SizeState max; Requ req; Adv adv; Unl unl; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
+struct Loc {
+    ResrcLoc loc; SizeState max; Requ req; Unl unl; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -462,6 +462,7 @@ struct BaseState {
     Loc ploc[ResrcLocs];
     int mask; // which ploc have valid max
     int nask; // which ploc setup called for
+    Adv adv;
     char debug[64];
     BaseState(const char *name, StackState *ptr) :
         item(ptr),
@@ -481,7 +482,7 @@ struct BaseState {
     ~BaseState() {
         std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Requ req, Adv adv, Unl unl, ConstState *ary, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -493,27 +494,21 @@ struct BaseState {
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
         ploc[loc].req = req;
-        ploc[loc].adv = adv;
         ploc[loc].unl = unl;
         ploc[loc].loc = loc;
         ploc[loc].ary = ary;
         return true;
     }
-    void done(SmartState log) { // from copy fail
+    void push(Adv adv, SmartState log) {
         safe.wait();
         if (plock <= 0) EXIT
-        plock -= 1;
-        if (plock == 0) {lock = 0; nask = 0;}
+        this->adv = adv;
         safe.post();
     }
-    void done(Adv adv, SmartState log) { // from thread
+    void fail(SmartState log) {
         safe.wait();
-        if (plock <= 0) EXIT
-        plock -= 1;
-        if (plock == 0) {
-        lock = 0; nask = 0;
-        if (adv.adv == FnceAdv)
-        item->advance(adv.hdl,adv.key,adv.val);}
+        if (plock != 1) EXIT
+        plock = 0; lock = 0; nask = 0;
         safe.post();
     }
     void reset(SmartState log) {
@@ -585,13 +580,17 @@ struct BaseState {
     void unlock(Loc &loc, SmartState log);
     void baseups(ResrcLoc loc, SmartState log) {
         // after fence triggered
-        safe.wait();
-        if (plock <= 0) EXIT
-        safe.post();
         log << "baseups " << debug << '\n';
         upset(ploc[loc],log);
         unlock(ploc[loc],log);
-        done(ploc[loc].adv,log);
+        safe.wait();
+        if (plock <= 0) EXIT
+        plock -= 1;
+        if (plock == 0) {
+        lock = 0; nask = 0;
+        if (adv.adv == FnceAdv)
+        item->advance(adv.hdl,adv.key,adv.val);}
+        safe.post();
     }
     bool incr(bool elock, int psav, int rsav, int wsav) {
         safe.wait();
@@ -841,10 +840,10 @@ struct BindState : public BaseState {
         if (bind[i].bind == 0) EXIT
         return bind[i].bind;
     }
-    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Requ req, Adv adv, Unl unl, ConstState *ary, SmartState log) {
+    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         if (!excl) EXIT
         SaveState &ref = bind[i];
-        if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,adv,unl,ary,log)) return false;
+        if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
         if (ref.bind != 0 && ref.bind != buf) EXIT
@@ -855,16 +854,6 @@ struct BindState : public BaseState {
     void push(Inst ins, SmartState log) {
         if (!excl) EXIT
         rsp<<ins;
-    }
-    void done(Unl unl, SmartState log) {
-        if (!excl) EXIT
-        if (unl.dee+unl.siz > rsp.size()) EXIT
-        for (int i = 0; i < unl.siz; i++) {
-        Resrc res = rsp[unl.dee+i].res;
-        switch (rsp[unl.dee+i].ins) {default:
-        break; case (RDeeIns): case (IDeeIns): rdec(res,log);
-        break; case (WDeeIns): wdec(res,log);}}
-        // TODO call done(unl.der,log) and done(log) here
     }
     void done(Resrc i, SmartState log) {
         if (!excl) EXIT
@@ -880,6 +869,16 @@ struct BindState : public BaseState {
         if (lock == 1) {
         lock = 0; rsp.clear();
         safe.wait(); excl = false; safe.post();}
+    }
+    void done(Resrc i, Unl unl, SmartState log) {
+        if (!excl) EXIT
+        if (unl.dee+unl.siz > rsp.size()) EXIT
+        for (int i = 0; i < unl.siz; i++) {
+        Resrc res = rsp[unl.dee+i].res;
+        switch (rsp[unl.dee+i].ins) {default:
+        break; case (RDeeIns): case (IDeeIns): rdec(res,log);
+        break; case (WDeeIns): wdec(res,log);}}
+        done(i,log); done(log);
     }
     bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
         if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
@@ -924,7 +923,7 @@ BaseState *BaseState::res(Resrc typ) {
     return lock->get(typ);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
-    if (lock) {lock->done(loc.unl,log); lock->done(res()/*TODO loc.unl.der for index into Insr list*/,log); lock->done(log);}
+    if (lock) {lock->done(res()/*TODO loc.unl.der instead*/,loc.unl,log);}
 }
 
 struct Push {
@@ -1138,17 +1137,17 @@ struct CopyState {
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
-            Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             Unl unl = {.der=i,.dee=resps,.siz=0};
-            if (final[res] == i) switch (ins[i].ins) {default:
-            break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
             break; case(WDeeIns): case(RDeeIns):
             case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;}
-            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].loc,ins[i].req,adv,unl,array,log)) lim = i;}
-            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].loc,ins[i].req,adv,unl,array,log)) lim = i;}}
+            if (bind) {if (!bind->push(res,dst(res,buffer),ins[i].loc,ins[i].req,unl,array,log)) lim = i;}
+            else {if (!dst(res,buffer)->push(0,0,0,0,ins[i].loc,ins[i].req,unl,array,log)) lim = i;}
+            if (final[res] == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
+            switch (ins[i].ins) {default: break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
+            dst(res,buffer)->push(adv,log);}}
             break; case(WDeeIns): case(TDeeIns):
             if (!bind->winc(res,dst(res,buffer),log)) lim = i;
             break; case(RDeeIns): case(SDeeIns): case(IDeeIns):
@@ -1200,12 +1199,11 @@ struct CopyState {
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns):
             if (bind) bind->done(res,log);
-            dst(res,buffer)->done(log);
+            dst(res,buffer)->fail(log);
             break; case(WDeeIns): case (TDeeIns):
             bind->wdec(res,log);
             break; case(RDeeIns): case (SDeeIns): case(IDeeIns):
-            bind->rdec(res,log);
-        }}
+            bind->rdec(res,log);}}
         // clean up
         for (int i = 0; i < num; i++) {
             Resrc res = ins[i].res;
@@ -2169,7 +2167,7 @@ struct MainState {
     PhysicalState physicalState;
     LogicalState logicalState;
     ArrayState<SwapState,SwapRes,1> swapState;
-    ArrayState<PipeState,PipeRes,StackState::micros> pipelineState; // TODO use tag instead of direct map to pipelineState
+    ArrayState<PipeState,PipeRes,StackState::micros> pipelineState;
     ArrayState<BufferState,IndexRes,StackState::frames> indexState;
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
