@@ -163,9 +163,11 @@ Format = {
 }
 Instr = { -- TODO remove IDerIns and IDeeIns, add DerIns for the various *Rsp and to set tag before processing *DerIns in addition to after by TDerIns
 	"QDerIns", -- advance before push to thread
-	"PDerIns", -- advance after fence in thread
-	"TDerIns", -- before process indicated instance
-	"SDerIns", -- after process indicated instance
+	"PDerIns", -- advance an oldest after fence
+	"ODerIns", -- advance the oldest after fence
+	"TDerIns", -- before newest indicated instance
+	"SDerIns", -- after an oldest indicated instance
+	"RDerIns", -- after the oldest indicated instance
 	"IDerIns", -- process a particular instance
 	"WDeeIns", -- increment write lock in current
 	"RDeeIns", -- increment read lock in current
