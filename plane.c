@@ -816,9 +816,9 @@ void planeTest(enum Thread tag, int idx)
 {
     int count = 0; float time = 0.0; int tested = 0; int pull = 0;
     int inds = 12;
-    int arg[] = {0, 1,2,3, 4,5,6, 7, 8,9,10, 11};
+    int arg[] = {0,1, 2,3,4, 5,6,7, 8, 9,10,11, 12};
     int val[] = {
-    /*JTagIns ImageRes*//*RuseQua.val*/Imagez,
+    /*STagIns ImageRes*//*idx*/0,/*RuseQua.val*/Imagez,
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
@@ -844,8 +844,7 @@ void planeTest(enum Thread tag, int idx)
     callCopy(mat,save,RptRsp,0,0);
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
-    if (count == tested) {/*int idx = 0;
-    copy->push(MicroPierce,0,crg,sizeof(crg)/sizeof(int),idx,0,0,fun,SmartState());*/
+    if (count == tested) {
     if (0) // TODO when PierceRes is done
     {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
     freeCenter(drw); pull = (pull+1)%4;
@@ -1180,7 +1179,7 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
-    struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
+    /*TODO struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
     ptr->mem = Instrz; ptr->siz = 26;
     allocInst(&ptr->ins,ptr->siz);
     int idx = 0;
@@ -1213,40 +1212,47 @@ void initTest()
     // TODO test insert that changes newest
     // TODO test insert when pool is empty
     if (idx != ptr->siz) ERROR();
-    callCopy(ptr,Instrz,MltRsp,0,0);
+    callCopy(ptr,Instrz,MltRsp,0,0);*/
     // TODO issue Instrz to exercise TagState
     int frames = callInfo(ConstantFrames,0,planeRcfg);
-    ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 1/*+2*//*Micros*//*+frames*//*+frames*/;
+    struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
+    ptr->mem = Drawz; ptr->siz = 1;
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = SwapRes;
-    callCopy(ptr,Drawz,RptRsp,0,0); // repeat, no replace
+    callCopy(ptr,Drawz,RptRsp,0,0);
     while (!centerCheck(Drawz)) usleep(1000);
-    ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 3/*Micros*/+frames/*+frames*/; // TODO arg for each ResrcLoc of PierceRes
-    allocDraw(&ptr->drw,ptr->siz);
     for (int i = 0; i < 3/*Micros*/; i++) {
-    ptr->drw[i].con.tag = ResrcCon;
-    ptr->drw[i].con.res = PipeRes;
+    ptr = centerPull(Drawz); freeCenter(ptr);
+    ptr->mem = Drawz; ptr->siz = 1;
+    allocDraw(&ptr->drw,ptr->siz);
+    ptr->drw[0].con.tag = ResrcCon;
+    ptr->drw[0].con.res = PipeRes;
     int val[] = {/*IDerIns*/i,/*Micro*/i};
-    ptr->drw[i].sze = sizeof(val)/sizeof(int);
-    allocInt(&ptr->drw[i].val,ptr->drw[i].sze);
-    for (int j = 0; j < ptr->drw[i].sze; j++) {
-    ptr->drw[i].val[j] = val[j];}}
-    for (int i = 0; i < frames; i++) {
-    ptr->drw[3/*Micros*/+i].con.tag = ResrcCon;
-    ptr->drw[3/*Micros*/+i].con.res = ChainRes;}
-    if (0) for (int i = 0; i < frames; i++) { // TODO arg for each ResrcLoc of PierceRes
-    ptr->drw[3/*Micros*/+frames+i].con.tag = ResrcCon;
-    ptr->drw[3/*Micros*/+frames+i].con.res = PierceRes;
-    int val[] = {/*IDerIns*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
-    ptr->drw[3/*Micros*/+frames+i].sze = sizeof(val)/sizeof(int);
-    allocInt(&ptr->drw[3/*Micros*/+frames+i].val,ptr->drw[3/*Micros*/+frames+i].sze);
-    for (int j = 0; j < ptr->drw[3/*Micros*/+frames+i].sze; j++) {
-    ptr->drw[3/*Micros*/+frames+i].val[j] = val[j];}}
+    ptr->drw[0].sze = sizeof(val)/sizeof(int);
+    allocInt(&ptr->drw[0].val,ptr->drw[0].sze);
+    for (int j = 0; j < ptr->drw[0].sze; j++) {
+    ptr->drw[0].val[j] = val[j];}
     callCopy(ptr,Drawz,MptRsp,0,0);
-    while (!centerCheck(Drawz)) usleep(1000);
+    while (!centerCheck(Drawz)) usleep(1000);}
+    for (int i = 0; i < frames; i++) {
+    ptr = centerPull(Drawz); freeCenter(ptr);
+    ptr->mem = Drawz; ptr->siz = 1;
+    allocDraw(&ptr->drw,ptr->siz);
+    ptr->drw[0].con.tag = ResrcCon;
+    ptr->drw[0].con.res = ChainRes;
+    callCopy(ptr,Drawz,MptRsp,0,0);
+    while (!centerCheck(Drawz)) usleep(1000);}
+    if (0) for (int i = 0; i < frames; i++) { // TODO arg for each ResrcLoc of PierceRes
+    ptr->drw[0].con.tag = ResrcCon;
+    ptr->drw[0].con.res = PierceRes;
+    int val[] = {/*IDerIns*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
+    ptr->drw[0].sze = sizeof(val)/sizeof(int);
+    allocInt(&ptr->drw[0].val,ptr->drw[0].sze);
+    for (int j = 0; j < ptr->drw[0].sze; j++) {
+    ptr->drw[0].val[j] = val[j];}
+    callCopy(ptr,Drawz,MptRsp,0,0);
+    while (!centerCheck(Drawz)) usleep(1000);}
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);

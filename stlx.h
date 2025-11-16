@@ -374,11 +374,13 @@ template <int Size, int Dim, int Min> struct SimpleState {
     std::set<Wsiz,WsizLess> keyord; // ordered by number
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
+    std::map<int,Only> idxkey; // handle for qualifier
     SimpleState() : seqn(0) {
         for (int i = 0; i < Size; i++) pool.push_back(i);
     }
-    Only get(int *key) {
-        Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; return tmp;
+    Only get(int idx, int tag, int val) {
+        if (idxkey.find(idx) == idxkey.end()) {Only tmp = {0}; idxkey[idx] = tmp;}
+        Only tmp = idxkey[idx]; if (tag >= 0 && tag < Dim) tmp[tag] = val; return tmp;
     }
     Wseq get(const Only &key, int num) {
         Wseq tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; tmp[Dim] = num; return tmp;
@@ -458,20 +460,24 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (newest.find(tmp) == newest.end()) insert(tmp);
         return newest[tmp];
     }
-    int insert(int *key) {
-        Only tmp = get(key);
+    void qualify(int idx, int tag, int val) {
+        if (idxkey.find(idx) == idxkey.end()) {Only tmp = {0}; idxkey[idx] = tmp;}
+        if (tag >= 0 && tag < Dim) idxkey[idx][tag] = val;
+    }
+    int insert(int idx, int tag, int val) {
+        Only tmp = get(idx,tag,val);
         return insert(tmp);
     }
-    int oldbuf(int *key) {
-        Only tmp = get(key);
+    int oldbuf(int idx, int tag, int val) {
+        Only tmp = get(idx,tag,val);
         return oldbuf(tmp);
     }
-    int getbuf(int *key) {
-        Only tmp = get(key);
+    int getbuf(int idx, int tag, int val) {
+        Only tmp = get(idx,tag,val);
         return getbuf(tmp);
     }
-    int newbuf(int *key) {
-        Only tmp = get(key);
+    int newbuf(int idx, int tag, int val) {
+        Only tmp = get(idx,tag,val);
         return newbuf(tmp);
     }
     int get(int idx, int tag) {

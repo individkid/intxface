@@ -164,17 +164,15 @@ Format = {
 Instr = { -- TODO remove IDerIns and IDeeIns, add DerIns for the various *Rsp and to set tag before processing *DerIns in addition to after by TDerIns
 	"QDerIns", -- advance before push to thread
 	"PDerIns", -- advance after fence in thread
-	"TDerIns", -- advance with tag value change
+	"TDerIns", -- before process indicated instance
+	"SDerIns", -- after process indicated instance
 	"IDerIns", -- process a particular instance
-	"RDeeIns", -- increment read lock in current
-	"IDeeIns", -- increment read lock in indexed
 	"WDeeIns", -- increment write lock in current
-	"RTagIns", -- read Quality value from Resrc array
-	"WTagIns", -- write Quality value to Resrc array
-	"ATagIns", -- read next Quality value
-	"BTagIns", -- write next Quality value to Resrc array
-	"ITagIns", -- read constant Quality value
-	"JTagIns", -- write constant Quality value to Resrc array
+	"RDeeIns", -- increment read lock in current
+	"TDeeIns", -- increment write in indicated
+	"SDeeIns", -- increment read in indicated
+	"IDeeIns", -- increment read lock in indexed
+	"STagIns", -- set tag value in given quality
 	"RIncIns", -- include instructions from Resrc
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
@@ -574,10 +572,10 @@ MemoryIns = {
 	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
 	"aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #mem then coroutine.yield(v) else return v end end end;"..
-	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","JTagIns"},
+	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","STagIns"},
 	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
 	{"Memory","%(return fnc(mem))","Int","0","Quality","RuseQua"}, -- TODO add castMemory(mem) when using default constants
-	{"Memory","%(return fnc(mem))","Int","1","Instr","IDerIns"},
+	{"Memory","%(return fnc(mem))","Int","1","Instr","PDerIns"},
 	{"Memory","%(return fnc(mem))","Int","1","Memory","Memorys"},
 	{"Memory","%(return fnc(mem))","Int","1","Micro","Micros"},
 	{"Memory","%(return fnc(mem))","Int","1","ResrcLoc","ResizeLoc"},
@@ -693,7 +691,7 @@ MicroIns = {
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num) else return i+num end end end\
-	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","JTagIns"},
+	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","STagIns"},
 		{"Memory","%(return gnc(mic,dee))","Int","0","Resrc","ImageRes"},
 		{"Memory","%(return gnc(mic,dee))","Int","0","Quality","RuseQua"},
 	{"Micro","%(return gnc(mic,dee))","Int","1","Instr","QDerIns"},
@@ -1020,7 +1018,7 @@ Draw = {
 	{"arg","Int",{},"siz"},
 	{"val","Int",{},"sze"},
 }
-ReqInst = {
+Requ = {
 	{"tag","Request",{},{}},
 	{"ptr","Dat",{},{}},
 	{"idx","Int",{},{}},
@@ -1029,39 +1027,16 @@ ReqInst = {
 	{"base","Int",{},{}},
 	{"size","Int",{},{}},
 }
-DerInst = {
-	{"loc","ResrcLoc",{},{}},
-	{"res","Resrc",{},{}},	
-	{"idx","Int",{},{}},
-	{"tag","Quality",{},{}},
-	{"val","Int",{},{}},
-}
-DeeInst = {
-	{"res","Resrc",{},{}},
-	{"idx","Int",{},{}},
-}
-TagInst = {
-	{"res","Resrc",{},{}},
-	{"tag","Quality",{},{}},
-	{"val","Int",{},{}},
-}
-IncInst = {
-	{"res","Resrc",{},{}},
-	{"mem","Memory",{},{}},
-	{"mic","Micro",{},{}},
-}
-TstInst = {
-	{"res","Resrc",{},{}},
-	{"val","Int",{},{}},
-}
 Inst = {
 	{"ins","Instr",{},""},
-	{"req","ReqInst",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["TDerIns"]=true,["IDerIns"]=true}},{}},
-	{"der","DerInst",{["ins"]={["QDerIns"]=true,["PDerIns"]=true,["TDerIns"]=true,["IDerIns"]=true}},{}},
-	{"dee","DeeInst",{["ins"]={["RDeeIns"]=true,["IDeeIns"]=true,["WDeeIns"]=true}},{}},
-	{"tag","TagInst",{["ins"]={["RTagIns"]=true,["WTagIns"]=true,["ATagIns"]=true,["BTagIns"]=true,["ITagIns"]=true,["JTagIns"]=true}},{}},
-	{"inc","IncInst",{["ins"]={["RIncIns"]=true,["EIncIns"]=true,["IIncIns"]=true}},{}},
-	{"tst","TstInst",{["ins"]={["RTstIns"]=true,["ITstIns"]=true,["OTstIns"]=true,["NTstIns"]=true,["GTstIns"]=true,["VTstIns"]=true,["WTstIns"]=true}},{}},
+	{"req","Requ",{},{}}, -- TODO change to pointer
+	{"loc","ResrcLoc",{},{}}, -- only used by DerIns
+	{"res","Resrc",{},{}}, -- overloaded for use by IncIns
+	{"mem","Memory",{},{}}, -- only used by IncIns
+	{"mic","Micro",{},{}}, -- only used by IncIns
+	{"idx","Int",{},{}},
+	{"key","Quality",{},{}},
+	{"val","Int",{},{}}, -- overloaded for use by TstIns
 }
 Center = {
 	{"mem","Memory",{},""},
