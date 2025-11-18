@@ -814,6 +814,7 @@ void planeTime(enum Thread tag, int idx)
 }
 void planeTest(enum Thread tag, int idx)
 {
+    int debug = 0;
     int count = 0; float time = 0.0; int tested = 0; int pull = 0;
     int inds = 12;
     int arg[] = {0,1, 2,3,4, 5,6,7, 8, 9,10,11, 12};
@@ -839,9 +840,9 @@ void planeTest(enum Thread tag, int idx)
     int save = pull+Memorys; struct Center *mat = centerPull(save); if (!mat) {callWait(); continue;}
     freeCenter(mat); pull = (pull+1)%4;
     mat->mem = Matrixz; mat->idx = 3; mat->siz = 1; allocMatrix(&mat->mat,mat->siz);
-    float debug[16]; planeDebug(debug);
-    memcpy(&mat->mat[0],debug,sizeof(struct Matrix));
-    callCopy(mat,save,RptRsp,0,0);
+    float dbg[16]; planeDebug(dbg);
+    memcpy(&mat->mat[0],dbg,sizeof(struct Matrix));
+    callCopy(mat,save,RptRsp,0,(debug?"matrix":0));
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {
@@ -857,7 +858,7 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->drw[0].val,drw->drw[0].sze);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = crg[i];
     for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = cal[i];
-    callCopy(drw,save,RetRsp,0,0);}
+    callCopy(drw,save,RetRsp,0,(debug?"pierce":0));}
     {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -869,7 +870,7 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->drw[0].val,drw->drw[0].sze);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = arg[i];
     for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = val[i];
-    callCopy(drw,save,RetRsp,0,0);}}
+    callCopy(drw,save,RetRsp,0,(debug?"test":0));}}
     else if (count%8 == 1 || count%8 == 5) {
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
     freeCenter(drw); pull = (pull+1)%4;
@@ -882,7 +883,7 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->drw[0].val,drw->drw[0].sze);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = brg[i];
     for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = bal[i];
-    callCopy(drw,save,RetRsp,0,0);}
+    callCopy(drw,save,RetRsp,0,(debug?"debug":0));}
     else if (count%8 == 2 || count%8 == 6) {
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
@@ -890,7 +891,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(eek); pull = (pull+1)%4;
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].val = 1.0;
-    callCopy(eek,save,RetRsp,0,0);}
+    callCopy(eek,save,RetRsp,0,(debug?"peek":0));}
     tested = count;}
 }
 
@@ -1030,7 +1031,7 @@ void planePutstr(const char *src)
     strcpy(str,src); pushStrq(str,strout);
     if (postSafe(stdioSem) != 1) ERROR();
 }
-void planeSetcfg(int val, int sub)
+void planeSetcfg(int val, int sub) // TODO add argument to switch between Wcfg and such
 {
     if (jknfo) callKnfo((enum Configure)sub,val,planeWcfg);
     else callJnfo((enum Configure)sub,val,planeWcfg);
@@ -1160,6 +1161,7 @@ void initPlan()
 }
 void initTest()
 {
+    int debug = 0;
     const struct Vertex vertices[] = {
         {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         {{0.5f, -0.5f, 0.40f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
@@ -1212,7 +1214,7 @@ void initTest()
     // TODO test insert that changes newest
     // TODO test insert when pool is empty
     if (idx != ptr->siz) ERROR();
-    callCopy(ptr,Instrz,MltRsp,0,0);*/
+    callCopy(ptr,Instrz,MltRsp,0,(debug?"instr":0));*/
     // TODO issue Instrz to exercise TagState
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
@@ -1220,7 +1222,7 @@ void initTest()
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = SwapRes;
-    callCopy(ptr,Drawz,RptRsp,0,0);
+    callCopy(ptr,Drawz,RptRsp,0,(debug?"swap":0));
     while (!centerCheck(Drawz)) usleep(1000);
     for (int i = 0; i < 3/*Micros*/; i++) {
     ptr = centerPull(Drawz); freeCenter(ptr);
@@ -1233,7 +1235,7 @@ void initTest()
     allocInt(&ptr->drw[0].val,ptr->drw[0].sze);
     for (int j = 0; j < ptr->drw[0].sze; j++) {
     ptr->drw[0].val[j] = val[j];}
-    callCopy(ptr,Drawz,MptRsp,0,0);
+    callCopy(ptr,Drawz,MptRsp,0,(debug?"pipe":0));
     while (!centerCheck(Drawz)) usleep(1000);}
     for (int i = 0; i < frames; i++) {
     ptr = centerPull(Drawz); freeCenter(ptr);
@@ -1241,7 +1243,7 @@ void initTest()
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = ChainRes;
-    callCopy(ptr,Drawz,MptRsp,0,0);
+    callCopy(ptr,Drawz,MptRsp,0,(debug?"chain":0));
     while (!centerCheck(Drawz)) usleep(1000);}
     if (0) for (int i = 0; i < frames; i++) { // TODO arg for each ResrcLoc of PierceRes
     ptr->drw[0].con.tag = ResrcCon;
@@ -1251,34 +1253,34 @@ void initTest()
     allocInt(&ptr->drw[0].val,ptr->drw[0].sze);
     for (int j = 0; j < ptr->drw[0].sze; j++) {
     ptr->drw[0].val[j] = val[j];}
-    callCopy(ptr,Drawz,MptRsp,0,0);
+    callCopy(ptr,Drawz,MptRsp,0,(debug?"pierce":0));
     while (!centerCheck(Drawz)) usleep(1000);}
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);
     uni->mem = Uniformz; uni->siz = 1; allocUniform(&uni->uni,uni->siz);
     uni->uni[0].wid = width; uni->uni[0].hei = height;
-    callCopy(uni,Uniformz,RptRsp,0,0);
+    callCopy(uni,Uniformz,RptRsp,0,(debug?"uniform":0));
     struct Center *vtx = centerPull(Bringupz); freeCenter(vtx);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
-    callCopy(vtx,Bringupz,RptRsp,0,0);
+    callCopy(vtx,Bringupz,RptRsp,0,(debug?"bringup":0));
     struct Center *ind = centerPull(Indexz); freeCenter(ind);
     ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
-    callCopy(ind,Indexz,RptRsp,0,0);
+    callCopy(ind,Indexz,RptRsp,0,(debug?"index":0));
     struct Center *img = centerPull(Imagez); freeCenter(img);
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
-    callCopy(img,Imagez,RptRsp,0,0);
+    callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
     struct Center *oke = centerPull(Pokez); freeCenter(oke);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
     oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
-    callCopy(oke,Pokez,RptRsp,0,0);
+    callCopy(oke,Pokez,RptRsp,0,(debug?"poke":0));
     struct Center *eek = centerPull(Peekz); freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
-    callCopy(eek,Peekz,RptRsp,0,0);
+    callCopy(eek,Peekz,RptRsp,0,(debug?"peek":0));
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
@@ -1290,7 +1292,7 @@ void initTest()
     memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
-    callCopy(mat,Matrixz,RptRsp,1,0);
+    callCopy(mat,Matrixz,RptRsp,1,(debug?"matrix":0));
     while (!centerCheck(Matrixz)) callWait();}
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);
     } break; case (Builtin): {

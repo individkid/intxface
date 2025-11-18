@@ -202,7 +202,8 @@ Configure = {
 	"CenterSiz",
 	"CenterIdx",
 	"CenterSlf",
-	"CenterPtr",
+	"CenterPtr", -- whether staged
+	"CenterMask", -- which have changed
 	"ArgumentInp", -- staged field
 	"ArgumentOut",
 	"MachineIndex", -- running machine
