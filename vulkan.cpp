@@ -808,7 +808,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
 };
 
 struct Dec {
-    int idx;
+    Resrc idx; // TODO change to 0 <= int < StackState::instrs
     Instr ins;
 };
 struct SaveState {
@@ -820,8 +820,7 @@ struct BindState : public BaseState {
     /*TODO StackState::instrs instead of Resrcs*/
     SaveState bind[Resrcs];
     int lock; bool excl;
-    /*TODO Dec instead of Inst*/
-    HeapState<Inst> rsp;
+    HeapState<Dec> rsp;
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0),
@@ -863,9 +862,9 @@ struct BindState : public BaseState {
         ref.psav += 1;
         return true;
     }
-    void push(Inst ins, SmartState log) {
+    void push(Resrc idx, Instr ins, SmartState log) {
         if (!excl) EXIT
-        rsp<<ins;
+        rsp<<Dec{idx,ins};
     }
     void done(Resrc i, SmartState log) {
         if (!excl) EXIT
@@ -887,7 +886,7 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (unl.dee+unl.siz > rsp.size()) EXIT
         for (int i = 0; i < unl.siz; i++) {
-        Resrc res = rsp[unl.dee+i].res;
+        Resrc res = rsp[unl.dee+i].idx;
         switch (rsp[unl.dee+i].ins) {default:
         break; case (RDeeIns): case (IDeeIns): rdec(res,log);
         break; case (WDeeIns): wdec(res,log);}}
@@ -1179,7 +1178,7 @@ struct CopyState {
             switch (ins[i].ins) {default:
             break; case (WDeeIns): case(RDeeIns):
             case (TDeeIns): case (SDeeIns): case(IDeeIns):
-            if (bind) bind->push(ins[i],log);}}
+            if (bind) bind->push(ins[i].res,ins[i].ins,log);}}
         // submit buffers
         for (int i = 0; i < num; i++) {
             Resrc res = ins[i].res;
