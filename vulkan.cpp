@@ -441,7 +441,7 @@ struct Adv {
     int val; // what to change to upon advance
 };
 struct Unl {
-    int der; // index into bind->bind
+    Resrc der; // index into bind->bind
     int dee; // offset into bind->rsp
     int siz; // number to unreserve of bind->rsp
 };
@@ -608,7 +608,6 @@ struct BaseState {
         safe.post();
     }
     BaseState *res(Resrc typ);
-    BaseState *res(Resrc typ, int sub);
     Lnk *lnk(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
@@ -808,7 +807,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
 };
 
 struct Dec {
-    Resrc idx; // TODO change to 0 <= int < StackState::instrs
+    Resrc idx;
     Instr ins;
 };
 struct SaveState {
@@ -817,7 +816,6 @@ struct SaveState {
     SaveState() : bind(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0) {}
 };
 struct BindState : public BaseState {
-    /*TODO StackState::instrs instead of Resrcs*/
     SaveState bind[Resrcs];
     int lock; bool excl;
     HeapState<Dec> rsp;
@@ -837,23 +835,23 @@ struct BindState : public BaseState {
         lock = 1;
         return this;
     }
-    BaseState *&buf(Resrc i) {
-        return bind[i].buf;
+    BaseState *&buf(Resrc typ) { // TODO allow specify with SimpleState::Only
+        return bind[typ].buf;
     }
-    int &fst(Resrc i) {
-        return bind[i].fst;
+    int &fst(Resrc typ) { // TODO allow specify with SimpleState::Only
+        return bind[typ].fst;
     }
-    int &fin(Resrc i) {
-        return bind[i].fin;
+    int &fin(Resrc typ) { // TODO allow specify with SimpleState::Only
+        return bind[typ].fin;
     }
-    BaseState *get(Resrc i) {
-        if (bind[i].bind == 0) EXIT
-        return bind[i].bind;
+    BaseState *res(Resrc typ) { // TODO allow specify with SimpleState::Only
+        if (bind[typ].bind == 0) EXIT
+        return bind[typ].bind;
     }
     // TODO use boolean instead of copying buf to bind
-    bool push(Resrc i, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
+    bool push(Resrc res, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[i];
+        SaveState &ref = bind[res];
         if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
@@ -866,14 +864,14 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         rsp<<Dec{idx,ins};
     }
-    void done(Resrc i, SmartState log) {
+    void done(Resrc res, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[i];
+        SaveState &ref = bind[res];
         if (ref.psav <= 0) EXIT
         ref.psav -= 1;
         BaseState *dbg = ref.bind;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        ref.bind = 0; ref.buf = 0; lock -= 1;}
+        ref.bind = 0; lock -= 1;}
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
     void done(SmartState log) {
@@ -882,20 +880,20 @@ struct BindState : public BaseState {
         lock = 0; rsp.clear();
         safe.wait(); excl = false; safe.post();}
     }
-    void done(Resrc i, Unl unl, SmartState log) {
+    void done(Unl unl, SmartState log) {
         if (!excl) EXIT
         if (unl.dee+unl.siz > rsp.size()) EXIT
         for (int i = 0; i < unl.siz; i++) {
-        Resrc res = rsp[unl.dee+i].idx;
+        Resrc idx = rsp[unl.dee+i].idx;
         switch (rsp[unl.dee+i].ins) {default:
-        break; case (RDeeIns): case (IDeeIns): rdec(res,log);
-        break; case (WDeeIns): wdec(res,log);}}
-        done(i,log); done(log);
+        break; case (RDeeIns): case (IDeeIns): rdec(idx,log);
+        break; case (WDeeIns): wdec(idx,log);}}
+        done(unl.der,log); done(log);
     }
-    bool incr(Resrc i, BaseState *buf, bool elock, SmartState log) {
+    bool incr(Resrc res, BaseState *buf, bool elock, SmartState log) {
         if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
         if (!excl) EXIT
-        SaveState &ref = bind[i];
+        SaveState &ref = bind[res];
         if (ref.bind && ref.bind != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         log << "incr fail " << buf->debug << '\n';
@@ -906,37 +904,37 @@ struct BindState : public BaseState {
         (elock ? ref.wsav : ref.rsav) += 1;
         return true;
     }
-    void decr(Resrc i, bool elock, SmartState log) {
+    void decr(Resrc res, bool elock, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[i];
+        SaveState &ref = bind[res];
         if (lock <= 0 || ref.bind == 0) EXIT
         ref.bind->decr(elock);
         if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
         (elock ? ref.wsav : ref.rsav) -= 1;
         BaseState *dbg = ref.bind;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        ref.bind = 0; ref.buf = 0; lock -= 1;}
+        ref.bind = 0; lock -= 1;}
         log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
-    bool rinc(Resrc i, BaseState *buf, SmartState log) {
-        return incr(i,buf,false,log);
+    bool rinc(Resrc res, BaseState *buf, SmartState log) {
+        return incr(res,buf,false,log);
     }
-    bool winc(Resrc i, BaseState *buf, SmartState log) {
-        return incr(i,buf,true,log);
+    bool winc(Resrc res, BaseState *buf, SmartState log) {
+        return incr(res,buf,true,log);
     }
-    void rdec(Resrc i, SmartState log) {
-        decr(i,false,log);
+    void rdec(Resrc res, SmartState log) {
+        decr(res,false,log);
     }
-    void wdec(Resrc i, SmartState log) {
-        decr(i,true,log);
+    void wdec(Resrc res, SmartState log) {
+        decr(res,true,log);
     }
 };
 BaseState *BaseState::res(Resrc typ) {
     if (lock == 0) EXIT
-    return lock->get(typ);
+    return lock->res(typ);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
-    if (lock) {lock->done(res()/*TODO loc.unl.der instead*/,loc.unl,log);}
+    if (lock) {lock->done(loc.unl,log);}
 }
 
 struct Push {
@@ -1060,9 +1058,9 @@ struct CopyState {
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
     }
-    BaseState *&dst(Resrc res, BindState *bnd) {
-        if ((int)res < 0 || (int)res >= Resrcs) EXIT
-        return bnd->buf(res);
+    BaseState *&dst(Resrc idx, BindState *bnd) {
+        if (idx < 0 || idx >= StackState::instrs) EXIT
+        return bnd->buf(idx);
     }
     StackState *src(Resrc res) {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
@@ -1077,153 +1075,143 @@ struct CopyState {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
-        log << "while0" << '\n'; slog.clr();
-        // count depends
+        log << "count depends" << '\n';
         int count = 0;
         for (int i = 0; i < num; i++) {
-            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns): count += 1;
             break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): count += 1;
             break; case(WDeeIns): case(RDeeIns): count += 1;
             break; case(TDeeIns): case(SDeeIns): case(IDeeIns): count += 1;}}
-        // choose binding
+        log << "choose binding" << '\n';
         BindState *bind = 0; int min = 0;
         if (count > min) bind = stack[BindRes]->getbuf(0,Qualitys,0)->getBind(log);
         int lim = num; // number checked for reservation
         if (count > min && bind == 0) lim = -1;
-        log << "while1" << '\n'; slog.clr();
-        // check binding
+        log << "check binding" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
-            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns): if (dst(res,bind)) EXIT
-            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): if (dst(res,bind)) EXIT
-            break; case(WDeeIns): case(RDeeIns): if (dst(res,bind)) EXIT
-            break; case(TDeeIns): case(SDeeIns): case(IDeeIns): if (dst(res,bind)) EXIT}}
-        log << "while2" << '\n'; slog.clr();
-        // choose buffers
+            break; case(QDerIns): case(PDerIns): case(ODerIns): if (dst(ins[i].res,bind)) EXIT
+            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): if (dst(ins[i].res,bind)) EXIT
+            break; case(WDeeIns): case(RDeeIns): if (dst(ins[i].res,bind)) EXIT
+            break; case(TDeeIns): case(SDeeIns): case(IDeeIns): if (dst(ins[i].res,bind)) EXIT}}
+        log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
-            Resrc res = ins[i].res;
-            log << "ins:" << ins[i].ins << " res:" << res << '\n';
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (STagIns):
-            log << "STagInst res:" << res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
-            src(res)->qualify(ins[i].idx,ins[i].key,ins[i].val);
+            log << "STagInst res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
+            src(ins[i].res)->qualify(ins[i].idx,ins[i].key,ins[i].val);
             break; case (STstIns): case (RTstIns): case (ITstIns): case (OTstIns): case (NTstIns):
             case (GTstIns): case (VTstIns): case (WTstIns):
-            log << "TstInst res:" << res << " ins:" << ins[i].ins << " val:" << ins[i].val << '\n';
-            src(res)->test(ins[i].ins,ins[i].val);
+            log << "TstInst res:" << ins[i].res << " ins:" << ins[i].ins << " val:" << ins[i].val << '\n';
+            src(ins[i].res)->test(ins[i].ins,ins[i].val);
             break; case(QDerIns): case(TDerIns):
-            if (dst(res,bind) == 0) {dst(res,bind) = src(res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
-            bind->fst(res) = i;} bind->fin(res) = i;
-            log << "QDerIns loc:" << ins[i].loc << " " << dst(res,bind)->debug << '\n';
+            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
+            bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
+            log << "QDerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(PDerIns): case(SDerIns):
-            if (dst(res,bind) == 0) {dst(res,bind) = src(res)->getbuf(ins[i].idx,ins[i].key,ins[i].val);
-            bind->fst(res) = i;} bind->fin(res) = i;
-            log << "PDerIns loc:" << ins[i].loc << " " << dst(res,bind)->debug << '\n';
+            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->getbuf(ins[i].idx,ins[i].key,ins[i].val);
+            bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
+            log << "PDerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(ODerIns): case(RDerIns):
-            if (dst(res,bind) == 0) {dst(res,bind) = src(res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val);
-            bind->fst(res) = i;} bind->fin(res) = i;
-            log << "ODerIns loc:" << ins[i].loc << " " << dst(res,bind)->debug << '\n';
+            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val);
+            bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
+            log << "ODerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(IDerIns):
-            if (dst(res,bind) == 0) {dst(res,bind) = src(res)->idxbuf(ins[i].idx); bind->fst(res) = i;} bind->fin(res) = i;
-            log << "IDerIns loc:" << ins[i].loc << " idx:" << ins[i].idx << " " << dst(res,bind)->debug << '\n';
+            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->idxbuf(ins[i].idx); bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
+            log << "IDerIns loc:" << ins[i].loc << " idx:" << ins[i].idx << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(WDeeIns): case(TDeeIns):
-            if (dst(res,bind) == 0) dst(res,bind) = src(res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
-            log << "WDeeIns " << dst(res,bind)->debug << '\n';
+            if (dst(ins[i].res,bind) == 0) dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
+            log << "WDeeIns " << dst(ins[i].res,bind)->debug << '\n';
             break; case(RDeeIns): case(SDeeIns):
-            if (dst(res,bind) == 0) dst(res,bind) = src(res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
-            log << "RDeeIns " << dst(res,bind)->debug << '\n';
+            if (dst(ins[i].res,bind) == 0) dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
+            log << "RDeeIns " << dst(ins[i].res,bind)->debug << '\n';
             break; case(IDeeIns):
-            if (dst(res,bind) == 0) dst(res,bind) = src(res)->idxbuf(ins[i].idx);
-            log << "IDeeIns idx:" << ins[i].idx << " " << dst(res,bind)->debug << '\n';
-        }}
-        // reserve chosen
-        log << "while3" << '\n'; slog.clr();
+            if (dst(ins[i].res,bind) == 0) dst(ins[i].res,bind) = src(ins[i].res)->idxbuf(ins[i].idx);
+            log << "IDeeIns idx:" << ins[i].idx << " " << dst(ins[i].res,bind)->debug << '\n';}}
+        log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
-            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
-            Unl unl = {.der=i,.dee=resps,.siz=0};
+            Unl unl = {.der=ins[i].res,.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
             break; case(WDeeIns): case(RDeeIns):
             case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;}
-            if (bind) {if (!bind->push(res,dst(res,bind),ins[i].loc,ins[i].req,unl,array,log)) lim = i;}
-            else {if (!dst(res,bind)->push(0,0,0,0,ins[i].loc,ins[i].req,unl,array,log)) lim = i;}
-            if (bind->fin(res) == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
+            if (bind) {if (!bind->push(ins[i].res,dst(ins[i].res,bind),ins[i].loc,ins[i].req,unl,array,log)) lim = i;}
+            else {if (!dst(ins[i].res,bind)->push(0,0,0,0,ins[i].loc,ins[i].req,unl,array,log)) lim = i;}
+            if (bind->fin(ins[i].res) == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
-            dst(res,bind)->push(adv,log);}}
+            dst(ins[i].res,bind)->push(adv,log);}}
             break; case(WDeeIns): case(TDeeIns):
-            if (!bind->winc(res,dst(res,bind),log)) lim = i;
+            if (!bind->winc(ins[i].res,dst(ins[i].res,bind),log)) lim = i;
             break; case(RDeeIns): case(SDeeIns): case(IDeeIns):
-            if (!bind->rinc(res,dst(res,bind),log)) lim = i;}}
-        log << "while4" << '\n'; slog.clr();
+            if (!bind->rinc(ins[i].res,dst(ins[i].res,bind),log)) lim = i;}}
         if (lim == num) {
-        // link list
+        log << "link list" << '\n';
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
-            Resrc res = ins[i].res;
             switch(ins[i].ins) {default:
             break; case(QDerIns): case (PDerIns): case (ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns):
-            lnk = dst(res,bind)->lnk(ins[i].loc,bas,lst,lnk);
-            bas = dst(res,bind); lst = ins[i].loc;}}
-        // record bindings
+            lnk = dst(ins[i].res,bind)->lnk(ins[i].loc,bas,lst,lnk);
+            bas = dst(ins[i].res,bind); lst = ins[i].loc;}}
+        log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
             switch (ins[i].ins) {default:
             break; case (WDeeIns): case(RDeeIns):
             case (TDeeIns): case (SDeeIns): case(IDeeIns):
             if (bind) bind->push(ins[i].res,ins[i].ins,log);}}
-        // submit buffers
+        log << "submit buffers" << '\n';
         for (int i = 0; i < num; i++) {
-            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(TDerIns):
-            if (bind->fst(res) == i) src(res)->advance(ins[i].idx,ins[i].key,ins[i].val);
-            log << "QDerIns push " << dst(res,bind)->debug << '\n';
-            thread->push(log,dst(res,bind),ins[i].loc);
+            if (bind->fst(ins[i].res) == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
+            log << "QDerIns push " << dst(ins[i].res,bind)->debug << '\n';
+            thread->push(log,dst(ins[i].res,bind),ins[i].loc);
             break; case(PDerIns): case(ODerIns): case(SDerIns): case(RDerIns):
-            log << "PDerIns push " << dst(res,bind)->debug << '\n';
-            thread->push(log,dst(res,bind),ins[i].loc);
+            log << "PDerIns push " << dst(ins[i].res,bind)->debug << '\n';
+            thread->push(log,dst(ins[i].res,bind),ins[i].loc);
             break; case(IDerIns):
-            if (bind->fst(res) == i) src(res)->advance(ins[i].idx);
-            log << "IDerIns push " << dst(res,bind)->debug << '\n';
-            thread->push(log,dst(res,bind),ins[i].loc);}}
-        // notify pass
+            if (bind->fst(ins[i].res) == i) src(ins[i].res)->advance(ins[i].idx);
+            log << "IDerIns push " << dst(ins[i].res,bind)->debug << '\n';
+            thread->push(log,dst(ins[i].res,bind),ins[i].loc);}}
+        log << "notify pass" << '\n';
         ptr->slf = 0;
         switch (rsp) {default:
         break; case (RetRsp): case (RptRsp): log << "RptRsp" << '\n'; thread->push(log,ptr,sub);}
+        log << "clean up" << '\n';
+        for (int i = 0; i < num; i++) {
+            switch (ins[i].ins) {default:
+            break; case(QDerIns): case(PDerIns): case(ODerIns): dst(ins[i].res,bind) = 0;
+            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): dst(ins[i].res,bind) = 0;
+            break; case(WDeeIns): case(RDeeIns): dst(ins[i].res,bind) = 0;
+            break; case (TDeeIns): case (SDeeIns): case(IDeeIns): dst(ins[i].res,bind) = 0;}}
         if (bind) stack[BindRes]->advance(0,Qualitys,0);
-        log << "copy pass " << '\n';
         } else {
-        log << "copy fail" << '\n';
-        // release reserved
+        log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
-            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns):
-            if (bind) bind->done(res,log);
-            dst(res,bind)->fail(log);
+            if (bind) bind->done(ins[i].res,log);
+            dst(ins[i].res,bind)->fail(log);
             break; case(WDeeIns): case (TDeeIns):
-            bind->wdec(res,log);
+            bind->wdec(ins[i].res,log);
             break; case(RDeeIns): case (SDeeIns): case(IDeeIns):
-            bind->rdec(res,log);}}
-        // clean up
+            bind->rdec(ins[i].res,log);}}
+        log << "clean up" << '\n';
         if (bind) for (int i = 0; i < num; i++) {
-            Resrc res = ins[i].res;
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns): dst(res,bind) = 0;
-            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): dst(res,bind) = 0;
-            break; case(WDeeIns): case(RDeeIns): dst(res,bind) = 0;
-            break; case (TDeeIns): case (SDeeIns): case(IDeeIns): dst(res,bind) = 0;}}
+            break; case(QDerIns): case(PDerIns): case(ODerIns): dst(ins[i].res,bind) = 0;
+            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): dst(ins[i].res,bind) = 0;
+            break; case(WDeeIns): case(RDeeIns): dst(ins[i].res,bind) = 0;
+            break; case (TDeeIns): case (SDeeIns): case(IDeeIns): dst(ins[i].res,bind) = 0;}}
         if (bind) bind->done(log);
-        // notify fail
+        log << "notify fail" << '\n';
         switch (rsp) {default:
         break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
         break; case (MltRsp): ptr->slf = -1;
