@@ -213,6 +213,7 @@ struct StackState {
     static const int phases = 10;
     static const int instrs = 20;
     static const int resrcs = 2;
+    static const int handls = 4;
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual void test(Instr ins, int idx) = 0;
     virtual BaseState *newbuf(int hdl, Quality key, int val) = 0;
@@ -442,8 +443,9 @@ struct Adv {
 };
 struct Unl {
     Resrc der; // index into bind->bind
-    int dee; // offset into bind->rsp
-    int siz; // number to unreserve of bind->rsp
+    int hdl; // index into bind->bind[der]
+    int dee; // offset into bind->resp
+    int siz; // number to unreserve of bind->resp
 };
 struct Loc {
     ResrcLoc loc; SizeState max; Requ req; Unl unl; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
@@ -746,22 +748,25 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait(); tag.qualify(hdl,key,val); safe.post();
     }
     BaseState *newbuf(int hdl, Quality key, int val) override { // buffer of newest, with current tags
-        safe.wait(); BaseState *ptr = &state[tag.newbuf(hdl,key,val)]; safe.post(); return ptr;
+        // TODO return idx and let caller get pointer with idxbuf
+        safe.wait(); int idx = tag.newbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
     }
     BaseState *oldbuf(int hdl, Quality key, int val) override { // buffer of oldest, with current tags
-        safe.wait(); BaseState *ptr = &state[tag.oldbuf(hdl,key,val)]; safe.post(); return ptr;
+        // TODO return idx and let caller get pointer with idxbuf
+        safe.wait(); int idx = tag.oldbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
     }
     BaseState *getbuf(int hdl, Quality key, int val) override { // buffer of oldest, with current tags
-        safe.wait(); BaseState *ptr = &state[tag.getbuf(hdl,key,val)]; safe.post(); return ptr;
+        // TODO return idx and let caller get pointer with idxbuf
+        safe.wait(); int idx = tag.getbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
     }
     BaseState *idxbuf(int i) override {
         if (i < 0 || i >= Size) EXIT
         safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;
     }
-    BaseState *newbuf() override {
+    BaseState *newbuf() override { // TODO return idx and let caller get pointer with idxbuf
         safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;
     }
-    BaseState *oldbuf() override {
+    BaseState *oldbuf() override { // TODO return (idx+1)%Size and let caller get pointer with idxbuf
         safe.wait(); State *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;
     }
     void advance(int hdl, Quality key, int val) override { // make oldest into newest, with current tags
@@ -816,14 +821,15 @@ struct SaveState {
     SaveState() : bind(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0) {}
 };
 struct BindState : public BaseState {
-    SaveState bind[Resrcs];
+    HeapState<SaveState,StackState::handls> bind[Resrcs];
+    int hand[Resrcs];
     int lock; bool excl;
-    HeapState<Dec> rsp;
+    HeapState<Dec,StackState::instrs> resp;
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0),
-        excl(false),
-        rsp(StackState::instrs) {
+        excl(false) {
+        for (int i = 0; i < StackState::handls; i++) hand[i] = -1;
     }
     BindState *getBind(SmartState log) override {
         safe.wait();
@@ -835,23 +841,27 @@ struct BindState : public BaseState {
         lock = 1;
         return this;
     }
-    BaseState *&buf(Resrc typ) { // TODO allow specify with SimpleState::Only
-        return bind[typ].buf;
+    int &hdl(Resrc typ) {
+        if (typ < 0 || typ >= Resrcs) EXIT
+        return hand[typ];
     }
-    int &fst(Resrc typ) { // TODO allow specify with SimpleState::Only
-        return bind[typ].fst;
+    BaseState *&buf(Resrc typ) { // TODO index by order of aquisition too
+        return bind[typ][0].buf;
     }
-    int &fin(Resrc typ) { // TODO allow specify with SimpleState::Only
-        return bind[typ].fin;
+    int &fst(Resrc typ) { // TODO index by order of aquisition too
+        return bind[typ][0].fst;
     }
-    BaseState *res(Resrc typ) { // TODO allow specify with SimpleState::Only
-        if (bind[typ].bind == 0) EXIT
-        return bind[typ].bind;
+    int &fin(Resrc typ) { // TODO index by order of aquisition too
+        return bind[typ][0].fin;
+    }
+    BaseState *res(Resrc typ) { // TODO index by order of aquisition too
+        if (bind[typ][0].bind == 0) EXIT
+        return bind[typ][0].bind;
     }
     // TODO use boolean instead of copying buf to bind
     bool push(Resrc res, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[res];
+        SaveState &ref = bind[res][0];
         if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
@@ -862,11 +872,11 @@ struct BindState : public BaseState {
     }
     void push(Resrc idx, Instr ins, SmartState log) {
         if (!excl) EXIT
-        rsp<<Dec{idx,ins};
+        resp<<Dec{idx,ins};
     }
     void done(Resrc res, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[res];
+        SaveState &ref = bind[res][0];
         if (ref.psav <= 0) EXIT
         ref.psav -= 1;
         BaseState *dbg = ref.bind;
@@ -877,15 +887,15 @@ struct BindState : public BaseState {
     void done(SmartState log) {
         if (!excl) EXIT
         if (lock == 1) {
-        lock = 0; rsp.clear();
+        lock = 0; resp.clear();
         safe.wait(); excl = false; safe.post();}
     }
     void done(Unl unl, SmartState log) {
         if (!excl) EXIT
-        if (unl.dee+unl.siz > rsp.size()) EXIT
+        if (unl.dee+unl.siz > resp.size()) EXIT
         for (int i = 0; i < unl.siz; i++) {
-        Resrc idx = rsp[unl.dee+i].idx;
-        switch (rsp[unl.dee+i].ins) {default:
+        Resrc idx = resp[unl.dee+i].idx;
+        switch (resp[unl.dee+i].ins) {default:
         break; case (RDeeIns): case (IDeeIns): rdec(idx,log);
         break; case (WDeeIns): wdec(idx,log);}}
         done(unl.der,log); done(log);
@@ -893,7 +903,7 @@ struct BindState : public BaseState {
     bool incr(Resrc res, BaseState *buf, bool elock, SmartState log) {
         if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
         if (!excl) EXIT
-        SaveState &ref = bind[res];
+        SaveState &ref = bind[res][0];
         if (ref.bind && ref.bind != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         log << "incr fail " << buf->debug << '\n';
@@ -906,7 +916,7 @@ struct BindState : public BaseState {
     }
     void decr(Resrc res, bool elock, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[res];
+        SaveState &ref = bind[res][0];
         if (lock <= 0 || ref.bind == 0) EXIT
         ref.bind->decr(elock);
         if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
@@ -1071,7 +1081,7 @@ struct CopyState {
         if (idx >= siz) {std::cerr << "not enough int arguments " << idx << ">=" << siz << std::endl; EXIT}
         return arg[idx++];
     }
-    void push(HeapState<Inst> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
+    void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
@@ -1095,6 +1105,7 @@ struct CopyState {
             break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): if (dst(ins[i].res,bind)) EXIT
             break; case(WDeeIns): case(RDeeIns): if (dst(ins[i].res,bind)) EXIT
             break; case(TDeeIns): case(SDeeIns): case(IDeeIns): if (dst(ins[i].res,bind)) EXIT}}
+        log << "reserve buford" << '\n';
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1106,6 +1117,7 @@ struct CopyState {
             log << "TstInst res:" << ins[i].res << " ins:" << ins[i].ins << " val:" << ins[i].val << '\n';
             src(ins[i].res)->test(ins[i].ins,ins[i].val);
             break; case(QDerIns): case(TDerIns):
+            // TODO get buffer handle and index simultaneously from new/get/oldbuf
             if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
             bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
             log << "QDerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
@@ -1129,6 +1141,7 @@ struct CopyState {
             break; case(IDeeIns):
             if (dst(ins[i].res,bind) == 0) dst(ins[i].res,bind) = src(ins[i].res)->idxbuf(ins[i].idx);
             log << "IDeeIns idx:" << ins[i].idx << " " << dst(ins[i].res,bind)->debug << '\n';}}
+        log << "release buford" << '\n';
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
@@ -1307,7 +1320,7 @@ struct CopyState {
         }
         return req;
     }
-    template <class Type> static Inst instruct(HeapState<Arg> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type> static Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st1 = 0; showResrcLoc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
@@ -1397,8 +1410,8 @@ struct CopyState {
         */
         return !done;
     }
-    template <class Type> void push(HeapState<Inst> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
-        int count = 0; Arg sav; Arg tmp; HeapState<Arg> dot;
+    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
+        int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
@@ -1441,7 +1454,7 @@ struct CopyState {
         // neither means default only
         if ((arg == 0) != (siz == 0)) EXIT
         if ((val == 0) != (sze == 0)) EXIT
-        HeapState<Inst> lst;
+        HeapState<Inst,StackState::instrs> lst;
         int tot = 0;
         if (siz && sze) {
             tot = size(typ,ary);
@@ -1508,7 +1521,7 @@ struct CopyState {
             push(ptr->drw[i],ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
         break; case (Instrz): {
-            HeapState<Inst> ins(StackState::instrs);
+            HeapState<Inst,StackState::instrs> ins;
             for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
             push(ins,ptr,sub,rsp,log);}
         break; case (Configurez): {
@@ -2106,7 +2119,7 @@ struct DrawState : public BaseState {
         BaseState *fetchPtr = 0;
         int index = 0;
         log << "micro " << debug << " " << max(loc) << '\n';
-        Arg sav; Arg tmp; HeapState<Arg> dot;
+        Arg sav; Arg tmp; HeapState<Arg,0> dot;
         for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,ary(loc),log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++)
         if (dot[i].loc == MiddleLoc && dot[i].ins == RDeeIns ||
@@ -2327,7 +2340,7 @@ void vulkanBack(Configure cfg, int sav, int val, int act) {
     if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
 }
 // startup configuration
-HeapState<const char *> cfg;
+HeapState<const char *,0> cfg;
 const char *vulkanCmnd(int req) {
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];

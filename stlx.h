@@ -267,16 +267,10 @@ struct CallState {
     }
 };
 
-template <class Type> struct HeapState {
+template <class Type, int Size> struct HeapState {
     std::vector<Type> vec;
     int bas, siz;
-    HeapState() : bas(0), siz(0) {
-    }
-    HeapState(int num) : vec(num), bas(0), siz(0) {
-    }
-    HeapState(int num, int siz) : vec(num), bas(0), siz(siz) {
-        if (siz < 0 || siz > num)
-        {std::cerr << "invalid heap size!" << std::endl; exit(-1);}
+    HeapState() : bas(0), siz(0), vec(Size) {
     }
     void push(int num) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
@@ -304,7 +298,7 @@ template <class Type> struct HeapState {
         bas = (bas+i)%vec.size();
         siz -= i;
     }
-    HeapState<Type> &operator<<(const Type &val) {
+    HeapState<Type,Size> &operator<<(const Type &val) {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
         if (siz == vec.size()) push(1);
@@ -316,7 +310,6 @@ template <class Type> struct HeapState {
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
         {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
         if (i < 0) {std::cerr << "invalid vec index!" << std::endl; exit(-1);}
-        if (i >= vec.size()) push(siz-i);
         return vec[(i+bas)%vec.size()];
     }
 };
@@ -375,7 +368,9 @@ template <int Size, int Dim, int Min> struct SimpleState {
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
     std::map<int,Only> idxkey; // handle for qualifier
-    SimpleState() : seqn(0) {
+    std::map<int,int> orders; // multiple insance helper
+    int ordkey; // unique per thread
+    SimpleState() : seqn(0), ordkey(0) {
         for (int i = 0; i < Size; i++) pool.push_back(i);
     }
     Only get(int idx, int tag, int val) {
@@ -479,6 +474,19 @@ template <int Size, int Dim, int Min> struct SimpleState {
     int newbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return newbuf(tmp);
+    }
+    int setord() {
+        int tmp = ordkey; ordkey += 1; orders[tmp] = 0;
+        return tmp;
+    }
+    int getord(int idx) {
+        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
+        int tmp = orders[idx]; orders[idx] += 1;
+        return tmp;
+    }
+    void clrord(int idx) {
+        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
+        orders.erase(idx);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}
