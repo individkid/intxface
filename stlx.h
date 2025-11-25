@@ -484,6 +484,14 @@ template <int Size, int Dim, int Min> struct SimpleState {
         int tmp = orders[idx]; orders[idx] += 1;
         return tmp;
     }
+    int limord(int idx) {
+        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
+        return 0; // TODO maintain current and limit
+    }
+    void setord(int idx) {
+        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
+        orders[idx] = 0;
+    }
     void clrord(int idx) {
         if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
         orders.erase(idx);

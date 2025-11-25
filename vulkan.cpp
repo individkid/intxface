@@ -225,6 +225,10 @@ struct StackState {
     virtual void advance(int hdl, Quality key, int val) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
+    virtual int setord() = 0;
+    virtual int getord(int i) = 0;
+    virtual int limord(int i) = 0;
+    virtual void clrord(int i) = 0;
     virtual int buftag(int i, Quality t) = 0;
     virtual Resrc buftyp() = 0;
     virtual const char *bufnam() = 0;
@@ -609,7 +613,7 @@ struct BaseState {
         (elock ? wlock : rlock) -= 1;
         safe.post();
     }
-    BaseState *res(Resrc typ);
+    BaseState *res(Resrc typ, int hdl);
     Lnk *lnk(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
@@ -779,6 +783,19 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void advance() override {
         safe.wait(); idx = (idx+1)%Size; safe.post();
     }
+    int setord() override {
+        safe.wait(); int idx = tag.setord(); safe.post(); return idx;
+    }
+    int getord(int i) override {
+        safe.wait(); int idx = tag.getord(i); safe.post(); return idx;
+    }
+    int limord(int i) override {
+        safe.wait(); int idx = tag.limord(i); safe.post(); return idx;
+    }
+    // TODO setord not needed
+    void clrord(int i) override {
+        safe.wait(); tag.clrord(i); safe.post();
+    }
     int buftag(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
         safe.wait(); int val = tag.get(i,t); safe.post(); return val;
@@ -812,7 +829,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
 };
 
 struct Dec {
-    Resrc idx;
+    Resrc typ;
+    int hdl;
     Instr ins;
 };
 struct SaveState {
@@ -842,26 +860,46 @@ struct BindState : public BaseState {
         return this;
     }
     int &hdl(Resrc typ) {
+        if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
+        hand[typ] = 0; // TODO
         return hand[typ];
     }
-    BaseState *&buf(Resrc typ) { // TODO index by order of aquisition too
-        return bind[typ][0].buf;
+    BaseState *&buf(Resrc typ) {
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        int hdl = hand[typ] = 0; // TODO
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        return bind[typ][hdl].buf;
     }
-    int &fst(Resrc typ) { // TODO index by order of aquisition too
-        return bind[typ][0].fst;
+    int &fst(Resrc typ) {
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        int hdl = hand[typ];
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        return bind[typ][hdl].fst;
     }
-    int &fin(Resrc typ) { // TODO index by order of aquisition too
-        return bind[typ][0].fin;
+    int &fin(Resrc typ) {
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        int hdl = hand[typ];
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        return bind[typ][hdl].fin;
     }
-    BaseState *res(Resrc typ) { // TODO index by order of aquisition too
-        if (bind[typ][0].bind == 0) EXIT
-        return bind[typ][0].bind;
+    BaseState *res(Resrc typ, int hdl) {
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        if (bind[typ][hdl].bind == 0) EXIT
+        return bind[typ][hdl].bind;
     }
     // TODO use boolean instead of copying buf to bind
-    bool push(Resrc res, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
+    bool push(Resrc typ, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[res][0];
+        if (typ < 0 || typ >= Resrcs) EXIT
+        int hdl = hand[typ];
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        SaveState &ref = bind[typ][hdl];
         if (!buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,ary,log)) return false;
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
@@ -870,19 +908,28 @@ struct BindState : public BaseState {
         ref.psav += 1;
         return true;
     }
-    void push(Resrc idx, Instr ins, SmartState log) {
+    void push(Resrc typ, Instr ins, SmartState log) {
         if (!excl) EXIT
-        resp<<Dec{idx,ins};
+        if (typ < 0 || typ >= Resrcs) EXIT
+        int hdl = hand[typ];
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        resp<<Dec{typ,hdl,ins};
     }
-    void done(Resrc res, SmartState log) {
+    void done(Resrc typ, int hdl, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[res][0];
+        if (typ < 0 || typ >= Resrcs) EXIT
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        SaveState &ref = bind[typ][hdl];
         if (ref.psav <= 0) EXIT
         ref.psav -= 1;
         BaseState *dbg = ref.bind;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
         ref.bind = 0; lock -= 1;}
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
+    }
+    void done(Resrc typ, SmartState log) {
+        if (typ < 0 || typ >= Resrcs) EXIT
+        done(typ,hand[typ],log);
     }
     void done(SmartState log) {
         if (!excl) EXIT
@@ -894,16 +941,20 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (unl.dee+unl.siz > resp.size()) EXIT
         for (int i = 0; i < unl.siz; i++) {
-        Resrc idx = resp[unl.dee+i].idx;
+        Resrc typ = resp[unl.dee+i].typ;
+        int hdl = resp[unl.dee+i].hdl;
         switch (resp[unl.dee+i].ins) {default:
-        break; case (RDeeIns): case (IDeeIns): rdec(idx,log);
-        break; case (WDeeIns): wdec(idx,log);}}
-        done(unl.der,log); done(log);
+        break; case (RDeeIns): case (IDeeIns): rdec(typ,hdl,log);
+        break; case (WDeeIns): wdec(typ,hdl,log);}}
+        done(unl.der,unl.hdl,log); done(log);
     }
-    bool incr(Resrc res, BaseState *buf, bool elock, SmartState log) {
-        if (!buf) {log << "error" << '\n'; slog.clr(); *(int*)0=0;}
+    bool incr(Resrc typ, BaseState *buf, bool elock, SmartState log) {
+        if (!buf) EXIT
         if (!excl) EXIT
-        SaveState &ref = bind[res][0];
+        if (typ < 0 || typ >= Resrcs) EXIT
+        int hdl = hand[typ];
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        SaveState &ref = bind[typ][hdl];
         if (ref.bind && ref.bind != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         log << "incr fail " << buf->debug << '\n';
@@ -914,9 +965,11 @@ struct BindState : public BaseState {
         (elock ? ref.wsav : ref.rsav) += 1;
         return true;
     }
-    void decr(Resrc res, bool elock, SmartState log) {
+    void decr(Resrc typ, int hdl, bool elock, SmartState log) {
         if (!excl) EXIT
-        SaveState &ref = bind[res][0];
+        if (typ < 0 || typ >= Resrcs) EXIT
+        if (hdl < 0 || hdl >= StackState::handls) EXIT
+        SaveState &ref = bind[typ][hdl];
         if (lock <= 0 || ref.bind == 0) EXIT
         ref.bind->decr(elock);
         if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
@@ -926,22 +979,30 @@ struct BindState : public BaseState {
         ref.bind = 0; lock -= 1;}
         log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
-    bool rinc(Resrc res, BaseState *buf, SmartState log) {
-        return incr(res,buf,false,log);
+    bool rinc(Resrc typ, BaseState *buf, SmartState log) {
+        return incr(typ,buf,false,log);
     }
-    bool winc(Resrc res, BaseState *buf, SmartState log) {
-        return incr(res,buf,true,log);
+    bool winc(Resrc typ, BaseState *buf, SmartState log) {
+        return incr(typ,buf,true,log);
     }
-    void rdec(Resrc res, SmartState log) {
-        decr(res,false,log);
+    void rdec(Resrc typ, SmartState log) {
+        if (typ < 0 || typ >= Resrcs) EXIT
+        decr(typ,hand[typ],false,log);
     }
-    void wdec(Resrc res, SmartState log) {
-        decr(res,true,log);
+    void rdec(Resrc typ, int hdl, SmartState log) {
+        decr(typ,hdl,false,log);
+    }
+    void wdec(Resrc typ, SmartState log) {
+        if (typ < 0 || typ >= Resrcs) EXIT
+        decr(typ,hand[typ],true,log);
+    }
+    void wdec(Resrc typ, int hdl, SmartState log) {
+        decr(typ,hdl,true,log);
     }
 };
-BaseState *BaseState::res(Resrc typ) {
+BaseState *BaseState::res(Resrc typ, int hdl) {
     if (lock == 0) EXIT
-    return lock->res(typ);
+    return lock->res(typ,hdl);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     if (lock) {lock->done(loc.unl,log);}
@@ -1068,9 +1129,8 @@ struct CopyState {
     ~CopyState() {
         std::cout << "~CopyState" << std::endl;
     }
-    BaseState *&dst(Resrc idx, BindState *bnd) {
-        if (idx < 0 || idx >= StackState::instrs) EXIT
-        return bnd->buf(idx);
+    BaseState *&dst(Resrc typ, BindState *bnd) {
+        return bnd->buf(typ);
     }
     StackState *src(Resrc res) {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
@@ -1079,7 +1139,8 @@ struct CopyState {
     static int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
         log << "get:" << str << ":" << idx << '\n';
         if (idx >= siz) {std::cerr << "not enough int arguments " << idx << ">=" << siz << std::endl; EXIT}
-        return arg[idx++];
+        int tmp = idx; idx += 1;
+        return arg[tmp];
     }
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
@@ -1101,11 +1162,11 @@ struct CopyState {
         log << "check binding" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default:
+            // TODO use bind->chk(ins[i].res); instead
             break; case(QDerIns): case(PDerIns): case(ODerIns): if (dst(ins[i].res,bind)) EXIT
             break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): if (dst(ins[i].res,bind)) EXIT
             break; case(WDeeIns): case(RDeeIns): if (dst(ins[i].res,bind)) EXIT
             break; case(TDeeIns): case(SDeeIns): case(IDeeIns): if (dst(ins[i].res,bind)) EXIT}}
-        log << "reserve buford" << '\n';
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1118,19 +1179,23 @@ struct CopyState {
             src(ins[i].res)->test(ins[i].ins,ins[i].val);
             break; case(QDerIns): case(TDerIns):
             // TODO get buffer handle and index simultaneously from new/get/oldbuf
-            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
+            if (dst(ins[i].res,bind) == 0) {
+            dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
             bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
             log << "QDerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(PDerIns): case(SDerIns):
-            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->getbuf(ins[i].idx,ins[i].key,ins[i].val);
+            if (dst(ins[i].res,bind) == 0) {
+            dst(ins[i].res,bind) = src(ins[i].res)->getbuf(ins[i].idx,ins[i].key,ins[i].val);
             bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
             log << "PDerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(ODerIns): case(RDerIns):
-            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val);
+            if (dst(ins[i].res,bind) == 0) {
+            dst(ins[i].res,bind) = src(ins[i].res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val);
             bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
             log << "ODerIns loc:" << ins[i].loc << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(IDerIns):
-            if (dst(ins[i].res,bind) == 0) {dst(ins[i].res,bind) = src(ins[i].res)->idxbuf(ins[i].idx); bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
+            if (dst(ins[i].res,bind) == 0) {
+            dst(ins[i].res,bind) = src(ins[i].res)->idxbuf(ins[i].idx); bind->fst(ins[i].res) = i;} bind->fin(ins[i].res) = i;
             log << "IDerIns loc:" << ins[i].loc << " idx:" << ins[i].idx << " " << dst(ins[i].res,bind)->debug << '\n';
             break; case(WDeeIns): case(TDeeIns):
             if (dst(ins[i].res,bind) == 0) dst(ins[i].res,bind) = src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val);
@@ -1141,14 +1206,13 @@ struct CopyState {
             break; case(IDeeIns):
             if (dst(ins[i].res,bind) == 0) dst(ins[i].res,bind) = src(ins[i].res)->idxbuf(ins[i].idx);
             log << "IDeeIns idx:" << ins[i].idx << " " << dst(ins[i].res,bind)->debug << '\n';}}
-        log << "release buford" << '\n';
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
-            Unl unl = {.der=ins[i].res,.dee=resps,.siz=0};
+            Unl unl = {.der=ins[i].res,.hdl=bind->hdl(ins[i].res),.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
@@ -1337,7 +1401,9 @@ struct CopyState {
         Requ req = request(dot[i].fmt,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.loc=dot[i].loc,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
         break; case(IDerIns): {
+        std::cerr << "DerIns.idx " << idx << std::endl;
         int pre = get(arg,siz,idx,log,"IDerIns.idx");
+        std::cerr << "DerIns.idx " << idx << " " << pre << std::endl;
         Requ req = request(dot[i].fmt,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.loc=dot[i].loc,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
         break; case(WDeeIns): case(RDeeIns): {
@@ -1851,7 +1917,7 @@ struct RelateState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << '\n';
-        VkBuffer stagingBuffer = res(max(loc).resrc)->getBuffer();
+        VkBuffer stagingBuffer = res(max(loc).resrc,0)->getBuffer();
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &fen(loc));
         BufferState::copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, fen(loc),VK_NULL_HANDLE,VK_NULL_HANDLE);
@@ -1987,13 +2053,13 @@ struct ImageState : public BaseState {
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandReform, res(res())->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandReform, res(res(),0)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBefore, res(res())->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandBefore, res(res(),0)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandAfter, res(res())->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandAfter, res(res(),0)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
@@ -2002,7 +2068,7 @@ struct ImageState : public BaseState {
         if (tag(RuseQua) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (tag(RuseQua) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(res())->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
+        copyTextureImage(device, graphics, memProperties, res(res(),0)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2054,15 +2120,15 @@ struct ChainState : public BaseState {
         log << "setup " << debug << '\n';
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
-        res(SwapRes)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
+        res(SwapRes,0)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
         imageLoc = (ResrcLoc)imageIndex;
         if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
         if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
-        framebuffer = res(SwapRes)->getFramebuffer(imageIndex);}
+        framebuffer = res(SwapRes,0)->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
         VkSemaphore before = sem(lst(loc,(ResrcLoc)(imageIndex%(uint32_t)ResrcLocs)));
-        if (!presentFrame(present,res(SwapRes)->getSwapChain(),imageIndex,before))
+        if (!presentFrame(present,res(SwapRes,0)->getSwapChain(),imageIndex,before))
         change->wots(RegisterMask,1<<SizeMsk);}
         return VK_NULL_HANDLE;
     }
@@ -2094,9 +2160,9 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << res(PipeRes)->debug << '\n';
-        descriptorPool = res(PipeRes)->getDescriptorPool();
-        descriptorLayout = res(PipeRes)->getDescriptorSetLayout();
+        log << "resize " << debug << " " << res(PipeRes,0)->debug << '\n';
+        descriptorPool = res(PipeRes,0)->getDescriptorPool();
+        descriptorLayout = res(PipeRes,0)->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
         fen(loc) = createFence(device);
@@ -2126,26 +2192,26 @@ struct DrawState : public BaseState {
         dot[i].loc == MiddleLoc && dot[i].ins == IDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == WDeeIns)
         switch (ResrcPhase__Resrc__Phase(dot[i].res)) {default: EXIT
-        break; case (PipePhs): pipePtr = res(dot[i].res);
-        break; case (FramePhs): framePtr = res(dot[i].res); // log << "frame " << framePtr->debug << '\n';
-        break; case (SwapPhs): swapPtr = res(dot[i].res); // log << "swap " << swapPtr->debug << '\n';
-        break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res); // log << "frame " << framePtr->debug << " swap " << swapPtr->debug << '\n';
-        break; case (IndexPhs): indexPtr = res(IndexRes);
-        break; case (FetchPhs): fetchPtr = res(BringupRes);
+        break; case (PipePhs): pipePtr = res(dot[i].res,0);
+        break; case (FramePhs): framePtr = res(dot[i].res,0); // log << "frame " << framePtr->debug << '\n';
+        break; case (SwapPhs): swapPtr = res(dot[i].res,0); // log << "swap " << swapPtr->debug << '\n';
+        break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res,0); // log << "frame " << framePtr->debug << " swap " << swapPtr->debug << '\n';
+        break; case (IndexPhs): indexPtr = res(IndexRes,0);
+        break; case (FetchPhs): fetchPtr = res(BringupRes,0);
         break; case (UniformPhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (StoragePhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (RelatePhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (SamplePhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}
         if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
         VkExtent2D extent = swapPtr->getExtent();
