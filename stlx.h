@@ -440,11 +440,6 @@ template <int Size, int Dim, int Min> struct SimpleState {
         insert(tmp,idx);
         return idx;
     }
-    bool compare(int idx0, int tag0, int val0, int idx1, int tag1, int val1) {
-        Only tmp0 = get(idx0,tag0,val0);
-        Only tmp1 = get(idx1,tag1,val1);
-        return (tmp0 == tmp1);
-    }
     int oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
         if (oldest.find(tmp) == oldest.end()) insert(tmp);
         return oldest[tmp];
