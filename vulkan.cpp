@@ -1512,42 +1512,55 @@ struct CopyState {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
     template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int sze, int &idx, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
-        // with both arg and val, negative arg means profer the val, non-negative means force
-        // arg only means profer only
-        // val only means packed force
+        // profer means GiveDef uses fill value as count into proferred
+        // with both arg/siz and val/sze,
+        //  negative arg means profer the val,
+        //  non-negative means force val at index arg
+        // arg/siz only means profer only
+        // val/sze only means packed force
         // neither means default only
         if ((arg == 0) != (siz == 0)) EXIT
         if ((val == 0) != (sze == 0)) EXIT
-        HeapState<Inst,StackState::instrs> lst;
         int tot = 0;
         if (siz && sze) {
             tot = size(typ,ary);
+            // maximum of number of fill values and force index
             for (int i = 0; i < siz; i++)
             if (arg[i] >= tot) tot = arg[i]+1;}
+        // maximum of number of fill values and number of packed force values
         else if (sze) tot = sze;
+        // otherwise number of fill values
         if (tot < size(typ,ary)) tot = size(typ,ary);
         int vlu[tot];
         // initialize with defaults
-        for (int i = 0; i < tot; i++) {
-            Default def = dflt(typ,i,ary);
-            if (def == TrivDef) vlu[i] = fill(typ,i,ary);
-            else vlu[i] = 0;}
+        for (int i = 0; i < tot; i++)
+            // ignore siz sze since TrivDef fill value is an immediate value
+            if (dflt(typ,i,ary) == TrivDef) vlu[i] = fill(typ,i,ary);
+            else vlu[i] = 0;
         // copy from given
         if (siz) for (int i = 0; i < tot; i++)
+            // ignore GiveDef if there is nothing proferred
             if (dflt(typ,i,ary) == GiveDef) {
             int idx = fill(typ,i,ary);
+            // find the proffered val counted by the fill value
             if (sze) {for (int j = 0; j < tot; j++)
             if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
+            // siz no sze means all arg would be negative, and arg treated as proferred val
             else if (idx >= 0 && idx < tot) vlu[i] = arg[idx];}
         // force from given
         if (sze) for (int i = 0; i < tot; i++) {
+            // siz and sze means force index is from arg
+            // sze no siz is as if arg are each index in order
             int idx = (siz ? arg[i] : i);
+            // if arg is not negative it is a force index
             if (idx >= 0 && idx < tot) vlu[idx] = val[i];}
         // alias from prior
         for (int i = 0; i < tot; i++)
+            // ignore siz sze since BackDef fill value is index into result so far
             if (dflt(typ,i,ary) == BackDef) {
             int idx = fill(typ,i,ary);
             if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
+        HeapState<Inst,StackState::instrs> lst;
         push(lst,typ,dat,vlu,tot,idx,ary,log);
         if (idx != tot) {std::cerr << "wrong number of int arguments " << idx << "!=" << tot << std::endl; EXIT}
         push(lst,ptr,sub,rsp,log);
