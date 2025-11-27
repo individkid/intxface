@@ -1530,7 +1530,7 @@ struct CopyState {
         // initialize with defaults
         for (int i = 0; i < tot; i++) {
             Default def = dflt(typ,i,ary);
-            if (def == TrivDef || def == Defaults) vlu[i] = fill(typ,i,ary);
+            if (def == TrivDef) vlu[i] = fill(typ,i,ary);
             else vlu[i] = 0;}
         // copy from given
         if (siz) for (int i = 0; i < tot; i++)
