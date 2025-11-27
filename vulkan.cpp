@@ -1163,7 +1163,6 @@ struct CopyState {
     }
     bool vld(Resrc typ, int idx, Quality key, int val, BindState *bnd) {
         if (!bnd->siz(typ)) return false;
-        return true; // TODO
         return src(typ)->compare(bnd->onl(typ),{idx,key,val});
     }
     static int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
