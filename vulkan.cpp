@@ -859,14 +859,19 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         return size[typ];
     }
-    int &seq(Resrc typ) {
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        return seqn[typ];
-    }
     int &wrp() {
         if (!excl) EXIT
         return wrap;
+    }
+    void vld(int idx, Resrc typ, Onl val, BaseState *ptr) {
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        hand[typ] = size[typ];
+        size[typ] += 1;
+        SaveState &ref = chk(typ);
+        ref.buf = ptr;
+        ref.fst = idx;
+        ref.onl = val;
     }
     SaveState &chk(Resrc typ) {
         if (!excl) EXIT
@@ -889,23 +894,13 @@ struct BindState : public BaseState {
     Onl &onl(Resrc typ) {
         return chk(typ).onl;
     }
-    void vld(int idx, Resrc typ, BaseState *ptr) {
-        hdl(typ) = siz(typ);
-        siz(typ) += 1;
-        buf(typ) = ptr;
-        fst(typ) = idx;
-        // TODO onl(typ) = val;
-    }
-    SaveState &chk(Resrc typ, int hdl) {
+    BaseState *res(Resrc typ, int hdl) {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (hdl < 0 || hdl >= StackState::handls) EXIT
-        return bind[typ][hdl];
-    }
-    BaseState *res(Resrc typ, int hdl) {
-        SaveState &sav = chk(typ,hdl);
-        if (sav.bind == 0) EXIT
-        return sav.bind;
+        SaveState &ref = bind[typ][hdl];
+        if (ref.bind == 0) EXIT
+        return ref.bind;
     }
     bool push(Resrc typ, BaseState *buf, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         if (!excl) EXIT
@@ -1146,9 +1141,9 @@ struct CopyState {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
         return stack[res];
     }
-    bool vld(Resrc typ, int idx, Quality key, int val, BindState *bnd) {
+    bool vld(Resrc typ, Onl onl, BindState *bnd) {
         if (!bnd->siz(typ)) return false;
-        return src(typ)->compare(bnd->onl(typ),{idx,key,val});
+        return src(typ)->compare(bnd->chk(typ).onl,onl);
     }
     static int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
         log << "get:" << str << ":" << idx << '\n';
@@ -1184,44 +1179,51 @@ struct CopyState {
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
-            break; case (STagIns):
+            break; case (STagIns): {
             log << "STagIns res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
-            src(ins[i].res)->qualify(ins[i].idx,ins[i].key,ins[i].val);
-            break; case (ITstIns): case (OTstIns): case (GTstIns): case (NTstIns):
+            src(ins[i].res)->qualify(ins[i].idx,ins[i].key,ins[i].val);}
+            break; case (ITstIns): case (OTstIns): case (GTstIns): case (NTstIns): {
             log << "TstInst res:" << ins[i].res << " ins:" << ins[i].ins << " val:" << ins[i].val << '\n';
-            src(ins[i].res)->test(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
-            break; case(QDerIns): case(TDerIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
+            src(ins[i].res)->test(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);}
+            break; case(QDerIns): case(TDerIns): {
+            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
             bind->fin(ins[i].res) = i;
-            log << "QDerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';
-            break; case(PDerIns): case(SDerIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->getbuf(ins[i].idx,ins[i].key,ins[i].val));
+            log << "QDerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';}
+            break; case(PDerIns): case(SDerIns): {
+            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->getbuf(ins[i].idx,ins[i].key,ins[i].val));
             bind->fin(ins[i].res) = i;
-            log << "PDerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';
-            break; case(ODerIns): case(RDerIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val));
+            log << "PDerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';}
+            break; case(ODerIns): case(RDerIns): {
+            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val));
             bind->fin(ins[i].res) = i;
-            log << "ODerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';
-            break; case(IDerIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->idxbuf(ins[i].idx));
+            log << "ODerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';}
+            break; case(IDerIns): {
+            Onl onl = {0,Qualitys,0};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->idxbuf(ins[i].idx));
             bind->fin(ins[i].res) = i;
-            log << "IDerIns loc:" << ins[i].req.loc << " idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';
-            break; case(WDeeIns): case(TDeeIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
-            log << "WDeeIns " << bind->buf(ins[i].res)->debug << '\n';
-            break; case(RDeeIns): case(SDeeIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
-            log << "RDeeIns " << bind->buf(ins[i].res)->debug << '\n';
-            break; case(IDeeIns):
-            if (!vld(ins[i].res,ins[i].idx,ins[i].key,ins[i].val,bind))
-            bind->vld(i,ins[i].res,src(ins[i].res)->idxbuf(ins[i].idx));
-            log << "IDeeIns idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}}
+            log << "IDerIns loc:" << ins[i].req.loc << " idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}
+            break; case(WDeeIns): case(TDeeIns): {
+            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
+            log << "WDeeIns " << bind->buf(ins[i].res)->debug << '\n';}
+            break; case(RDeeIns): case(SDeeIns): {
+            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
+            log << "RDeeIns " << bind->buf(ins[i].res)->debug << '\n';}
+            break; case(IDeeIns): {
+            Onl onl = {0,Qualitys,0};
+            if (!vld(ins[i].res,onl,bind))
+            bind->vld(i,ins[i].res,onl,src(ins[i].res)->idxbuf(ins[i].idx));
+            log << "IDeeIns idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}}}
         log << "reserve chosen" << '\n';
         if (bind) bind->wrp() += 1;
         int resps = 0;
