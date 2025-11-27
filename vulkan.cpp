@@ -179,7 +179,6 @@ struct ConstState {
     decltype(MemoryIns__Memory__Int__Memory) *memmem;
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
     decltype(MemoryIns__Memory__Int__Quality) *memkey;
-    decltype(MemoryIns__Memory__Int) *memsiz;
     decltype(MemoryIns__Memory__Int__Default) *memdef;
     decltype(MemoryIns__Memory__Int__Int) *memval;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
@@ -189,7 +188,6 @@ struct ConstState {
     decltype(ResrcIns__Resrc__Int__Memory) *resmem;
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
     decltype(ResrcIns__Resrc__Int__Quality) *reskey;
-    decltype(ResrcIns__Resrc__Int) *ressiz;
     decltype(ResrcIns__Resrc__Int__Default) *resdef;
     decltype(ResrcIns__Resrc__Int__Int) *resval;
     decltype(MicroIns__Micro__Int__Instr) *micins;
@@ -199,7 +197,6 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Memory) *micmem;
     decltype(MicroIns__Micro__Int__Micro) *micmic;
     decltype(MicroIns__Micro__Int__Quality) *mickey;
-    decltype(MicroIns__Micro__Int) *micsiz;
     decltype(MicroIns__Micro__Int__Default) *micdef;
     decltype(MicroIns__Micro__Int__Int) *micval;
 };
@@ -1488,13 +1485,13 @@ struct CopyState {
         break; case (IIncIns): push(lst,ins.mic,val,arg,siz,idx,ary,log);}}
     }
     int size(Micro typ, int ary) {
-        return array[ary].micsiz(typ);
+        int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
     }
     int size(Memory typ, int ary) {
-        return array[ary].memsiz(typ);
+        int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
     }
     int size(Resrc typ, int ary) {
-        return array[ary].ressiz(typ);
+        int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
     }
     Default dflt(Micro typ, int idx, int ary) {
         return (array[ary].micdef(typ) ? array[ary].micdef(typ)(idx) : Defaults);
@@ -2294,7 +2291,6 @@ struct MainState {
             MemoryIns__Memory__Int__Memory,
             MemoryIns__Memory__Int__Micro,
             MemoryIns__Memory__Int__Quality,
-            MemoryIns__Memory__Int,
             MemoryIns__Memory__Int__Default,
             MemoryIns__Memory__Int__Int,
             ResrcIns__Resrc__Int__Instr,
@@ -2304,7 +2300,6 @@ struct MainState {
             ResrcIns__Resrc__Int__Memory,
             ResrcIns__Resrc__Int__Micro,
             ResrcIns__Resrc__Int__Quality,
-            ResrcIns__Resrc__Int,
             ResrcIns__Resrc__Int__Default,
             ResrcIns__Resrc__Int__Int,
             MicroIns__Micro__Int__Instr,
@@ -2314,7 +2309,6 @@ struct MainState {
             MicroIns__Micro__Int__Memory,
             MicroIns__Micro__Int__Micro,
             MicroIns__Micro__Int__Quality,
-            MicroIns__Micro__Int,
             MicroIns__Micro__Int__Default,
             MicroIns__Micro__Int__Int},{
             MemoryAlt__Memory__Int__Instr,
@@ -2324,7 +2318,6 @@ struct MainState {
             MemoryAlt__Memory__Int__Memory,
             MemoryAlt__Memory__Int__Micro,
             MemoryAlt__Memory__Int__Quality,
-            MemoryAlt__Memory__Int,
             MemoryAlt__Memory__Int__Default,
             MemoryAlt__Memory__Int__Int,
             ResrcAlt__Resrc__Int__Instr,
@@ -2334,7 +2327,6 @@ struct MainState {
             ResrcAlt__Resrc__Int__Memory,
             ResrcAlt__Resrc__Int__Micro,
             ResrcAlt__Resrc__Int__Quality,
-            ResrcAlt__Resrc__Int,
             ResrcAlt__Resrc__Int__Default,
             ResrcAlt__Resrc__Int__Int,
             MicroAlt__Micro__Int__Instr,
@@ -2344,7 +2336,6 @@ struct MainState {
             MicroAlt__Micro__Int__Memory,
             MicroAlt__Micro__Int__Micro,
             MicroAlt__Micro__Int__Quality,
-            MicroAlt__Micro__Int,
             MicroAlt__Micro__Int__Default,
             MicroAlt__Micro__Int__Int}},
         vulkanState(windowState.window),

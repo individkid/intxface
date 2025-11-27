@@ -561,7 +561,6 @@ MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
-	{"Memory","Indexz","Int","0"}, -- number of arguments
 	{"Memory","Indexz","Int","0","Default","TrivDef"}, -- how to modify arguments
 	{"Memory","Indexz","Int","0","Int","0"}, -- value to modify argument with
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
@@ -606,7 +605,6 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","Format","WholeFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
-	{"Memory","Matrixz","Int","0"},
 	{"Memory","Matrixz","Int","0","Default","TrivDef"},
 	{"Memory","Matrixz","Int","0","Int","0"},
 }
@@ -622,7 +620,6 @@ ResrcIns = {
 	{"Resrc","PipeRes","Int","0","Instr","IDerIns"},
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
-	 {"Resrc","PipeRes","Int","2"},
 	 {"Resrc","PipeRes","Int","0","Default","GiveDef"},
 	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IDerIns
 	 {"Resrc","PipeRes","Int","1","Default","BackDef"},
@@ -652,9 +649,11 @@ ResrcIns = {
 	 {"Resrc","PierceRes","Int","3","Format","HighFrm"},
 	{"Resrc","PierceRes","Int","4","ResrcLoc","AfterLoc"},
 	 {"Resrc","PierceRes","Int","4","Format","RonlyFrm"},
-	 {"Resrc","PierceRes","Int","3"},
+	 {"Resrc","PierceRes","Int","0","Default","TrivDef"},
 	 {"Resrc","PierceRes","Int","0","Int","0"}, -- IDerIns
+	 {"Resrc","PierceRes","Int","1","Default","TrivDef"},
 	 {"Resrc","PierceRes","Int","1","Int","0"}, -- WindowWidth
+	 {"Resrc","PierceRes","Int","2","Default","TrivDef"},
 	 {"Resrc","PierceRes","Int","2","Int","0"}, -- WindowHeight
 	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
 	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
@@ -676,7 +675,6 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
-	 {"Resrc","SwapRes","Int","0"},
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
@@ -718,7 +716,6 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 7+#dee)","Instr","IDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 7+#dee)","Resrc","PipeRes"},
-	{"Micro","MicroTest","Int","0"}, -- TODO number of defaults
 	{"Micro","MicroTest","Int","0","Default","TrivDef"}, -- TODO how to interpret default
 	{"Micro","MicroTest","Int","0","Int","0"}, -- TODO defaults
 	{"Micro","%(return fnc(mib))","Int","0","Instr","QDerIns"},
@@ -740,7 +737,6 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
-		{"Micro","MicroTest","Int","0"},
 		{"Micro","MicroTest","Int","0","Default","TrivDef"},
 		{"Micro","MicroTest","Int","0","Int","0"},
 }
