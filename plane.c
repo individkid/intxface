@@ -1181,43 +1181,15 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
-    /*TODO struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
-    ptr->mem = Instrz; ptr->siz = 26;
+    struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
+    ptr->mem = Instrz; ptr->siz = 0;
+    // TODO issue *TstIns
     allocInst(&ptr->ins,ptr->siz);
     int idx = 0;
-    ptr->ins[idx].ins = STstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 4; idx++;
-    ptr->ins[idx].ins = ITstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = ITstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = JTagIns; ptr->ins[idx].tag.res = RelateRes; ptr->ins[idx].tag.tag = RuseQua; ptr->ins[idx].tag.val = 1; idx++;
-    ptr->ins[idx].ins = ITstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = ITstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 3; idx++;
-    ptr->ins[idx].ins = JTagIns; ptr->ins[idx].tag.res = RelateRes; ptr->ins[idx].tag.tag = RuseQua; ptr->ins[idx].tag.val = 0; idx++;
-    ptr->ins[idx].ins = OTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 0; idx++;
-    ptr->ins[idx].ins = NTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 1; idx++;
-    ptr->ins[idx].ins = OTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 0; idx++;
-    ptr->ins[idx].ins = NTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 1; idx++;
-    ptr->ins[idx].ins = JTagIns; ptr->ins[idx].tag.res = RelateRes; ptr->ins[idx].tag.tag = RuseQua; ptr->ins[idx].tag.val = 1; idx++;
-    ptr->ins[idx].ins = OTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 2; idx++;
-    ptr->ins[idx].ins = NTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 3; idx++;
-    ptr->ins[idx].ins = RTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 2; idx++;
-    ptr->ins[idx].ins = OTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 3; idx++;
-    ptr->ins[idx].ins = NTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = -1; idx++;
-    ptr->ins[idx].ins = VTstIns; ptr->ins[idx].tst.res = RelateRes; ptr->ins[idx].tst.val = 3; idx++;
-    // TODO test insert that changes newest
-    // TODO test insert when pool is empty
     if (idx != ptr->siz) ERROR();
-    callCopy(ptr,Instrz,MltRsp,0,(debug?"instr":0));*/
-    // TODO issue Instrz to exercise TagState
+    callCopy(ptr,Instrz,MltRsp,0,(debug?"instr":0));
     int frames = callInfo(ConstantFrames,0,planeRcfg);
-    struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
+    ptr = centerPull(Drawz); freeCenter(ptr);
     ptr->mem = Drawz; ptr->siz = 1;
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;

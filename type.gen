@@ -161,7 +161,7 @@ Format = {
 	"FalseFrm", -- SizeReq FalseExt(always resize)
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
-Instr = { -- TODO remove IDerIns and IDeeIns, add DerIns for the various *Rsp and to set tag before processing *DerIns in addition to after by TDerIns
+Instr = {
 	"QDerIns", -- advance before push to thread
 	"PDerIns", -- advance an oldest after fence
 	"ODerIns", -- advance the oldest after fence
@@ -178,14 +178,10 @@ Instr = { -- TODO remove IDerIns and IDeeIns, add DerIns for the various *Rsp an
 	"RIncIns", -- include instructions from Resrc
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
-	"STstIns", -- void set(int siz);
-	"RTstIns", -- void remove(int idx);
-	"ITstIns", -- int insert(int *key);
-	"OTstIns", -- int oldbuf(int *key);
-	"NTstIns", -- int newbuf(int *key);
-	"GTstIns", -- int get(int idx, int tag);
-	"VTstIns", -- check last return value
-	"WTstIns", -- set last value for use int GTstIns and RTstIns
+	"ITstIns", -- int insert(int idx, int tag, int val);
+	"OTstIns", -- int oldbuf(int idx, int tag, int val);
+	"GTstIns", -- int getbuf(int idx, int tag, int val);
+	"NTstIns", -- int newbuf(int idx, int tag, int val);
 }
 Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
@@ -247,11 +243,13 @@ Configure = {
 	"FocalDepth",
 	-- following are scratch registers
 	"ConstantDescrs",
+	"ConstantMicros",
 	"ConstantFrames",
 	"ConstantImages",
 	"ConstantPhases",
 	"ConstantInstrs",
 	"ConstantResrcs",
+	"ConstantHandls",
 }
 Transfer = {
 	"Stage", -- center fields to configure
@@ -1029,17 +1027,17 @@ Requ = {
 	{"ext","Extent",{},{}},
 	{"base","Int",{},{}},
 	{"size","Int",{},{}},
+	{"loc","ResrcLoc",{},{}},
 }
 Inst = {
 	{"ins","Instr",{},""},
-	{"req","Requ",{},{}}, -- TODO change to pointer
-	{"loc","ResrcLoc",{},{}}, -- only used by DerIns
-	{"res","Resrc",{},{}}, -- overloaded for use by IncIns
+	{"req","Requ",{},{}}, -- only used by DerIns TODO change to pointer
+	{"res","Resrc",{},{}}, -- used by DerIns DeeIns IncIns TagIns TstIns
 	{"mem","Memory",{},{}}, -- only used by IncIns
 	{"mic","Micro",{},{}}, -- only used by IncIns
-	{"idx","Int",{},{}},
-	{"key","Quality",{},{}},
-	{"val","Int",{},{}}, -- overloaded for use by TstIns
+	{"idx","Int",{},{}}, -- used by DerIns DeeIns TagIns TstIns
+	{"key","Quality",{},{}}, -- used by DerIns DeeIns TagIns TstIns
+	{"val","Int",{},{}}, -- used by DerIns DeeIns TagIns TstIns
 }
 Center = {
 	{"mem","Memory",{},""},
