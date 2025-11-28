@@ -480,7 +480,7 @@ struct BaseState {
         lock(0),
         mask(0),
         nask(0),
-        debug{0} {
+        debug{} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
     }
@@ -679,8 +679,7 @@ struct BaseState {
 
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
-    int idx; // TODO perhaps add optimized
-    int tst;
+    int idx;
     SimpleState<Size,Qualitys,StackState::resrcs> tag;
     State state[Size];
     ArrayState(
@@ -719,13 +718,13 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         depthFormat,
         graphics,
         present),
-        safe(1), idx(0), tst(0) {
+        safe(1), idx(0) {
     }
-    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0), tst(0) {
+    ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
     }
-    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0), tst(0) {
+    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
     }
-    ArrayState() : safe(1), idx(0), tst(0) {
+    ArrayState() : safe(1), idx(0) {
     }
     void test(Instr ins, int hdl, Quality key, int val) override {
         safe.wait();
@@ -776,7 +775,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     int limord(int i) override {
         safe.wait(); int idx = tag.limord(i); safe.post(); return idx;
     }
-    // TODO setord not needed
     void clrord(int i) override {
         safe.wait(); tag.clrord(i); safe.post();
     }
@@ -1123,7 +1121,7 @@ struct CopyState {
         ThreadState *thread, EnumState *stack, ConstState *ary) :
         change(change),
         thread(thread),
-        stack{0},
+        stack{},
         array(ary) {
         std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
@@ -1674,7 +1672,7 @@ struct SwapState : public BaseState {
         std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode, capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
-        swapChainImageViews.fill({0},swapChainImages.size());
+        swapChainImageViews.fill({},swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         createImage(device, physical, getExtent().width, getExtent().height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthImageMemory);
@@ -2254,8 +2252,8 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
+    // TODO fold RelateRes PierceRes DebugRes into ImageRes
     ArrayState<RelateState,RelateRes,StackState::frames> relateState;
-    // TODO fold PierceRes and DebugRes into RelateState.
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,DebugRes,StackState::frames> debugState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
@@ -2488,7 +2486,7 @@ VkDebugUtilsMessengerCreateInfoEXT VulkanState::createInfo(const char **validati
 VkInstance VulkanState::createInstance(VkDebugUtilsMessengerCreateInfoEXT info, const char **validationLayers) {
     if (validationLayers) {
         uint32_t count; vkEnumerateInstanceLayerProperties(&count, nullptr);
-        HeapState<VkLayerProperties> availableLayers; availableLayers.fill({0},count);
+        HeapState<VkLayerProperties> availableLayers; availableLayers.fill({},count);
         vkEnumerateInstanceLayerProperties(&count, availableLayers.data());
         for (const char **name = validationLayers; *name; name++) {
         bool found = false; for (uint32_t i = 0; i < count; i++)
@@ -2905,22 +2903,20 @@ VkSwapchainKHR SwapState::createSwapChain(VkSurfaceKHR surface, VkDevice device,
 void SwapState::createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, HeapState<VkImage> &swapChainImages) {
     uint32_t imageCount;
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-    VkImage image = {0};
-    while (swapChainImages.size() < imageCount) swapChainImages << image; // TODO
+    swapChainImages.fill({},imageCount);
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 }
 void SwapState::createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
     HeapState<VkImageView> &swapChainImageViews, VkImageView depthImageView,
     HeapState<VkFramebuffer> &framebuffers) {
-    VkFramebuffer framebuffer = {0};
-    while (framebuffers.size() < swapChainImageViews.size()) framebuffers << framebuffer; // TODO
+    framebuffers.fill({},swapChainImageViews.size());
     for (int i = 0; i < swapChainImageViews.size(); i++)
     createFramebuffer(device,swapChainExtent,renderPass,swapChainImageViews[i],depthImageView,framebuffers[i]);
 }
 
 VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
     VkDescriptorPool descriptorPool;
-    HeapState<VkDescriptorPoolSize, 3> poolSizes; poolSizes.fill({},3); // TODO add fill without size
+    HeapState<VkDescriptorPoolSize, 3> poolSizes; poolSizes.fill({});
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(frames);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -3374,7 +3370,7 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     renderPassInfo.framebuffer = framebuffer;
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = renderArea;
-    HeapState<VkClearValue, 2> clearValues; clearValues.fill({},2);
+    HeapState<VkClearValue, 2> clearValues; clearValues.fill({});
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
