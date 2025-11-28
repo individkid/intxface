@@ -10,7 +10,6 @@
 #include <cstdlib>
 #include <cstdint>
 #include <limits>
-#include <array>
 #include <stdio.h>
 #include <execinfo.h>
 #include <signal.h>
@@ -143,9 +142,9 @@ struct LogicalState {
     VkQueue graphics;
     VkQueue present;
     VkCommandPool commandPool;
-    std::array<VkFormat,passes> imageFormat; // TODO use HeapState
+    HeapState<VkFormat,passes> imageFormat; // TODO use HeapState
     VkFormat depthFormat;
-    std::array<VkRenderPass,passes> renderPass; // TODO use HeapState
+    HeapState<VkRenderPass,passes> renderPass; // TODO use HeapState
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
@@ -248,8 +247,8 @@ struct StackState {
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkDevice device;
     static VkCommandPool commandPool;
-    static std::array<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
-    static std::array<VkFormat,LogicalState::passes> imageFormat; // TODO use HeapState
+    static HeapState<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
+    static HeapState<VkFormat,LogicalState::passes> imageFormat; // TODO use HeapState
     static VkFormat depthFormat;
     static VkQueue graphics;
     static VkQueue present;
@@ -268,8 +267,8 @@ struct StackState {
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
-        std::array<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
+        HeapState<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
+        HeapState<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) {
@@ -332,8 +331,8 @@ VkPhysicalDeviceProperties StackState::properties;
 VkPhysicalDeviceMemoryProperties StackState::memProperties;
 VkDevice StackState::device;
 VkCommandPool StackState::commandPool;
-std::array<VkRenderPass,LogicalState::passes> StackState::renderPass; // TODO use HeapState
-std::array<VkFormat,LogicalState::passes> StackState::imageFormat; // TODO use HeapState
+HeapState<VkRenderPass,LogicalState::passes> StackState::renderPass; // TODO use HeapState
+HeapState<VkFormat,LogicalState::passes> StackState::imageFormat; // TODO use HeapState
 VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
@@ -697,8 +696,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        std::array<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
-        std::array<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
+        HeapState<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
+        HeapState<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) :
@@ -1940,7 +1939,7 @@ struct ImageState : public BaseState {
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkFormat depthFormat;
-    const std::array<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
+    const HeapState<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
@@ -2727,11 +2726,11 @@ VkRenderPass LogicalState::createRenderPass(VkDevice device, VkFormat imageForma
     dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment}; // TODO
+    VkAttachmentDescription attachments[] = {colorAttachment, depthAttachment}; // TODO use HeapState
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassInfo.pAttachments = attachments.data();
+    renderPassInfo.attachmentCount = static_cast<uint32_t>(sizeof(attachments)/sizeof(VkAttachmentDescription));
+    renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;

@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #ifdef __cplusplus
+#include <array>
 #include <vector>
 #include <deque>
 #include <set>
@@ -272,7 +273,7 @@ template <class Type, int Size = 0> struct HeapState {
     std::vector<Type> vec;
     std::array<Type,Size> ary;
     HeapState() : bas(0), siz(0) {}
-    int chk() {
+    int chk() const {
         return (Size?Size:vec.size());
     }
     void push(int num) {
@@ -302,8 +303,11 @@ template <class Type, int Size = 0> struct HeapState {
         bas = (bas+i)%chk();
         siz -= i;
     }
-    void fill(const Type val, int num) {
-        for (int i = 0; i < num; i++) *this << val;
+    void fill(Type val, int num) {
+        while (siz < num) *this << val;
+    }
+    void fill(Type val) {
+        fill(val,chk());
     }
     HeapState<Type,Size> &operator<<(const Type &val) {
         if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
@@ -314,10 +318,18 @@ template <class Type, int Size = 0> struct HeapState {
         siz += 1;
         return *this;
     }
-    Type &operator[](int i) {
+    void chk(int i) const {
         if (siz < 0 || siz > chk() || bas < 0 || bas >= chk())
         {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         if (i < 0) {std::cerr << "invalid vec index!" << std::endl; exit(-1);}
+    }
+    Type &operator[](int i) {
+        chk(i);
+        if (Size) return ary[(i+bas)%Size];
+        return vec[(i+bas)%vec.size()];
+    }
+    const Type &operator[](int i) const {
+        chk(i);
         if (Size) return ary[(i+bas)%Size];
         return vec[(i+bas)%vec.size()];
     }
