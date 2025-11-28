@@ -55,17 +55,19 @@ struct SmartState {
     bool vld, rdy;
     std::stringstream str;
     SmartState() : num(0), vld(false), rdy(false), str("") {}
-    SmartState(const SmartState &oth);
+    SmartState(const SmartState &oth) {init(oth);}
     SmartState(const SmartState &&oth) = delete;
     SmartState(SmartState &&oth) = delete;
     SmartState(const volatile SmartState &&oth) = delete;
     SmartState(volatile SmartState &&oth) = delete;
-    SmartState &operator=(const SmartState &oth) = delete;
-    SmartState(std::string str);
-    ~SmartState();
+    SmartState &operator=(const SmartState &oth) {done(); init(oth); return *this;}
+    SmartState(std::string str) {init(str);}
+    ~SmartState() {done();}
+    void init(std::string str);
+    void init(const SmartState &oth);
+    void done();
     void wait();
     void post();
-    void done();
     SmartState &operator<<(char val) {
         wait();
         if (val == '\n' && vld) {str << std::endl; post();}

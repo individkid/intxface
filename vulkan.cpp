@@ -1021,8 +1021,8 @@ struct ThreadState : public DoneState {
     const VkDevice device;
     ChangeState<Configure,Configures> *change;
     SafeState safe; SafeState wake;
-    std::deque<Push> before; // TODO use HeapState
-    std::deque<Push> after; // TODO use HeapState
+    HeapState<Push> before; // TODO use HeapState
+    HeapState<Push> after; // TODO use HeapState
     int seqnum;
     bool goon;
     ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
@@ -1041,7 +1041,7 @@ struct ThreadState : public DoneState {
     void push(Push push) {
         push.fence = VK_NULL_HANDLE;
         safe.wait();
-        before.push_back(push);
+        before << push;
         safe.post();
         wake.post();
     }
@@ -1054,8 +1054,8 @@ struct ThreadState : public DoneState {
     bool stage() {
         while (1) {while (1) {
         safe.wait();
-        if (before.empty()) {safe.post(); break;}
-        Push push = before.front(); before.pop_front(); safe.post();
+        if (before.size() == 0) {safe.post(); break;}
+        Push push = before[0]; before.clear(1); safe.post();
         if (push.base) {
         Request tag = push.base->tag(push.loc);
         switch (tag) {
@@ -1065,10 +1065,10 @@ struct ThreadState : public DoneState {
         break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);
         break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);
         break; case(OnceReq): push.fence = push.base->baseone(push.loc,push.log);}}
-        after.push_back(push);}
-        if (!after.empty()) break;
+        after << push;}
+        if (after.size() != 0) break;
         safe.wait();
-        bool empty = before.empty();
+        bool empty = (before.size() == 0);
         bool done = (empty && !goon);
         safe.post();
         if (done) return false;
@@ -1077,8 +1077,8 @@ struct ThreadState : public DoneState {
     }
     void call() override {
         while (stage()) {
-        if (after.empty()) EXIT
-        Push push = after.front(); after.pop_front();
+        if (after.size() == 0) EXIT
+        Push push = after[0]; after.clear(1);
         if (push.fence != VK_NULL_HANDLE) {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) EXIT}

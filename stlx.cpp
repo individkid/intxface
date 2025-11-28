@@ -4,23 +4,18 @@
 
 SlogState slog; // TODO qualify with NDEBUG
 int SmartState::seqnum = 0;
-SmartState::SmartState(const SmartState &oth) {
-    num = oth.num; vld = oth.vld; rdy = false; str.str("");
-    if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
-}
-/*SmartState &SmartState::operator=(const SmartState &oth) {
-    num = oth.num; vld = oth.vld; str = oth.str;
-    if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
-    return *this;
-}*/
-SmartState::SmartState(std::string str) {
+void SmartState::init(std::string str) {
     slog.safe.wait();
     num = slog.limnum++; vld = true; rdy = false; this->str.str("");
     slog.sstr[num] = new std::stringstream;
     slog.name[num] = str; slog.smart[num] = 1;
     slog.safe.post();
 }
-SmartState::~SmartState() {
+void SmartState::init(const SmartState &oth) {
+    num = oth.num; vld = oth.vld; rdy = false; str.str("");
+    if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
+}
+void SmartState::done() {
     if (!vld) return;
     slog.wait(num);
     slog.smart[num]--; vld = false;
