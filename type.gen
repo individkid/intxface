@@ -246,7 +246,6 @@ Configure = {
 	"ConstantMicros",
 	"ConstantFrames",
 	"ConstantImages",
-	"ConstantPhases",
 	"ConstantInstrs",
 	"ConstantResrcs",
 	"ConstantHandls",

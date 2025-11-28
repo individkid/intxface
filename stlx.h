@@ -267,14 +267,18 @@ struct CallState {
     }
 };
 
-template <class Type, int Size> struct HeapState {
-    std::vector<Type> vec;
+template <class Type, int Size = 0> struct HeapState {
     int bas, siz;
-    HeapState() : bas(0), siz(0), vec(Size) {
+    std::vector<Type> vec;
+    std::array<Type,Size> ary;
+    HeapState() : bas(0), siz(0) {}
+    int chk() {
+        return (Size?Size:vec.size());
     }
     void push(int num) {
+        if (Size) {std::cerr << "invalid bas use!" << std::endl; *(int*)0=0; exit(-1);}
         if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         // TODO allow for negative num
         int size = vec.size();
         int wrap = bas+siz-size;
@@ -282,35 +286,44 @@ template <class Type, int Size> struct HeapState {
         for (int i = 0; i < wrap; i++) vec[(size++)%vec.size()] = vec[i];
     }
     int size() {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         return siz;
     }
     void clear() {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         bas = 0; siz = 0;
     }
     void clear(int i) {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
-        if (siz < i) {std::cerr << "invalid clear siz!" << std::endl; exit(-1);}
-        bas = (bas+i)%vec.size();
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
+        if (siz < i) {std::cerr << "invalid clear siz!" << std::endl; *(int*)0=0; exit(-1);}
+        bas = (bas+i)%chk();
         siz -= i;
     }
+    void fill(const Type val, int num) {
+        for (int i = 0; i < num; i++) *this << val;
+    }
     HeapState<Type,Size> &operator<<(const Type &val) {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
-        if (siz == vec.size()) push(1);
-        vec[(siz+bas)%vec.size()] = val;
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
+        if (siz == chk()) push(1);
+        if (Size) ary[(siz+bas)%Size] = val;
+        else vec[(siz+bas)%vec.size()] = val;
         siz += 1;
         return *this;
     }
     Type &operator[](int i) {
-        if (siz < 0 || siz > vec.size() || bas < 0 || (vec.size() > 0 && bas >= vec.size()))
-        {std::cerr << "invalid bas size!" << std::endl; exit(-1);}
+        if (siz < 0 || siz > chk() || bas < 0 || bas >= chk())
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         if (i < 0) {std::cerr << "invalid vec index!" << std::endl; exit(-1);}
+        if (Size) return ary[(i+bas)%Size];
         return vec[(i+bas)%vec.size()];
+    }
+    Type *data() {
+        if (Size) return ary.data();
+        return vec.data();
     }
 };
 

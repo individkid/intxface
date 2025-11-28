@@ -206,14 +206,13 @@ struct Onl {
 };
 struct BaseState;
 struct StackState {
-    static const int descrs = 4;
-    static const int micros = 3;
-    static const int frames = 2;
-    static const int images = 2;
-    static const int phases = 10;
-    static const int instrs = 20;
-    static const int resrcs = 2;
-    static const int handls = 4;
+    static const int descrs = 4; // maximum descriptor sets in use
+    static const int micros = 3; // eventually equal to Micros
+    static const int frames = 2; // prevent blocking on resources
+    static const int images = 10; // textures and feedback framebuffers
+    static const int instrs = 20; // maximum steps in a binded submit
+    static const int resrcs = 2; // resource classification greediness
+    static const int handls = 4; // maximum number of classifications
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual void test(Instr ins, int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
@@ -1023,9 +1022,8 @@ struct ThreadState : public DoneState {
     const VkDevice device;
     ChangeState<Configure,Configures> *change;
     SafeState safe; SafeState wake;
-    std::deque<Push> before; // TODO maybe use HeapState
-    std::deque<Push> after; // TODO maybe use HeapState
-    std::map<int,Push> topush; // TODO maybe use HeapState
+    std::deque<Push> before; // TODO use HeapState
+    std::deque<Push> after; // TODO use HeapState
     int seqnum;
     bool goon;
     ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
@@ -1148,6 +1146,30 @@ struct CopyState {
         int tmp = idx; idx += 1;
         return arg[tmp];
     }
+    BaseState *get(Instr ins, Resrc res, int idx, Quality key, int val) {
+        switch (ins) {default: break;
+        case(QDerIns): case(TDerIns):
+        case(WDeeIns): case(TDeeIns):
+        case(RDeeIns): case(SDeeIns):
+        return src(res)->newbuf(idx,key,val);
+        break; case(PDerIns): case(SDerIns):
+        return src(res)->getbuf(idx,key,val);
+        break; case(ODerIns): case(RDerIns):
+        return src(res)->oldbuf(idx,key,val);
+        break; case(IDerIns): case(IDeeIns):
+        return src(res)->idxbuf(idx);}
+        return 0;
+    }
+    Onl get(Instr ins, int idx, Quality key, int val) {
+        switch (ins) {default: break;
+        case(QDerIns): case(TDerIns):
+        case(PDerIns): case(SDerIns):
+        case(ODerIns): case(RDerIns):
+        case(WDeeIns): case(TDeeIns):
+        case(RDeeIns): case(SDeeIns):
+        return {idx,key,val};}
+        return {0,Qualitys,0};
+    }
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
@@ -1182,45 +1204,15 @@ struct CopyState {
             break; case (ITstIns): case (OTstIns): case (GTstIns): case (NTstIns): {
             log << "TstInst res:" << ins[i].res << " ins:" << ins[i].ins << " val:" << ins[i].val << '\n';
             src(ins[i].res)->test(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);}
-            break; case(QDerIns): case(TDerIns): {
-            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
+            break; case(QDerIns): case(TDerIns): case(PDerIns): case(SDerIns):
+            case(ODerIns): case(RDerIns): case(IDerIns):
+            case(WDeeIns): case(TDeeIns): case(RDeeIns): case(SDeeIns): case(IDeeIns): {
+            Onl onl = get(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
+            if (!vld(ins[i].res,onl,bind)) {
+            BaseState *buf = get(ins[i].ins,ins[i].res,ins[i].idx,ins[i].key,ins[i].val);
+            bind->vld(i,ins[i].res,onl,buf);}
             bind->fin(ins[i].res) = i;
-            log << "QDerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';}
-            break; case(PDerIns): case(SDerIns): {
-            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->getbuf(ins[i].idx,ins[i].key,ins[i].val));
-            bind->fin(ins[i].res) = i;
-            log << "PDerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';}
-            break; case(ODerIns): case(RDerIns): {
-            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->oldbuf(ins[i].idx,ins[i].key,ins[i].val));
-            bind->fin(ins[i].res) = i;
-            log << "ODerIns loc:" << ins[i].req.loc << " " << bind->buf(ins[i].res)->debug << '\n';}
-            break; case(IDerIns): {
-            Onl onl = {0,Qualitys,0};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->idxbuf(ins[i].idx));
-            bind->fin(ins[i].res) = i;
-            log << "IDerIns loc:" << ins[i].req.loc << " idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}
-            break; case(WDeeIns): case(TDeeIns): {
-            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
-            log << "WDeeIns " << bind->buf(ins[i].res)->debug << '\n';}
-            break; case(RDeeIns): case(SDeeIns): {
-            Onl onl = {ins[i].idx,ins[i].key,ins[i].val};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->newbuf(ins[i].idx,ins[i].key,ins[i].val));
-            log << "RDeeIns " << bind->buf(ins[i].res)->debug << '\n';}
-            break; case(IDeeIns): {
-            Onl onl = {0,Qualitys,0};
-            if (!vld(ins[i].res,onl,bind))
-            bind->vld(i,ins[i].res,onl,src(ins[i].res)->idxbuf(ins[i].idx));
-            log << "IDeeIns idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}}}
+            log << "DepIns idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}}}
         log << "reserve chosen" << '\n';
         if (bind) bind->wrp() += 1;
         int resps = 0;
@@ -1648,13 +1640,12 @@ struct SwapState : public BaseState {
     const VkRenderPass renderPass;
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkSwapchainKHR swapChain;
-    // TODO change vectors to number initialized and HeapState of maximum supported size
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> swapChainImageViews;
+    HeapState<VkImage> swapChainImages;
+    HeapState<VkImageView> swapChainImageViews;
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
-    std::vector<VkFramebuffer> framebuffers;
+    HeapState<VkFramebuffer> framebuffers;
     VkSurfaceCapabilitiesKHR capabilities;
     SwapState() :
         BaseState("SwapState",StackState::self),
@@ -1684,7 +1675,7 @@ struct SwapState : public BaseState {
         std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode, capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
-        swapChainImageViews.resize(swapChainImages.size());
+        swapChainImageViews.fill({0},swapChainImages.size());
         for (int i = 0; i < swapChainImages.size(); i++)
         swapChainImageViews[i] = createImageView(device, swapChainImages[i], imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         createImage(device, physical, getExtent().width, getExtent().height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthImageMemory);
@@ -1695,10 +1686,10 @@ struct SwapState : public BaseState {
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthImageMemory, nullptr);
-        for (auto framebuffer : framebuffers)
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        for (auto imageView : swapChainImageViews)
-            vkDestroyImageView(device, imageView, nullptr);
+        for (int i = 0; i < framebuffers.size(); i++)
+            vkDestroyFramebuffer(device, framebuffers[i], nullptr);
+        for (int i = 0; i < swapChainImageViews.size(); i++)
+            vkDestroyImageView(device, swapChainImageViews[i], nullptr);
         vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
     VkFence setup(Loc &loc, SmartState log) override {
@@ -1711,10 +1702,10 @@ struct SwapState : public BaseState {
     static VkSurfaceCapabilitiesKHR findCapabilities(GLFWwindow* window, VkSurfaceKHR surface, VkPhysicalDevice device);
     static VkExtent2D chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabilitiesKHR& capabilities);
     static VkSwapchainKHR createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent, VkSurfaceFormatKHR surfaceFormat, VkPresentModeKHR presentMode, VkSurfaceCapabilitiesKHR capabilities, uint32_t graphicsFamily, uint32_t presentFamily);
-    static void createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, std::vector<VkImage> &swapChainImages);
+    static void createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, HeapState<VkImage> &swapChainImages);
     static void createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
-        std::vector<VkImageView> swapChainImageViews, VkImageView depthImageView,
-        std::vector<VkFramebuffer> &framebuffers);
+        HeapState<VkImageView> &swapChainImageViews, VkImageView depthImageView,
+        HeapState<VkFramebuffer> &framebuffers);
 };
 
 struct PipeState : public BaseState {
@@ -1770,9 +1761,8 @@ struct PipeState : public BaseState {
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
     static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func);
     static VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
-    static std::vector<char> readFile(const std::string& filename);
     static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, Micro micro, const ConstState *func);
-    static VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
+    static VkShaderModule createShaderModule(VkDevice device, const char *filename);
 };
 
 struct UniformState : public BaseState {
@@ -2265,7 +2255,7 @@ struct MainState {
     ArrayState<BufferState,NumericRes,StackState::frames> numericState;
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
-    ArrayState<RelateState,RelateRes,StackState::phases> relateState;
+    ArrayState<RelateState,RelateRes,StackState::frames> relateState;
     // TODO fold PierceRes and DebugRes into RelateState.
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,DebugRes,StackState::frames> debugState;
@@ -2453,7 +2443,6 @@ int main(int argc, const char **argv) {
     main.changeState.write(ConstantMicros,StackState::micros);
     main.changeState.write(ConstantFrames,StackState::frames);
     main.changeState.write(ConstantImages,StackState::images);
-    main.changeState.write(ConstantPhases,StackState::phases);
     main.changeState.write(ConstantInstrs,StackState::instrs);
     main.changeState.write(ConstantResrcs,StackState::resrcs);
     main.changeState.write(ConstantHandls,StackState::handls);
@@ -2500,7 +2489,7 @@ VkDebugUtilsMessengerCreateInfoEXT VulkanState::createInfo(const char **validati
 VkInstance VulkanState::createInstance(VkDebugUtilsMessengerCreateInfoEXT info, const char **validationLayers) {
     if (validationLayers) {
         uint32_t count; vkEnumerateInstanceLayerProperties(&count, nullptr);
-        std::vector<VkLayerProperties> availableLayers(count);
+        HeapState<VkLayerProperties> availableLayers; availableLayers.fill({0},count);
         vkEnumerateInstanceLayerProperties(&count, availableLayers.data());
         for (const char **name = validationLayers; *name; name++) {
         bool found = false; for (uint32_t i = 0; i < count; i++)
@@ -2519,7 +2508,7 @@ VkInstance VulkanState::createInstance(VkDebugUtilsMessengerCreateInfoEXT info, 
     const char **ptr = 0; uint32_t count = 0; uint32_t size = 0;
     ptr = glfwGetRequiredInstanceExtensions(&count);
     if (validationLayers) size = count+1; else size = count;
-    std::vector<const char *> extensions(size);
+    HeapState<const char *> extensions; extensions.fill(0,size);
     for (uint32_t i = 0; i < count; i++) extensions[i] = ptr[i];
     if (validationLayers) extensions[count] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
     createInfo.enabledExtensionCount = size;
@@ -2555,12 +2544,12 @@ VkSurfaceKHR VulkanState::createSurface(VkInstance instance, GLFWwindow* window)
 bool PhysicalState::foundIndices(VkSurfaceKHR surface, VkPhysicalDevice device) {
     bool foundGraphics = false; bool foundPresent = false;
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilies(count);
+    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.push(count);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
-    uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
+    uint32_t i = 0; for (int j = 0; j < count; j++) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i++, surface, &support);
         if (support) foundPresent = true;
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) foundGraphics = true;
+        if (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) foundGraphics = true;
         if (foundGraphics && foundPresent) return true;}
     return false;
 }
@@ -2573,13 +2562,13 @@ VkPhysicalDevice PhysicalState::createDevice(VkInstance instance, VkSurfaceKHR s
     VkPhysicalDevice retdev;
     uint32_t count = 0; vkEnumeratePhysicalDevices(instance, &count, nullptr);
     if (count == 0) EXIT
-    std::vector<VkPhysicalDevice> devices(count);
+    std::vector<VkPhysicalDevice> devices(count); // TODO
     vkEnumeratePhysicalDevices(instance, &count, devices.data());
     bool found = false; for (const auto& device : devices) {
         if (!foundIndices(surface,device)) continue;
     if (!foundDetails(surface,device)) continue;
         count = 0; vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
-        std::vector<VkExtensionProperties> properties(count);
+        std::vector<VkExtensionProperties> properties(count); // TODO
         vkEnumerateDeviceExtensionProperties(device, nullptr, &count, properties.data());
         bool found0 = true; for (const char **name = deviceExtensions; *name; name++) {
         bool found1 = false; for (uint32_t i = 0; i < count; i++)
@@ -2594,7 +2583,7 @@ VkPhysicalDevice PhysicalState::createDevice(VkInstance instance, VkSurfaceKHR s
 }
 uint32_t PhysicalState::findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilies(count);
+    std::vector<VkQueueFamilyProperties> queueFamilies(count); // TODO
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
     uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
@@ -2605,7 +2594,7 @@ uint32_t PhysicalState::findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevic
 }
 uint32_t PhysicalState::findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilies(count);
+    std::vector<VkQueueFamilyProperties> queueFamilies(count); // TODO
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
     uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
@@ -2622,7 +2611,7 @@ VkPhysicalDeviceProperties PhysicalState::findProperties(VkPhysicalDevice device
 }
 VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkFormat format, VkColorSpaceKHR space, VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
-    std::vector<VkSurfaceFormatKHR> formats(count);
+    std::vector<VkSurfaceFormatKHR> formats(count); // TODO
     if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
     for (const auto& retval : formats)
     if (retval.format == format && retval.colorSpace == space)
@@ -2631,7 +2620,7 @@ VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkFormat format, VkCol
 }
 VkPresentModeKHR PhysicalState::chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
-    std::vector<VkPresentModeKHR> presentModes(count);
+    std::vector<VkPresentModeKHR> presentModes(count); // TODO
     if (count != 0) vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, presentModes.data());
     for (const auto& presentMode : presentModes) {
     if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -2647,7 +2636,7 @@ VkPhysicalDeviceMemoryProperties PhysicalState::findMemoryProperties(VkPhysicalD
 VkDevice LogicalState::createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
     const char **validationLayers, const char **deviceExtensions) {
     VkDevice device;
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos; // TODO
     uint32_t queueFamilies[] = {graphicsFamily, presentFamily};
     float queuePriority = 1.0f;
     for (uint32_t i = 0; i < (graphicsFamily == presentFamily ? 1 : 2); i++) {
@@ -2738,7 +2727,7 @@ VkRenderPass LogicalState::createRenderPass(VkDevice device, VkFormat imageForma
     dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment}; // TODO
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -2852,7 +2841,7 @@ void BaseState::createBuffer(VkDevice device, VkPhysicalDevice physical, VkDevic
 }
 void BaseState::createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
     VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer) {
-    std::array<VkImageView, 2> attachments = {swapChainImageView,depthImageView};
+    std::array<VkImageView, 2> attachments = {swapChainImageView,depthImageView}; // TODO
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass = renderPass;
@@ -2914,23 +2903,25 @@ VkSwapchainKHR SwapState::createSwapChain(VkSurfaceKHR surface, VkDevice device,
     EXIT
     return swapChain;
 }
-void SwapState::createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, std::vector<VkImage> &swapChainImages) {
+void SwapState::createSwapChainImages(VkDevice device, VkSwapchainKHR swapChain, HeapState<VkImage> &swapChainImages) {
     uint32_t imageCount;
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-    swapChainImages.resize(imageCount);
+    VkImage image = {0};
+    while (swapChainImages.size() < imageCount) swapChainImages << image; // TODO
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 }
 void SwapState::createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
-    std::vector<VkImageView> swapChainImageViews, VkImageView depthImageView,
-    std::vector<VkFramebuffer> &framebuffers) {
-    framebuffers.resize(swapChainImageViews.size());
-    for (size_t i = 0; i < swapChainImageViews.size(); i++)
+    HeapState<VkImageView> &swapChainImageViews, VkImageView depthImageView,
+    HeapState<VkFramebuffer> &framebuffers) {
+    VkFramebuffer framebuffer = {0};
+    while (framebuffers.size() < swapChainImageViews.size()) framebuffers << framebuffer; // TODO
+    for (int i = 0; i < swapChainImageViews.size(); i++)
     createFramebuffer(device,swapChainExtent,renderPass,swapChainImageViews[i],depthImageView,framebuffers[i]);
 }
 
 VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
     VkDescriptorPool descriptorPool;
-    std::array<VkDescriptorPoolSize, 3> poolSizes{};
+    HeapState<VkDescriptorPoolSize, 3> poolSizes; poolSizes.fill({},3); // TODO add fill without size
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(frames);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -2949,7 +2940,7 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
 }
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func) {
     VkDescriptorSetLayout descriptorSetLayout;
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    HeapState<VkDescriptorSetLayoutBinding> bindings;
     auto fnc = func->micres(micro);
     for (int i = 0; fnc(i) != Resrcs; i++)
     switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
@@ -2960,7 +2951,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
     uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    bindings.push_back(uboLayoutBinding);}
+    bindings << uboLayoutBinding;}
     break; case (StoragePhs): {
     VkDescriptorSetLayoutBinding storageLayoutBinding{};
     storageLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
@@ -2968,7 +2959,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     storageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     storageLayoutBinding.pImmutableSamplers = nullptr;
     storageLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    bindings.push_back(storageLayoutBinding);}
+    bindings << storageLayoutBinding;}
     break; case (RelatePhs): {
     VkDescriptorSetLayoutBinding relateLayoutBinding{};
     relateLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
@@ -2976,7 +2967,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     relateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     relateLayoutBinding.pImmutableSamplers = nullptr;
     relateLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    bindings.push_back(relateLayoutBinding);}
+    bindings << relateLayoutBinding;}
     break; case (SamplePhs): {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
     samplerLayoutBinding.binding = 7; // bindings.size();
@@ -2984,7 +2975,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    bindings.push_back(samplerLayoutBinding);}}
+    bindings << samplerLayoutBinding;}}
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -3003,33 +2994,28 @@ VkPipelineLayout PipeState::createPipelineLayout(VkDevice device, VkDescriptorSe
     EXIT
     return pipelineLayout;
 }
-std::vector<char> PipeState::readFile(const std::string& filename) {
+VkShaderModule PipeState::createShaderModule(VkDevice device, const char *filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
     if (!file.is_open()) EXIT
     size_t fileSize = (size_t) file.tellg();
-    std::vector<char> buffer(fileSize);
+    char *buffer = (char*)malloc(fileSize);
     file.seekg(0);
-    file.read(buffer.data(), fileSize);
+    file.read(buffer, fileSize);
     file.close();
-    return buffer;
-}
-VkShaderModule PipeState::createShaderModule(VkDevice device, const std::vector<char>& code) {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = code.size();
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    createInfo.codeSize = fileSize;
+    createInfo.pCode = (uint32_t*)buffer;
     VkShaderModule shaderModule;
-    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-    EXIT
+    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) EXIT
+    free(buffer);
     return shaderModule;
 }
 VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
     VkPipelineLayout pipelineLayout, Micro micro, const ConstState *func) {
     VkPipeline pipeline;
-    auto vertShaderCode = readFile(VertexFile__Micro__Str(micro));
-    auto fragShaderCode = readFile(FragmentFile__Micro__Str(micro));
-    VkShaderModule vertShaderModule = createShaderModule(device,vertShaderCode);
-    VkShaderModule fragShaderModule = createShaderModule(device,fragShaderCode);
+    VkShaderModule vertShaderModule = createShaderModule(device,VertexFile__Micro__Str(micro));
+    VkShaderModule fragShaderModule = createShaderModule(device,FragmentFile__Micro__Str(micro));
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -3043,8 +3029,8 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions;
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+    std::vector<VkVertexInputBindingDescription> bindingDescriptions; // TODO
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions; // TODO
     auto fnc = func->micres(micro);
     for (int i = 0; fnc(i) != Resrcs; i++)
     switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
@@ -3108,7 +3094,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
-    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
+    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR}; // TODO
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
@@ -3314,7 +3300,7 @@ bool ChainState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_
 VkDescriptorSet DrawState::createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
     VkDescriptorSetLayout descriptorSetLayout, int frames) {
     VkDescriptorSet descriptorSet;
-    std::vector<VkDescriptorSetLayout> layouts(frames, descriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> layouts(frames, descriptorSetLayout); // TODO
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
@@ -3389,7 +3375,7 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     renderPassInfo.framebuffer = framebuffer;
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = renderArea;
-    std::array<VkClearValue, 2> clearValues{};
+    std::array<VkClearValue, 2> clearValues{}; // TODO
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
