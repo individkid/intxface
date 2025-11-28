@@ -374,6 +374,8 @@ struct Center *centerPull(int idx)
 void centerPlace(struct Center *ptr, int idx)
 {
     centerSize(idx);
+    // TODO move the following to Bringup Bootstrap
+    if (ptr && ptr->mem == Peekz && ptr->siz > 0) printf("Peekz %d %f\n",ptr->siz,ptr->eek[0].val);
     if (waitSafe(copySem) != 0) ERROR();
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (postSafe(copySem) != 1) ERROR();
