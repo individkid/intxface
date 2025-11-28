@@ -142,9 +142,9 @@ struct LogicalState {
     VkQueue graphics;
     VkQueue present;
     VkCommandPool commandPool;
-    HeapState<VkFormat,passes> imageFormat; // TODO use HeapState
+    HeapState<VkFormat,passes> imageFormat;
     VkFormat depthFormat;
-    HeapState<VkRenderPass,passes> renderPass; // TODO use HeapState
+    HeapState<VkRenderPass,passes> renderPass;
     static constexpr VkFormat candidates[] = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
     LogicalState(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
         const char **validationLayers, const char **deviceExtensions) :
@@ -247,8 +247,8 @@ struct StackState {
     static VkPhysicalDeviceMemoryProperties memProperties;
     static VkDevice device;
     static VkCommandPool commandPool;
-    static HeapState<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
-    static HeapState<VkFormat,LogicalState::passes> imageFormat; // TODO use HeapState
+    static HeapState<VkRenderPass,LogicalState::passes> renderPass;
+    static HeapState<VkFormat,LogicalState::passes> imageFormat;
     static VkFormat depthFormat;
     static VkQueue graphics;
     static VkQueue present;
@@ -267,8 +267,8 @@ struct StackState {
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        HeapState<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
-        HeapState<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
+        HeapState<VkRenderPass,LogicalState::passes> renderPass,
+        HeapState<VkFormat,LogicalState::passes> imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) {
@@ -331,8 +331,8 @@ VkPhysicalDeviceProperties StackState::properties;
 VkPhysicalDeviceMemoryProperties StackState::memProperties;
 VkDevice StackState::device;
 VkCommandPool StackState::commandPool;
-HeapState<VkRenderPass,LogicalState::passes> StackState::renderPass; // TODO use HeapState
-HeapState<VkFormat,LogicalState::passes> StackState::imageFormat; // TODO use HeapState
+HeapState<VkRenderPass,LogicalState::passes> StackState::renderPass;
+HeapState<VkFormat,LogicalState::passes> StackState::imageFormat;
 VkFormat StackState::depthFormat;
 VkQueue StackState::graphics;
 VkQueue StackState::present;
@@ -696,8 +696,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         VkPhysicalDeviceMemoryProperties memProperties,
         VkDevice device,
         VkCommandPool commandPool,
-        HeapState<VkRenderPass,LogicalState::passes> renderPass, // TODO use HeapState
-        HeapState<VkFormat,LogicalState::passes> imageFormat, // TODO use HeapState
+        HeapState<VkRenderPass,LogicalState::passes> renderPass,
+        HeapState<VkFormat,LogicalState::passes> imageFormat,
         VkFormat depthFormat,
         VkQueue graphics,
         VkQueue present) :
@@ -1021,8 +1021,8 @@ struct ThreadState : public DoneState {
     const VkDevice device;
     ChangeState<Configure,Configures> *change;
     SafeState safe; SafeState wake;
-    HeapState<Push> before; // TODO use HeapState
-    HeapState<Push> after; // TODO use HeapState
+    HeapState<Push> before;
+    HeapState<Push> after;
     int seqnum;
     bool goon;
     ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
@@ -1939,7 +1939,7 @@ struct ImageState : public BaseState {
     const VkCommandPool commandPool;
     const VkPhysicalDeviceMemoryProperties memProperties;
     const VkFormat depthFormat;
-    const HeapState<VkRenderPass,LogicalState::passes> renderPass; // TODO use HeapState
+    const HeapState<VkRenderPass,LogicalState::passes> renderPass;
     VkImage image;
     VkDeviceMemory imageMemory;
     VkImageView imageView;
@@ -2561,13 +2561,13 @@ VkPhysicalDevice PhysicalState::createDevice(VkInstance instance, VkSurfaceKHR s
     VkPhysicalDevice retdev;
     uint32_t count = 0; vkEnumeratePhysicalDevices(instance, &count, nullptr);
     if (count == 0) EXIT
-    HeapState<VkPhysicalDevice> devices; devices.fill({},count); // TODO use HeapState
+    HeapState<VkPhysicalDevice> devices; devices.fill({},count);
     vkEnumeratePhysicalDevices(instance, &count, devices.data());
     bool found = false; for (int i = 0; i < devices.size(); i++) {
         if (!foundIndices(surface,devices[i])) continue;
     if (!foundDetails(surface,devices[i])) continue;
         count = 0; vkEnumerateDeviceExtensionProperties(devices[i], nullptr, &count, nullptr);
-        HeapState<VkExtensionProperties> properties; properties.fill({},count); // TODO use HeapState
+        HeapState<VkExtensionProperties> properties; properties.fill({},count);
         vkEnumerateDeviceExtensionProperties(devices[i], nullptr, &count, properties.data());
         bool found0 = true; for (const char **name = deviceExtensions; *name; name++) {
         bool found1 = false; for (uint32_t j = 0; j < count; j++)
@@ -2582,7 +2582,7 @@ VkPhysicalDevice PhysicalState::createDevice(VkInstance instance, VkSurfaceKHR s
 }
 uint32_t PhysicalState::findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.fill({},count); // TODO use HeapState
+    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.fill({},count);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
     uint32_t i = 0; for (int j = 0; j < queueFamilies.size(); j++) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
@@ -2593,7 +2593,7 @@ uint32_t PhysicalState::findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevic
 }
 uint32_t PhysicalState::findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.fill({},count); // TODO use HeapState
+    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.fill({},count);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
     uint32_t i = 0; for (int j = 0; j < queueFamilies.size(); j++) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
@@ -2610,7 +2610,7 @@ VkPhysicalDeviceProperties PhysicalState::findProperties(VkPhysicalDevice device
 }
 VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkFormat format, VkColorSpaceKHR space, VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
-    HeapState<VkSurfaceFormatKHR> formats; formats.fill({},count); // TODO use HeapState
+    HeapState<VkSurfaceFormatKHR> formats; formats.fill({},count);
     if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
     for (int i = 0; i < formats.size(); i++)
     if (formats[i].format == format && formats[i].colorSpace == space)
@@ -2619,7 +2619,7 @@ VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkFormat format, VkCol
 }
 VkPresentModeKHR PhysicalState::chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
-    HeapState<VkPresentModeKHR> presentModes; presentModes.fill({},count); // TODO use HeapState
+    HeapState<VkPresentModeKHR> presentModes; presentModes.fill({},count);
     if (count != 0) vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, presentModes.data());
     for (int i = 0; i < presentModes.size(); i++) {
     if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -2635,7 +2635,7 @@ VkPhysicalDeviceMemoryProperties PhysicalState::findMemoryProperties(VkPhysicalD
 VkDevice LogicalState::createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
     const char **validationLayers, const char **deviceExtensions) {
     VkDevice device;
-    HeapState<VkDeviceQueueCreateInfo> queueCreateInfos; // TODO use HeapState
+    HeapState<VkDeviceQueueCreateInfo> queueCreateInfos;
     uint32_t queueFamilies[] = {graphicsFamily, presentFamily};
     float queuePriority = 1.0f;
     for (uint32_t i = 0; i < (graphicsFamily == presentFamily ? 1 : 2); i++) {
@@ -2726,7 +2726,7 @@ VkRenderPass LogicalState::createRenderPass(VkDevice device, VkFormat imageForma
     dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    VkAttachmentDescription attachments[] = {colorAttachment, depthAttachment}; // TODO use HeapState
+    VkAttachmentDescription attachments[] = {colorAttachment, depthAttachment};
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(sizeof(attachments)/sizeof(VkAttachmentDescription));
@@ -2840,7 +2840,7 @@ void BaseState::createBuffer(VkDevice device, VkPhysicalDevice physical, VkDevic
 }
 void BaseState::createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
     VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer) {
-    VkImageView attachments[] = {swapChainImageView,depthImageView}; // TODO use HeapState
+    VkImageView attachments[] = {swapChainImageView,depthImageView};
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass = renderPass;
@@ -3028,8 +3028,8 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    HeapState<VkVertexInputBindingDescription> bindingDescriptions; // TODO use HeapState
-    HeapState<VkVertexInputAttributeDescription> attributeDescriptions; // TODO use HeapState
+    HeapState<VkVertexInputBindingDescription> bindingDescriptions;
+    HeapState<VkVertexInputAttributeDescription> attributeDescriptions;
     auto fnc = func->micres(micro);
     for (int i = 0; fnc(i) != Resrcs; i++)
     switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
@@ -3093,7 +3093,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
-    VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR}; // TODO use HeapState
+    VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.dynamicStateCount = static_cast<uint32_t>(sizeof(dynamicStates)/sizeof(VkDynamicState));
@@ -3299,7 +3299,7 @@ bool ChainState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_
 VkDescriptorSet DrawState::createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
     VkDescriptorSetLayout descriptorSetLayout, int frames) {
     VkDescriptorSet descriptorSet;
-    HeapState<VkDescriptorSetLayout> layouts; layouts.fill(descriptorSetLayout,frames); // TODO use HeapState
+    HeapState<VkDescriptorSetLayout> layouts; layouts.fill(descriptorSetLayout,frames);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
@@ -3374,7 +3374,7 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     renderPassInfo.framebuffer = framebuffer;
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = renderArea;
-    HeapState<VkClearValue, 2> clearValues; clearValues.fill({},2); // TODO use HeapState
+    HeapState<VkClearValue, 2> clearValues; clearValues.fill({},2);
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
