@@ -2561,44 +2561,44 @@ VkPhysicalDevice PhysicalState::createDevice(VkInstance instance, VkSurfaceKHR s
     VkPhysicalDevice retdev;
     uint32_t count = 0; vkEnumeratePhysicalDevices(instance, &count, nullptr);
     if (count == 0) EXIT
-    std::vector<VkPhysicalDevice> devices(count); // TODO
+    HeapState<VkPhysicalDevice> devices; devices.fill({},count); // TODO use HeapState
     vkEnumeratePhysicalDevices(instance, &count, devices.data());
-    bool found = false; for (const auto& device : devices) {
-        if (!foundIndices(surface,device)) continue;
-    if (!foundDetails(surface,device)) continue;
-        count = 0; vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
-        std::vector<VkExtensionProperties> properties(count); // TODO
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &count, properties.data());
+    bool found = false; for (int i = 0; i < devices.size(); i++) {
+        if (!foundIndices(surface,devices[i])) continue;
+    if (!foundDetails(surface,devices[i])) continue;
+        count = 0; vkEnumerateDeviceExtensionProperties(devices[i], nullptr, &count, nullptr);
+        HeapState<VkExtensionProperties> properties; properties.fill({},count); // TODO use HeapState
+        vkEnumerateDeviceExtensionProperties(devices[i], nullptr, &count, properties.data());
         bool found0 = true; for (const char **name = deviceExtensions; *name; name++) {
-        bool found1 = false; for (uint32_t i = 0; i < count; i++)
-        if (strcmp(*name,properties[i].extensionName) == 0)
+        bool found1 = false; for (uint32_t j = 0; j < count; j++)
+        if (strcmp(*name,properties[j].extensionName) == 0)
         {found1 = true; break;} if (!found1) {found0 = false; break;}} if (!found0) continue;
         VkPhysicalDeviceFeatures supportedFeatures;
-        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+        vkGetPhysicalDeviceFeatures(devices[i], &supportedFeatures);
         if (!supportedFeatures.samplerAnisotropy) continue;
-        found = true; retdev = device; break;}
+        found = true; retdev = devices[i]; break;}
     if (!found) EXIT
     return retdev;
 }
 uint32_t PhysicalState::findGraphicsFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilies(count); // TODO
+    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.fill({},count); // TODO use HeapState
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
-    uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
+    uint32_t i = 0; for (int j = 0; j < queueFamilies.size(); j++) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
-        if (support && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) return i; i++;}
-    i = 0; for (const auto& queueFamily : queueFamilies) {
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) return i; i++;}
+        if (support && (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)) return i; i++;}
+    i = 0; for (int j = 0; j < queueFamilies.size(); j++) {
+        if (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) return i; i++;}
     return 0;
 }
 uint32_t PhysicalState::findPresentFamily(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilies(count); // TODO
+    HeapState<VkQueueFamilyProperties> queueFamilies; queueFamilies.fill({},count); // TODO use HeapState
     vkGetPhysicalDeviceQueueFamilyProperties(device, &count, queueFamilies.data());
-    uint32_t i = 0; for (const auto& queueFamily : queueFamilies) {
+    uint32_t i = 0; for (int j = 0; j < queueFamilies.size(); j++) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
-        if (support && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)) return i; i++;}
-    i = 0; for (const auto& queueFamily : queueFamilies) {
+        if (support && (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)) return i; i++;}
+    i = 0; for (int j = 0; j < queueFamilies.size(); j++) {
         VkBool32 support = false; vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &support);
         if (support) return i; i++;}
     return 0;
@@ -2610,20 +2610,20 @@ VkPhysicalDeviceProperties PhysicalState::findProperties(VkPhysicalDevice device
 }
 VkSurfaceFormatKHR PhysicalState::chooseSwapSurfaceFormat(VkFormat format, VkColorSpaceKHR space, VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, nullptr);
-    std::vector<VkSurfaceFormatKHR> formats(count); // TODO
+    HeapState<VkSurfaceFormatKHR> formats; formats.fill({},count); // TODO use HeapState
     if (count != 0) vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count, formats.data());
-    for (const auto& retval : formats)
-    if (retval.format == format && retval.colorSpace == space)
-    return retval;
+    for (int i = 0; i < formats.size(); i++)
+    if (formats[i].format == format && formats[i].colorSpace == space)
+    return formats[i];
     return formats[0];
 }
 VkPresentModeKHR PhysicalState::chooseSwapPresentMode(VkSurfaceKHR surface, VkPhysicalDevice device) {
     uint32_t count = 0; vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, nullptr);
-    std::vector<VkPresentModeKHR> presentModes(count); // TODO
+    HeapState<VkPresentModeKHR> presentModes; presentModes.fill({},count); // TODO use HeapState
     if (count != 0) vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count, presentModes.data());
-    for (const auto& presentMode : presentModes) {
-    if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-    return presentMode;}}
+    for (int i = 0; i < presentModes.size(); i++) {
+    if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+    return presentModes[i];}}
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 VkPhysicalDeviceMemoryProperties PhysicalState::findMemoryProperties(VkPhysicalDevice device) {
@@ -2635,7 +2635,7 @@ VkPhysicalDeviceMemoryProperties PhysicalState::findMemoryProperties(VkPhysicalD
 VkDevice LogicalState::createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily,
     const char **validationLayers, const char **deviceExtensions) {
     VkDevice device;
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos; // TODO
+    HeapState<VkDeviceQueueCreateInfo> queueCreateInfos; // TODO use HeapState
     uint32_t queueFamilies[] = {graphicsFamily, presentFamily};
     float queuePriority = 1.0f;
     for (uint32_t i = 0; i < (graphicsFamily == presentFamily ? 1 : 2); i++) {
@@ -2644,7 +2644,7 @@ VkDevice LogicalState::createDevice(VkPhysicalDevice physicalDevice, uint32_t gr
         queueCreateInfo.queueFamilyIndex = queueFamilies[i];
         queueCreateInfo.queueCount = 1;
         queueCreateInfo.pQueuePriorities = &queuePriority;
-        queueCreateInfos.push_back(queueCreateInfo);}
+        queueCreateInfos << queueCreateInfo;}
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
     VkDeviceCreateInfo createInfo{};
@@ -2840,12 +2840,12 @@ void BaseState::createBuffer(VkDevice device, VkPhysicalDevice physical, VkDevic
 }
 void BaseState::createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass,
     VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer) {
-    std::array<VkImageView, 2> attachments = {swapChainImageView,depthImageView}; // TODO
+    VkImageView attachments[] = {swapChainImageView,depthImageView}; // TODO use HeapState
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass = renderPass;
-    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    framebufferInfo.pAttachments = attachments.data();
+    framebufferInfo.attachmentCount = static_cast<uint32_t>(sizeof(attachments)/sizeof(VkImageView));
+    framebufferInfo.pAttachments = attachments;
     framebufferInfo.width = swapChainExtent.width;
     framebufferInfo.height = swapChainExtent.height;
     framebufferInfo.layers = 1;
@@ -3028,8 +3028,8 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions; // TODO
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions; // TODO
+    HeapState<VkVertexInputBindingDescription> bindingDescriptions; // TODO use HeapState
+    HeapState<VkVertexInputAttributeDescription> attributeDescriptions; // TODO use HeapState
     auto fnc = func->micres(micro);
     for (int i = 0; fnc(i) != Resrcs; i++)
     switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
@@ -3038,7 +3038,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     bindingDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
     bindingDescription.stride = ResrcStride__Resrc__Int(fnc(i));
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    bindingDescriptions.push_back(bindingDescription);
+    bindingDescriptions << bindingDescription;
     for (int j = 0; ResrcFormat__Resrc__Int__Packing(fnc(i))(j) != Packings; j++) {
     VkVertexInputAttributeDescription attributeDescription{};
     attributeDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
@@ -3047,7 +3047,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     break; case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT;
     break; case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT;}
     attributeDescription.offset = ResrcOffset__Resrc__Int__Int(fnc(i))(j);
-    attributeDescriptions.push_back(attributeDescription);}}}
+    attributeDescriptions << attributeDescription;}}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
@@ -3093,11 +3093,11 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
-    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR}; // TODO
+    VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR}; // TODO use HeapState
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-    dynamicState.pDynamicStates = dynamicStates.data();
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(sizeof(dynamicStates)/sizeof(VkDynamicState));
+    dynamicState.pDynamicStates = dynamicStates;
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
@@ -3299,7 +3299,7 @@ bool ChainState::presentFrame(VkQueue present, VkSwapchainKHR swapChain, uint32_
 VkDescriptorSet DrawState::createDescriptorSet(VkDevice device, VkDescriptorPool descriptorPool,
     VkDescriptorSetLayout descriptorSetLayout, int frames) {
     VkDescriptorSet descriptorSet;
-    std::vector<VkDescriptorSetLayout> layouts(frames, descriptorSetLayout); // TODO
+    HeapState<VkDescriptorSetLayout> layouts; layouts.fill(descriptorSetLayout,frames); // TODO use HeapState
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
@@ -3374,7 +3374,7 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     renderPassInfo.framebuffer = framebuffer;
     renderPassInfo.renderArea.offset = {0, 0};
     renderPassInfo.renderArea.extent = renderArea;
-    std::array<VkClearValue, 2> clearValues{}; // TODO
+    HeapState<VkClearValue, 2> clearValues; clearValues.fill({},2); // TODO use HeapState
     clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     clearValues[1].depthStencil = {1.0f, 0};
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
