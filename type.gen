@@ -508,12 +508,35 @@ ResrcElement = {
 	{"Resrc","BringupRes","Int","1","Int","4"},
 	{"Resrc","BringupRes","Int","2","Int","4"},
 }
-ResrcPacking = {
-	{"Resrc","SwapRes","Packing","SrgbFrm"},
-	{"Resrc","DebugRes","Packing","SfloatFrm"},
-	{"Resrc","PierceRes","Packing","UintFrm"},
-	{"Resrc","DepthRes","Packing","SfloatFrm"},
+MicroBinding = {
+	{"Micro","MicroTest","Int","0","Int","0"},
+	{"Micro","MicroTest","Int","0","Resrc","UniformRes"},
+	{"Micro","MicroTest","Int","0","Phase","UniformPhs"},
+	{"Micro","MicroTest","Int","0","Packing","Packings"},
+	{"Micro","MicroTest","Int","0","Render","Renders"},
+	{"Micro","MicroDebug","Int","0","Int","0"},
+	{"Micro","MicroDebug","Int","0","Resrc","UniformRes"},
+	{"Micro","MicroDebug","Int","0","Phase","UniformPhs"},
+	{"Micro","MicroDebug","Int","0","Packing","Packings"},
+	{"Micro","MicroDebug","Int","0","Render","Renders"},
+	{"Micro","MicroDisplay","Int","0","Int","0"},
+	{"Micro","MicroDisplay","Int","0","Resrc","UniformRes"},
+	{"Micro","MicroDisplay","Int","0","Phase","UniformPhs"},
+	{"Micro","MicroDisplay","Int","0","Packing","Packings"},
+	{"Micro","MicroDisplay","Int","0","Render","Renders"},
+	{"Micro","MicroPierce","Int","0","Int","0"},
+	{"Micro","MicroPierce","Int","0","Resrc","UniformRes"},
+	{"Micro","MicroPierce","Int","0","Phase","UniformPhs"},
+	{"Micro","MicroPierce","Int","0","Packing","Packings"},
+	{"Micro","MicroPierce","Int","0","Render","Renders"},
+	{"Micro","MicroDepth","Int","0","Int","0"},	
+	{"Micro","MicroDepth","Int","0","Resrc","UniformRes"},	
+	{"Micro","MicroDepth","Int","0","Phase","UniformPhs"},
+	{"Micro","MicroDepth","Int","0","Packing","Packings"},
+	{"Micro","MicroDepth","Int","0","Render","Renders"},
 }
+-- MicroPhase = {
+-- }
 ResrcPhase = {
 	{"Resrc","IndexRes","Phase","IndexPhs"},
 	{"Resrc","BringupRes","Phase","FetchPhs"},
@@ -684,8 +707,8 @@ MicroIns = {
 	{"%(dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mic = {\"MicroTest\",\"MicroDisplay\"}\
 	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	mib = {\"MicroDebug\",\"MicroPierce\"}\
-	web = {\"DebugRes\",\"PierceRes\"}\
+	mib = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
+	web = {\"DebugRes\",\"PierceRes\",\"PierceRes\"}\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num) else return i+num end end end\

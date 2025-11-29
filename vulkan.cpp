@@ -79,30 +79,13 @@ const char *VulkanState::validationLayers[] = {"VK_LAYER_KHRONOS_validation",0};
 
 struct PhysicalState {
     static const char *deviceExtensions[];
-    static VkFormat vulkanFormat(Resrc i) {
-        switch (ResrcPacking__Resrc__Packing(i)) {
-        default: return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;
-        break; case (UintFrm): return VK_FORMAT_R32_UINT;
-        break; case (SfloatFrm): return VK_FORMAT_R32_SFLOAT;}
-        return VK_FORMAT_R8G8B8A8_SRGB;
-    }
     static VkFormat vulkanFormat(Render i) {
-        Resrc res = Resrcs;
-        switch (i) {default: ERROR();
-        break; case (SwapBuf): res = SwapRes;
-        break; case (DebugBuf): res = DebugRes;
-        break; case (PierceBuf): res = PierceRes;
-        break; case (DepthBuf): res = DepthRes;}
-        return vulkanFormat(res);
-    }
-    static Render vulkanRender(Resrc i) {
-        switch (i) {default: ERROR();
-        break; case (SwapRes): return SwapBuf;
-        break; case (DebugRes): return DebugBuf;
-        break; case (PierceRes): return PierceBuf;
-        break; case (DepthRes): return DepthBuf;}
-        return Renders;
+        switch (i) {default:
+        break; case (SwapBuf): return VK_FORMAT_R8G8B8A8_SRGB;
+        break; case (DebugBuf): return VK_FORMAT_R32_SFLOAT;
+        break; case (PierceBuf): return VK_FORMAT_R32_UINT;
+        break; case (DepthBuf): return VK_FORMAT_R32_SFLOAT;}
+        return VK_FORMAT_R8G8B8A8_SRGB;
     }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
@@ -116,7 +99,7 @@ struct PhysicalState {
         graphicsFamily(findGraphicsFamily(surface,device)),
         presentFamily(findPresentFamily(surface,device)),
         properties(findProperties(device)),
-        surfaceFormat(chooseSwapSurfaceFormat(vulkanFormat(SwapRes),VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,surface,device)),
+        surfaceFormat(chooseSwapSurfaceFormat(vulkanFormat(SwapBuf),VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
         std::cout << "PhysicalState " << properties.deviceName << std::endl;
@@ -1655,9 +1638,9 @@ struct SwapState : public BaseState {
         presentMode(StackState::presentMode),
         graphicsFamily(StackState::graphicsFamily),
         presentFamily(StackState::presentFamily),
-        imageFormat(StackState::imageFormat[PhysicalState::vulkanRender(res())]),
+        imageFormat(StackState::imageFormat[SwapBuf]),
         depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass[PhysicalState::vulkanRender(res())]),
+        renderPass(StackState::renderPass[SwapBuf]),
         memProperties(StackState::memProperties) {
     }
     ~SwapState() {
@@ -1974,6 +1957,14 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
+    static Render vulkanRender(Resrc i) { // TODO change to depend on Quatity value instead of Resrc
+        switch (i) {default:
+        break; case (SwapRes): return SwapBuf;
+        break; case (DebugRes): return DebugBuf;
+        break; case (PierceRes): return PierceBuf;
+        break; case (DepthRes): return DepthBuf;}
+        return Renders;
+    }
     void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {
         if (max(got).tag != ExtentExt) EXIT
         tw = max(got).extent.width;
@@ -2003,7 +1994,7 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(res());
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(res()));
         if (res() == ImageRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         if (res() == DebugRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         if (res() == PierceRes) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
@@ -2014,7 +2005,7 @@ struct ImageState : public BaseState {
         if (res() == DebugRes || res() == PierceRes) {
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass[PhysicalState::vulkanRender(res())],imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,max(loc).extent,renderPass[vulkanRender(res())],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -2047,7 +2038,7 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(res());
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(res()));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
