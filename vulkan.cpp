@@ -87,6 +87,15 @@ struct PhysicalState {
         break; case (DepthBuf): return VK_FORMAT_R32_SFLOAT;}
         return VK_FORMAT_R8G8B8A8_SRGB;
     }
+    static VkFormat vulkanFormat(Packing i) {
+        switch (i) {default:
+        break; case(VecFrm): return VK_FORMAT_R32G32B32A32_SFLOAT;
+        break; case(UvecFrm): return VK_FORMAT_R32G32B32A32_UINT;
+        break; case(UintFrm): return VK_FORMAT_R32_UINT;
+        break; case(SfloatFrm): return VK_FORMAT_R32_SFLOAT;
+        break; case(SrgbFrm): return VK_FORMAT_R8G8B8A8_SRGB;}
+        return VK_FORMAT_R8G8B8A8_SRGB;
+    }
     VkPhysicalDevice device;
     uint32_t graphicsFamily;
     uint32_t presentFamily;
@@ -1150,6 +1159,15 @@ struct CopyState {
         return {idx,key,val};}
         return {0,Qualitys,0};
     }
+    void vld(Inst ins, BindState *bind) {
+        switch (ins.ins) {default:
+        break; case(QDerIns): case(TDerIns): case(PDerIns): case(SDerIns):
+        case(ODerIns): case(RDerIns): case(IDerIns):
+        case(WDeeIns): case(TDeeIns): case(RDeeIns): case(SDeeIns): case(IDeeIns): {
+        Onl onl = get(ins.ins,ins.idx,ins.key,ins.val);
+        if (!vld(ins.res,onl,bind)) bind->hdl(ins.res) += 1;
+        if (!vld(ins.res,onl,bind)) EXIT}}
+    }
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
@@ -1197,6 +1215,7 @@ struct CopyState {
         if (bind) bind->wrp() += 1;
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
+            vld(ins[i],bind);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
@@ -1206,8 +1225,7 @@ struct CopyState {
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
             break; case(WDeeIns): case(RDeeIns):
             case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;}
-            if (bind) {if (!bind->push(ins[i].res,bind->buf(ins[i].res),ins[i].req.loc,ins[i].req,unl,array,log)) lim = i;}
-            else {if (!bind->buf(ins[i].res)->push(0,0,0,0,ins[i].req.loc,ins[i].req,unl,array,log)) lim = i;}
+            if (!bind->push(ins[i].res,bind->buf(ins[i].res),ins[i].req.loc,ins[i].req,unl,array,log)) lim = i;
             if (bind->fin(ins[i].res) == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
             bind->buf(ins[i].res)->push(adv,log);}}
@@ -1220,6 +1238,7 @@ struct CopyState {
         if (bind) bind->wrp() += 1;
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
+            vld(ins[i],bind);
             switch(ins[i].ins) {default:
             break; case(QDerIns): case (PDerIns): case (ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns):
@@ -1234,6 +1253,7 @@ struct CopyState {
         log << "submit buffers" << '\n';
         if (bind) bind->wrp() += 1;
         for (int i = 0; i < num; i++) {
+            vld(ins[i],bind);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(TDerIns):
             if (bind->fst(ins[i].res) == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
@@ -1255,6 +1275,7 @@ struct CopyState {
         log << "release reserved " << num << ">" << lim << '\n';
         if (bind) bind->wrp() += 1;
         for (int i = 0; i < lim; i++) {
+            vld(ins[i],bind);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns):
@@ -2174,14 +2195,15 @@ struct DrawState : public BaseState {
         BaseState *fetchPtr = 0;
         int index = 0;
         log << "micro " << debug << " " << max(loc) << '\n';
-        Arg sav; Arg tmp; HeapState<Arg,0> dot;
+        Arg sav; Arg tmp; HeapState<Arg,0> dot; // TODO remove static from CopyState functions
         for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,ary(loc),log); i++) dot << tmp;
-        for (int i = 0; i < dot.size(); i++)
+        // TODO call virtual that increments lock->wrp()
+        for (int i = 0; i < dot.size(); i++) // TODO MicroBinding lists all and only, so no need for dot here
         if (dot[i].loc == MiddleLoc && dot[i].ins == RDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == IDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == WDeeIns)
         switch (ResrcPhase__Resrc__Phase(dot[i].res)) {default: EXIT
-        break; case (PipePhs): pipePtr = res(dot[i].res,0);
+        break; case (PipePhs): pipePtr = res(dot[i].res,0); // TODO use res that increments hdl
         break; case (FramePhs): framePtr = res(dot[i].res,0); // log << "frame " << framePtr->debug << '\n';
         break; case (SwapPhs): swapPtr = res(dot[i].res,0); // log << "swap " << swapPtr->debug << '\n';
         break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res,0); // log << "frame " << framePtr->debug << " swap " << swapPtr->debug << '\n';
@@ -2927,12 +2949,12 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func) {
     VkDescriptorSetLayout descriptorSetLayout;
     HeapState<VkDescriptorSetLayoutBinding> bindings;
-    auto fnc = func->micres(micro);
+    auto fnc = func->micres(micro); // TODO resources depends on micro only
     for (int i = 0; fnc(i) != Resrcs; i++)
-    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
+    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default: // TODO phase depends on micro only
     break; case (UniformPhs): {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
+    uboLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i)); // TODO binding depends on micro only
     uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
@@ -3017,12 +3039,12 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     HeapState<VkVertexInputBindingDescription> bindingDescriptions;
     HeapState<VkVertexInputAttributeDescription> attributeDescriptions;
-    auto fnc = func->micres(micro);
+    auto fnc = func->micres(micro); // TODO resources depends on micro only
     for (int i = 0; fnc(i) != Resrcs; i++)
-    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default:
+    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default: // TODO phase depends on micro only
     break; case (FetchPhs): {
     VkVertexInputBindingDescription bindingDescription{};
-    bindingDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
+    bindingDescription.binding = ResrcBinding__Resrc__Int(fnc(i)); // TODO binding depends on micro only
     bindingDescription.stride = ResrcStride__Resrc__Int(fnc(i));
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     bindingDescriptions << bindingDescription;
@@ -3030,9 +3052,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     VkVertexInputAttributeDescription attributeDescription{};
     attributeDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
     attributeDescription.location = j;
-    switch (ResrcFormat__Resrc__Int__Packing(fnc(i))(j)) {default: EXIT
-    break; case (VecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    break; case (UvecFrm): attributeDescription.format = VK_FORMAT_R32G32B32A32_UINT;}
+    attributeDescription.format = PhysicalState::vulkanFormat(ResrcFormat__Resrc__Int__Packing(fnc(i))(j));
     attributeDescription.offset = ResrcOffset__Resrc__Int__Int(fnc(i))(j);
     attributeDescriptions << attributeDescription;}}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
