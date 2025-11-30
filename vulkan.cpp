@@ -848,38 +848,23 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         return wrap;
     }
-    void vld(int idx, Resrc typ, Onl val, BaseState *ptr) {
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        hand[typ] = size[typ];
-        size[typ] += 1;
-        SaveState &ref = chk(typ);
-        ref.buf = ptr;
-        ref.fst = idx;
-        ref.onl = val;
-    }
-    SaveState &chk(Resrc typ) {
+    SaveState *chk(Resrc typ) {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (seqn[typ] != wrap) {hand[typ] = 0; seqn[typ] = wrap;}
         int hdl = hand[typ];
         if (size[typ] <= 0 || size[typ] > StackState::handls)
         if (hdl < 0 || hdl >= size[typ]) EXIT
-        return bind[typ][hdl];
+        return &bind[typ][hdl];
     }
-    BaseState *&buf(Resrc typ) {
-        return chk(typ).buf;
+    SaveState *vld(Resrc typ) {
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        hand[typ] = size[typ];
+        size[typ] += 1;
+        return chk(typ);
     }
-    int &fst(Resrc typ) {
-        return chk(typ).fst;
-    }
-    int &fin(Resrc typ) {
-        return chk(typ).fin;
-    }
-    Onl &onl(Resrc typ) {
-        return chk(typ).onl;
-    }
-    BaseState *res(Resrc typ, int hdl) {
+    BaseState *res(Resrc typ, int hdl) { // TODO use chk and wrp instead
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (hdl < 0 || hdl >= StackState::handls) EXIT
@@ -897,7 +882,7 @@ struct BindState : public BaseState {
         log << "push " << debug << " " << buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
         if (ref.bind != 0 && ref.bind != buf) EXIT
-        ref.bind = buf;
+        ref.bind = buf; // TODO no need to pass in buf, since it is just ref.buf
         ref.psav += 1;
         return true;
     }
@@ -1127,7 +1112,7 @@ struct CopyState {
     }
     bool vld(Resrc typ, Onl onl, BindState *bnd) {
         if (!bnd->siz(typ)) return false;
-        return src(typ)->compare(bnd->chk(typ).onl,onl);
+        return src(typ)->compare(bnd->chk(typ)->onl,onl);
     }
     static int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
         log << "get:" << str << ":" << idx << '\n';
@@ -1159,14 +1144,16 @@ struct CopyState {
         return {idx,key,val};}
         return {0,Qualitys,0};
     }
-    void vld(Inst ins, BindState *bind) {
+    SaveState *vld(Inst &ins, BindState *bind, SmartState log) {
         switch (ins.ins) {default:
         break; case(QDerIns): case(TDerIns): case(PDerIns): case(SDerIns):
         case(ODerIns): case(RDerIns): case(IDerIns):
         case(WDeeIns): case(TDeeIns): case(RDeeIns): case(SDeeIns): case(IDeeIns): {
         Onl onl = get(ins.ins,ins.idx,ins.key,ins.val);
         if (!vld(ins.res,onl,bind)) bind->hdl(ins.res) += 1;
-        if (!vld(ins.res,onl,bind)) EXIT}}
+        if (!vld(ins.res,onl,bind)) EXIT
+        return bind->vld(ins.res);}}
+        return 0;
     }
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
@@ -1206,16 +1193,18 @@ struct CopyState {
             case(ODerIns): case(RDerIns): case(IDerIns):
             case(WDeeIns): case(TDeeIns): case(RDeeIns): case(SDeeIns): case(IDeeIns): {
             Onl onl = get(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
-            if (!vld(ins[i].res,onl,bind)) {
+            SaveState *sav = 0; if (!vld(ins[i].res,onl,bind)) {
             BaseState *buf = get(ins[i].ins,ins[i].res,ins[i].idx,ins[i].key,ins[i].val);
-            bind->vld(i,ins[i].res,onl,buf);}
-            bind->fin(ins[i].res) = i;
-            log << "DepIns idx:" << ins[i].idx << " " << bind->buf(ins[i].res)->debug << '\n';}}}
+            sav = bind->vld(ins[i].res);
+            sav->buf = buf; sav->fst = i; sav->onl = onl;}
+            else sav = bind->chk(ins[i].res);
+            sav->fin = i;
+            log << "DepIns idx:" << ins[i].idx << " " << sav->buf->debug << '\n';}}}
         log << "reserve chosen" << '\n';
         if (bind) bind->wrp() += 1;
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
-            vld(ins[i],bind);
+            SaveState *sav = bind->chk(ins[i].res);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
@@ -1224,26 +1213,26 @@ struct CopyState {
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
             break; case(WDeeIns): case(RDeeIns):
-            case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;}
-            if (!bind->push(ins[i].res,bind->buf(ins[i].res),ins[i].req.loc,ins[i].req,unl,array,log)) lim = i;
-            if (bind->fin(ins[i].res) == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
+            case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;} slog.clr();
+            if (!bind->push(ins[i].res,sav->buf,ins[i].req.loc,ins[i].req,unl,array,log)) lim = i;
+            if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
-            bind->buf(ins[i].res)->push(adv,log);}}
+            sav->bind->push(adv,log);}}
             break; case(WDeeIns): case(TDeeIns):
-            if (!bind->winc(ins[i].res,bind->buf(ins[i].res),log)) lim = i;
-            break; case(RDeeIns): case(SDeeIns): case(IDeeIns):
-            if (!bind->rinc(ins[i].res,bind->buf(ins[i].res),log)) lim = i;}}
+            if (!bind->winc(ins[i].res,sav->buf,log)) lim = i;
+            break; case(RDeeIns): case(SDeeIns): case(IDeeIns): {
+            if (!bind->rinc(ins[i].res,sav->buf,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
         if (bind) bind->wrp() += 1;
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
-            vld(ins[i],bind);
+            SaveState *sav = bind->chk(ins[i].res);
             switch(ins[i].ins) {default:
             break; case(QDerIns): case (PDerIns): case (ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns):
-            lnk = bind->buf(ins[i].res)->lnk(ins[i].req.loc,bas,lst,lnk);
-            bas = bind->buf(ins[i].res); lst = ins[i].req.loc;}}
+            lnk = sav->buf->lnk(ins[i].req.loc,bas,lst,lnk);
+            bas = sav->buf; lst = ins[i].req.loc;}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
             switch (ins[i].ins) {default:
@@ -1253,19 +1242,19 @@ struct CopyState {
         log << "submit buffers" << '\n';
         if (bind) bind->wrp() += 1;
         for (int i = 0; i < num; i++) {
-            vld(ins[i],bind);
+            SaveState *sav = bind->chk(ins[i].res);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(TDerIns):
-            if (bind->fst(ins[i].res) == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
-            log << "QDerIns push " << bind->buf(ins[i].res)->debug << '\n';
-            thread->push(log,bind->buf(ins[i].res),ins[i].req.loc);
+            if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
+            log << "QDerIns push " << sav->buf->debug << '\n';
+            thread->push(log,sav->buf,ins[i].req.loc);
             break; case(PDerIns): case(ODerIns): case(SDerIns): case(RDerIns):
-            log << "PDerIns push " << bind->buf(ins[i].res)->debug << '\n';
-            thread->push(log,bind->buf(ins[i].res),ins[i].req.loc);
+            log << "PDerIns push " << sav->buf->debug << '\n';
+            thread->push(log,sav->buf,ins[i].req.loc);
             break; case(IDerIns):
-            if (bind->fst(ins[i].res) == i) src(ins[i].res)->advance(ins[i].idx);
-            log << "IDerIns push " << bind->buf(ins[i].res)->debug << '\n';
-            thread->push(log,bind->buf(ins[i].res),ins[i].req.loc);}}
+            if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx);
+            log << "IDerIns push " << sav->buf->debug << '\n';
+            thread->push(log,sav->buf,ins[i].req.loc);}}
         log << "notify pass" << '\n';
         ptr->slf = 0;
         switch (rsp) {default:
@@ -1275,12 +1264,12 @@ struct CopyState {
         log << "release reserved " << num << ">" << lim << '\n';
         if (bind) bind->wrp() += 1;
         for (int i = 0; i < lim; i++) {
-            vld(ins[i],bind);
+            SaveState *sav = bind->chk(ins[i].res);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns):
-            if (bind) bind->done(ins[i].res,log);
-            bind->buf(ins[i].res)->fail(log);
+            bind->done(ins[i].res,log);
+            sav->buf->fail(log);
             break; case(WDeeIns): case (TDeeIns):
             bind->wdec(ins[i].res,log);
             break; case(RDeeIns): case (SDeeIns): case(IDeeIns):
