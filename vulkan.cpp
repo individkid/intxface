@@ -2018,13 +2018,13 @@ struct ImageState : public BaseState {
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandReform, res(typ(),0)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandReform, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBefore, res(typ(),0)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandBefore, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandAfter, res(typ(),0)->getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
+        transitionImageLayout(device, graphics, commandAfter, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
@@ -2033,7 +2033,7 @@ struct ImageState : public BaseState {
         if (tag(RuseQua) == Imagez) memcpy(data, ptr(loc), siz(loc));
         if (tag(RuseQua) == Pokez) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, res(typ(),0)->getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
+        copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == Peekz);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2152,32 +2152,32 @@ struct DrawState : public BaseState {
         log << "micro " << debug << " " << max(loc) << '\n';
         Arg sav; Arg tmp; HeapState<Arg,0> dot; // TODO remove static from CopyState functions
         for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,ary(loc),log); i++) dot << tmp;
-        // TODO call virtual that increments lock->wrp()
+        res();
         for (int i = 0; i < dot.size(); i++) // TODO MicroBinding lists all and only, so no need for dot here
         if (dot[i].loc == MiddleLoc && dot[i].ins == RDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == IDeeIns ||
         dot[i].loc == MiddleLoc && dot[i].ins == WDeeIns)
         switch (ResrcPhase__Resrc__Phase(dot[i].res)) {default: EXIT
-        break; case (PipePhs): pipePtr = res(dot[i].res,0); // TODO use res that increments hdl
-        break; case (FramePhs): framePtr = res(dot[i].res,0); // log << "frame " << framePtr->debug << '\n';
-        break; case (SwapPhs): swapPtr = res(dot[i].res,0); // log << "swap " << swapPtr->debug << '\n';
-        break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res,0); // log << "frame " << framePtr->debug << " swap " << swapPtr->debug << '\n';
-        break; case (IndexPhs): indexPtr = res(IndexRes,0);
-        break; case (FetchPhs): fetchPtr = res(BringupRes,0);
+        break; case (PipePhs): pipePtr = res(dot[i].res); // TODO use res that increments hdl
+        break; case (FramePhs): framePtr = res(dot[i].res); // log << "frame " << framePtr->debug << '\n';
+        break; case (SwapPhs): swapPtr = res(dot[i].res); // log << "swap " << swapPtr->debug << '\n';
+        break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res); // log << "frame " << framePtr->debug << " swap " << swapPtr->debug << '\n';
+        break; case (IndexPhs): indexPtr = res(IndexRes);
+        break; case (FetchPhs): fetchPtr = res(BringupRes);
         break; case (UniformPhs): {
-        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (StoragePhs): {
-        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (RelatePhs): {
-        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (SamplePhs): {
-        BaseState *ptr = res(dot[i].res,0); int idx = ResrcBinding__Resrc__Int(dot[i].res);
+        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}
         if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
         VkExtent2D extent = swapPtr->getExtent();
