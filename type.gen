@@ -509,62 +509,56 @@ ResrcElement = {
 	{"Resrc","BringupRes","Int","2","Int","4"},
 }
 MicroBinding = {
+	-- departures from 0,Resrcs,Phases,Packings,Renders
 	{"Micro","MicroTest","Int","0","Int","0"},
-	{"Micro","MicroTest","Int","0","Resrc","UniformRes"},
-	{"Micro","MicroTest","Int","0","Phase","UniformPhs"},
 	{"Micro","MicroTest","Int","0","Packing","Packings"},
 	{"Micro","MicroTest","Int","0","Render","Renders"},
-	{"Micro","MicroDebug","Int","0","Int","0"},
-	{"Micro","MicroDebug","Int","0","Resrc","UniformRes"},
-	{"Micro","MicroDebug","Int","0","Phase","UniformPhs"},
-	{"Micro","MicroDebug","Int","0","Packing","Packings"},
-	{"Micro","MicroDebug","Int","0","Render","Renders"},
-	{"Micro","MicroDisplay","Int","0","Int","0"},
-	{"Micro","MicroDisplay","Int","0","Resrc","UniformRes"},
-	{"Micro","MicroDisplay","Int","0","Phase","UniformPhs"},
-	{"Micro","MicroDisplay","Int","0","Packing","Packings"},
-	{"Micro","MicroDisplay","Int","0","Render","Renders"},
-	{"Micro","MicroPierce","Int","0","Int","0"},
-	{"Micro","MicroPierce","Int","0","Resrc","UniformRes"},
-	{"Micro","MicroPierce","Int","0","Phase","UniformPhs"},
-	{"Micro","MicroPierce","Int","0","Packing","Packings"},
-	{"Micro","MicroPierce","Int","0","Render","Renders"},
-	{"Micro","MicroDepth","Int","0","Int","0"},	
-	{"Micro","MicroDepth","Int","0","Resrc","UniformRes"},	
-	{"Micro","MicroDepth","Int","0","Phase","UniformPhs"},
-	{"Micro","MicroDepth","Int","0","Packing","Packings"},
-	{"Micro","MicroDepth","Int","0","Render","Renders"},
+	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
+	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
+	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
+	mic = {\"MicroTest\",\"MicroDisplay\"}\
+	res = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\",\"PipeRes\"}\
+	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\",\"PipePhs\"}\
+	bnd = {\"0\",      \"0\",       \"0\",         \"1\",         \"7\",        \"0\",       \"0\",       \"0\"}\
+	return \"Micro\")","%(return gnc(mic,res))","Int","%(return hnc(res,0))","Resrc","%(return fnc(res))"},
+	{"Micro","%(return gnc(mic,phs))","Int","%(return hnc(phs,0))","Phase","%(return fnc(phs))"},
+	{"Micro","%(return gnc(mic,bnd))","Int","%(return hnc(bnd,0))","Int","%(return fnc(bnd))"},
+	{"%(mia = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
+	rea = {\"DebugRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\",\"PipeRes\"}\
+	pha = {\"RenderPhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\",\"PipePhs\"}\
+	bna = {\"0\",        \"0\",         \"1\",         \"7\",        \"0\",       \"0\",       \"0\"}\
+	return \"Micro\")","%(return gnc(mia,rea))","Int","%(return hnc(rea,0))","Resrc","%(return fnc(rea))"},
+	{"Micro","%(return gnc(mia,pha))","Int","%(return hnc(pha,0))","Phase","%(return fnc(pha))"},
+	{"Micro","%(return gnc(mia,bna))","Int","%(return hnc(bna,0))","Int","%(return fnc(bna))"},
 }
--- MicroPhase = {
--- }
-ResrcPhase = {
-	{"Resrc","IndexRes","Phase","IndexPhs"},
-	{"Resrc","BringupRes","Phase","FetchPhs"},
-	{"Resrc","UniformRes","Phase","UniformPhs"},
-	{"Resrc","MatrixRes","Phase","UniformPhs"},
-	{"Resrc","BasisRes","Phase","StoragePhs"},
-	{"Resrc","TriangleRes","Phase","StoragePhs"},
-	{"Resrc","NumericRes","Phase","StoragePhs"},
-	{"Resrc","VertexRes","Phase","StoragePhs"},
-	{"Resrc","RelateRes","Phase","RelatePhs"},
-	{"Resrc","ImageRes","Phase","SamplePhs"},
-	{"Resrc","DebugRes","Phase","RenderPhs"},
-	{"Resrc","PierceRes","Phase","RenderPhs"},
-	{"Resrc","DepthRes","Phase","RenderPhs"},
-	{"Resrc","SwapRes","Phase","SwapPhs"},
-	{"Resrc","ChainRes","Phase","FramePhs"},
-	{"Resrc","PipeRes","Phase","PipePhs"},
-}
-ResrcBinding = {
-	{"Resrc","UniformRes","Int","0"},
-	{"Resrc","MatrixRes","Int","1"},
-	{"Resrc","BasisRes","Int","2"},
-	{"Resrc","TriangleRes","Int","3"},
-	{"Resrc","NumericRes","Int","4"},
-	{"Resrc","VertexRes","Int","5"},
-	{"Resrc","RelateRes","Int","6"},
-	{"Resrc","ImageRes","Int","7"},
-}
+--	ResrcPhase = {
+--		{"Resrc","IndexRes","Phase","IndexPhs"},
+--		{"Resrc","BringupRes","Phase","FetchPhs"},
+--		{"Resrc","UniformRes","Phase","UniformPhs"},
+--		{"Resrc","MatrixRes","Phase","UniformPhs"},
+--		{"Resrc","BasisRes","Phase","StoragePhs"},
+--		{"Resrc","TriangleRes","Phase","StoragePhs"},
+--		{"Resrc","NumericRes","Phase","StoragePhs"},
+--		{"Resrc","VertexRes","Phase","StoragePhs"},
+--		{"Resrc","RelateRes","Phase","RelatePhs"},
+--		{"Resrc","ImageRes","Phase","SamplePhs"},
+--		{"Resrc","DebugRes","Phase","RenderPhs"},
+--		{"Resrc","PierceRes","Phase","RenderPhs"},
+--		{"Resrc","DepthRes","Phase","RenderPhs"},
+--		{"Resrc","SwapRes","Phase","SwapPhs"},
+--		{"Resrc","ChainRes","Phase","FramePhs"},
+--		{"Resrc","PipeRes","Phase","PipePhs"},
+--	}
+--	ResrcBinding = {
+--		{"Resrc","UniformRes","Int","0"},
+--		{"Resrc","MatrixRes","Int","1"},
+--		{"Resrc","BasisRes","Int","2"},
+--		{"Resrc","TriangleRes","Int","3"},
+--		{"Resrc","NumericRes","Int","4"},
+--		{"Resrc","VertexRes","Int","5"},
+--		{"Resrc","RelateRes","Int","6"},
+--		{"Resrc","ImageRes","Int","7"},
+--	}
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexTestG"},
 	{"Micro","MicroDebug","Str","vertexDebugG"},

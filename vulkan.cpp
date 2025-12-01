@@ -619,7 +619,6 @@ struct BaseState {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
         return ploc[loc].req.tag;
     }
-    BaseState *res(Resrc typ, int hdl); // TODO remove
     BaseState *res(Resrc typ);
     void res();
     Resrc typ() {return item->buftyp();}
@@ -855,7 +854,7 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         if (seqn[typ] != wrap) {hand[typ] = 0; seqn[typ] = wrap;}
         int hdl = hand[typ];
-        if (size[typ] <= 0 || size[typ] > StackState::handls)
+        if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return &bind[typ][hdl];
     }
@@ -865,14 +864,6 @@ struct BindState : public BaseState {
         hand[typ] = size[typ];
         size[typ] += 1;
         return chk(typ);
-    }
-    BaseState *res(Resrc typ, int hdl) { // TODO remve
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        if (hdl < 0 || hdl >= StackState::handls) EXIT
-        SaveState &ref = bind[typ][hdl];
-        if (ref.bind == 0) EXIT
-        return ref.bind;
     }
     BaseState *res(Resrc typ) {
         SaveState *sav = chk(typ);
@@ -997,10 +988,6 @@ void BaseState::res() {
 BaseState *BaseState::res(Resrc typ) {
     if (lock == 0) EXIT
     return lock->res(typ);
-}
-BaseState *BaseState::res(Resrc typ, int hdl) { // TODO remove
-    if (lock == 0) EXIT
-    return lock->res(typ,hdl);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     if (lock) {lock->done(loc.unl,log);}
@@ -1728,7 +1715,7 @@ struct PipeState : public BaseState {
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     Render renderIndex(Micro micro, const ConstState *func) {
-        auto fnc = func->micres(micro);
+        auto fnc = func->micres(micro); // TODO use MicroBinding instead
         for (int i = 0; fnc(i) != Resrcs; i++)
         switch (fnc(i)) {default:
         break; case (PierceRes): return PierceBuf;
@@ -1740,12 +1727,12 @@ struct PipeState : public BaseState {
         BaseState("PipeState",StackState::self),
         device(StackState::device),
         renderPass(StackState::renderPass[renderIndex((Micro)StackState::micro,StackState::constState)]),
-        constState(StackState::constState),
+        constState(StackState::constState), // TODO remove
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
-        descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro,constState)),
+        descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
-        pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro,constState)) {
+        pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro)) {
     }
     ~PipeState() {
         vkDestroyPipeline(device, pipeline, nullptr);
@@ -1769,9 +1756,9 @@ struct PipeState : public BaseState {
         log << "upset " << debug << '\n';
     }
     static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
-    static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func);
+    static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro);
     static VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
-    static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, Micro micro, const ConstState *func);
+    static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, Micro micro);
     static VkShaderModule createShaderModule(VkDevice device, const char *filename);
 };
 
@@ -2082,18 +2069,19 @@ struct ChainState : public BaseState {
         log << "usize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
+        res(); BaseState *swp = res(SwapRes);
         log << "setup " << debug << '\n';
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
-        res(SwapRes,0)->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
+        swp->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
         imageLoc = (ResrcLoc)imageIndex;
         if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
         if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
-        framebuffer = res(SwapRes,0)->getFramebuffer(imageIndex);}
+        framebuffer = swp->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
         VkSemaphore before = sem(lst(loc,(ResrcLoc)(imageIndex%(uint32_t)ResrcLocs)));
-        if (!presentFrame(present,res(SwapRes,0)->getSwapChain(),imageIndex,before))
+        if (!presentFrame(present,swp->getSwapChain(),imageIndex,before))
         change->wots(RegisterMask,1<<SizeMsk);}
         return VK_NULL_HANDLE;
     }
@@ -2125,9 +2113,10 @@ struct DrawState : public BaseState {
         reset(SmartState());
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " " << res(PipeRes,0)->debug << '\n';
-        descriptorPool = res(PipeRes,0)->getDescriptorPool();
-        descriptorLayout = res(PipeRes,0)->getDescriptorSetLayout();
+        res(); BaseState *pip = res(PipeRes);
+        log << "resize " << debug << " " << pip->debug << '\n';
+        descriptorPool = pip->getDescriptorPool();
+        descriptorLayout = pip->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
         commandBuffer = createCommandBuffer(device,commandPool);
         fen(loc) = createFence(device);
@@ -2149,36 +2138,29 @@ struct DrawState : public BaseState {
         BaseState *indexPtr = 0;
         BaseState *fetchPtr = 0;
         int index = 0;
-        log << "micro " << debug << " " << max(loc) << '\n';
-        Arg sav; Arg tmp; HeapState<Arg,0> dot; // TODO remove static from CopyState functions
-        for (int i = 0; CopyState::iterate(max(loc).micro,i,sav,tmp,ary(loc),log); i++) dot << tmp;
-        res();
-        for (int i = 0; i < dot.size(); i++) // TODO MicroBinding lists all and only, so no need for dot here
-        if (dot[i].loc == MiddleLoc && dot[i].ins == RDeeIns ||
-        dot[i].loc == MiddleLoc && dot[i].ins == IDeeIns ||
-        dot[i].loc == MiddleLoc && dot[i].ins == WDeeIns)
-        switch (ResrcPhase__Resrc__Phase(dot[i].res)) {default: EXIT
-        break; case (PipePhs): pipePtr = res(dot[i].res); // TODO use res that increments hdl
-        break; case (FramePhs): framePtr = res(dot[i].res); // log << "frame " << framePtr->debug << '\n';
-        break; case (SwapPhs): swapPtr = res(dot[i].res); // log << "swap " << swapPtr->debug << '\n';
-        break; case (RenderPhs): framePtr = swapPtr = res(dot[i].res); // log << "frame " << framePtr->debug << " swap " << swapPtr->debug << '\n';
-        break; case (IndexPhs): indexPtr = res(IndexRes);
-        break; case (FetchPhs): fetchPtr = res(BringupRes);
+        log << "micro " << debug << " " << max(loc) << " " << max(loc).tag << "==" << MicroExt << '\n';
+        if (max(loc).tag != MicroExt) EXIT
+        res(); for (int i = 0; MicroBinding__Micro__Int__Resrc(max(loc).micro)(i) != Resrcs; i++) {
+        BaseState *ptr = res(MicroBinding__Micro__Int__Resrc(max(loc).micro)(i));
+        int idx = MicroBinding__Micro__Int__Int(max(loc).micro)(i);
+        switch (MicroBinding__Micro__Int__Phase(max(loc).micro)(i)) {default: EXIT
+        break; case (PipePhs): pipePtr = ptr;
+        break; case (FramePhs): framePtr = ptr;
+        break; case (SwapPhs): swapPtr = ptr;
+        break; case (RenderPhs): framePtr = swapPtr = ptr;
+        break; case (IndexPhs): indexPtr = ptr;
+        break; case (FetchPhs): fetchPtr = ptr;
         break; case (UniformPhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (StoragePhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (RelatePhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
         if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (SamplePhs): {
-        BaseState *ptr = res(dot[i].res); int idx = ResrcBinding__Resrc__Int(dot[i].res);
-        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}
+        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
         VkExtent2D extent = swapPtr->getExtent();
         recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
@@ -2899,15 +2881,14 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
     EXIT
     return descriptorPool;
 }
-VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro, const ConstState *func) {
+VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
     VkDescriptorSetLayout descriptorSetLayout;
     HeapState<VkDescriptorSetLayoutBinding> bindings;
-    auto fnc = func->micres(micro); // TODO resources depends on micro only
-    for (int i = 0; fnc(i) != Resrcs; i++)
-    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default: // TODO phase depends on micro only
+    for (int i = 0; MicroBinding__Micro__Int__Resrc(micro)(i) != Resrcs; i++)
+    switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
     break; case (UniformPhs): {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i)); // TODO binding depends on micro only
+    uboLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
     uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
@@ -2915,7 +2896,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     bindings << uboLayoutBinding;}
     break; case (StoragePhs): {
     VkDescriptorSetLayoutBinding storageLayoutBinding{};
-    storageLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
+    storageLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
     storageLayoutBinding.descriptorCount = 1;
     storageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     storageLayoutBinding.pImmutableSamplers = nullptr;
@@ -2923,7 +2904,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     bindings << storageLayoutBinding;}
     break; case (RelatePhs): {
     VkDescriptorSetLayoutBinding relateLayoutBinding{};
-    relateLayoutBinding.binding = ResrcBinding__Resrc__Int(fnc(i));
+    relateLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
     relateLayoutBinding.descriptorCount = 1;
     relateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     relateLayoutBinding.pImmutableSamplers = nullptr;
@@ -2931,7 +2912,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     bindings << relateLayoutBinding;}
     break; case (SamplePhs): {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 7; // bindings.size();
+    samplerLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
@@ -2973,7 +2954,7 @@ VkShaderModule PipeState::createShaderModule(VkDevice device, const char *filena
     return shaderModule;
 }
 VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
-    VkPipelineLayout pipelineLayout, Micro micro, const ConstState *func) {
+    VkPipelineLayout pipelineLayout, Micro micro) {
     VkPipeline pipeline;
     VkShaderModule vertShaderModule = createShaderModule(device,VertexFile__Micro__Str(micro));
     VkShaderModule fragShaderModule = createShaderModule(device,FragmentFile__Micro__Str(micro));
@@ -2992,22 +2973,23 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     HeapState<VkVertexInputBindingDescription> bindingDescriptions;
     HeapState<VkVertexInputAttributeDescription> attributeDescriptions;
-    auto fnc = func->micres(micro); // TODO resources depends on micro only
-    for (int i = 0; fnc(i) != Resrcs; i++)
-    switch (ResrcPhase__Resrc__Phase(fnc(i))) {default: // TODO phase depends on micro only
+    for (int i = 0; MicroBinding__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
+    Resrc typ = MicroBinding__Micro__Int__Resrc(micro)(i);
+    switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
     break; case (FetchPhs): {
+    // TODO use MicroBinding for ResrcStride ResrcFormat ResrcOffset
     VkVertexInputBindingDescription bindingDescription{};
-    bindingDescription.binding = ResrcBinding__Resrc__Int(fnc(i)); // TODO binding depends on micro only
-    bindingDescription.stride = ResrcStride__Resrc__Int(fnc(i));
+    bindingDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
+    bindingDescription.stride = ResrcStride__Resrc__Int(typ);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     bindingDescriptions << bindingDescription;
-    for (int j = 0; ResrcFormat__Resrc__Int__Packing(fnc(i))(j) != Packings; j++) {
+    for (int j = 0; ResrcFormat__Resrc__Int__Packing(typ)(j) != Packings; j++) {
     VkVertexInputAttributeDescription attributeDescription{};
-    attributeDescription.binding = ResrcBinding__Resrc__Int(fnc(i));
+    attributeDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
     attributeDescription.location = j;
-    attributeDescription.format = PhysicalState::vulkanFormat(ResrcFormat__Resrc__Int__Packing(fnc(i))(j));
-    attributeDescription.offset = ResrcOffset__Resrc__Int__Int(fnc(i))(j);
-    attributeDescriptions << attributeDescription;}}}
+    attributeDescription.format = PhysicalState::vulkanFormat(ResrcFormat__Resrc__Int__Packing(typ)(j));
+    attributeDescription.offset = ResrcOffset__Resrc__Int__Int(typ)(j);
+    attributeDescriptions << attributeDescription;}}}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
