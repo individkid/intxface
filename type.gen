@@ -110,16 +110,16 @@ Request = {
 	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
 Phase = {
-	"IndexPhs",
-	"FetchPhs",
-	"UniformPhs",
-	"StoragePhs",
-	"RelatePhs",
-	"SamplePhs",
-	"PipePhs",
-	"FramePhs",
-	"SwapPhs",
-	"RenderPhs",
+	"IndexPhs", -- fetch indirection
+	"FetchPhs", -- fetch buffer
+	"UniformPhs", -- uniform buffer
+	"StoragePhs", -- storage buffer
+	"RelatePhs", -- feedback buffer
+	"SamplePhs", -- texture buffer
+	"PipePhs", -- pipeline structure
+	"FramePhs", -- display buffer
+	"SwapPhs", -- display queue
+	"RenderPhs", -- frame buffer
 }
 Render = { -- multiple render pass types, but only one per pipeline type
 	"SwapBuf",

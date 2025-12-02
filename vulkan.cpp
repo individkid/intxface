@@ -1701,26 +1701,23 @@ struct SwapState : public BaseState {
 struct PipeState : public BaseState {
     const VkDevice device;
     const VkRenderPass renderPass;
-    const ConstState *constState;
     Micro micro;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
-    Render renderIndex(Micro micro, const ConstState *func) {
-        auto fnc = func->micres(micro); // TODO use MicroBinding instead
-        for (int i = 0; fnc(i) != Resrcs; i++)
-        switch (fnc(i)) {default:
-        break; case (PierceRes): return PierceBuf;
-        break; case (DebugRes): return DebugBuf;
-        break; case (SwapRes): return SwapBuf;}
+    Render renderIndex(Micro micro) {
+        switch (micro) {default:
+        break; case (MicroDepth): return DepthBuf;
+        break; case (MicroPierce): return PierceBuf;
+        break; case (MicroDebug): return DebugBuf;
+        break; case (MicroTest): case (MicroDisplay): return SwapBuf;}
         return Renders;
     }
     PipeState() :
         BaseState("PipeState",StackState::self),
         device(StackState::device),
-        renderPass(StackState::renderPass[renderIndex((Micro)StackState::micro,StackState::constState)]),
-        constState(StackState::constState), // TODO remove
+        renderPass(StackState::renderPass[renderIndex((Micro)StackState::micro)]),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
