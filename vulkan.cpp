@@ -619,8 +619,7 @@ struct BaseState {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
         return ploc[loc].req.tag;
     }
-    BaseState *res(Resrc typ);
-    void res();
+    BaseState *res(Resrc typ, int hdl);
     Resrc typ() {return item->buftyp();}
     int tag(Quality tag) {return item->buftag(indx,tag);}
     bool msk(ResrcLoc loc) {return ((mask&(1<<loc)) != 0);}
@@ -865,14 +864,12 @@ struct BindState : public BaseState {
         size[typ] += 1;
         return chk(typ);
     }
-    BaseState *res(Resrc typ) {
-        SaveState *sav = chk(typ);
-        if (sav->bind == 0) EXIT
-        return sav->bind;
-    }
-    void res() {
+    BaseState *res(Resrc typ, int hdl) {
         if (!excl) EXIT
-        wrap += 1;
+        if (typ < 0 || typ >= Resrcs) EXIT
+        if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
+        if (hdl < 0 || hdl >= size[typ]) EXIT
+        return bind[typ][hdl].bind;
     }
     bool push(Resrc typ, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         if (!excl) EXIT
@@ -981,13 +978,9 @@ struct BindState : public BaseState {
         decr(typ,hdl,true,log);
     }
 };
-void BaseState::res() {
+BaseState *BaseState::res(Resrc typ, int hdl) {
     if (lock == 0) EXIT
-    lock->res();
-}
-BaseState *BaseState::res(Resrc typ) {
-    if (lock == 0) EXIT
-    return lock->res(typ);
+    return lock->res(typ,hdl);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     if (lock) {lock->done(loc.unl,log);}
@@ -1920,9 +1913,10 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static Render vulkanRender(Resrc i) { // TODO change to depend on Quatity value instead of Resrc
+    static Render vulkanRender(Resrc i) {
+        // TODO change to depend on Quality value instead of Resrc: vulkanRender(tag(RuseQua))
         switch (i) {default:
-        break; case (SwapRes): return SwapBuf;
+        break; case (SwapRes): return SwapBuf; // TODO this will never happen; SwapBuf is for SwapRes render type index
         break; case (DebugRes): return DebugBuf;
         break; case (PierceRes): return PierceBuf;
         break; case (DepthRes): return DepthBuf;}
@@ -2069,7 +2063,7 @@ struct ChainState : public BaseState {
         log << "usize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        res(); BaseState *swp = res(SwapRes);
+        BaseState *swp = res(SwapRes,0);
         log << "setup " << debug << '\n';
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
@@ -2112,8 +2106,11 @@ struct DrawState : public BaseState {
         for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, sem(get((ResrcLoc)i)), nullptr);
         reset(SmartState());
     }
+    int vulkanHandle(Phase phs) {
+        return 0; // TODO in case there are multiple ImageRes per gpu queue blob
+    }
     void resize(Loc &loc, SmartState log) override {
-        res(); BaseState *pip = res(PipeRes);
+        BaseState *pip = res(PipeRes,0);
         log << "resize " << debug << " " << pip->debug << '\n';
         descriptorPool = pip->getDescriptorPool();
         descriptorLayout = pip->getDescriptorSetLayout();
@@ -2140,27 +2137,27 @@ struct DrawState : public BaseState {
         int index = 0;
         log << "micro " << debug << " " << max(loc) << " " << max(loc).tag << "==" << MicroExt << '\n';
         if (max(loc).tag != MicroExt) EXIT
-        res(); for (int i = 0; MicroBinding__Micro__Int__Resrc(max(loc).micro)(i) != Resrcs; i++) {
-        BaseState *ptr = res(MicroBinding__Micro__Int__Resrc(max(loc).micro)(i));
+        for (int i = 0; MicroBinding__Micro__Int__Resrc(max(loc).micro)(i) != Resrcs; i++) {
+        Resrc typ = MicroBinding__Micro__Int__Resrc(max(loc).micro)(i);
         int idx = MicroBinding__Micro__Int__Int(max(loc).micro)(i);
         switch (MicroBinding__Micro__Int__Phase(max(loc).micro)(i)) {default: EXIT
-        break; case (PipePhs): pipePtr = ptr;
-        break; case (FramePhs): framePtr = ptr;
-        break; case (SwapPhs): swapPtr = ptr;
-        break; case (RenderPhs): framePtr = swapPtr = ptr;
-        break; case (IndexPhs): indexPtr = ptr;
-        break; case (FetchPhs): fetchPtr = ptr;
+        break; case (PipePhs): pipePtr = res(typ,0);
+        break; case (FramePhs): framePtr = res(typ,0);
+        break; case (SwapPhs): swapPtr = res(typ,0);
+        break; case (RenderPhs): framePtr = swapPtr = res(typ,vulkanHandle(RenderPhs));
+        break; case (IndexPhs): indexPtr = res(typ,0);
+        break; case (FetchPhs): fetchPtr = res(typ,0);
         break; case (UniformPhs): {
-        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        if (res(typ,0)->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateUniformDescriptor(device,res(typ,0)->getBuffer(),res(typ,0)->getRange(),idx,descriptorSet);}
         break; case (StoragePhs): {
-        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        if (res(typ,0)->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateStorageDescriptor(device,res(typ,0)->getBuffer(),res(typ,0)->getRange(),idx,descriptorSet);}
         break; case (RelatePhs): {
-        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        if (res(typ,0)->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateStorageDescriptor(device,res(typ,0)->getBuffer(),res(typ,0)->getRange(),idx,descriptorSet);}
         break; case (SamplePhs): {
-        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
+        updateTextureDescriptor(device,res(typ,0)->getImageView(),res(typ,0)->getTextureSampler(),idx,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
         VkExtent2D extent = swapPtr->getExtent();
         recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,extent,max(loc).micro,siz(loc),framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());

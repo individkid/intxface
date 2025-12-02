@@ -63,9 +63,9 @@ Resrc = { -- per variation of BaseState
 	"NumericRes",
 	"VertexRes",
 	"BasisRes",
-	"DebugRes",
-	"PierceRes",
-	"DepthRes",
+	"DebugRes", -- TODO remove and use ImageRes with different RuseQua
+	"PierceRes", -- TODO remove and use ImageRes with different RuseQua
+	"DepthRes", -- TODO remove and use ImageRes with different RuseQua
 	"ChainRes",
 	"DrawRes",
 	"BindRes",
@@ -508,11 +508,8 @@ ResrcElement = {
 	{"Resrc","BringupRes","Int","1","Int","4"},
 	{"Resrc","BringupRes","Int","2","Int","4"},
 }
+-- Resrc is sufficient for buffer structure, but binding info depend on Micro
 MicroBinding = {
-	-- departures from 0,Resrcs,Phases,Packings,Renders
-	{"Micro","MicroTest","Int","0","Int","0"},
-	{"Micro","MicroTest","Int","0","Packing","Packings"},
-	{"Micro","MicroTest","Int","0","Render","Renders"},
 	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
@@ -531,34 +528,6 @@ MicroBinding = {
 	{"Micro","%(return gnc(mia,pha))","Int","%(return hnc(pha,0))","Phase","%(return fnc(pha))"},
 	{"Micro","%(return gnc(mia,bna))","Int","%(return hnc(bna,0))","Int","%(return fnc(bna))"},
 }
---	ResrcPhase = {
---		{"Resrc","IndexRes","Phase","IndexPhs"},
---		{"Resrc","BringupRes","Phase","FetchPhs"},
---		{"Resrc","UniformRes","Phase","UniformPhs"},
---		{"Resrc","MatrixRes","Phase","UniformPhs"},
---		{"Resrc","BasisRes","Phase","StoragePhs"},
---		{"Resrc","TriangleRes","Phase","StoragePhs"},
---		{"Resrc","NumericRes","Phase","StoragePhs"},
---		{"Resrc","VertexRes","Phase","StoragePhs"},
---		{"Resrc","RelateRes","Phase","RelatePhs"},
---		{"Resrc","ImageRes","Phase","SamplePhs"},
---		{"Resrc","DebugRes","Phase","RenderPhs"},
---		{"Resrc","PierceRes","Phase","RenderPhs"},
---		{"Resrc","DepthRes","Phase","RenderPhs"},
---		{"Resrc","SwapRes","Phase","SwapPhs"},
---		{"Resrc","ChainRes","Phase","FramePhs"},
---		{"Resrc","PipeRes","Phase","PipePhs"},
---	}
---	ResrcBinding = {
---		{"Resrc","UniformRes","Int","0"},
---		{"Resrc","MatrixRes","Int","1"},
---		{"Resrc","BasisRes","Int","2"},
---		{"Resrc","TriangleRes","Int","3"},
---		{"Resrc","NumericRes","Int","4"},
---		{"Resrc","VertexRes","Int","5"},
---		{"Resrc","RelateRes","Int","6"},
---		{"Resrc","ImageRes","Int","7"},
---	}
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexTestG"},
 	{"Micro","MicroDebug","Str","vertexDebugG"},
@@ -573,6 +542,9 @@ FragmentFile = {
 	{"Micro","MicroPierce","Str","fragmentPierceG"},
 	{"Micro","MicroDepth","Str","fragmentDepthG"},
 }
+-- queue blobs are per Memory Resrc or Micro
+-- Micro queue blobs are decoupled from bindings per Micro,
+-- because there can be different queue blobs with same Micro
 MemoryIns = {
 	-- n==0: departures from PDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
