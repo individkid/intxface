@@ -580,10 +580,10 @@ MemoryIns = {
 	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Matrixz","Int","0","Format","LockFrm"},
-	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"},
-	{"Memory","Numericz","Int","0","Resrc","NumericRes"},
-	{"Memory","Vertexz","Int","0","Resrc","VertexRes"},
-	{"Memory","Basisz","Int","0","Resrc","BasisRes"},
+	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"}, -- TODO
+	{"Memory","Numericz","Int","0","Resrc","NumericRes"}, -- TODO
+	{"Memory","Vertexz","Int","0","Resrc","VertexRes"}, -- TODO
+	{"Memory","Basisz","Int","0","Resrc","BasisRes"}, -- TODO
 }
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","PDerIns"},
@@ -612,10 +612,6 @@ ResrcIns = {
 	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IDerIns
 	 {"Resrc","PipeRes","Int","1","Default","BackDef"},
 	 {"Resrc","PipeRes","Int","1","Int","0"}, -- Micro
-	{"Resrc","IndexRes","Int","0","Resrc","IndexRes"},
-	{"Resrc","BringupRes","Int","0","Resrc","BringupRes"},
-	{"Resrc","ImageRes","Int","0","Resrc","ImageRes"},
---	PierceRes: (resize)->{initial}->read->fill->read
 	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
 	 {"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
 	{"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
@@ -626,34 +622,8 @@ ResrcIns = {
 	 {"Resrc","PierceRes","Int","3","Format","FillFrm"},
 	{"Resrc","PierceRes","Int","4","ResrcLoc","AfterLoc"},
 	 {"Resrc","PierceRes","Int","4","Format","WrrdFrm"},
--- RelateRes: (resize)->{initial}->shadow->write->shadow
-	 {"Resrc","RelateRes","Int","0","Resrc","RelateRes"},
-	 {"Resrc","RelateRes","Int","0","Format","ExtentFrm"},
-	{"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
-	 {"Resrc","PierceRes","Int","1","Format","ImageFrm"},
-	{"Resrc","PierceRes","Int","2","ResrcLoc","BeforeLoc"},
-	 {"Resrc","PierceRes","Int","2","Format","WonlyFrm"},
-	{"Resrc","PierceRes","Int","3","ResrcLoc","MiddleLoc"},
-	 {"Resrc","PierceRes","Int","3","Format","HighFrm"},
-	{"Resrc","PierceRes","Int","4","ResrcLoc","AfterLoc"},
-	 {"Resrc","PierceRes","Int","4","Format","RonlyFrm"},
-	 {"Resrc","PierceRes","Int","0","Default","TrivDef"},
-	 {"Resrc","PierceRes","Int","0","Int","0"}, -- IDerIns
-	 {"Resrc","PierceRes","Int","1","Default","TrivDef"},
-	 {"Resrc","PierceRes","Int","1","Int","0"}, -- WindowWidth
-	 {"Resrc","PierceRes","Int","2","Default","TrivDef"},
-	 {"Resrc","PierceRes","Int","2","Int","0"}, -- WindowHeight
-	{"Resrc","UniformRes","Int","0","Resrc","UniformRes"},
-	{"Resrc","MatrixRes","Int","0","Resrc","MatrixRes"},
-	{"Resrc","TriangleRes","Int","0","Resrc","TriangleRes"},
-	{"Resrc","NumericRes","Int","0","Resrc","NumericRes"},
-	{"Resrc","VertexRes","Int","0","Resrc","VertexRes"},
-	{"Resrc","BasisRes","Int","0","Resrc","BasisRes"},
-	{"Resrc","DebugRes","Int","0","Resrc","DebugRes"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
-	{"Resrc","ChainRes","Int","0","Format","TrueFrm"},
-	{"Resrc","DrawRes","Int","0","Resrc","DrawRes"},
-	{"Resrc","DrawRes","Int","0","Format","ConstFrm"},
+	 {"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 }
 ResrcAlt = {
 	{"Resrc","SwapRes","Int","0","Instr","PDerIns"},

@@ -833,11 +833,6 @@ void planeTest(enum Thread tag, int idx)
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
     /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
     if (sizeof(brg) != sizeof(bal)) ERROR();
-    int crg[] = {0,1,2, 3};
-    int cal[] = {
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroPierce,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroPierce};
-    if (sizeof(crg) != sizeof(cal)) ERROR();
     while (centerCheck(0)) {
     int save = pull+Memorys; struct Center *mat = centerPull(save); if (!mat) {callWait(); continue;}
     freeCenter(mat); pull = (pull+1)%4;
@@ -848,20 +843,7 @@ void planeTest(enum Thread tag, int idx)
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {
-    if (0) // TODO when PierceRes is done
-    {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
-    freeCenter(drw); pull = (pull+1)%4;
-    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
-    drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroPierce;
-    drw->drw[0].siz = sizeof(crg)/sizeof(int);
-    drw->drw[0].sze = sizeof(cal)/sizeof(int);
-    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    allocInt(&drw->drw[0].val,drw->drw[0].sze);
-    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = crg[i];
-    for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = cal[i];
-    callCopy(drw,save,RetRsp,0,(debug?"pierce":0));}
-    {int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
+    int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
@@ -872,8 +854,8 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->drw[0].val,drw->drw[0].sze);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = arg[i];
     for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = val[i];
-    callCopy(drw,save,RetRsp,0,(debug?"test":0));}}
-    else if (count%8 == 1 || count%8 == 5) {
+    callCopy(drw,save,RetRsp,0,(debug?"test":0));}
+    else if (count%8 == 1 || count%8 == 5) { // TODO move to separate thread
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
     freeCenter(drw); pull = (pull+1)%4;
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -886,7 +868,7 @@ void planeTest(enum Thread tag, int idx)
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = brg[i];
     for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = bal[i];
     callCopy(drw,save,RetRsp,0,(debug?"debug":0));}
-    else if (count%8 == 2 || count%8 == 6) {
+    else if (count%8 == 2 || count%8 == 6) { // TODO move to separate thread
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     int save = pull+Memorys; struct Center *eek = centerPull(save); if (!eek) {callWait(); continue;}
