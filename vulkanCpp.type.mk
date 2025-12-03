@@ -1,1 +1,1 @@
- allocCenter allocMatrix allocTexture allocVertex freeCenter identType
+ allocIrrex identType showResrc

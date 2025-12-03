@@ -1,6 +1,7 @@
 extern "C" {
 #include "proto.h"
 void wrapCallback(const struct Close *arg);
+char **WrapCloseStr();
 }
 #include <functional>
 #ifdef __linux__
@@ -11,7 +12,6 @@ void wrapCallback(const struct Close *arg);
 struct WrapClose; typedef void wrapFunc(const struct WrapClose *arg);
 struct WrapClose : Close {
 	std::function<wrapFunc> fnc;
-	static char *str;
 	WrapClose(std::function<wrapFunc> _fnc, int n, int m, int i) {
 		init(_fnc,n,m,i);
 	}
@@ -21,7 +21,7 @@ struct WrapClose : Close {
 	void init(std::function<wrapFunc> _fnc, int n, int m, int i) {
 		Close::n = n; a = (struct Para *)calloc(n,sizeof(struct Para));
 		Close::m = m; b = (struct Para *)calloc(m,sizeof(struct Para));
-		Close::i = i; fnc = _fnc; str = 0;
+		Close::i = i; fnc = _fnc; *WrapCloseStr() = 0;
 	}
 	~WrapClose() {
 		free(a); free(b);
@@ -63,9 +63,9 @@ struct WrapClose : Close {
 	char *&v_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); return b[sub].v;}
 	char &w_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Wtype) ERROR(); return b[sub].w;}
 	void *&q_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Qtype) ERROR(); return b[sub].q;}
-	char *&r_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Vtype) ERROR(); free(str); str = 0; return str;}
-	char *&s_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Utype) ERROR(); free(str); str = strdup(a[sub].u); return str;}
-	void s(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); b[sub].v = str;}
+	char *&r_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Vtype) ERROR(); free(*WrapCloseStr()); *WrapCloseStr() = 0; return *WrapCloseStr();}
+	char *&s_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Utype) ERROR(); free(*WrapCloseStr()); *WrapCloseStr() = strdup(a[sub].u); return *WrapCloseStr();}
+	void s(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); b[sub].v = *WrapCloseStr();}
 	int &t_(int src, int dst) const {
 		if (src < 0 || src >= Close::n || a[src].t != Para::Itype) ERROR();
 		if (dst < 0 || dst >= Close::m || b[dst].t != Para::Itype) ERROR();

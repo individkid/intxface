@@ -76,6 +76,7 @@ end
 function adddepend(match,depends,depender)
 	if depender ~= nil and depender ~= match then
 		if depends[depender] == nil then depends[depender] = {} end
+		-- io.stderr:write("adddepend "..depender..":"..match.."\n")
 		depends[depender][match] = true
 	end
 end
@@ -163,6 +164,7 @@ function copysource(values,target,ext)
 	-- copy file with extension as dependency
 	local match = values[3]..ext
 	local depends = values[1]
+	-- io.stderr:write("copysource "..target..":"..match.."\n")
 	local exists = filexists(match)
 	local depender = getdepend(target)
 	if not exists then return false end
@@ -227,6 +229,52 @@ end
 function trymatch(values,target)
 	dbgent = dbgent + 1
 	for line in io.lines("stderr."..target) do if uname == "Linux" then
+		-- io.stderr:write("line:"..line.."\n")
+		dbgline[dbgent] = "1a"; if callmatch(values,line,"^/bin/sh: line [%d]*: ./(%w*)C: No such file or directory$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "1b"; if callmatch(values,line,"^/bin/sh: line [%d]*: ./(%w*)Lua: No such file or directory$") and makecopy(values,target,"Lua") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "1c"; if callmatch(values,line,"^/bin/sh: line [%d]*: ./(%w*)Cpp: No such file or directory$") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "1d"; if callmatch(values,line,"^/bin/sh: line [%d]*: ./(%w*)Hs: No such file or directory$") and makecopy(values,target,"Hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "2a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o'.  Stop.$") and copysource(values,target,".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "2b"; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Lua'.  Stop.$") and copysource(values,target,".lua") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "2c"; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Hs'.  Stop.$") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "2d"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Cpp.o'.  Stop.$") and copysource(values,target,".cpp") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "2e"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).g'.  Stop.$") and copysource(values,target,".g") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "3a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C'.  Stop.$") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "3b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).so'.  Stop.$") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "3c"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Cpp'.  Stop.$") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o'.  Stop.$") and copyxtra(values,target,".gen") and makecopy(values,target,".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "5a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Cpp.o', needed by '[%w.]*'.  Stop.$") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "5b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o', needed by '[%w.]*'.  Stop.$") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).c', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).h', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".h") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6c"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).cpp', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".cpp") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6d"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).lua', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".lua") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6e"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).gen', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6f"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).hs', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6g"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)'.  Stop.$") and checksource(values,".c") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6h"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)'.  Stop.$") and checksource(values,".cpp") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "6i"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)'.  Stop.$") and checksource(values,".hs") and makecopy(values,target,"Hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "7a"; if callmatch(values,line,"^.*: fatal error: (%w*).h: No such file or directory$") and copysource(values,target,".h") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "7b"; if callmatch(values,line,"^.*: fatal error: (%w*).h: No such file or directory$") and copyxtra(values,target,".gen") and makecopy(values,target,".h") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "8a"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".c") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "8b"; if callmatch(values,line,"^.*: undefined reference to `([a-z]*)([A-Z]%w*)'$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,"C.o",".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "8c"; if callmatch(values,line,"^.*: undefined reference to `(%w*)'$") and findsource(values,"^[^[:space:]][^[:space:]]* *\\*?","\\(.*\\)$",".cpp") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "9a"; if callmatch(values,line,"^.*: cannot execute file: (%w*)Lua$") and makecopy(values,target,"Lua") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "9b"; if callmatch(values,line,"^.*: cannot execute file: (%w*)Hs$") and makecopy(values,target,"Hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "9c"; if callmatch(values,line,"^.*: cannot execute file: (%w*)C$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "10a"; if callmatch(values,line,"^lua: cannot open (%w*).lua: No such file or directory$") and copysource(values,target,".lua") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "10a"; if callmatch(values,line,"^lua: cannot open (%w*).gen: No such file or directory$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "11a"; if callmatch(values,line,"^lua: cannot open (%w*).lua: No such file or directory$") and copyxtra(values,target,".gen") and makecopy(values,target,".lua") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "12a"; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"^module "," where$",".hs") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "12b"; if callmatch(values,line,"^    Could not find module ‘([%w]*)’$") and findsource(values,"module "," where",".gen") and uncopyxtra(values,target,".gen") and makecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "12c"; if callmatch(values,line,"^    Not in scope: type constructor or class ‘([%w]*)’$") and findsource(values,"^"," = {",".gen") and recopyxtra(values,target,".gen") and unmakecopy(values,target,".hs") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "13a"; if callmatch(values,line,"^lua: [%w./]*:[%d]*: module '(%w*)' not found:$") and makecopy(values,target,".so") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "14a"; if callmatch(values,line,"^.*./([%w.]*): undefined symbol: (%w*)$") and findsource(values,"^[^[:space:]][^[:space:]]* *","\\(.*\\)$",".cpp") and remakecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "14b"; if callmatch(values,line,"^.*./([%w.]*): undefined symbol: (%w*)$") and findsource(values,"^[^[:space:]][^[:space:]]* *","\\(.*\\)$",".c") and remakecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "15a"; if callmatch(values,line,"^failed to open shader: (%w*)G$") and makecopy(values,target,"G") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "16b"; if callmatch(values,line,"^failed to load texture image (%w*).jpg$") and copysource(values,target,".jpg") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "16a"; if callmatch(values,line,"^make: *** [Makefile:[0-9]*: (%w*)G] Error 1$") and findsource(values,"void *","()",".g") and copysource(values,target,".g") then dbgent = dbgent - 1; return true end
+	elseif uname == "" then
 		dbgline[dbgent] = "1a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)'.  Stop.$") and checksource(values,".c") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "1b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C'.  Stop.$") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "1c"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o'.  Stop.$") and copysource(values,target,".c") then dbgent = dbgent - 1; return true end
@@ -296,7 +344,7 @@ function trymake(values,target)
 	while true do
 		writeout("subdir."..target,depends)
 		writextra("subdir."..target,extras)
-		-- io.stdout:write("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target)
+		-- io.stderr:write("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target.."\n")
 		os.execute("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target)
 		local exists = filexists("subdir."..target.."/"..target);
 		if (not exists) then os.execute("echo error:"..target..": make passed but build failed >> stderr."..target) end
@@ -308,7 +356,7 @@ function trymake(values,target)
 			return true
 		end
 		if not trymatch(values,target) then break end
-		indentwrite(target..":"..dbgline[dbgent+1].."\n",dbgent);
+		indentwrite(target..":"..dbgline[dbgent+1].."\n",dbgent)
 	end
 	return false
 end

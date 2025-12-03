@@ -1,6 +1,10 @@
 #include "wrap.h"
 
-char *WrapClose::str = 0;
+char **WrapCloseStr()
+{
+	static char *str = 0;
+	return &str;
+}
 
 void wrapCallback(const struct Close *arg)
 {

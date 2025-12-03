@@ -2932,7 +2932,7 @@ VkPipelineLayout PipeState::createPipelineLayout(VkDevice device, VkDescriptorSe
 }
 VkShaderModule PipeState::createShaderModule(VkDevice device, const char *filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) EXIT
+    if (!file.is_open()) {std::cerr << "failed to open shader: " << filename << std::endl; exit(-1);}
     size_t fileSize = (size_t) file.tellg();
     char *buffer = (char*)malloc(fileSize);
     file.seekg(0);
