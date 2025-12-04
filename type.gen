@@ -34,14 +34,14 @@ Memory = {
 	"Indexz", -- fetch buffer indices
 	"Bringupz", -- fetch buffer verticse
 	"Imagez", -- facet decorations
+	"Peekz", -- per fragment read
+	"Pokez", -- per fragment write
 	"Uniformz", -- references into arrays
 	"Matrixz", -- transformations
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
 	"Basisz", -- base for each dimension
-	"Peekz", -- per fragment read
-	"Pokez", -- per fragment write
 	"Drawz", -- draw range info
 	"Instrz", -- little vulkan language
 	"Stringz", -- string memory
@@ -56,16 +56,13 @@ Resrc = { -- per variation of BaseState
 	"IndexRes",
 	"BringupRes",
 	"ImageRes",
-	"RelateRes",
+	"PierceRes",
 	"UniformRes",
 	"MatrixRes",
 	"TriangleRes",
 	"NumericRes",
 	"VertexRes",
 	"BasisRes",
-	"DebugRes", -- TODO remove and use ImageRes with different RuseQua
-	"PierceRes", -- TODO remove and use ImageRes with different RuseQua
-	"DepthRes", -- TODO remove and use ImageRes with different RuseQua
 	"ChainRes",
 	"DrawRes",
 	"BindRes",
@@ -121,13 +118,7 @@ Phase = {
 	"SwapPhs", -- display queue
 	"RenderPhs", -- frame buffer
 }
-Render = { -- multiple render pass types, but only one per pipeline type
-	"SwapBuf",
-	"DebugBuf",
-	"PierceBuf",
-	"DepthBuf",
-}
-Packing = { -- VkFormat
+Packing = { -- Render VkFormat
 	"VecFrm",
 	"UvecFrm",
 	"UintFrm",
@@ -521,7 +512,7 @@ MicroBinding = {
 	{"Micro","%(return gnc(mic,phs))","Int","%(return hnc(phs,0))","Phase","%(return fnc(phs))"},
 	{"Micro","%(return gnc(mic,bnd))","Int","%(return hnc(bnd,0))","Int","%(return fnc(bnd))"},
 	{"%(mia = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
-	rea = {\"DebugRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\",\"PipeRes\"}\
+	rea = {\"PierceRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\",\"PipeRes\"}\
 	pha = {\"RenderPhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\",\"PipePhs\"}\
 	bna = {\"0\",        \"0\",         \"1\",         \"7\",        \"0\",       \"0\",       \"0\"}\
 	return \"Micro\")","%(return gnc(mia,rea))","Int","%(return hnc(rea,0))","Resrc","%(return fnc(rea))"},
@@ -553,7 +544,7 @@ MemoryIns = {
 	{"Memory","Indexz","Int","0","Int","0"}, -- value to modify argument with
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
 	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
-	"res={\"ImageRes\",\"DebugRes\",\"DebugRes\"}"..
+	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\"}"..
 	"siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
 	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
@@ -644,7 +635,7 @@ MicroIns = {
 	mic = {\"MicroTest\",\"MicroDisplay\"}\
 	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
-	web = {\"DebugRes\",\"PierceRes\",\"PierceRes\"}\
+	web = {\"PierceRes\",\"PierceRes\",\"PierceRes\"}\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num) else return i+num end end end\
@@ -957,7 +948,9 @@ Pierce = {
 	{"wid","Int32",{},{}},
 	{"hei","Int32",{},{}},
 	{"idx","Int32",{},{}},
-	{"val","Old",{},{}},
+	{"frm","Packing",{},{}},
+	{"num","Int32",{["frm"]={["UintFrm"]=true}},{}},
+	{"val","Old",{["frm"]={["SfloatFrm"]=true}},{}},
 }
 Const = {
 	{"tag","Constant",{},{}},
@@ -1001,14 +994,14 @@ Center = {
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"ver","Vertex",{["mem"]={["Bringupz"]=true}},"siz"},
 	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
+	{"eek","Pierce",{["mem"]={["Peekz"]=true}},"siz"},
+	{"oke","Pierce",{["mem"]={["Pokez"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
 	{"num","Numeric",{["mem"]={["Numericz"]=true}},"siz"},
 	{"vtx","Vertex",{["mem"]={["Vertexz"]=true}},"siz"},
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
-	{"eek","Pierce",{["mem"]={["Peekz"]=true}},"siz"},
-	{"oke","Pierce",{["mem"]={["Pokez"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
