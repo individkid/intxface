@@ -113,7 +113,6 @@ layout (location = 3) flat in uvec4 fragRef;
 layout (location = 4) flat in uint fragTex;
 layout (location = 5) in vec3 fragColor;
 layout (location = 6) in vec2 fragTexCoord;
-layout (location = 7) in vec4 test;
 #endif
 #if defined(fragmentDisplay)
 layout (location = 0) out vec4 outColor;
@@ -145,10 +144,10 @@ void fragmentTest()
 }
 #endif
 #if defined(fragmentDebug)
-layout (location = 0) out float outColor;
+layout (location = 0) out uint outColor;
 void fragmentDebug()
 {
-    outColor = test.z;
+    outColor = fragIdx;
 }
 #endif
 
@@ -188,7 +187,6 @@ layout (location = 3) out uvec4 fragRef;
 layout (location = 4) out uint fragTex;
 layout (location = 5) out vec3 fragColor;
 layout (location = 6) out vec2 fragTexCoord;
-layout (location = 7) out vec4 test;
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uvec4 inRefer;
@@ -257,9 +255,8 @@ void vertexDebug()
     gl_Position = inMat.buf[2].buf * inPosition;
     fragColor = inOrdClr.xyz;
     fragTexCoord = inOrdClr.xy;
-    test = inMat.buf[3].buf * vec4(-0.5,-0.5,0.2,1.0);
-    float z = (test.z > 0.4 ? float(inUni.buf.wid) : float(inUni.buf.hei));
-    test = vec4(0.0,0.0,z,0.0);
+    vec4 tmp = inMat.buf[3].buf * vec4(-0.5,-0.5,0.2,1.0);
+    fragIdx = (tmp.z > 0.4 ? inUni.buf.wid : inUni.buf.hei);
 }
 #endif
 #if defined(vertexPierce)
