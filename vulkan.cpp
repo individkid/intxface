@@ -214,6 +214,7 @@ struct StackState {
     virtual int limord(int i) = 0;
     virtual void clrord(int i) = 0;
     virtual int buftag(int i, Quality t) = 0;
+    virtual const char *bufnam() = 0;
     static StackState* self;
     static int debug;
     static int micro;
@@ -464,7 +465,7 @@ struct BaseState {
         mask(0),
         nask(0),
         debug{} {
-        sprintf(debug,"%s_%d",name,StackState::debug++);
+        sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
         std::cout << debug << std::endl;
     }
     ~BaseState() {
@@ -659,7 +660,7 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-template <class State, int Size> struct ArrayState : public StackState {
+template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx;
     SimpleState<Size,Qualitys,StackState::resrcs> tag;
@@ -763,6 +764,26 @@ template <class State, int Size> struct ArrayState : public StackState {
     int buftag(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
         safe.wait(); int val = tag.get(i,t); safe.post(); return val;
+    }
+    const char *bufnam() override {
+        switch (Type) {
+        default: EXIT
+        case (SwapRes): return "SwapRes";
+        case (PipeRes): return "PipeRes";
+        case (IndexRes): return "IndexRes";
+        case (BringupRes): return "BringupRes";
+        case (ImageRes): return "ImageRes";
+        case (PierceRes): return "PierceRes";
+        case (UniformRes): return "UniformRes";
+        case (MatrixRes): return "MatrixRes";
+        case (TriangleRes): return "TriangleRes";
+        case (NumericRes): return "NumericRes";
+        case (VertexRes): return "VertexRes";
+        case (BasisRes): return "BasisRes";
+        case (ChainRes): return "ChainRes";
+        case (DrawRes): return "DrawRes";
+        case (BindRes): return "BindRes";}
+        return 0;
     }
 };
 
@@ -1542,7 +1563,7 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) { // ptr->idx/ptr->siz is a range of resources
             int idx = ptr->idx+i; int wid = ptr->img[i].wid; int hei = ptr->img[i].hei;
             int tot = datxVoids(ptr->img[i].dat);
-            push(ptr->mem,(Retyp)0,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
+            push(ptr->mem,TexRet,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
         break; case (Peekz): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0)->getExtent(); // TODO unsafe if SwapRes is changing
@@ -1863,14 +1884,22 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, Retyp ret, SmartState log) {
+    static Render vulkanRender(Retyp i) {
+        switch (i) {default: EXIT
+        break; case (TexRet): return SrgbFrm;
+        break; case (FdbRet): case (GetRet): case (SetRet): case (PieRet): return UintFrm;
+        break; case (DptRet): SfloatFrm;}
+        return Renders;
+    }
+    void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {
         if (max(got).tag != ExtentExt) EXIT
         tw = max(got).extent.width;
         th = max(got).extent.height;
         is = tw * th * 4;
         pie = 0; x = 0; y = 0; w = tw; h = th;
         if (idx(loc) != 0) EXIT
-        if (ret == GetRet || ret == SetRet) {
+        log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
+        if (tag(RuseQua) == GetRet || tag(RuseQua) == SetRet) {
         pie = (Pierce*)ptr(loc); x = tw; y = th; w = 0; h = 0;
         if (siz(loc) == 0) {x = 0; y = 0;}
         for (int i = 0; i < siz(loc); i++) {
@@ -1881,7 +1910,7 @@ struct ImageState : public BaseState {
         w = w-x+1; h = h-y+1;}
         if (x < 0 || w < 0 || x + w > tw) EXIT
         if (y < 0 || h < 0 || y + h > th) EXIT
-        // if (ret == TexRet && siz(loc) != is) EXIT
+        if (tag(RuseQua) == TexRet && siz(loc) != is) EXIT
         // log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << '\n';
     }
     void resize(Loc &loc, SmartState log) override {
@@ -1891,11 +1920,19 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(SrgbFrm);
-        flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
+        if (tag(RuseQua) == TexRet) {
+        flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
+        if (tag(RuseQua) != TexRet) {
+        flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
+        if (tag(RuseQua) == TexRet) {
         textureSampler = createTextureSampler(device,properties);}
+        if (tag(RuseQua) != TexRet) {
+        createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        createFramebuffer(device,max(loc).extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -1912,7 +1949,13 @@ struct ImageState : public BaseState {
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
         if (*loc == ResizeLoc) {
-        vkDestroySampler(device, textureSampler, nullptr);
+        if (tag(RuseQua) != TexRet) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthMemory, nullptr);}
+        if (tag(RuseQua) == TexRet) {
+        vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);}
@@ -1922,7 +1965,7 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(SrgbFrm);
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
@@ -1935,143 +1978,16 @@ struct ImageState : public BaseState {
         transitionImageLayout(device, graphics, commandAfter, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),(Retyp)tag(RuseQua),log);
-        if (imageSize != siz(loc)) EXIT
-        createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
-        memcpy(data, ptr(loc), siz(loc));
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, false);}
-        return fence;
-    }
-    void upset(Loc &loc, SmartState log) override {
-        log << "upset " << debug << " location:" << *loc << '\n';
-        if (*loc == MiddleLoc) {
-        vkUnmapMemory(device, stagingBufferMemory);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);}
-    }
-    static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
-    static void copyTextureImage(VkDevice device, VkQueue graphics, VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int offsWidth, int offsHeight, int texWidth, int texHeight, VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkBuffer stagingBuffer, VkCommandBuffer commandBuffer, bool direction);
-    static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image, VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-};
-
-struct PierceState : public BaseState {
-    // ResizeLoc create image buffer
-    // BeforeLoc format for writing to image
-    // MiddleLoc write data to buffer
-    // AfterLoc format for use as textue
-    const VkDevice device;
-    const VkPhysicalDevice physical;
-    const VkPhysicalDeviceProperties properties;
-    const VkQueue graphics;
-    const VkCommandPool commandPool;
-    const VkPhysicalDeviceMemoryProperties memProperties;
-    const VkFormat depthFormat;
-    const HeapState<VkRenderPass,LogicalState::passes> renderPass;
-    VkImage image;
-    VkDeviceMemory imageMemory;
-    VkImageView imageView;
-    VkExtent2D extent;
-    VkImage depthImage;
-    VkDeviceMemory depthMemory;
-    VkImageView depthImageView;
-    VkFramebuffer framebuffer;
-    VkSampler textureSampler;
-    VkCommandBuffer commandReform;
-    VkCommandBuffer commandBefore;
-    VkCommandBuffer commandBuffer;
-    VkCommandBuffer commandAfter;
-    // temporary between sup and ups:
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    VkImage getImage() override {return image;}
-    VkDeviceMemory getMemory() override {return imageMemory;}
-    VkImageView getImageView() override {return imageView;}
-    VkExtent2D getExtent() override {return extent;}
-    VkSampler getTextureSampler() override {return textureSampler;}
-    VkFramebuffer getFramebuffer() override {return framebuffer;}
-    PierceState() :
-        BaseState("PierceState",StackState::self),
-        device(StackState::device),
-        physical(StackState::physical),
-        properties(StackState::properties),
-        graphics(StackState::graphics),
-        commandPool(StackState::commandPool),
-        memProperties(StackState::memProperties),
-        depthFormat(StackState::depthFormat),
-        renderPass(StackState::renderPass) {
-    }
-    ~PierceState() {
-        reset(SmartState());
-    }
-    static Render vulkanRender(Retyp i) {
-        switch (i) {default: EXIT
-        break; case (FdbRet): case (GetRet): case (SetRet): case (PieRet): return UintFrm;
-        break; case (DptRet): SfloatFrm;}
-        return Renders;
-    }
-    void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << '\n';
-        if (*loc == ResizeLoc) {
-        int texWidth = max(loc).extent.width;
-        int texHeight = max(loc).extent.height;
-        extent = max(loc).extent;
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
-        VkImageUsageFlagBits flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
-        imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
-        createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
-        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}
-        if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
-        if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
-        if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
-        if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
-        sem(loc) = createSemaphore(device); // TODO as needed
-        fen(loc) = createFence(device); // TODO as needed
-    }
-    void unsize(Loc &loc, SmartState log) override {
-        log << "unsize " << debug << " location:" << *loc << '\n';
-        vkDestroyFence(device, fen(loc), nullptr); // TODO as needed
-        vkDestroySemaphore(device, sem(loc), nullptr); // TODO as needed
-        if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
-        if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
-        if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
-        if (*loc == ResizeLoc) {
-        vkDestroyFramebuffer(device, framebuffer, nullptr);
-        vkDestroyImageView(device, depthImageView, nullptr);
-        vkDestroyImage(device, depthImage, nullptr);
-        vkFreeMemory(device, depthMemory, nullptr);
-        vkDestroyImageView(device, imageView, nullptr);
-        vkDestroyImage(device, image, nullptr);
-        vkFreeMemory(device, imageMemory, nullptr);}
-    }
-    VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << '\n';
-        VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
-        VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
-        VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
-        if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
-        if (*loc == ReformLoc) {
-        vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
-        ImageState::transitionImageLayout(device, graphics, commandReform, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
-        if (*loc == BeforeLoc) {
-        vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        ImageState::transitionImageLayout(device, graphics, commandBefore, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
-        if (*loc == AfterLoc) {
-        vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        ImageState::transitionImageLayout(device, graphics, commandAfter, getImage(), before, after, fence, forms, max(loc).src, max(loc).dst);}
-        if (*loc == MiddleLoc) {
-        Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        ImageState::range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),(Retyp)tag(RuseQua),log);
+        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
         createBuffer(device, physical, imageSize, (tag(RuseQua) == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; if (tag(RuseQua) == SetRet) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
-        if (tag(RuseQua) == SetRet) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
+        void* data; if (tag(RuseQua) == TexRet || tag(RuseQua) == SetRet) {
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
+        if (tag(RuseQua) == TexRet) {
+        memcpy(data, ptr(loc), siz(loc));}
+        if (tag(RuseQua) == SetRet) {
+        for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));}
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        ImageState::copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}
+        copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2079,13 +1995,16 @@ struct PierceState : public BaseState {
         if (*loc == MiddleLoc) {
         if (tag(RuseQua) == GetRet) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        ImageState::range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),(Retyp)tag(RuseQua),log);
+        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
         for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x*4 + y*texWidth*4), sizeof(pie[i].val));}
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
     }
+    static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
+    static void copyTextureImage(VkDevice device, VkQueue graphics, VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int offsWidth, int offsHeight, int texWidth, int texHeight, VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkBuffer stagingBuffer, VkCommandBuffer commandBuffer, bool direction);
+    static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image, VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 };
 
 struct ChainState : public BaseState {
@@ -2242,21 +2161,21 @@ struct MainState {
     VulkanState vulkanState;
     PhysicalState physicalState;
     LogicalState logicalState;
-    ArrayState<SwapState,1> swapState;
-    ArrayState<PipeState,StackState::micros> pipelineState;
-    ArrayState<BufferState,StackState::frames> indexState;
-    ArrayState<BufferState,StackState::frames> bringupState;
-    ArrayState<ImageState,StackState::images> imageState;
-    ArrayState<PierceState,StackState::/*TODO piercs*/frames> pierceState;
-    ArrayState<UniformState,StackState::frames> uniformState;
-    ArrayState<UniformState,StackState::frames> matrixState;
-    ArrayState<BufferState,StackState::frames> triangleState;
-    ArrayState<BufferState,StackState::frames> numericState;
-    ArrayState<BufferState,StackState::frames> vertexState;
-    ArrayState<BufferState,StackState::frames> basisState;
-    ArrayState<ChainState,StackState::frames> chainState;
-    ArrayState<DrawState,StackState::frames> drawState;
-    ArrayState<BindState,StackState::frames> bindState;
+    ArrayState<SwapState,SwapRes,1> swapState;
+    ArrayState<PipeState,PipeRes,StackState::micros> pipelineState;
+    ArrayState<BufferState,IndexRes,StackState::frames> indexState;
+    ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
+    ArrayState<ImageState,ImageRes,StackState::images> imageState;
+    ArrayState<ImageState,PierceRes,StackState::/*piercs*/frames> pierceState;
+    ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
+    ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
+    ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
+    ArrayState<BufferState,NumericRes,StackState::frames> numericState;
+    ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
+    ArrayState<BufferState,BasisRes,StackState::frames> basisState;
+    ArrayState<ChainState,ChainRes,StackState::frames> chainState;
+    ArrayState<DrawState,DrawRes,StackState::frames> drawState;
+    ArrayState<BindState,BindRes,StackState::frames> bindState;
     ThreadState threadState;
     CopyState copyState;
     ChangeState<Configure,Configures> changeState;

@@ -68,6 +68,7 @@ Resrc = { -- per variation of BaseState
 	"BindRes",
 }
 Retyp = { -- per veriation of Resrc
+	"TexRet", -- texture from cpu to gpu
 	"FdbRet", -- feedback from gpu to gpu
 	"GetRet", -- from debug gpu to cpu
 	"SetRet", -- from cpu to debug gpu
