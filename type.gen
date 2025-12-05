@@ -67,6 +67,14 @@ Resrc = { -- per variation of BaseState
 	"DrawRes",
 	"BindRes",
 }
+Retyp = { -- per veriation of Resrc
+	"TexRet", -- texture from cpu to gpu
+	"FdbRet", -- feedback from gpu to gpu
+	"GetRet", -- from debug gpu to cpu
+	"SetRet", -- from cpu to debug gpu
+	"PieRet", -- from gpu pierce to cpu
+	"DptRet", -- from gpu depth to cpu
+}
 Micro = { -- what runs on gpu
 	"MicroTest", -- Bringup Plan
 	"MicroDebug", -- testing microcode
@@ -118,7 +126,7 @@ Phase = {
 	"SwapPhs", -- display queue
 	"RenderPhs", -- frame buffer
 }
-Packing = { -- Render VkFormat
+Render = { -- VkFormat
 	"VecFrm",
 	"UvecFrm",
 	"UintFrm",
@@ -490,9 +498,9 @@ ResrcOffset = {
 	{"Resrc","BringupRes","Int","2","Int","32"},
 }
 ResrcFormat = {
-	{"Resrc","BringupRes","Int","0","Packing","VecFrm"},
-	{"Resrc","BringupRes","Int","1","Packing","VecFrm"},
-	{"Resrc","BringupRes","Int","2","Packing","UvecFrm"},
+	{"Resrc","BringupRes","Int","0","Render","VecFrm"},
+	{"Resrc","BringupRes","Int","1","Render","VecFrm"},
+	{"Resrc","BringupRes","Int","2","Render","UvecFrm"},
 }
 ResrcElement = {
 	{"Resrc","BringupRes","Int","0","Int","4"},
@@ -948,7 +956,7 @@ Pierce = {
 	{"wid","Int32",{},{}},
 	{"hei","Int32",{},{}},
 	{"idx","Int32",{},{}},
-	{"frm","Packing",{},{}},
+	{"frm","Render",{},{}},
 	{"num","Int32",{["frm"]={["UintFrm"]=true}},{}},
 	{"val","Old",{["frm"]={["SfloatFrm"]=true}},{}},
 }
