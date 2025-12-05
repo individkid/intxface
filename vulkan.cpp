@@ -214,7 +214,6 @@ struct StackState {
     virtual int limord(int i) = 0;
     virtual void clrord(int i) = 0;
     virtual int buftag(int i, Quality t) = 0;
-    virtual const char *bufnam() = 0;
     static StackState* self;
     static int debug;
     static int micro;
@@ -465,7 +464,7 @@ struct BaseState {
         mask(0),
         nask(0),
         debug{} {
-        sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
+        sprintf(debug,"%s_%d",name,StackState::debug++);
         std::cout << debug << std::endl;
     }
     ~BaseState() {
@@ -660,7 +659,7 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
+template <class State, int Size> struct ArrayState : public StackState {
     SafeState safe;
     int idx;
     SimpleState<Size,Qualitys,StackState::resrcs> tag;
@@ -764,26 +763,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     int buftag(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
         safe.wait(); int val = tag.get(i,t); safe.post(); return val;
-    }
-    const char *bufnam() override {
-        switch (Type) {
-        default: EXIT
-        case (SwapRes): return "SwapRes";
-        case (PipeRes): return "PipeRes";
-        case (IndexRes): return "IndexRes";
-        case (BringupRes): return "BringupRes";
-        case (ImageRes): return "ImageRes";
-        case (PierceRes): return "PierceRes";
-        case (UniformRes): return "UniformRes";
-        case (MatrixRes): return "MatrixRes";
-        case (TriangleRes): return "TriangleRes";
-        case (NumericRes): return "NumericRes";
-        case (VertexRes): return "VertexRes";
-        case (BasisRes): return "BasisRes";
-        case (ChainRes): return "ChainRes";
-        case (DrawRes): return "DrawRes";
-        case (BindRes): return "BindRes";}
-        return 0;
     }
 };
 
@@ -2263,21 +2242,21 @@ struct MainState {
     VulkanState vulkanState;
     PhysicalState physicalState;
     LogicalState logicalState;
-    ArrayState<SwapState,SwapRes,1> swapState;
-    ArrayState<PipeState,PipeRes,StackState::micros> pipelineState;
-    ArrayState<BufferState,IndexRes,StackState::frames> indexState;
-    ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
-    ArrayState<ImageState,ImageRes,StackState::images> imageState;
-    ArrayState<PierceState,PierceRes,StackState::/*TODO piercs*/frames> pierceState;
-    ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
-    ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
-    ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
-    ArrayState<BufferState,NumericRes,StackState::frames> numericState;
-    ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
-    ArrayState<BufferState,BasisRes,StackState::frames> basisState;
-    ArrayState<ChainState,ChainRes,StackState::frames> chainState;
-    ArrayState<DrawState,DrawRes,StackState::frames> drawState;
-    ArrayState<BindState,BindRes,StackState::frames> bindState;
+    ArrayState<SwapState,1> swapState;
+    ArrayState<PipeState,StackState::micros> pipelineState;
+    ArrayState<BufferState,StackState::frames> indexState;
+    ArrayState<BufferState,StackState::frames> bringupState;
+    ArrayState<ImageState,StackState::images> imageState;
+    ArrayState<PierceState,StackState::/*TODO piercs*/frames> pierceState;
+    ArrayState<UniformState,StackState::frames> uniformState;
+    ArrayState<UniformState,StackState::frames> matrixState;
+    ArrayState<BufferState,StackState::frames> triangleState;
+    ArrayState<BufferState,StackState::frames> numericState;
+    ArrayState<BufferState,StackState::frames> vertexState;
+    ArrayState<BufferState,StackState::frames> basisState;
+    ArrayState<ChainState,StackState::frames> chainState;
+    ArrayState<DrawState,StackState::frames> drawState;
+    ArrayState<BindState,StackState::frames> bindState;
     ThreadState threadState;
     CopyState copyState;
     ChangeState<Configure,Configures> changeState;
