@@ -1563,7 +1563,7 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) { // ptr->idx/ptr->siz is a range of resources
             int idx = ptr->idx+i; int wid = ptr->img[i].wid; int hei = ptr->img[i].hei;
             int tot = datxVoids(ptr->img[i].dat);
-            push(ptr->mem,TexRet,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
+            push(ptr->mem,(Retyp)0,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
         break; case (Peekz): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0)->getExtent(); // TODO unsafe if SwapRes is changing
@@ -1884,13 +1884,6 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static Render vulkanRender(Retyp i) {
-        switch (i) {default: EXIT
-        break; case (TexRet): return SrgbFrm;
-        break; case (FdbRet): case (GetRet): case (SetRet): case (PieRet): return UintFrm;
-        break; case (DptRet): SfloatFrm;}
-        return Renders;
-    }
     static void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, Retyp ret, SmartState log) {
         if (max(got).tag != ExtentExt) EXIT
         tw = max(got).extent.width;
@@ -1909,7 +1902,7 @@ struct ImageState : public BaseState {
         w = w-x+1; h = h-y+1;}
         if (x < 0 || w < 0 || x + w > tw) EXIT
         if (y < 0 || h < 0 || y + h > th) EXIT
-        if (ret == TexRet && siz(loc) != is) EXIT
+        // if (ret == TexRet && siz(loc) != is) EXIT
         // log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << '\n';
     }
     void resize(Loc &loc, SmartState log) override {
@@ -1919,11 +1912,11 @@ struct ImageState : public BaseState {
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
-        if (tag(RuseQua) == TexRet) flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        VkFormat forms = PhysicalState::vulkanFormat(SrgbFrm);
+        flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (tag(RuseQua) == TexRet) textureSampler = createTextureSampler(device,properties);}
+        textureSampler = createTextureSampler(device,properties);}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -1950,7 +1943,7 @@ struct ImageState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
+        VkFormat forms = PhysicalState::vulkanFormat(SrgbFrm);
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
@@ -1964,6 +1957,7 @@ struct ImageState : public BaseState {
         if (*loc == MiddleLoc) {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),(Retyp)tag(RuseQua),log);
+        if (imageSize != siz(loc)) EXIT
         createBuffer(device, physical, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         memcpy(data, ptr(loc), siz(loc));
@@ -2032,19 +2026,25 @@ struct PierceState : public BaseState {
     ~PierceState() {
         reset(SmartState());
     }
+    static Render vulkanRender(Retyp i) {
+        switch (i) {default: EXIT
+        break; case (FdbRet): case (GetRet): case (SetRet): case (PieRet): return UintFrm;
+        break; case (DptRet): SfloatFrm;}
+        return Renders;
+    }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << '\n';
         if (*loc == ResizeLoc) {
         int texWidth = max(loc).extent.width;
         int texHeight = max(loc).extent.height;
         extent = max(loc).extent;
-        VkFormat forms = PhysicalState::vulkanFormat(ImageState::vulkanRender((Retyp)tag(RuseQua)));
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
         VkImageUsageFlagBits flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         createImage(device, physical, max(loc).extent.width, max(loc).extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,max(loc).extent,renderPass[ImageState::vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}
+        createFramebuffer(device,max(loc).extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -2074,7 +2074,7 @@ struct PierceState : public BaseState {
         VkFence fence = (*loc==AfterLoc?fen(loc):VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&nsk(*lst(loc))?sem(lst(loc)):VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?sem(loc):VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(ImageState::vulkanRender((Retyp)tag(RuseQua)));
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2089,7 +2089,7 @@ struct PierceState : public BaseState {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         ImageState::range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),(Retyp)tag(RuseQua),log);
         createBuffer(device, physical, imageSize, (tag(RuseQua) == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; if (tag(RuseQua) == TexRet || tag(RuseQua) == SetRet) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
+        void* data; if (tag(RuseQua) == SetRet) vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the altered range?
         if (tag(RuseQua) == SetRet) for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         ImageState::copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}

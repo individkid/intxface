@@ -821,7 +821,7 @@ void planeTest(enum Thread tag, int idx)
     int inds = 12;
     int arg[] = {0,1, 2,3,4, 5,6,7, 8, 9,10,11, 12};
     int val[] = {
-    /*STagIns ImageRes*//*idx*/0,/*RuseQua.val*/TexRet,
+    /*STagIns ImageRes*//*idx*/0,/*RuseQua.val*/0,
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
