@@ -193,7 +193,8 @@ struct StackState {
     static const int descrs = 4; // maximum descriptor sets in use
     static const int micros = 3; // eventually equal to Micros
     static const int frames = 2; // prevent blocking on resources
-    static const int images = 10; // textures and feedback framebuffers
+    static const int images = 10; // fragment shader textures
+    static const int piercs = 2; // fragment shader feedback
     static const int instrs = 20; // maximum steps in a binded submit
     static const int resrcs = 2; // resource classification greediness
     static const int handls = 4; // maximum number of classifications
@@ -1477,26 +1478,26 @@ struct CopyState {
         // neither means default only
         if ((arg == 0) != (siz == 0)) EXIT
         if ((val == 0) != (sze == 0)) EXIT
-        int tot = 0;
+        int tot = 0; int lim = size(typ,ary);
         if (siz && sze) {
-            tot = size(typ,ary);
+            tot = lim;
             // maximum of number of fill values and force index
             for (int i = 0; i < siz; i++)
             if (arg[i] >= tot) tot = arg[i]+1;}
         // maximum of number of fill values and number of packed force values
         else if (sze) tot = sze;
         // otherwise number of fill values
-        if (tot < size(typ,ary)) tot = size(typ,ary);
+        if (tot < lim) tot = lim;
         int vlu[tot];
         // initialize with defaults
         for (int i = 0; i < tot; i++)
             // ignore siz sze since TrivDef fill value is an immediate value
-            if (dflt(typ,i,ary) == TrivDef) vlu[i] = fill(typ,i,ary);
+            if (i < lim && dflt(typ,i,ary) == TrivDef) vlu[i] = fill(typ,i,ary);
             else vlu[i] = 0;
         // copy from given
         if (siz) for (int i = 0; i < tot; i++)
             // ignore GiveDef if there is nothing proferred
-            if (dflt(typ,i,ary) == GiveDef) {
+            if (i < lim && dflt(typ,i,ary) == GiveDef) {
             int idx = fill(typ,i,ary);
             // find the proffered val counted by the fill value
             if (sze) {for (int j = 0; j < tot; j++)
@@ -1513,7 +1514,7 @@ struct CopyState {
         // alias from prior
         for (int i = 0; i < tot; i++)
             // ignore siz sze since BackDef fill value is index into result so far
-            if (dflt(typ,i,ary) == BackDef) {
+            if (i < lim && dflt(typ,i,ary) == BackDef) {
             int idx = fill(typ,i,ary);
             if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
         HeapState<Inst,StackState::instrs> lst;
@@ -2166,7 +2167,7 @@ struct MainState {
     ArrayState<BufferState,IndexRes,StackState::frames> indexState;
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
-    ArrayState<ImageState,PierceRes,StackState::/*piercs*/frames> pierceState;
+    ArrayState<ImageState,PierceRes,StackState::piercs> pierceState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2355,6 +2356,7 @@ int main(int argc, const char **argv) {
     main.changeState.write(ConstantMicros,StackState::micros);
     main.changeState.write(ConstantFrames,StackState::frames);
     main.changeState.write(ConstantImages,StackState::images);
+    main.changeState.write(ConstantPiercs,StackState::piercs);
     main.changeState.write(ConstantInstrs,StackState::instrs);
     main.changeState.write(ConstantResrcs,StackState::resrcs);
     main.changeState.write(ConstantHandls,StackState::handls);

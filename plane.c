@@ -821,12 +821,20 @@ void planeTest(enum Thread tag, int idx)
     int inds = 12;
     int arg[] = {0,1, 2,3,4, 5,6,7, 8, 9,10,11, 12};
     int val[] = {
-    /*STagIns ImageRes*//*idx*/0,/*RuseQua.val*/0,
+    /*STagIns ImageRes*//*idx*/0,/*RuseQua.val*/TexRet,
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
     /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
     /*IDeeIns PipeRes*//*ins.idx*/MicroTest};
+    int giv[] = {/*
+    STagIns ImageRes idx/TrivDef/0,RuseQua.val/TrivDef/TexRet,
+    DerIns ChainRes req.idx/GiveDef/*/0,/*req.siz/GiveDef/*/inds/*,req.base/TrivDef/Micro,
+    DerIns DrawRes req.idx/BackDef/2,req.siz/BackDef/3,req.base/BackDef/4,
+    IDeeIns PipeRes ins.idx/BackDef/4,
+    DerIns ChainRes req.idx/BackDef/2,req.siz/BackDef/3,req.base/BackDef/4,
+    IDeeIns PipeRes ins.idx/BackDef/4,    
+    */};
     if (sizeof(arg) != sizeof(val)) ERROR();
     int brg[] = {0,1,2, 3};
     int bal[] = {
@@ -848,12 +856,12 @@ void planeTest(enum Thread tag, int idx)
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroTest;
-    drw->drw[0].siz = sizeof(arg)/sizeof(int);
-    drw->drw[0].sze = sizeof(val)/sizeof(int);
+    drw->drw[0].siz = /*sizeof(giv)/sizeof(int); //*/ sizeof(arg)/sizeof(int);
+    drw->drw[0].sze = /*0; //*/ sizeof(val)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    allocInt(&drw->drw[0].val,drw->drw[0].sze);
-    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = arg[i];
-    for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = val[i];
+    /*drw->drw[0].val = 0; //*/ allocInt(&drw->drw[0].val,drw->drw[0].sze);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = /*giv[i]; //*/ arg[i];
+    /*//*/ for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = val[i];
     callCopy(drw,save,RetRsp,0,(debug?"test":0));}
     else if (count%8 == 1 || count%8 == 5) { // TODO move to separate thread
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
