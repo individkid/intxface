@@ -106,10 +106,10 @@ int postSafe(void *ptr)
     auto saf = (SafeState*)ptr;
     return saf->post();
 }
-void hackSafe(void *ptr)
+void doneSafe(void *ptr)
 {
     auto saf = (SafeState*)ptr;
-    saf->hack();
+    saf->done();
 }
 void freeSafe(void *ptr)
 {

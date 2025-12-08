@@ -40,7 +40,7 @@ struct SafeState {
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }
-    void hack() {
+    void done() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         semaphore = -1;
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
@@ -559,7 +559,7 @@ TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## 
 void *allocSafe(int val);
 int waitSafe(void *ptr);
 int postSafe(void *ptr);
-void hackSafe(void *ptr);
+void doneSafe(void *ptr);
 void freeSafe(void *ptr);
 
 float processTime();

@@ -1047,7 +1047,7 @@ struct ThreadState : public DoneState {
         push.base->baseups(push.loc,push.log);}
         if (push.ptr) {
         centerPlace(push.ptr,push.sub);}
-        change->wots(RegisterMask,1<<FnceMsk);}
+        change->wots(RegisterWake,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
     void done() override {
@@ -2044,13 +2044,13 @@ struct ChainState : public BaseState {
         swp->getSwapChain(), UINT64_MAX, sem(loc), VK_NULL_HANDLE, &imageIndex);
         imageLoc = (ResrcLoc)imageIndex;
         if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterMask,1<<SizeMsk);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterWake,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
         framebuffer = swp->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
         VkSemaphore before = sem(lst(loc,(ResrcLoc)(imageIndex%(uint32_t)ResrcLocs)));
         if (!presentFrame(present,swp->getSwapChain(),imageIndex,before))
-        change->wots(RegisterMask,1<<SizeMsk);}
+        change->wots(RegisterWake,1<<SizeMsk);}
         return VK_NULL_HANDLE;
     }
     void upset(Loc &loc, SmartState log) override {

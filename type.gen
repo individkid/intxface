@@ -208,15 +208,14 @@ Configure = {
 	"RegisterPlan", -- testing plan
 	"RegisterPoll", -- poll microseconds
 	"RegisterExit", -- sortof exit status
-	"RegisterPass", -- pass center index
-	"RegisterFail", -- fail center index
-	"RegisterMask", -- interrupt mask
-	"RegisterWake", -- mask of threads
-	"RegisterAble", -- interrupts per thread
+	"RegisterPass", -- pass center mask
+	"RegisterFail", -- fail center mask
+	"RegisterWake", -- thread interrupts
+	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
-	"RegisterExpr", -- expression center index
-	"RegisterEval", -- center expression index
+	"RegisterEval", -- expression center index
+	"RegisterExpr", -- center expression index
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -387,8 +386,6 @@ Thread = { -- separate threads
 Mask = { -- signals between threads
 	"FnceMsk", -- fence thread wakeup
 	"SizeMsk", -- glfw window resized
-	"SelfMsk", -- unexpected self matrix
-	"NslfMsk", -- unexpected non-self matrix
 	"SlctMsk", -- pipe thread wakeup
 	"CnslMsk", -- stdio thread wakeup
 	"TimeMsk", -- time thread wakeup
