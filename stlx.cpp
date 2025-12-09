@@ -116,6 +116,11 @@ void freeSafe(void *ptr)
     auto saf = (SafeState*)ptr;
     delete saf;
 }
+int timeSafe(void *ptr, double dif)
+{
+    auto saf = (SafeState*)ptr;
+    return saf->wait(dif);
+}
 
 float processTime()
 {

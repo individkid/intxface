@@ -1,5 +1,8 @@
 #include <stdint.h>
 #include <pthread.h>
+#include <strings.h>
+#include <math.h>
+#include "proto.h"
 #ifdef __cplusplus
 #include <array>
 #include <vector>
@@ -9,7 +12,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <strings.h>
 
 struct SafeState {
     pthread_mutex_t mutex;
@@ -46,6 +48,18 @@ struct SafeState {
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
 
+    }
+    int wait(double dif) {
+        if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
+        struct timespec ts;
+        if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {std::cerr << "cannot get time!" << std::endl; exit(-1);}
+        dif += ts.tv_sec + ts.tv_nsec/NANOSECONDS;
+        double tsi, tsf; tsf = modf(dif, &tsi); ts.tv_sec = tsi; ts.tv_nsec = tsf*NANOSECONDS;
+        int val = 0; while (semaphore == 0 && val == 0) if ((val = pthread_cond_timedwait(&condit,&mutex,&ts)) != 0 && val != ETIMEDOUT) {std::cerr << "cannot timed wait!" << std::endl; exit(-1);}
+        if (val != ETIMEDOUT && semaphore > 0) semaphore -= 1;
+        int ret = semaphore;
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+        return ret;
     }
 };
 
@@ -561,6 +575,7 @@ int waitSafe(void *ptr);
 int postSafe(void *ptr);
 void doneSafe(void *ptr);
 void freeSafe(void *ptr);
+int timeSafe(void *ptr, double dif);
 
 float processTime();
 
