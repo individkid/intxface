@@ -254,13 +254,19 @@ Transfer = {
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
 	"Eval", -- call datxEval
-	"Merge", -- combine src to dst
-	"Click", -- change manipulator
-	"Manip", -- manipulate local
-	"Pulse", -- clear to towrite
-	"Self", -- clear to written
-	"Other", -- maintain as if
-	"Comp", -- compose for draw
+	"Comb", -- combine src to dst
+	-- identity I
+	-- current manipulation C
+	-- Kernel.saved T
+	-- Kernel.local L
+	-- Kernel.sent S
+	-- Kernel.global G
+	-- Matrix M
+	"Comp", -- T = C; M = GSLT
+	"Form", -- L = LTC'; T = C
+	"Send", -- M = L; S = SL; L = I
+	"Self", -- G = GM; S = M'S
+	"Glob", -- G = GM
 	"Test", -- time to matrix
 	"Bopy", -- memory to memory
 	"Copy", -- center to resource
@@ -271,25 +277,25 @@ Transfer = {
 	"Goto", -- jump if true
 	"Nest", -- nest to level
 }
-MergeArg = {
-	"MergeSrc",
-	"MergeDst",
+CombArg = {
+	"CombSrc",
+	"CombDst",
 }
-ClickArg = {
-	"ClickSrc",
-	"ClickSrcSub",
-	"ClickDst",
-	"ClickDstSub",
+CompArg = {
+	"CompSrc",
+	"CompSrcSub",
+	"CompDst",
+	"CompDstSub",
 }
-ManipArg = {
-	"ManipDst",
-	"ManipDstSub",
+FormArg = {
+	"FormSrc",
+	"FormSrcSub",
 }
-PulseArg = {
-	"PulseSrc",
-	"PulseSrcSub",
-	"PulseDst",
-	"PulseDstSub",
+SendArg = {
+	"SendSrc",
+	"SendSrcSub",
+	"SendDst",
+	"SendDstSub",
 }
 SelfArg = {
 	"SelfSrc",
@@ -297,17 +303,11 @@ SelfArg = {
 	"SelfDst",
 	"SelfDstSub",
 }
-OtherArg = {
-	"OtherSrc",
-	"OtherSrcSub",
-	"OtherDst",
-	"OtherDstSub",
-}
-CompArg = {
-	"CompSrc",
-	"CompSrcSub",
-	"CompDst",
-	"CompDstSub",
+GlobArg = {
+	"GlobSrc",
+	"GlobSrcSub",
+	"GlobDst",
+	"GlobDstSub",
 }
 TestArg = {
 	"TestDst",
@@ -347,7 +347,7 @@ Plan = { -- which test to run
 	-- similar to Bringup, except use indexed instead of fetched points.
 	-- similar to Bringup, except matrix for planeTest copied to gpu by planeMachine.
 	-- similar to Bringup, except matrix for planeTest adjusted through
-	-- Click Manip Pulse Self Other Manip Click Fixed Normal.
+	-- Comp Form Send Self Glob.
 	"Regress",
 	-- Bootstrap detects arguments and Argument, sets RegisterPlan to Regress.
 	-- no test or time thread, just gpu machine select.
@@ -426,6 +426,8 @@ Operate = { -- little language expressions
 	"FesOp", -- for each set
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
+	"WosOp", -- callback setbits config
+	"WocOp", -- callback clearbits config
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
 	"RexOp", -- regex sugar
@@ -898,9 +900,9 @@ Machine = {
 	{"val","Express",{["xfr"]={["Force"]=true}},"num"},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
-	{"sig","Int",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
+	{"sig","Int",{["xfr"]={["Comb"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
-	{"arg","Express",{["xfr"]={["Manip"]=true,["Pulse"]=true,["Self"]=true,["Other"]=true,["Click"]=true,["Comp"]=true,
+	{"arg","Express",{["xfr"]={["Comb"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
@@ -946,12 +948,10 @@ Matrix = {
 }
 Kernel = {
 	{"count","Int",{},{}},
-	{"comp","Matrix",{},{}},
-	{"other","Matrix",{},{}},
-	{"self","Matrix",{},{}},
-	{"pulse","Matrix",{},{}},
-	{"manip","Matrix",{},{}},
-	{"copy","Matrix",{},{}},
+	{"saved","Matrix",{},{}},
+	{"local","Matrix",{},{}},
+	{"sent","Matrix",{},{}},
+	{"global","Matrix",{},{}},
 }
 Basis = {
 	{"mat","Vector",{},{9}},

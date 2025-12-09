@@ -38,7 +38,8 @@ void *chrq = 0; // temporary queue to convert chars to str
 int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
 int sub1 = 0; int idx1 = 0; void **dat1 = 0; // protect with dataSem
 void *dataSem = 0;
-void *evalSem = 0; int jknfo = 0;
+void *evalSem = 0;
+int jknfo = 0;
 uftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
@@ -429,12 +430,7 @@ int centerMod(struct Center *ptr)
 }
 void kernelClear(struct Kernel *ker)
 {
-    float mat[16];
-    timesmat(timesmat(timesmat(timesmat(copymat(mat,ker->manip.mat,4),
-        ker->pulse.mat,4),ker->self.mat,4),ker->other.mat,4),ker->comp.mat,4);
-    copymat(ker->comp.mat,mat,4);
-    identmat(ker->manip.mat,4); identmat(ker->pulse.mat,4);
-    identmat(ker->self.mat,4); identmat(ker->other.mat,4);
+    // TODO
 }
 
 // machine extensions
@@ -473,48 +469,45 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
     if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
     centerPlace(ptr,src);
 }
-void machineMerge(int sig, int *arg)
+void machineComb(int sig, int *arg)
 {
-    struct Center *src = machineCenter(sig,arg,MergeArgs,MergeSrc,0);
-    struct Center *dst = machineCenter(sig,arg,MergeArgs,MergeDst,0);
+    struct Center *src = machineCenter(sig,arg,CombArgs,CombSrc,0);
+    struct Center *dst = machineCenter(sig,arg,CombArgs,CombDst,0);
     if (src->mem != dst->mem) ERROR();
     // TODO merge memory from Src to Dst according to idx and siz
 }
-void machineClick(int sig, int *arg)
+// manipulation C
+// Kernel.saved T
+// Kernel.local L
+// Kernel.sent S
+// Kernal.global G
+// Matrix M
+void machineComp(int sig, int *arg)
 {
-    struct Center *src = machineCenter(sig,arg,ClickArgs,ClickSrc,ClickSrcSub);
-    struct Matrix *matrix = machineMatrix(src,sig,arg,ClickArgs,ClickSrc,ClickSrcSub);
-    struct Center *dst = machineCenter(sig,arg,ClickArgs,ClickDst,ClickDstSub);
-    struct Kernel *kernel = machineKernel(dst,sig,arg,ClickArgs,ClickDst,ClickDstSub);
-    copymat(kernel->copy.mat,matrix->mat,4);
-    machinePlace(dst,sig,arg,ClickArgs,ClickDst,ClickDstSub);
-    machinePlace(src,sig,arg,ClickArgs,ClickSrc,ClickSrcSub);
+    struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Center *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
+    // TODO compose for draw -- T = C; M = GSLT
+    machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
+    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
 }
-void machineManip(int sig, int *arg)
+void machineForm(int sig, int *arg)
 {
-    struct Center *center = machineCenter(sig,arg,ManipArgs,ManipDst,ManipDstSub);
-    struct Kernel *kernel = machineKernel(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
-    // manipulate manip
-    float mat[16]; float inv[16]; planeMatrix(mat);
-    jumpmat(kernel->manip.mat,jumpmat(invmat(copymat(inv,kernel->copy.mat,4),4),mat,4),4);
-    copymat(kernel->copy.mat,mat,4);
-    machinePlace(center,sig,arg,ManipArgs,ManipDst,ManipDstSub);
+    struct Center *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub);
+    struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
+    // TODO change manipulation matrix -- L = LTC'; T = C
+    machinePlace(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
 }
-void machinePulse(int sig, int *arg)
+void machineSend(int sig, int *arg)
 {
-    struct Center *src = machineCenter(sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
-    struct Kernel *kernel = machineKernel(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
-    struct Center *dst = machineCenter(sig,arg,PulseArgs,PulseDst,PulseDstSub);
-    struct Matrix *matrix = machineMatrix(src,sig,arg,PulseArgs,PulseDst,PulseDstSub);
-    // clear manip to pulse
-    jumpmat(kernel->pulse.mat,kernel->manip.mat,4); identmat(kernel->manip.mat,4);
-    // compose pulse, self, other, comp to matrix
-    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->pulse.mat,4),
-        kernel->self.mat,4),kernel->other.mat,4),kernel->comp.mat,4);
-    // record count to detect dropped bounce backs
-    dst->slf = ++kernel->count; // TODO add this functionality to file.c
-    machinePlace(dst,sig,arg,PulseArgs,PulseDst,PulseDstSub);
-    machinePlace(src,sig,arg,PulseArgs,PulseSrc,PulseSrcSub);
+    struct Center *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub);
+    struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
+    struct Center *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub);
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
+    // TODO move local to sent -- T = C; M = L; S = SL; L = I
+    machinePlace(dst,sig,arg,SendArgs,SendDst,SendDstSub);
+    machinePlace(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
 }
 void machineSelf(int sig, int *arg)
 {
@@ -523,50 +516,20 @@ void machineSelf(int sig, int *arg)
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     if (dst->slf != kernel->count) {kernel->count = 0; ERROR();}
-    else {kernel->count--;
-    // move portion of pulse to self to make matrix equal to self times other times comp
-    // self1=matrix/(other*comp); pulse1=pulse0*self0/self1
-    // pulse1*self1=pulse0*self0/self1*self1=pulse0*self0
-    float self[16]; float pulse[16]; float inv[16]; float mat[16];
-    timesmat(copymat(self,matrix->mat,4),
-        invmat(timesmat(copymat(inv,kernel->other.mat,4),kernel->comp.mat,4),4),4);
-    timesmat(timesmat(copymat(pulse,kernel->pulse.mat,4),
-        kernel->self.mat,4),invmat(copymat(inv,self,4),4),4);
-    copymat(kernel->pulse.mat,pulse,4); copymat(kernel->self.mat,self,4);
-    // if count is zero, clear self and other to comp
-    if (kernel->count == 0) kernelClear(kernel);}
+    else kernel->count--;
+    // TODO move portion of sent to global -- G = GM; S = M'S
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
-void machineOther(int sig, int *arg)
+void machineGlob(int sig, int *arg)
 {
-    struct Center *src = machineCenter(sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
-    struct Matrix *matrix = machineMatrix(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
-    struct Center *dst = machineCenter(sig,arg,OtherArgs,OtherDst,OtherDstSub);
-    struct Kernel *kernel = machineKernel(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
-    if (dst->slf) {ERROR();}
-    // change other to make matrix equal to self times other times comp
-    // matrix=self*other1*comp; other1=(1/self)*matrix/comp
-    else {float other[16]; float self[16]; float inv[16];
-    timesmat(timesmat(invmat(copymat(other,kernel->self.mat,4),4),
-        matrix->mat,4),invmat(copymat(inv,kernel->comp.mat,4),4),4);
-    copymat(kernel->other.mat,other,4);
-    // if count is zero, clear self and other to comp
-    if (kernel->count == 0) kernelClear(kernel);}
-    machinePlace(dst,sig,arg,OtherArgs,OtherDst,OtherDstSub);
-    machinePlace(src,sig,arg,OtherArgs,OtherSrc,OtherSrcSub);
-}
-void machineComp(int sig, int *arg)
-{
-    struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
-    struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
-    struct Center *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
-    // compose for draw
-    timesmat(timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->manip.mat,4),
-        kernel->pulse.mat,4),kernel->self.mat,4),kernel->other.mat,4),kernel->comp.mat,4);
-    machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
-    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Center *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
+    struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
+    struct Center *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub);
+    struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
+    // TODO absorb discontinuous change -- G = GM
+    machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
+    machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
 }
 void machineTest(int sig, int *arg)
 {
@@ -724,13 +687,12 @@ void machineSwitch(struct Machine *mptr)
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(mptr->res)); break;
-    case (Merge): MACHINE(Merge) break;
-    case (Click): MACHINE(Click) break;
-    case (Manip): MACHINE(Manip) break;
-    case (Pulse): MACHINE(Pulse) break;
-    case (Self): MACHINE(Self) break;
-    case (Other): MACHINE(Other) break;
+    case (Comb): MACHINE(Comb) break;
     case (Comp): MACHINE(Comp) break;
+    case (Form): MACHINE(Form) break;
+    case (Send): MACHINE(Send) break;
+    case (Self): MACHINE(Self) break;
+    case (Glob): MACHINE(Glob) break;
     case (Test): MACHINE(Test) break;
     case (Bopy): MACHINE(Bopy) break;
     case (Copy): MACHINE(Copy) break;
@@ -1023,7 +985,7 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     {char *exp = 0; showExpress(&ptr->exp[val],&exp);
     printf("%s\n",exp); free(exp);}
     if (waitSafe(evalSem) != 0) ERROR();
-    jknfo = 1;
+    jknfo = 1; // TODO when is this cleared
     if (postSafe(evalSem) != 1) ERROR();    
     machineVoid(&ptr->exp[val]);}
     centerPlace(ptr,idx);
@@ -1045,10 +1007,20 @@ void planePutstr(const char *src)
     strcpy(str,src); pushStrq(str,strout);
     if (postSafe(stdioSem) != 1) ERROR();
 }
-void planeSetcfg(int val, int sub) // TODO add argument to switch between Wcfg and such
+void planeSetcfg(int val, int sub)
 {
     if (jknfo) callKnfo((enum Configure)sub,val,planeWcfg);
     else callJnfo((enum Configure)sub,val,planeWcfg);
+}
+void planeWoscfg(int val, int sub)
+{
+    if (jknfo) callKnfo((enum Configure)sub,val,planeWots);
+    else callJnfo((enum Configure)sub,val,planeWots);
+}
+void planeWoccfg(int val, int sub)
+{
+    if (jknfo) callKnfo((enum Configure)sub,val,planeWotc);
+    else callJnfo((enum Configure)sub,val,planeWotc);
 }
 int planeRetcfg(int sub)
 {
@@ -1111,7 +1083,7 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
-    datxFnptr(planeRetcfg,planeSetcfg,planeGetstr,planePutstr,planeField,planeExtract,planeImmed);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeGetstr,planePutstr,planeField,planeExtract,planeImmed);
     start = processTime();
 }
 void initBoot()

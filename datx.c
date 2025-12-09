@@ -12,6 +12,8 @@ void *prefix = 0;
 rktype datxNoteFp = 0;
 retfp retptr = 0;
 setfp setptr = 0;
+setfp wosptr = 0;
+setfp wocptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
 fldfp fldptr = 0;
@@ -600,6 +602,18 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
 		setptr(*datxIntz(0,dat0),exp->cgs);
 		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+	case (WosOp): {
+		if (!wosptr) ERROR();
+		void *dat0 = 0; int typ1 = identType("Int");
+		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
+		wosptr(*datxIntz(0,dat0),exp->cgs);
+		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+	case (WocOp): {
+		if (!wocptr) ERROR();
+		void *dat0 = 0; int typ1 = identType("Int");
+		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
+		wocptr(*datxIntz(0,dat0),exp->cgs);
+		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -657,10 +671,12 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxFnptr(retfp ret, setfp set, getfp get, putfp put, fldfp fld, extfp ext, immfp imm)
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, getfp get, putfp put, fldfp fld, extfp ext, immfp imm)
 {
 	retptr = ret;
 	setptr = set;
+	wosptr = wos;
+	wocptr = woc;
 	getptr = get;
 	putptr = put;
 	fldptr = fld;
