@@ -793,20 +793,12 @@ void planeTime(enum Thread tag, int idx)
 }
 void planeTest(enum Thread tag, int idx)
 {
-    int debug = 0; int count = 0; float time = 0.0; int tested = 0; int pull = 0; int inds = 12;
-    int giv[] = {/*
-    STagIns ImageRes idx/TrivDef/0,RuseQua.val/TrivDef/TexRet,
-    DerIns ChainRes req.idx/GiveDef/*/0,/*req.siz/GiveDef/*/inds/*,req.base/TrivDef/Micro,
-    DerIns DrawRes req.idx/BackDef/2,req.siz/BackDef/3,req.base/BackDef/4,
-    IDeeIns PipeRes ins.idx/BackDef/4,
-    DerIns ChainRes req.idx/BackDef/2,req.siz/BackDef/3,req.base/BackDef/4,
-    IDeeIns PipeRes ins.idx/BackDef/4
-    */};
-    int hiv[] = {/*
-    DerIns DrawRes req.idx/GiveDef*/0,/*req.siz/GiveDef*/inds/*,req.base/Micro,
-    IDeeIns PipeRes ins.idx/BackDef/2
-    */};
-    while (centerCheck(0)) {
+    switch (idx) {default: ERROR();
+    break; case (0): {
+    int debug = 0; int count = 0; float time = 0.0; int tested = 0; int pull = 0;
+    int giv[] = {0,12}; // idx,siz
+    int hiv[] = {0,12};
+    while (timeSafe(wakeSem[TestThd],0.0) >= 0) {
     int save = pull+Memorys; struct Center *mat = centerPull(save); if (!mat) {callWait(); continue;}
     freeCenter(mat); pull = (pull+1)%4;
     mat->mem = Matrixz; mat->idx = 3; mat->siz = 1; allocMatrix(&mat->mat,mat->siz);
@@ -843,7 +835,7 @@ void planeTest(enum Thread tag, int idx)
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].val = 1.0;
     callCopy(eek,save,RetRsp,0,(debug?"peek":0));}
-    tested = count;}
+    tested = count;}}}
 }
 
 // phase callbacks
@@ -904,7 +896,6 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         if ((wakeSem[TestThd] = allocSafe(0)) < 0) ERROR();
         callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
-        centerPlace(0,0); // TODO read from tstwake instead of centerCheck
         doneSafe(wakeSem[TestThd]);}
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
