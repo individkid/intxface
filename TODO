@@ -1,9 +1,15 @@
 
-Bringup: Combine ImageState RelateState, using Quality tags. Combine ImageRes RelateRes PierceRes DebugRes, using Quality tags instead. Add option for indexed buffers instead of fetched buffers. Change to depth color. Get pierce point and transformation to work. Add coincidence color. Demonstrate depth and coincidence color with irregular triangles.
+Bringup: Fix Instr test. Add option for indexed buffers instead of fetched buffers. Add option for coincidence color. Move display of Peekz value to Bringup Machinez. Split test into several threads.
+
+Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
+
+Regress: Test spoofed user actions and file changes with Machinez loaded through pipe.
+
+Release: Use actual user actions to interact with actual file.
 
 Build: Fix conditional generate in show.lua, and integrate with depend.lua.
 
-Demo: Test each Transfer from planer.lua. Test modes with writes to Configure.
+Actions:
 Mouse transformations include
  — (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
  — (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,

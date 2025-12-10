@@ -8,11 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/select.h>
 #include <string.h>
-#include <math.h>
-#include <sys/time.h>
-#include <errno.h>
 
 struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
@@ -515,8 +511,6 @@ void machineSelf(int sig, int *arg)
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
-    if (dst->slf != kernel->count) {kernel->count = 0; ERROR();}
-    else kernel->count--;
     // TODO move portion of sent to global -- G = GM; S = M'S
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);

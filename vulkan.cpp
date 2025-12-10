@@ -7,14 +7,9 @@
 #include <fstream>
 #include <algorithm>
 #include <cstring>
-#include <cstdlib>
-#include <cstdint>
-#include <limits>
-#include <stdio.h>
 #include <execinfo.h>
 #include <signal.h>
 extern "C" {
-#include "proto.h"
 #include "face.h"
 #include "type.h"
 #include "plane.h"
