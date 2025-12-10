@@ -1096,7 +1096,7 @@ struct CopyState {
         return src(typ)->compare(bnd->chk(typ)->onl,onl);
     }
     static int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
-        log << "get:" << str << ":" << idx << '\n';
+        log << "get:" << str << ":" << idx << ":" << arg[idx] << '\n';
         if (idx >= siz) {std::cerr << "not enough int arguments " << idx << ">=" << siz << std::endl; EXIT}
         int tmp = idx; idx += 1;
         return arg[tmp];
@@ -1471,6 +1471,7 @@ struct CopyState {
         // arg/siz only means profer only
         // val/sze only means packed force
         // neither means default only
+        log << "siz:" << siz << " sze:" << sze << '\n';
         if ((arg == 0) != (siz == 0)) EXIT
         if ((val == 0) != (sze == 0)) EXIT
         int tot = 0; int lim = size(typ,ary);
@@ -1498,7 +1499,8 @@ struct CopyState {
             if (sze) {for (int j = 0; j < tot; j++)
             if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
             // siz no sze means all arg would be negative, and arg treated as proferred val
-            else if (idx >= 0 && idx < tot) vlu[i] = arg[idx];}
+            else if (idx >= 0 && idx < tot) {vlu[i] = arg[idx];
+            log << "give:" << idx << " vlu[" << i << "]:" << vlu[i] << '\n';}}
         // force from given
         if (sze) for (int i = 0; i < tot; i++) {
             // siz and sze means force index is from arg

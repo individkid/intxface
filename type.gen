@@ -644,7 +644,7 @@ MicroIns = {
 	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
 	web = {\"PierceRes\",\"PierceRes\",\"PierceRes\"}\
-	def = {\"Defaults\",\"TrivDef\",\
+	def = {\"TrivDef\",\"TrivDef\",\
 	\"GiveDef\",\"GiveDef\",\"TrivDef\",\
 	\"BackDef\",\"BackDef\",\"BackDef\",\
 	\"BackDef\",\
@@ -656,6 +656,10 @@ MicroIns = {
 	\"4\",\
 	\"2\",\"3\",\"4\",\
 	\"4\"}\
+	deg = {\"GiveDef\",\"GiveDef\",\"TrivDef\",\
+	\"BackDef\"}\
+	dw0 = {\"0\",\"1\"}\
+	dw1 = {\"2\"}\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
@@ -686,7 +690,9 @@ MicroIns = {
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 7+#dee)","Instr","IDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 7+#dee)","Resrc","PipeRes"},
 	{"Micro","%(return gnc(mic,def))","Int","%(return hnc(def,0))","Default","%(return fnc(def))"},
-	{"Micro","%(return fnc(mic))","Int","0","Int","0"},
+	{"Micro","%(return gnc(mic,dv0))","Int","%(return hnc(dv0,0))","Int","%(return fnc(dv0))"},
+	{"Micro","%(return fnc(mic))","Int","4","Int","%(return fnc(mic))"},
+	{"Micro","%(return gnc(mic,dv1))","Int","%(return hnc(dv1,5))","Int","%(return fnc(dv1))"},
 	{"Micro","%(return fnc(mib))","Int","0","Instr","QDerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},
@@ -697,6 +703,10 @@ MicroIns = {
 		{"Micro","%(return gnc(mib,deb))","Int","%(return hnc(deb,2))","Resrc","%(return fnc(deb))"},
 	{"Micro","%(return fnc(mib))","Int","%(return 2+#deb)","Instr","IDeeIns"},
 		{"Micro","%(return fnc(mib))","Int","%(return 2+#deb)","Resrc","PipeRes"},
+	{"Micro","%(return gnc(mib,deg))","Int","%(return hnc(deg,0))","Default","%(return fnc(deg))"},
+	{"Micro","%(return gnc(mib,dw0))","Int","%(return hnc(dw0,0))","Int","%(return fnc(dw0))"},
+	{"Micro","%(return fnc(mib))","Int","2","Int","%(return fnc(mib))"},
+	{"Micro","%(return gnc(mib,dw1))","Int","%(return hnc(dw1,3))","Int","%(return fnc(dw1))"},
 }
 MicroAlt = {
 	{"Micro","MicroTest","Int","0","Instr","QDerIns"},

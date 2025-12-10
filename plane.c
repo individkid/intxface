@@ -793,31 +793,19 @@ void planeTime(enum Thread tag, int idx)
 }
 void planeTest(enum Thread tag, int idx)
 {
-    int debug = 0;
-    int count = 0; float time = 0.0; int tested = 0; int pull = 0;
-    int inds = 12;
-    int arg[] = {0,1, 2,3,4, 5,6,7, 8, 9,10,11, 12};
-    int val[] = {
-    /*STagIns ImageRes*//*idx*/0,/*RuseQua.val*/TexRet,
-    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroTest,
-    /*DerIns ChainRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroTest,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroTest};
+    int debug = 0; int count = 0; float time = 0.0; int tested = 0; int pull = 0; int inds = 12;
     int giv[] = {/*
     STagIns ImageRes idx/TrivDef/0,RuseQua.val/TrivDef/TexRet,
     DerIns ChainRes req.idx/GiveDef/*/0,/*req.siz/GiveDef/*/inds/*,req.base/TrivDef/Micro,
     DerIns DrawRes req.idx/BackDef/2,req.siz/BackDef/3,req.base/BackDef/4,
     IDeeIns PipeRes ins.idx/BackDef/4,
     DerIns ChainRes req.idx/BackDef/2,req.siz/BackDef/3,req.base/BackDef/4,
-    IDeeIns PipeRes ins.idx/BackDef/4,    
+    IDeeIns PipeRes ins.idx/BackDef/4
     */};
-    if (sizeof(arg) != sizeof(val)) ERROR();
-    int brg[] = {0,1,2, 3};
-    int bal[] = {
-    /*DerIns DrawRes*//*req.idx*/0,/*req.siz*/inds,/*req.base*/MicroDebug,
-    /*IDeeIns PipeRes*//*ins.idx*/MicroDebug};
-    if (sizeof(brg) != sizeof(bal)) ERROR();
+    int hiv[] = {/*
+    DerIns DrawRes req.idx/GiveDef*/0,/*req.siz/GiveDef*/inds/*,req.base/Micro,
+    IDeeIns PipeRes ins.idx/BackDef/2
+    */};
     while (centerCheck(0)) {
     int save = pull+Memorys; struct Center *mat = centerPull(save); if (!mat) {callWait(); continue;}
     freeCenter(mat); pull = (pull+1)%4;
@@ -833,12 +821,9 @@ void planeTest(enum Thread tag, int idx)
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroTest;
-    drw->drw[0].siz = /*sizeof(giv)/sizeof(int); //*/ sizeof(arg)/sizeof(int);
-    drw->drw[0].sze = /*0; //*/ sizeof(val)/sizeof(int);
+    drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    /*drw->drw[0].val = 0; //*/ allocInt(&drw->drw[0].val,drw->drw[0].sze);
-    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = /*giv[i]; //*/ arg[i];
-    /*//*/ for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = val[i];
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
     callCopy(drw,save,RetRsp,0,(debug?"test":0));}
     else if (count%8 == 1 || count%8 == 5) { // TODO move to separate thread
     int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
@@ -846,12 +831,9 @@ void planeTest(enum Thread tag, int idx)
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroDebug;
-    drw->drw[0].siz = sizeof(brg)/sizeof(int);
-    drw->drw[0].sze = sizeof(bal)/sizeof(int);
+    drw->drw[0].siz = sizeof(hiv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    allocInt(&drw->drw[0].val,drw->drw[0].sze);
-    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = brg[i];
-    for (int i = 0; i < drw->drw[0].sze; i++) drw->drw[0].val[i] = bal[i];
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
     callCopy(drw,save,RetRsp,0,(debug?"debug":0));}
     else if (count%8 == 2 || count%8 == 6) { // TODO move to separate thread
     int width = callInfo(WindowWidth,0,planeRcfg);
