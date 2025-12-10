@@ -854,20 +854,17 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): closeIdent(external); freeSafe(wakeSem[PipeThd]);
-    break; case (StdioThd): closeIdent(console); freeSafe(wakeSem[StdioThd]);
-    break; case (CopyThd): freeSafe(wakeSem[CopyThd]);
-    break; case (TimeThd): freeSafe(wakeSem[TimeThd]);
-    break; case (TestThd): freeSafe(wakeSem[TestThd]);}
+    break; case (PipeThd): closeIdent(external);
+    break; case (StdioThd): closeIdent(console);
+    break; case (CopyThd): case (TimeThd): case (TestThd):}
+    if (iKeepSafe(wakeSem[tag],idx)) ERROR();
+    if (!keepSafe(wakeSem[tag])) {freeSafe(wakeSem[tag]); wakeSem[tag] = 0;}
 }
 void planeWake(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): postSafe(wakeSem[PipeThd]);
-    break; case (StdioThd): postSafe(wakeSem[StdioThd]);
-    break; case (CopyThd): postSafe(wakeSem[CopyThd]);
-    break; case (TimeThd): postSafe(wakeSem[TimeThd]);
-    break; case (TestThd): postSafe(wakeSem[TestThd]);}
+    break; case (PipeThd): case (StdioThd): case (CopyThd): case (TimeThd): case (TestThd):}
+    iPostSafe(wakeSem[tag],idx);
 }
 
 // register callbacks
@@ -881,7 +878,8 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         callFork(PipeThd,0,planeExternal,planeClose,planeJoin,planeWake);
         callFork(PipeThd,1,planeCenter,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-        doneSafe(wakeSem[PipeThd]);}
+        iDoneSafe(wakeSem[PipeThd],0);
+        iDoneSafe(wakeSem[PipeThd],1);}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         noticeInit(console,&connote);
@@ -889,7 +887,8 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         callFork(StdioThd,0,planeConsole,planeClose,planeJoin,planeWake);
         callFork(StdioThd,1,planeString,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-        doneSafe(wakeSem[StdioThd]);}
+        iDoneSafe(wakeSem[StdioThd],0);
+        iDoneSafe(wakeSem[StdioThd],1);}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         if ((wakeSem[CopyThd] = allocSafe(0)) < 0) ERROR();
         callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeWake);}
@@ -1143,13 +1142,7 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): {
-    struct Center *ptr = centerPull(Instrz); freeCenter(ptr);
-    ptr->mem = Instrz; ptr->siz = 0;
-    // TODO issue *TstIns
-    allocInst(&ptr->ins,ptr->siz);
-    int idx = 0;
-    if (idx != ptr->siz) ERROR();
-    callCopy(ptr,Instrz,MltRsp,0,(debug?"instr":0));
+    struct Center *ptr = 0;
     int frames = callInfo(ConstantFrames,0,planeRcfg);
     ptr = centerPull(Drawz); freeCenter(ptr);
     ptr->mem = Drawz; ptr->siz = 1;
