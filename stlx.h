@@ -15,31 +15,33 @@
 
 struct SafeState {
     pthread_mutex_t mutex;
-    std::vector<pthread_cond_t> condit;
-    std::vector<int> count;
-    int value, valids;
-    SafeState(int val) {
-        value = val; valids = 0;
+    pthread_cond_t *condit;
+    int *count;
+    int value, valids, size;
+    void init(int siz, int val) {
+        value = val; valids = 0; size = siz;
         if (pthread_mutex_init(&mutex, 0) != 0) {std::cerr << "failed to create mutex!" << std::endl; exit(-1);}
+        condit = (pthread_cond_t*)malloc(sizeof(pthread_cond_t)*siz);
+        count = (int*)malloc(sizeof(int)*siz);
+        for (int i = 0; i < size; i++)
+        if (pthread_cond_init(&condit[i], 0) != 0) {std::cerr << "failed to create cond!" << std::endl; exit(-1);}
+        for (int i = 0; i < size; i++) {count[i] = val; if (count[i] >= 0) valids += 1;}
+    }
+    SafeState(int siz, int val) {
+        init(siz,val);
+    }
+    SafeState(int val) {
+        init(1,val);
     }
     ~SafeState() {
-        for (int i = 0; i < condit.size(); i++)
+        for (int i = 0; i < size; i++)
         if (pthread_cond_destroy(&condit[i]) != 0) {std::cerr << "cannot destroy cond!" << std::endl; exit(-1);}
+        free(condit); free(count);
         if (pthread_mutex_destroy(&mutex) != 0) {std::cerr << "cannot destroy mutex!" << std::endl; exit(-1);}
-    }
-    void check(int idx, int val) {
-        while (condit.size() <= idx) {
-        int i = condit.size();
-        int siz = i+1;
-        condit.resize(siz);
-        if (pthread_cond_init(&condit[i], 0) != 0) {std::cerr << "failed to create cond!" << std::endl; exit(-1);}
-        count.resize(siz);
-        count[i] = val;
-        if (val >= 0) valids += 1;}
     }
     int wait(int idx) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        check(idx,value);
+        if (idx < 0 || idx >= size) {std::cerr << "invalid safe index!" << std::endl; exit(-1);}
         while (count[idx] == 0) if (pthread_cond_wait(&condit[idx],&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
         if (count[idx] > 0) count[idx] -= 1;
         int ret = count[idx];
@@ -51,7 +53,7 @@ struct SafeState {
     }
     int wait(double dif, int idx) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        check(idx,value);
+        if (idx < 0 || idx >= size) {std::cerr << "invalid safe index!" << std::endl; exit(-1);}
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {std::cerr << "cannot get time!" << std::endl; exit(-1);}
         dif += ts.tv_sec + ts.tv_nsec/NANOSECONDS;
@@ -67,7 +69,7 @@ struct SafeState {
     }
     int post(int idx) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        check(idx,value);
+        if (idx < 0 || idx >= size) {std::cerr << "invalid safe index!" << std::endl; exit(-1);}
         if (count[idx] >= 0) count[idx] += 1;
         int ret = count[idx];
         if (pthread_cond_broadcast(&condit[idx]) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
@@ -79,7 +81,7 @@ struct SafeState {
     }
     void done(int idx) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        check(idx,value);
+        if (idx < 0 || idx >= size) {std::cerr << "invalid safe index!" << std::endl; exit(-1);}
         count[idx] = -1; valids -= 1;
         if (pthread_cond_broadcast(&condit[idx]) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
@@ -617,6 +619,7 @@ int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
 
+void *adsizSafe(int siz, int val);
 void *allocSafe(int val);
 int waitSafe(void *ptr);
 int iWaitSafe(void *ptr, int idx);

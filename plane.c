@@ -795,46 +795,53 @@ void planeTest(enum Thread tag, int idx)
 {
     switch (idx) {default: ERROR();
     break; case (0): {
-    int debug = 0; int count = 0; float time = 0.0; int tested = 0; int pull = 0;
+    int debug = 0; int count = 0; float time = 0.0; int tested = 0;
     int giv[] = {0,12}; // idx,siz
-    int hiv[] = {0,12};
-    while (timeSafe(wakeSem[TestThd],0.0) >= 0) {
-    int save = pull+Memorys; struct Center *mat = centerPull(save); if (!mat) {callWait(); continue;}
-    freeCenter(mat); pull = (pull+1)%4;
+    while (iTimeSafe(wakeSem[TestThd],0.0,0) >= 0) {
+    struct Center *mat = centerPull(Memorys+0); if (!mat) {callWait(); continue;}
+    freeCenter(mat);
     mat->mem = Matrixz; mat->idx = 3; mat->siz = 1; allocMatrix(&mat->mat,mat->siz);
     float dbg[16]; planeDebug(dbg);
     memcpy(&mat->mat[0],dbg,sizeof(struct Matrix));
-    callCopy(mat,save,RptRsp,0,(debug?"matrix":0));
+    callCopy(mat,Memorys+0,RptRsp,0,(debug?"matrix":0));
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {
-    int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
-    freeCenter(drw); pull = (pull+1)%4;
+    struct Center *drw = centerPull(Memorys+1); if (!drw) {callWait(); continue;}
+    freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroTest;
     drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
-    callCopy(drw,save,RetRsp,0,(debug?"test":0));}
-    else if (count%8 == 1 || count%8 == 5) { // TODO move to separate thread
-    int save = pull+Memorys; struct Center *drw = centerPull(save); if (!drw) {callWait(); continue;}
-    freeCenter(drw); pull = (pull+1)%4;
+    callCopy(drw,Memorys+1,RetRsp,0,(debug?"test":0));}
+    tested = count;}}
+    break; case (1): {
+    int debug = 0; int count = 0; float time = 0.0; int tested = 0;
+    int hiv[] = {0,12}; // idx,siz
+    while (iTimeSafe(wakeSem[TestThd],0.0,1) >= 0) {
+    if (time == 0.0) time = processTime();
+    if (processTime()-time > 0.1) {time = processTime(); count += 1;}
+    if (count == tested) {}
+    else if (count%8 == 1 || count%8 == 5) {
+    struct Center *drw = centerPull(Memorys+2); if (!drw) {callWait(); continue;}
+    freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroDebug;
     drw->drw[0].siz = sizeof(hiv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
-    callCopy(drw,save,RetRsp,0,(debug?"debug":0));}
-    else if (count%8 == 2 || count%8 == 6) { // TODO move to separate thread
+    callCopy(drw,Memorys+2,RetRsp,0,(debug?"debug":0));}
+    else if (count%8 == 2 || count%8 == 6) {
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
-    int save = pull+Memorys; struct Center *eek = centerPull(save); if (!eek) {callWait(); continue;}
-    freeCenter(eek); pull = (pull+1)%4;
+    struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
+    freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
     eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].val = 1.0;
-    callCopy(eek,save,RetRsp,0,(debug?"peek":0));}
+    callCopy(eek,Memorys+3,RetRsp,0,(debug?"peek":0));}
     tested = count;}}}
 }
 
@@ -849,8 +856,8 @@ void planeJoin(enum Thread tag, int idx)
     break; case (PipeThd): closeIdent(external);
     break; case (StdioThd): closeIdent(console);
     break; case (CopyThd): case (TimeThd): case (TestThd):}
-    if (iKeepSafe(wakeSem[tag],idx)) ERROR();
-    if (!keepSafe(wakeSem[tag])) {freeSafe(wakeSem[tag]); wakeSem[tag] = 0;}
+    if (wakeSem[tag] && iKeepSafe(wakeSem[tag],idx)) ERROR();
+    if (wakeSem[tag] && !keepSafe(wakeSem[tag])) {freeSafe(wakeSem[tag]); wakeSem[tag] = 0;}
 }
 void planeWake(enum Thread tag, int idx)
 {
@@ -893,10 +900,12 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         doneSafe(wakeSem[TimeThd]);}
     if ((act & (1<<TestThd)) && !(sav & (1<<TestThd))) {
-        if ((wakeSem[TestThd] = allocSafe(0)) < 0) ERROR();
-        callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);}
+        if ((wakeSem[TestThd] = adsizSafe(2,0)) < 0) ERROR();
+        callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);
+        callFork(TestThd,1,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
-        doneSafe(wakeSem[TestThd]);}
+        iDoneSafe(wakeSem[TestThd],0);
+	iDoneSafe(wakeSem[TestThd],1);}
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {

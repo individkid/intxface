@@ -92,6 +92,10 @@ void freeDeque(void *ptr)
     delete que;
 }
 
+void *adsizSafe(int siz, int val)
+{
+    return new SafeState(siz,val);
+}
 void *allocSafe(int val)
 {
     return new SafeState(val);
