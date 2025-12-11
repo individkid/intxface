@@ -120,7 +120,7 @@ void *safeSafe(enum Thread thd, int idx)
 void safeJoin(enum Thread thd, int idx)
 {
     void *ptr = safeSafe(thd,idx);
-    if (!keepSafe(ptr)) {freeSafe(ptr); wakeSem[thd][idx] = 0; keepSem[thd] -= 1;}
+    freeSafe(ptr); wakeSem[thd][idx] = 0; keepSem[thd] -= 1;
     if (keepSem[thd] == 0) {sizeSem[thd] = 0; free(wakeSem[thd]); wakeSem[thd] = 0;}
 }
 
@@ -741,7 +741,7 @@ void planeMachine(enum Thread tag, int idx)
 void planeCenter(enum Thread tag, int idx)
 {
     while (1) {
-    if (waitSafe(safeSafe(PipeThd,0)) < 0) break;
+    if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Center *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -751,11 +751,12 @@ void planeExternal(enum Thread tag, int idx)
 {
     while (1) {
     int sub = waitRead(0.0,(1<<external));
-    if (sub == external && !noticeCalled(external)) break;
-    else if (sub == external) {
+    if (sub == external) {
     struct Center *center = 0;
     allocCenter(&center,1);
     readCenter(center,external);
+    if (noticeCalled(external)) {
+    freeCenter(center); allocCenter(&center,0); break;}
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -765,7 +766,7 @@ void planeExternal(enum Thread tag, int idx)
 void planeString(enum Thread tag, int idx)
 {
     while (1) {
-    if (waitSafe(safeSafe(StdioThd,0)) < 0) break;
+    if (waitSafe(safeSafe(StdioThd,idx)) < 0) break;
     if (waitSafe(stdioSem) != 0) ERROR();
     char *str = maybeStrq(0,strout);
     if (postSafe(stdioSem) != 1) ERROR();
@@ -775,9 +776,9 @@ void planeConsole(enum Thread tag, int idx)
 {
     while (1) {
     int sub = waitRead(0.0,(1<<console));
-    if (sub == console && !noticeCalled(console)) break;
-    else if (sub == console) {
+    if (sub == console) {
     char chr = readChr(console);
+    if (noticeCalled(console)) break;
     pushChrq(chr,chrq);
     if (chr == '\n') {char *str = malloc(sizeChrq(chrq)+1); char *ptr = str;
     while (sizeChrq(chrq)) {*(ptr++) = frontChrq(chrq); popChrq(chrq);} *(ptr++) = 0;
@@ -875,10 +876,9 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): closeIdent(external);
-    break; case (StdioThd): closeIdent(console);
-    break; case (CopyThd): case (TimeThd): case (TestThd):}
-    safeJoin(tag,idx);
+    break; case (PipeThd): if (idx) closeIdent(external); else safeJoin(tag,idx);
+    break; case (StdioThd): if (idx) closeIdent(console); else safeJoin(tag,idx);
+    break; case (CopyThd): case (TimeThd): case (TestThd): safeJoin(tag,idx);}
 }
 void planeWake(enum Thread tag, int idx)
 {
@@ -894,21 +894,21 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
         noticeInit(external,&selnote);
-        safeInit(PipeThd,2,0);
-        callFork(PipeThd,0,planeExternal,planeClose,planeJoin,planeWake);
-        callFork(PipeThd,1,planeCenter,planeClose,planeJoin,planeWake);}
+        safeInit(PipeThd,1,0);
+        callFork(PipeThd,0,planeCenter,planeClose,planeJoin,planeWake);
+        callFork(PipeThd,1,planeExternal,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         doneSafe(safeSafe(PipeThd,0));
-        doneSafe(safeSafe(PipeThd,1));}
+        doneIdent(external);}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         noticeInit(console,&connote);
-        safeInit(StdioThd,2,0);
-        callFork(StdioThd,0,planeConsole,planeClose,planeJoin,planeWake);
-        callFork(StdioThd,1,planeString,planeClose,planeJoin,planeWake);}
+        safeInit(StdioThd,1,0);
+        callFork(StdioThd,0,planeString,planeClose,planeJoin,planeWake);
+        callFork(StdioThd,1,planeConsole,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         doneSafe(safeSafe(StdioThd,0));
-        doneSafe(safeSafe(StdioThd,1));}
+        doneIdent(console);}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
         safeInit(CopyThd,1,0);
         callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeWake);}

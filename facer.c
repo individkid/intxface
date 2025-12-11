@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-int errcheck = 0;
+int errcheck = -1;
 int exccheck = 0;
 void errfunc(const char *str, int num, int arg)
 {
@@ -99,5 +99,8 @@ int main(int argc, char **argv)
 	int fifo = readInt(ok);
 	writeInt(456,again); flushBuf(again);
 	int atom = readInt(again);
-	return (fifo != 123 || atom != 456 || errcheck!=handle || exccheck != size) ? -1 : 0;
+	if (fifo != 123 || atom != 456 || errcheck!=handle ||
+	exccheck != size+1/*+1 for notice on partial read that caused exception*/) {
+	printf("mismatch %d %d %d %d %d %d\n",fifo,atom,errcheck,handle,exccheck,size); return -1;}
+	return 0;
 }

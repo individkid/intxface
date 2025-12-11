@@ -12,6 +12,7 @@ typedef void (*hitype)(long long val);
 typedef void (*hjtype)(float val);
 typedef void (*hhtype)(double val);
 void termFunc(fgtype fnc);
+void doneIdent(int idx);
 void closeIdent(int idx);
 void moveIdent(int idx0, int idx1);
 int findIdent(const char *str);

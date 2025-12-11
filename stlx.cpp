@@ -92,10 +92,6 @@ void freeDeque(void *ptr)
     delete que;
 }
 
-void *adsizSafe(int siz, int val)
-{
-    return new SafeState(siz,val);
-}
 void *allocSafe(int val)
 {
     return new SafeState(val);
@@ -105,30 +101,15 @@ int waitSafe(void *ptr)
     auto saf = (SafeState*)ptr;
     return saf->wait();
 }
-int iWaitSafe(void *ptr, int idx)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->wait(idx);
-}
 int postSafe(void *ptr)
 {
     auto saf = (SafeState*)ptr;
     return saf->post();
 }
-int iPostSafe(void *ptr, int idx)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->post(idx);
-}
 void doneSafe(void *ptr)
 {
     auto saf = (SafeState*)ptr;
     saf->done();
-}
-void iDoneSafe(void *ptr, int idx)
-{
-    auto saf = (SafeState*)ptr;
-    saf->done(idx);
 }
 void freeSafe(void *ptr)
 {
@@ -139,31 +120,6 @@ int timeSafe(void *ptr, double dif)
 {
     auto saf = (SafeState*)ptr;
     return saf->wait(dif);
-}
-int iTimeSafe(void *ptr, double dif, int idx)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->wait(dif,idx);
-}
-int keepSafe(void *ptr)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->keep();
-}
-int iKeepSafe(void *ptr, int idx)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->keep(idx);
-}
-int iPeekSafe(void *ptr, int idx)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->peek(idx);
-}
-int peekSafe(void *ptr)
-{
-    auto saf = (SafeState*)ptr;
-    return saf->peek();
 }
 
 float processTime()
