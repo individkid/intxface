@@ -1001,6 +1001,15 @@ int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
+void planeTypstr(void **dat, int typ)
+{
+    char *str = 0;
+    if (waitSafe(dataSem) != 0) ERROR();
+    assignDat(dat0,*dat);
+    showType(&str, typ, idx0);
+    datxStr(dat,str);
+    if (postSafe(dataSem) != 1) ERROR();
+}
 int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
 {
     if (stp == identType("Center")) {
@@ -1058,7 +1067,7 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
-    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeGetstr,planePutstr,planeField,planeExtract,planeImmed);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeGetstr,planePutstr,planeTypstr,planeField,planeExtract,planeImmed);
     start = processTime();
 }
 void initBoot()

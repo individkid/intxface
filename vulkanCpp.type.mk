@@ -1,1 +1,1 @@
- allocIrrex identType showResrc
+ allocIrrex identType showResrc showType

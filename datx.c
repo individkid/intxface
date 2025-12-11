@@ -16,6 +16,7 @@ setfp wosptr = 0;
 setfp wocptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
+typfp typptr = 0;
 fldfp fldptr = 0;
 extfp extptr = 0;
 immfp immptr = 0;
@@ -635,7 +636,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (PutOp): {
 		if (!putptr) ERROR();
 		int typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-		if (typ0 != identType("Str")) ERROR();
+		if (typ0 != identType("Str")) {
+		if (!typptr) ERROR();
+		typptr(dat,typ0);}
 		putptr(datxChrz(0,dat));} break;
 	case (FldOp): {
 		if (!fldptr) ERROR();
@@ -671,7 +674,7 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, getfp get, putfp put, fldfp fld, extfp ext, immfp imm)
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm)
 {
 	retptr = ret;
 	setptr = set;
@@ -679,6 +682,7 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, getfp get, putfp put,
 	wocptr = woc;
 	getptr = get;
 	putptr = put;
+	typptr = typ;
 	fldptr = fld;
 	extptr = ext;
 	immptr = imm;
