@@ -194,7 +194,6 @@ struct StackState {
     static const int resrcs = 2; // resource classification greediness
     static const int handls = 4; // maximum number of classifications
     virtual void qualify(int hdl, Quality key, int val) = 0;
-    virtual void test(Instr ins, int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
     virtual BaseState *newbuf(int hdl, Quality key, int val) = 0;
     virtual BaseState *oldbuf(int hdl, Quality key, int val) = 0;
@@ -705,11 +704,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     ArrayState() : safe(1), idx(0) {
     }
-    void test(Instr ins, int hdl, Quality key, int val) override {
-        safe.wait();
-        // TODO test current tags
-        safe.post();
-    }
     void qualify(int hdl, Quality key, int val) override { // set current tags
         safe.wait(); tag.qualify(hdl,key,val); safe.post();
     }
@@ -1167,9 +1161,6 @@ struct CopyState {
             break; case (STagIns): {
             log << "STagIns res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
             src(ins[i].res)->qualify(ins[i].idx,ins[i].key,ins[i].val);}
-            break; case (ITstIns): case (OTstIns): case (GTstIns): case (NTstIns): {
-            log << "TstInst res:" << ins[i].res << " ins:" << ins[i].ins << " val:" << ins[i].val << '\n';
-            src(ins[i].res)->test(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);}
             break; case(QDerIns): case(TDerIns): case(PDerIns): case(SDerIns):
             case(ODerIns): case(RDerIns): case(IDerIns):
             case(WDeeIns): case(TDeeIns): case(RDeeIns): case(SDeeIns): case(IDeeIns): {
@@ -1370,7 +1361,7 @@ struct CopyState {
         break; case(IDeeIns): {
         int pre = get(arg,siz,idx,log,"IDeeIns.idx");
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
-        break; case(STagIns): case(ITstIns): case(OTstIns): case(GTstIns): case(NTstIns): {
+        break; case(STagIns): {
         int pre = get(arg,siz,idx,log,"STagIns.idx");
         int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"STagIns.val"):0);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}}

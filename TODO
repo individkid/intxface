@@ -1,9 +1,9 @@
 
-Bringup: Fix Instr test. Add option for indexed buffers instead of fetched buffers. Add option for coincidence color. Move display of Peekz value to Bringup Machinez. Split test into several threads.
+Bringup: Move display of Peekz value to Bringup Machinez. Add option for indexed buffers instead of fetched buffers. Add option for coincidence color.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 
-Regress: Test spoofed user actions and file changes with Machinez loaded through pipe.
+Regress: Test spoofed user actions and file changes with Center loaded through pipe.
 
 Release: Use actual user actions to interact with actual file.
 

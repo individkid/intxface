@@ -177,10 +177,6 @@ Instr = {
 	"RIncIns", -- include instructions from Resrc
 	"EIncIns", -- include instructions from Memory
 	"IIncIns", -- include instructions from Micro
-	"ITstIns", -- int insert(int idx, int tag, int val);
-	"OTstIns", -- int oldbuf(int idx, int tag, int val);
-	"GTstIns", -- int getbuf(int idx, int tag, int val);
-	"NTstIns", -- int newbuf(int idx, int tag, int val);
 }
 Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
@@ -1007,12 +1003,12 @@ Requ = {
 Inst = {
 	{"ins","Instr",{},""},
 	{"req","Requ",{},{}}, -- only used by DerIns TODO change to pointer
-	{"res","Resrc",{},{}}, -- used by DerIns DeeIns IncIns TagIns TstIns
+	{"res","Resrc",{},{}}, -- used by DerIns DeeIns IncIns TagIns
 	{"mem","Memory",{},{}}, -- only used by IncIns
 	{"mic","Micro",{},{}}, -- only used by IncIns
-	{"idx","Int",{},{}}, -- used by DerIns DeeIns TagIns TstIns
-	{"key","Quality",{},{}}, -- used by DerIns DeeIns TagIns TstIns
-	{"val","Int",{},{}}, -- used by DerIns DeeIns TagIns TstIns
+	{"idx","Int",{},{}}, -- used by DerIns DeeIns TagIns
+	{"key","Quality",{},{}}, -- used by DerIns DeeIns TagIns
+	{"val","Int",{},{}}, -- used by DerIns DeeIns TagIns
 }
 Center = {
 	{"mem","Memory",{},""},
