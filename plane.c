@@ -27,7 +27,9 @@ void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
 void *wakeq = 0; // queue of wakeup threads
 void *timeSem = 0; // protect wakeup queues
-void *wakeSem[Threads];
+void **wakeSem[Threads];
+int keepSem[Threads];
+int sizeSem[Threads];
 void *noteSem = 0; // protect selnote
 struct Argument argument = {0}; // constant from commandline
 void *chrq = 0; // temporary queue to convert chars to str
@@ -100,6 +102,26 @@ int noticeCalled(int idx)
     int ret = *(int*)*userIdent(idx);
     if (postSafe(noteSem) != 0) ERROR();
     return ret;
+}
+void safeInit(enum Thread thd, int siz, int val)
+{
+    wakeSem[thd] = malloc(sizeof(void*)*siz);
+    for (int i = 0; i < siz; i++) wakeSem[thd][i] = allocSafe(val);
+    keepSem[thd] = siz;
+    sizeSem[thd] = siz;
+}
+void *safeSafe(enum Thread thd, int idx)
+{
+    if (thd < 0 || thd >= Threads) ERROR();
+    if (idx < 0 || idx >= sizeSem[thd]) ERROR();
+    if (wakeSem[thd] == 0 || wakeSem[thd][idx] == 0) ERROR();
+    return wakeSem[thd][idx];
+}
+void safeJoin(enum Thread thd, int idx)
+{
+    void *ptr = safeSafe(thd,idx);
+    if (!keepSafe(ptr)) {freeSafe(ptr); wakeSem[thd][idx] = 0; keepSem[thd] -= 1;}
+    if (keepSem[thd] == 0) {sizeSem[thd] = 0; free(wakeSem[thd]); wakeSem[thd] = 0;}
 }
 
 // cursor decoration
@@ -714,12 +736,12 @@ void planeMachine(enum Thread tag, int idx)
     case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
     case (Nest): break;}}
     centerPlace(current,index);
-    if (waitSafe(wakeSem[CopyThd]) < 0) break;}
+    if (waitSafe(safeSafe(CopyThd,0)) < 0) break;}
 }
 void planeCenter(enum Thread tag, int idx)
 {
     while (1) {
-    if (waitSafe(wakeSem[PipeThd]) < 0) break;
+    if (waitSafe(safeSafe(PipeThd,0)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Center *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -743,7 +765,7 @@ void planeExternal(enum Thread tag, int idx)
 void planeString(enum Thread tag, int idx)
 {
     while (1) {
-    if (waitSafe(wakeSem[StdioThd]) < 0) break;
+    if (waitSafe(safeSafe(StdioThd,0)) < 0) break;
     if (waitSafe(stdioSem) != 0) ERROR();
     char *str = maybeStrq(0,strout);
     if (postSafe(stdioSem) != 1) ERROR();
@@ -786,7 +808,7 @@ void planeTime(enum Thread tag, int idx)
     if (init) delta = time-(float)processTime(); // how long to wait
     else delta = 0.0; // wait forever
     if (init && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
-    if (timeSafe(wakeSem[TimeThd],delta) < 0) break;
+    if (timeSafe(safeSafe(TimeThd,0),delta) < 0) break;
     if (init && (float)processTime() >= time) {init = 0;
     callJnfo(RegisterEval,wake,planeWcfg);
     callJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
@@ -797,7 +819,7 @@ void planeTest(enum Thread tag, int idx)
     break; case (0): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
     int giv[] = {0,12}; // idx,siz
-    while (iTimeSafe(wakeSem[TestThd],0.0,0) >= 0) {
+    while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     struct Center *mat = centerPull(Memorys+0); if (!mat) {callWait(); continue;}
     freeCenter(mat);
     mat->mem = Matrixz; mat->idx = 3; mat->siz = 1; allocMatrix(&mat->mat,mat->siz);
@@ -820,7 +842,7 @@ void planeTest(enum Thread tag, int idx)
     break; case (1): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
     int hiv[] = {0,12}; // idx,siz
-    while (iTimeSafe(wakeSem[TestThd],0.0,1) >= 0) {
+    while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {}
@@ -856,14 +878,13 @@ void planeJoin(enum Thread tag, int idx)
     break; case (PipeThd): closeIdent(external);
     break; case (StdioThd): closeIdent(console);
     break; case (CopyThd): case (TimeThd): case (TestThd):}
-    if (wakeSem[tag] && iKeepSafe(wakeSem[tag],idx)) ERROR();
-    if (wakeSem[tag] && !keepSafe(wakeSem[tag])) {freeSafe(wakeSem[tag]); wakeSem[tag] = 0;}
+    safeJoin(tag,idx);
 }
 void planeWake(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
     break; case (PipeThd): case (StdioThd): case (CopyThd): case (TimeThd): case (TestThd):}
-    iPostSafe(wakeSem[tag],idx);
+    postSafe(safeSafe(tag,idx));
 }
 
 // register callbacks
@@ -873,39 +894,39 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
         noticeInit(external,&selnote);
-        if ((wakeSem[PipeThd] = allocSafe(0)) < 0) ERROR();
+        safeInit(PipeThd,2,0);
         callFork(PipeThd,0,planeExternal,planeClose,planeJoin,planeWake);
         callFork(PipeThd,1,planeCenter,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-        iDoneSafe(wakeSem[PipeThd],0);
-        iDoneSafe(wakeSem[PipeThd],1);}
+        doneSafe(safeSafe(PipeThd,0));
+        doneSafe(safeSafe(PipeThd,1));}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         noticeInit(console,&connote);
-        if ((wakeSem[StdioThd] = allocSafe(0)) < 0) ERROR();
+        safeInit(StdioThd,2,0);
         callFork(StdioThd,0,planeConsole,planeClose,planeJoin,planeWake);
         callFork(StdioThd,1,planeString,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-        iDoneSafe(wakeSem[StdioThd],0);
-        iDoneSafe(wakeSem[StdioThd],1);}
+        doneSafe(safeSafe(StdioThd,0));
+        doneSafe(safeSafe(StdioThd,1));}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-        if ((wakeSem[CopyThd] = allocSafe(0)) < 0) ERROR();
+        safeInit(CopyThd,1,0);
         callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
-        doneSafe(wakeSem[CopyThd]);}
+        doneSafe(safeSafe(CopyThd,0));}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
-        if ((wakeSem[TimeThd] = allocSafe(0)) < 0) ERROR();
+        safeInit(TimeThd,1,0);
         callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
-        doneSafe(wakeSem[TimeThd]);}
+        doneSafe(safeSafe(TimeThd,0));}
     if ((act & (1<<TestThd)) && !(sav & (1<<TestThd))) {
-        if ((wakeSem[TestThd] = adsizSafe(2,0)) < 0) ERROR();
+        safeInit(TestThd,2,0);
         callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);
         callFork(TestThd,1,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
-        iDoneSafe(wakeSem[TestThd],0);
-	iDoneSafe(wakeSem[TestThd],1);}
+        doneSafe(safeSafe(TestThd,0));
+        doneSafe(safeSafe(TestThd,1));}
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
@@ -949,7 +970,7 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     pushTimeq(time,timeq);
     pushWakeq(wake,wakeq);}
     if (postSafe(timeSem) != 1) ERROR();
-    postSafe(wakeSem[TimeThd]);
+    postSafe(safeSafe(TimeThd,0));
 }
 void registerEval(enum Configure cfg, int sav, int val, int act)
 {
@@ -1008,6 +1029,7 @@ void planeTypstr(void **dat, int typ)
     assignDat(dat0,*dat);
     showType(&str, typ, idx0);
     datxStr(dat,str);
+    free(str);
     if (postSafe(dataSem) != 1) ERROR();
 }
 int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
