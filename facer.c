@@ -99,8 +99,7 @@ int main(int argc, char **argv)
 	int fifo = readInt(ok);
 	writeInt(456,again); flushBuf(again);
 	int atom = readInt(again);
-	if (fifo != 123 || atom != 456 || errcheck!=handle ||
-	exccheck != size+1/*+1 for notice on partial read that caused exception*/) {
+	if (fifo != 123 || atom != 456 || errcheck!=handle || exccheck != size) {
 	printf("mismatch %d %d %d %d %d %d\n",fifo,atom,errcheck,handle,exccheck,size); return -1;}
 	return 0;
 }

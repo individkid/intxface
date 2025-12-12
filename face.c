@@ -65,12 +65,6 @@ void termFunc(fgtype fnc)
 	termfn = fnc;
 	// >0 valid, 0 not enough, -1 too much, -2 invalid
 }
-void doneIdent(int idx)
-{
-	if (idx < 0 || idx >= lim) ERRFNC(idx);
-	if (fdt[idx] == Wait && inp[idx] != out[idx]) { // ok for single writer
-		close(out[idx]); out[idx] = -1;}
-}
 void closeIdent(int idx)
 {
 	if (idx < 0 || idx >= lim) ERRFNC(idx);
@@ -78,6 +72,12 @@ void closeIdent(int idx)
 		close(inp[idx]);
 		if (inp[idx] != out[idx]) close(out[idx]);
 		fdt[idx] = None;}
+	while (lim > 0 && fdt[lim-1] == None) lim--;
+}
+void freeIdent(int idx)
+{
+	if (idx < 0 || idx >= lim) ERRFNC(idx);
+	fdt[idx] = None;
 	while (lim > 0 && fdt[lim-1] == None) lim--;
 }
 void moveIdent(int idx0, int idx1)
@@ -719,7 +719,7 @@ void readDat(void **dat, int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < size) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val == 0)  NOTICE(idx);
+	if (val == 0) {/*TODO zero out dat*/ NOTICE(idx);}
 }
 void readEof(int idx)
 {
@@ -742,7 +742,7 @@ char readChr(int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(char)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val != sizeof(char)) {arg = 0; NOTICE(idx);}
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 int readInt(int idx)
@@ -755,7 +755,7 @@ int readInt(int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(int)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val != sizeof(int)) {arg = 0; NOTICE(idx);}
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 int32_t readInt32(int idx)
@@ -768,7 +768,7 @@ int32_t readInt32(int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(int32_t)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val != sizeof(int32_t)) {arg = 0; NOTICE(idx);}
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 double readNum(int idx)
@@ -781,7 +781,7 @@ double readNum(int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(double)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val != sizeof(double)) {arg = 0.0; NOTICE(idx);}
+	if (val == 0) {arg = 0.0; NOTICE(idx);}
 	return arg;
 }
 long long readNew(int idx)
@@ -795,7 +795,7 @@ long long readNew(int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(long long)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val != sizeof(long long)) {arg = 0; NOTICE(idx);}
+	if (val == 0) {arg = 0; NOTICE(idx);}
 	return arg;
 }
 float readOld(int idx)
@@ -810,7 +810,7 @@ float readOld(int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < (int)sizeof(float)) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val != sizeof(float)) {arg = 0.0; NOTICE(idx);}
+	if (val == 0) {arg = 0.0; NOTICE(idx);}
 	return arg;
 }
 int writeBuf(const void *arg, long long siz, int idx)
