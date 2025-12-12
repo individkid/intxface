@@ -23,6 +23,7 @@ int connote = 0; // done for planeConsole
 void *strin = 0; // queue of string
 void *strout = 0; // queue of string
 void *stdioSem = 0; // protect strin and strout
+void *maskq = 0; // map from event to thread mask
 void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
 void *wakeq = 0; // queue of wakeup threads
@@ -55,6 +56,7 @@ DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
 DECLARE_DEQUE(enum Thread, Wakeq)
 DECLARE_DEQUE(int, Ableq)
+DECLARE_DEQUE(int, Maskq)
 
 int planeWots(int *ref, int val)
 {
@@ -942,19 +944,24 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
 void registerAble(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterAble) ERROR();
-    int mask = val >> Threads; // mask of events
-    int wake = val & ((1<<Threads)-1); // mask of threads
+    int wake = val & 0xff; // thread to wake
+    int mask = val >> 8; // mask of events
+    while (sizeMaskq(maskq) <= wake) pushMaskq(0,maskq);
+    int even = *ptrMaskq(wake,maskq);
+    for (int i = ffs(even)-1; even; i = ffs(even&=~(1<<i))-1) {
+    while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
+    *ptrAbleq(i,ableq) &= ~(1<<wake);}
+    *ptrMaskq(wake,maskq) = mask;
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
     while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
-    // map event to set of threads to wake up
-    *ptrAbleq(i,ableq) = wake;}
+    *ptrAbleq(i,ableq) |= 1<<wake;}
 }
 void registerTime(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterTime) ERROR();
     int lwr = val & 0xff;
     int upr = val >> 8;
-    if (lwr >= Threads) lwr = Threads;
+    if (lwr < 0 || lwr >= Threads) ERROR();
     if (waitSafe(timeSem) != 0) ERROR();
     if (times[lwr] < start) times[lwr] = processTime();
     float time = times[lwr] + (float)upr/1000.0; times[lwr] = time;
@@ -1083,7 +1090,8 @@ void initSafe()
     sub1 = datxSub(); idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp); dat1 = datxDat(sub1);
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
-    timeq = allocTimeq(); wakeq = allocWakeq(); ableq = allocAbleq();
+    timeq = allocTimeq(); wakeq = allocWakeq();
+    ableq = allocAbleq(); maskq = allocMaskq();
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
     callBack(RegisterAble,registerAble);
@@ -1130,8 +1138,8 @@ void initPlan()
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(MachineIndex,Machinez,planeWcfg);
     callJnfo(RegisterExpr,Expressz,planeWcfg);
-    callJnfo(RegisterAble,(((1<<FnceMsk)<<Threads)|(1<<TestThd)),planeWcfg);
-    callJnfo(RegisterAble,(((1<<TimeMsk)<<Threads)|(1<<CopyThd)),planeWcfg);
+    callJnfo(RegisterAble,(((1<<FnceMsk)<<8)|TestThd),planeWcfg);
+    callJnfo(RegisterAble,(((1<<TimeMsk)<<8)|CopyThd),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
@@ -1311,7 +1319,8 @@ void planeDone()
     callBack(RegisterAble,0);
     callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
-    freeAbleq(ableq); freeWakeq(wakeq); freeTimeq(timeq);
+    freeMaskq(maskq); freeAbleq(ableq);
+    freeWakeq(wakeq); freeTimeq(timeq);
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();
