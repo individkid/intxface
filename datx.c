@@ -354,16 +354,8 @@ int datxBitwise(int lft, int rgt, enum Bitwise bit)
 	case (NandBit): return ~(lft&rgt);
 	case (NorBit): return ~(lft|rgt);
 	case (EquBit): return ~(lft^rgt);
-	case (ShiftBit): return (lft<<rgt);
-	case (PackBit): {
-	int idx = 0; int res = 0;
-	while (rgt) {
-	while (rgt && !(rgt&0x1)) {
-	lft >>= 1; rgt >>= 1;}
-	while (rgt && (rgt&0x1)) {
-	res |= ((lft&0x1)<<idx); idx += 1;
-	lft >>= 1; rgt >>= 1;}}
-	return res;}
+	case (LeftBit): return (lft<<rgt);
+	case (FfsBit): return (ffs(lft<<rgt)+rgt);
 	default: ERROR();}
 	return 0;
 }

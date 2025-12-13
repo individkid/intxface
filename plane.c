@@ -711,8 +711,8 @@ void planeMachine(enum Thread tag, int idx)
     for (int next = last+1; next != last; last = ++next) {
     if (next < 0 || next >= current->siz) ERROR();
     struct Machine *mptr = &current->mch[next];
-    {char *opr = 0; showMachine(mptr,&opr);
-    printf("%s\n",opr); free(opr);}
+    /*{char *opr = 0; showMachine(mptr,&opr);
+    printf("%s\n",opr); free(opr);}*/
     switch (mptr->xfr) {default: machineSwitch(mptr); break;
     case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
     case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
@@ -964,8 +964,8 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     int idx = callKnfo(RegisterExpr,0,planeRcfg);
     struct Center *ptr = centerPull(idx);
     if (ptr && ptr->mem == Expressz && val < ptr->siz) {
-    {char *exp = 0; showExpress(&ptr->exp[val],&exp);
-    printf("%s\n",exp); free(exp);}
+    /*{char *exp = 0; showExpress(&ptr->exp[val],&exp);
+    printf("%s\n",exp); free(exp);}*/
     if (waitSafe(evalSem) != 0) ERROR();
     jknfo = 1; // TODO when is this cleared
     if (postSafe(evalSem) != 1) ERROR();    
@@ -1075,7 +1075,9 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
-    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeGetstr,planePutstr,planeTypstr,planeField,planeExtract,planeImmed);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,
+    planeGetstr,planePutstr,planeTypstr,
+    planeField,planeExtract,planeImmed);
     start = processTime();
 }
 void initBoot()
@@ -1167,19 +1169,19 @@ void initTest()
     ptr->drw[0].con.res = SwapRes;
     callCopy(ptr,Drawz,RptRsp,0,(debug?"swap":0));
     while (!centerCheck(Drawz)) usleep(1000);
-    for (int i = 0; i < 3/*Micros*/; i++) {
     ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 1;
+    ptr->mem = Drawz; ptr->siz = 3/*Micros*/;
     allocDraw(&ptr->drw,ptr->siz);
-    ptr->drw[0].con.tag = ResrcCon;
-    ptr->drw[0].con.res = PipeRes;
+    for (int i = 0; i < 3/*Micros*/; i++) {
+    ptr->drw[i].con.tag = ResrcCon;
+    ptr->drw[i].con.res = PipeRes;
     int val[] = {/*IDerIns*/i,/*Micro*/i};
-    ptr->drw[0].sze = sizeof(val)/sizeof(int);
-    allocInt(&ptr->drw[0].val,ptr->drw[0].sze);
-    for (int j = 0; j < ptr->drw[0].sze; j++) {
-    ptr->drw[0].val[j] = val[j];}
+    ptr->drw[i].sze = sizeof(val)/sizeof(int);
+    allocInt(&ptr->drw[i].val,ptr->drw[i].sze);
+    for (int j = 0; j < ptr->drw[i].sze; j++) {
+    ptr->drw[i].val[j] = val[j];}}
     callCopy(ptr,Drawz,MptRsp,0,(debug?"pipe":0));
-    while (!centerCheck(Drawz)) usleep(1000);}
+    while (!centerCheck(Drawz)) usleep(1000);
     for (int i = 0; i < frames; i++) {
     ptr = centerPull(Drawz); freeCenter(ptr);
     ptr->mem = Drawz; ptr->siz = 1;
@@ -1237,10 +1239,8 @@ void initTest()
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
     callCopy(mat,Matrixz,RptRsp,1,(debug?"matrix":0));
     while (!centerCheck(Matrixz)) callWait();}
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);
-    } break; case (Builtin): {
-    } break; case (Regress): case (Release): {
-    }}
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
+    break; case (Builtin): case (Regress): case (Release): {}}
 }
 
 void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype wait)

@@ -1035,7 +1035,8 @@ struct ThreadState : public DoneState {
         if (push.base) {
         push.base->baseups(push.loc,push.log);}
         if (push.ptr) {
-        centerPlace(push.ptr,push.sub);}
+        centerPlace(push.ptr,push.sub);
+        change->wots((push.ptr->slf?RegisterFail:RegisterPass),1<<(push.sub<32?push.sub:31));}
         change->wots(RegisterWake,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }

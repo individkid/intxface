@@ -455,8 +455,8 @@ Bitwise = { -- little language bitwise
 	"NandBit",
 	"NorBit",
 	"EquBit",
-	"ShiftBit",
-	"PackBit",
+	"LeftBit",
+	"FfsBit",
 }
 Order = { -- ireg expression operators
 	"ChrOrd",
@@ -741,7 +741,7 @@ Bootstrap = {
 	-- wait for count nonzero, update matrix and decrement count, repeat from wait
 	{"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
 		-- continue timer and increment count
-		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShiftBitopb[0]:IntOp(750)opb[1]:IntOp(8)))"..
+		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:LeftBitopb[0]:IntOp(750)opb[1]:IntOp(8)))"..
 		"mux[1]:SavOp(kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"},
 	{"Int","16","Str","Kernelz(siz:0idx:0slf:0)"}, -- for plans after Bringup
 	{"Int","17","Str","Configurez(siz:0idx:0slf:0)"},
