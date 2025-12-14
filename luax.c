@@ -23,7 +23,6 @@ struct Fiber *fiber = 0; // expressions of line
 int dim = 0; // number of expressions in line
 char **line = 0; // strings of line
 char **rslt = 0; // with expressions replaced
-char **temp = 0; // to exp or str
 int lsiz = 0; // number of strings in line
 int irslt = 0;
 void *prslt = 0;
@@ -132,6 +131,36 @@ int nestSkip(const char **str)
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
+char *nestSugar(const char *str)
+{
+	if (!str) return 0;
+	int dim = 0;
+	for (const char *lim = str; strstr(lim,"%(") && *(lim = strstr(lim,"$(")) && *(lim += 2); dim++) {
+	for (int nst = 1; nst; nst += nestSkip(&lim)) {}}
+	char **keep = malloc(dim+1); char **expr = malloc(dim);
+	int tot = 0; const char *lst = str; dim = 0;
+	for (const char *lim = str; strstr(lim,"%(") && *(lim = strstr(lim,"$(")) && *(lim += 2); dim++, lst = lim) {
+	const char *exp = lim;
+	int len = lim-lst-2; keep[dim] = malloc(len+1);
+	strncpy(keep[dim],lst,len); keep[dim][len] = 0; tot += len;
+	for (int nst = 1; nst; nst += nestSkip(&lim)) {}
+	int lth = lim-exp-1; expr[dim] = malloc(lth+1);
+	strncpy(expr[dim],exp,lth); expr[dim][lth] = 0;}
+	int fin = strlen(lst); keep[dim] = malloc(fin+1); tot += fin;
+	strcpy(keep[dim],lst); keep[dim][fin] = 0;
+	char **repl = malloc(dim);
+	for (int i = 0; i < dim; i++) {
+	// TODO repl[i] = sugarExpand(expr[i]);
+	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
+	free(expr);
+	char *rslt = malloc(tot+1); tot = 0;
+	for (int i = 0; i < dim; i++) {
+	strcpy(rslt+tot,keep[i]); tot += strlen(keep[i]); free(keep[i]); keep[i] = 0;
+	strcpy(rslt+tot,repl[i]); tot += strlen(repl[i]); free(repl[i]); repl[i] = 0;}
+	strcpy(rslt+tot,keep[dim]); tot += strlen(keep[dim]); free(keep[dim]); keep[dim] = 0;
+	free(keep); free(expr);
+	return rslt;
+}
 void nestFree()
 {
 	for (int i = 0; i < dim; i++) if (fiber[i].str) free(fiber[i].str);
@@ -145,7 +174,8 @@ void nestInit(int siz)
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
 	for (int i = 0; i < lsiz; i++) if (line[i]) {free(line[i]); line[i] = 0;}
-	if (siz) {rslt = realloc(rslt,siz*sizeof(char *)); temp = realloc(temp,siz*sizeof(char *)); line = realloc(line,siz*sizeof(char *));}
+	if (siz) {rslt = realloc(rslt,siz*sizeof(char *));
+	line = realloc(line,siz*sizeof(char *));}
 	else {free(rslt); rslt = 0; free(line); line = 0;}
 	for (int i = lsiz; i < siz; i++) {rslt[i] = 0; line[i] = 0;}
 	lsiz = siz;
@@ -224,6 +254,7 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
+	// TODO char *temp = nestSugar(rslt[i]); free(rslt[i]); rslt[i] = temp;
 	return rslt[i];
 }
 void wrapFace(lua_State *L);

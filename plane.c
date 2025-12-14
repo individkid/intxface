@@ -1004,6 +1004,11 @@ void planeWoccfg(int val, int sub)
     if (jknfo) callKnfo((enum Configure)sub,val,planeWotc);
     else callJnfo((enum Configure)sub,val,planeWotc);
 }
+int planeRawcfg(int val, int sub)
+{
+    if (jknfo) callKnfo((enum Configure)sub,val,planeRdwr);
+    else callJnfo((enum Configure)sub,val,planeRdwr);
+}
 int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
@@ -1075,9 +1080,8 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
-    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,
-    planeGetstr,planePutstr,planeTypstr,
-    planeField,planeExtract,planeImmed);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,
+    planeGetstr,planePutstr,planeTypstr,planeField,planeExtract,planeImmed);
     start = processTime();
 }
 void initBoot()

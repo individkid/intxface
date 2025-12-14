@@ -14,6 +14,7 @@ retfp retptr = 0;
 setfp setptr = 0;
 setfp wosptr = 0;
 setfp wocptr = 0;
+rawfp rawptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
 typfp typptr = 0;
@@ -353,9 +354,9 @@ int datxBitwise(int lft, int rgt, enum Bitwise bit)
 	case (XorBit): return (lft^rgt);
 	case (NandBit): return ~(lft&rgt);
 	case (NorBit): return ~(lft|rgt);
-	case (EquBit): return ~(lft^rgt);
-	case (LeftBit): return (lft<<rgt);
-	case (FfsBit): return (ffs(lft<<rgt)+rgt);
+	case (NxorBit): return ~(lft^rgt);
+	case (ShlBit): return (lft<<rgt);
+	case (FnsBit): return (ffs(lft>>rgt)+rgt);
 	default: ERROR();}
 	return 0;
 }
@@ -607,6 +608,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
 		wocptr(*datxIntz(0,dat0),exp->cgs);
 		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+	case (RawOp): {
+		if (!rawptr) ERROR();
+		void *dat0 = 0; int typ1 = identType("Int");
+		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,rawptr(*datxIntz(0,dat0),exp->cgs));} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -666,12 +673,14 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm)
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
+	getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm)
 {
 	retptr = ret;
 	setptr = set;
 	wosptr = wos;
 	wocptr = woc;
+	rawptr = raw;
 	getptr = get;
 	putptr = put;
 	typptr = typ;

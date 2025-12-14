@@ -2,6 +2,7 @@
 typedef void (*rktype)(void *dat);
 typedef int (*retfp)(int cfg);
 typedef void (*setfp)(int val, int cfg);
+typedef int (*rawfp)(int val, int cfg);
 typedef const char *(*getfp)();
 typedef void (*putfp)(const char *);
 typedef void (*typfp)(void **dst, int typ);
@@ -44,4 +45,5 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm);
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
+	getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm);
