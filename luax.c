@@ -131,9 +131,15 @@ int nestSkip(const char **str)
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
-char *nestSugar(const char *str)
+sftype sugar = 0;
+void luaxSugar(sftype sug)
 {
-	if (!str) return 0;
+	sugar = sug;
+}
+void nestSugar(char **ptr, const char *str)
+{
+	if (!str) return;
+	if (!sugar) {free(*ptr); int tot = strlen(str)+1; *ptr = malloc(tot); strcpy(*ptr,str); return;}
 	int dim = 0;
 	for (const char *lim = str; strstr(lim,"%(") && *(lim = strstr(lim,"$(")) && *(lim += 2); dim++) {
 	for (int nst = 1; nst; nst += nestSkip(&lim)) {}}
@@ -148,18 +154,17 @@ char *nestSugar(const char *str)
 	strncpy(expr[dim],exp,lth); expr[dim][lth] = 0;}
 	int fin = strlen(lst); keep[dim] = malloc(fin+1); tot += fin;
 	strcpy(keep[dim],lst); keep[dim][fin] = 0;
-	char **repl = malloc(dim);
+	char **repl = malloc(dim*sizeof(char*));
 	for (int i = 0; i < dim; i++) {
-	// TODO repl[i] = sugarExpand(expr[i]);
+	repl[i] = 0; sugar(&repl[i],expr[i]);
 	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
 	free(expr);
-	char *rslt = malloc(tot+1); tot = 0;
+	free(*ptr); *ptr = malloc(tot+1); tot = 0;
 	for (int i = 0; i < dim; i++) {
-	strcpy(rslt+tot,keep[i]); tot += strlen(keep[i]); free(keep[i]); keep[i] = 0;
-	strcpy(rslt+tot,repl[i]); tot += strlen(repl[i]); free(repl[i]); repl[i] = 0;}
-	strcpy(rslt+tot,keep[dim]); tot += strlen(keep[dim]); free(keep[dim]); keep[dim] = 0;
+	strcpy(*ptr+tot,keep[i]); tot += strlen(keep[i]); free(keep[i]); keep[i] = 0;
+	strcpy(*ptr+tot,repl[i]); tot += strlen(repl[i]); free(repl[i]); repl[i] = 0;}
+	strcpy(*ptr+tot,keep[dim]); tot += strlen(keep[dim]); free(keep[dim]); keep[dim] = 0;
 	free(keep); free(expr);
-	return rslt;
 }
 void nestFree()
 {
@@ -254,7 +259,7 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
-	// TODO char *temp = nestSugar(rslt[i]); free(rslt[i]); rslt[i] = temp;
+	// TODO char *temp = 0; nestSugar(&temp, rslt[i]); free(rslt[i]); rslt[i] = temp;
 	return rslt[i];
 }
 void wrapFace(lua_State *L);
@@ -265,4 +270,3 @@ int luaopen_luax(lua_State *L)
 	wrapLuax(L);
 	return 0;
 }
-

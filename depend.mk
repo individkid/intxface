@@ -30,7 +30,7 @@ luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
-planeC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h type.h
+planeC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h sugx.h type.h
 planra.log: planraC
 planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
@@ -50,7 +50,8 @@ spacerLua: spacer.lua
 spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs spacraHs.type.hs
 spacraHs.type.hs: luax.so show.lua type.gen
-stlxCpp.o: stlx.cpp stlx.h
+stlxCpp.o: proto.h stlx.cpp stlx.h
+sugxC.o: proto.h stlx.h sugx.c sugx.h type.h
 type.h: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
 typer.c: luax.so show.lua test.lua typer.gen
@@ -67,7 +68,7 @@ vertexDebugG: vulkan.g
 vertexPierceG: vulkan.g
 vertexTestG: vulkan.g
 vulkan.log: fragmentDebugG fragmentPierceG fragmentTestG texture.jpg vertexDebugG vertexPierceG vertexTestG vulkanCpp
-vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o vulkanCpp.o vulkanCpp.typeC.o
+vulkanCpp: datxC.o faceC.o faceCpp.o fmtxC.o luaxC.o luaxCpp.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o vulkanCpp.o vulkanCpp.typeC.o wrapCpp.o
 vulkanCpp.o: face.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen
 vulkanCpp.typeC.o: face.h type.h

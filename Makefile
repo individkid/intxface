@@ -84,7 +84,7 @@ ifeq ($(UNAME),Darwin)
 endif
 
 %C.o: %.c
-	$(CC) -g -rdynamic -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
+	$(CC) -fmax-errors=5 -g -rdynamic -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
 ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
 	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC $< ${INCLUDEPATH}
