@@ -136,16 +136,21 @@ void luaxSugar(sftype sug)
 {
 	sugar = sug;
 }
-void nestSugar(char **ptr, const char *str)
+void nestSugar(char **ptr)
 {
-	if (!str) return;
-	if (!sugar) {free(*ptr); int tot = strlen(str)+1; *ptr = malloc(tot); strcpy(*ptr,str); return;}
+	if (!*ptr || !sugar) return;
+	const char *str = *ptr;
 	int dim = 0;
-	for (const char *lim = str; strstr(lim,"%(") && *(lim = strstr(lim,"$(")) && *(lim += 2); dim++) {
+	for (const char *lim = str;
+	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
+	dim++) {
 	for (int nst = 1; nst; nst += nestSkip(&lim)) {}}
-	char **keep = malloc(dim+1); char **expr = malloc(dim);
+	char **keep = malloc((dim+1)*sizeof(char*));
+	char **expr = malloc((dim)*sizeof(char*));
 	int tot = 0; const char *lst = str; dim = 0;
-	for (const char *lim = str; strstr(lim,"%(") && *(lim = strstr(lim,"$(")) && *(lim += 2); dim++, lst = lim) {
+	for (const char *lim = str;
+	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
+	dim++, lst = lim) {
 	const char *exp = lim;
 	int len = lim-lst-2; keep[dim] = malloc(len+1);
 	strncpy(keep[dim],lst,len); keep[dim][len] = 0; tot += len;
@@ -153,18 +158,19 @@ void nestSugar(char **ptr, const char *str)
 	int lth = lim-exp-1; expr[dim] = malloc(lth+1);
 	strncpy(expr[dim],exp,lth); expr[dim][lth] = 0;}
 	int fin = strlen(lst); keep[dim] = malloc(fin+1); tot += fin;
-	strcpy(keep[dim],lst); keep[dim][fin] = 0;
+	strncpy(keep[dim],lst,fin); keep[dim][fin] = 0;
 	char **repl = malloc(dim*sizeof(char*));
 	for (int i = 0; i < dim; i++) {
 	repl[i] = 0; sugar(&repl[i],expr[i]);
 	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
-	free(expr);
-	free(*ptr); *ptr = malloc(tot+1); tot = 0;
+	free(expr); free(*ptr); *ptr = malloc(tot+1); tot = 0;
 	for (int i = 0; i < dim; i++) {
-	strcpy(*ptr+tot,keep[i]); tot += strlen(keep[i]); free(keep[i]); keep[i] = 0;
-	strcpy(*ptr+tot,repl[i]); tot += strlen(repl[i]); free(repl[i]); repl[i] = 0;}
-	strcpy(*ptr+tot,keep[dim]); tot += strlen(keep[dim]); free(keep[dim]); keep[dim] = 0;
-	free(keep); free(expr);
+	strcpy(&(*ptr)[tot],keep[i]); tot += strlen(keep[i]);
+	strcpy(&(*ptr)[tot],repl[i]); tot += strlen(repl[i]);
+	free(keep[i]); keep[i] = 0; free(repl[i]); repl[i] = 0;}
+	strcpy(&(*ptr)[tot],keep[dim]); tot += strlen(keep[dim]);
+	free(keep[dim]); keep[dim] = 0;
+	(*ptr)[tot] = 0; free(keep); free(expr);
 }
 void nestFree()
 {
@@ -259,8 +265,7 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
-	// TODO char *temp = 0; nestSugar(&temp, rslt[i]); free(rslt[i]); rslt[i] = temp;
-	return rslt[i];
+	nestSugar(&rslt[i]); return rslt[i];
 }
 void wrapFace(lua_State *L);
 void wrapLuax(lua_State *L);

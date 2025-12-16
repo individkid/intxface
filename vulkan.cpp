@@ -27,12 +27,12 @@ struct WindowState {
     GLFWwindow* const window;
     WindowState() : // TODO add argument to switch between glfw and wayland
         window(createWindow(WIDTH,HEIGHT)) {
-        std::cout << "WindowState" << std::endl;
+        // std::cout << "WindowState" << std::endl;
     }
     ~WindowState() {
         glfwDestroyWindow(window);
         glfwTerminate();
-        std::cout << "~WindowState" << std::endl;
+        // std::cout << "~WindowState" << std::endl;
     }
     static GLFWwindow* createWindow(uint32_t WIDTH, uint32_t HEIGHT);
 };
@@ -48,7 +48,7 @@ struct VulkanState {
         instance(createInstance(info,validationLayers)),
         debug(createDebug(instance,info,validationLayers)),
         surface(createSurface(instance, window)) {
-        std::cout << "VulkanState" << std::endl;
+        // std::cout << "VulkanState" << std::endl;
     }
     ~VulkanState() {
         vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -56,7 +56,7 @@ struct VulkanState {
         vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr) func(instance, debug, nullptr);
         vkDestroyInstance(instance, nullptr);
-        std::cout << "~VulkanState" << std::endl;
+        // std::cout << "~VulkanState" << std::endl;
     }
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -99,10 +99,10 @@ struct PhysicalState {
         surfaceFormat(chooseSwapSurfaceFormat(vulkanFormat(SrgbFrm),VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,surface,device)),
         presentMode(chooseSwapPresentMode(surface,device)),
         memProperties(findMemoryProperties(device)) {
-        std::cout << "PhysicalState " << properties.deviceName << std::endl;
+        // std::cout << "PhysicalState " << properties.deviceName << std::endl;
     }
     ~PhysicalState() {
-        std::cout << "~PhysicalState" << std::endl;
+        // std::cout << "~PhysicalState" << std::endl;
     }
     static bool foundIndices(VkSurfaceKHR surface, VkPhysicalDevice device);
     static bool foundDetails(VkSurfaceKHR surface, VkPhysicalDevice device);
@@ -133,7 +133,7 @@ struct LogicalState {
         present(createQueue(device,presentFamily)),
         commandPool(createCommandPool(device,graphicsFamily)),
         depthFormat(findSupportedFormat(physicalDevice, candidates, sizeof(candidates)/sizeof(VkFormat))) {
-        std::cout << "LogicalState" << std::endl;
+        // std::cout << "LogicalState" << std::endl;
         for (int i = 0; i < passes; i++) imageFormat[i] = PhysicalState::vulkanFormat((Render)i);
         for (int i = 0; i < passes; i++) renderPass[i] = createRenderPass(device,imageFormat[i],depthFormat);
     }
@@ -141,7 +141,7 @@ struct LogicalState {
         for (int i = 0; i < passes; i++) vkDestroyRenderPass(device, renderPass[i], nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
-        std::cout << "~LogicalState" << std::endl;
+        // std::cout << "~LogicalState" << std::endl;
     }
     static VkDevice createDevice(VkPhysicalDevice physicalDevice, uint32_t graphicsFamily, uint32_t presentFamily, const char **validationLayers, const char **deviceExtensions);
     static VkQueue createQueue(VkDevice device, uint32_t family);
@@ -461,10 +461,10 @@ struct BaseState {
         nask(0),
         debug{} {
         sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
-        std::cout << debug << std::endl;
+        // std::cout << debug << std::endl;
     }
     ~BaseState() {
-        std::cout << "~" << debug << std::endl;
+        // std::cout << "~" << debug << std::endl;
     }
     bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
         // reserve before pushing to thread
@@ -983,10 +983,10 @@ struct ThreadState : public DoneState {
         seqnum(0),
         goon(true) {
         strcpy(debug,"ThreadState");
-        std::cout << debug << std::endl;
+        // std::cout << debug << std::endl;
     }
     ~ThreadState() {
-        std::cout << "~" << debug << std::endl;
+        // std::cout << "~" << debug << std::endl;
     }
     void push(Push push) {
         push.fence = VK_NULL_HANDLE;
@@ -1076,11 +1076,11 @@ struct CopyState {
         thread(thread),
         stack{},
         array(ary) {
-        std::cout << "CopyState" << std::endl;
+        // std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
     }
     ~CopyState() {
-        std::cout << "~CopyState" << std::endl;
+        // std::cout << "~CopyState" << std::endl;
     }
     StackState *src(Resrc res) {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
@@ -1626,7 +1626,7 @@ struct SwapState : public BaseState {
     void resize(Loc &loc, SmartState log) override {
         capabilities = findCapabilities(window,surface,physical);
         change->write(WindowWidth,getExtent().width); change->write(WindowHeight,getExtent().height);
-        std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
+        // std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode, capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
         swapChainImageViews.fill({},swapChainImages.size());
@@ -1693,7 +1693,7 @@ struct PipeState : public BaseState {
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-        std::cout << "~" << debug << std::endl;
+        // std::cout << "~" << debug << std::endl;
     }
     VkPipeline getPipeline() override {return pipeline;}
     VkPipelineLayout getPipelineLayout() override {return pipelineLayout;}
@@ -2262,10 +2262,10 @@ struct MainState {
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&changeState),
         copyState(&changeState,&threadState,enumState,constState) {
-        std::cout << "MainState" << std::endl;
+        // std::cout << "MainState" << std::endl;
     }
     ~MainState() {
-        std::cout << "~MainState" << std::endl;
+        // std::cout << "~MainState" << std::endl;
     }
 };
 
@@ -2372,6 +2372,7 @@ GLFWwindow* WindowState::createWindow(uint32_t WIDTH, uint32_t HEIGHT) {
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanState::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+    if (messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
     std::cout << "validation layer: " << pCallbackData->pMessage << " severity:0x" << std::hex << messageSeverity << std::dec << std::endl;
     // if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) *(int*)0=0;
     return VK_FALSE;

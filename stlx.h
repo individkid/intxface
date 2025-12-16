@@ -147,8 +147,12 @@ template <class Conf, int Size> struct ChangeState {
     std::map<Conf,std::set<xftype>> back;
     SafeState safe; // prior protected
     int depth; pthread_t self; SafeState nest;
-    ChangeState() : config{0}, safe(1), depth(0), nest(1) {std::cout << "ChangeState" << std::endl;}
-    ~ChangeState() {std::cout << "~ChangeState" << std::endl;}
+    ChangeState() : config{0}, safe(1), depth(0), nest(1) {
+        // std::cout << "ChangeState" << std::endl;
+    }
+    ~ChangeState() {
+        // std::cout << "~ChangeState" << std::endl;
+    }
     void call(Conf cfg, xftype ptr) {
         safe.wait();
         if (ptr) back[cfg].insert(ptr);
@@ -212,9 +216,10 @@ struct CallState {
     SafeState safe;
     pthread_t thrd;
     CallState() : lock(false), safe(1), thrd(pthread_self()) {
-        std::cout << "CallState" << std::endl;
+        // std::cout << "CallState" << std::endl;
     }
-    ~CallState() {std::cout << "~CallState" << std::endl;
+    ~CallState() {
+        // std::cout << "~CallState" << std::endl;
         safe.wait(); lock = true; safe.post();
         while (1) {
         safe.wait();
