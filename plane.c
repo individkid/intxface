@@ -1092,14 +1092,20 @@ void initBoot()
     int size = 0; int cmnds = 0;
     for (int i = 0; callCmnd(i); i++) {size++; cmnds++;}
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
-    const char **boot = malloc(size*sizeof(const char *)); size = 0;
-    for (int i = 0; callCmnd(i); i++) boot[size++] = callCmnd(i);
-    for (int i = 0; Bootstrap__Int__Str(i); i++) boot[size++] = Bootstrap__Int__Str(i);
+    const char **temp = malloc(size*sizeof(const char *)); size = 0;
+    for (int i = 0; callCmnd(i); i++) temp[size++] = callCmnd(i);
+    for (int i = 0; Bootstrap__Int__Str(i); i++) temp[size++] = Bootstrap__Int__Str(i);
+    char **boot = malloc(size*sizeof(char *));
+    luaxSugar(sugarExpand);
+    for (int i = 0; i < size; i++) {
+    int len = strlen(temp[i]);
+    boot[i] = malloc(len+1);
+    strncpy(boot[i],temp[i],len); boot[i][len] = 0;
+    nestSugar(&boot[i]);}
     for (int i = 0; i < size; i++) {
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
-    luaxSugar(sugarExpand);
     if (hideArgument(&arg, boot[i], &asiz)) {
     copyArgument(&argument,&arg); freeArgument(&arg);
     if (i < cmnds) callInfo(RegisterShow,1,planeWots);}

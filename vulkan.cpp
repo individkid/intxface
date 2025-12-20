@@ -711,7 +711,9 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait(); bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val)); safe.post(); return ret;
     }
     BaseState *newbuf(int hdl, Quality key, int val) override { // buffer of newest, with current tags
-        safe.wait(); int idx = tag.newbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
+        safe.wait(); int idx = tag.newbuf(hdl,key,val); BaseState *ptr = &state[idx];
+        // TODO invalidate *ptr if newbuf changed any of its Quality values
+        safe.post(); return ptr;
     }
     BaseState *oldbuf(int hdl, Quality key, int val) override { // buffer of oldest, with current tags
         safe.wait(); int idx = tag.oldbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;

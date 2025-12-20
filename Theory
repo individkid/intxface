@@ -29,8 +29,8 @@ Empty:
 Subspace:
   A space S1 is a subspace of space S0 iff the regions of S1 are restrictions of the regions of S0.
 
-Linear:
-  A space S is linear iff every subspace of S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions,
+Pseudolinear:
+  A space S is pseudolinear iff every subspace of S has f(n,m) = f(n-1,m-1) + f(n,m-1) nonempty regions,
   where n is called the dimension, m is the number of boundaries in the subspace, and f(n,0) = f(0,m) = 1.
 
 Divide:
@@ -63,13 +63,16 @@ Outside:
 Migration:
   A migration is a space with a region replaced by a region opposite wrt attached boundaries.
 
+Cospace:
+  TODO
+
 Theorems:
   
 Classify:
-  With sidedness as above or below hyperplanes, a set of hyperplanes maps to boundaries in a linear space.
+  With sidedness as above or below hyperplanes, a set of hyperplanes maps to boundaries in a pseudolinear space.
 
 Section:
-  If any two of a section, space, or extension are linear, the third is linear.
+  If any two of a section, space, or extension are pseudolinear, the third is pseudolinear.
   Let S0 be a section of S1 extended to S2 by boundary b.
   The number of regions in S2 is the number of regions in S1 with the number in S0 divided, or |S2| = f(n,m) = f(n,m-1) + f(n-1,m-1) = |S1| + |S0|.
   The same applies to the subspaces.
@@ -83,22 +86,20 @@ Simplex:
   Note, f(1,2) = 2^2-1. If f(n-1,n) = 2^n-1, then f(n,n+1) = f(n,n) + f(n-1,n) = 2^n + 2^n-1 = 2^(n+1)-1.
 
 Migration:
-  A linear space S with sidedness of a region wrt its attached boundaries reversed is linear.
+  A pseudolinear space S with sidedness of a region wrt its attached boundaries reversed is pseudolinear.
   The number of regions in each subspace is the same, because the migrated region is combined, though to different regions, by the removal of the same boundaries. And other regions are also combined by the same removals.
 
 Independent:
-  If space S extended by b0 is linear and S extended by b1 is linear, then there is a linear space extended by b0 and b1.
-  Choose b in S, and assume by recursion that S0 = the section by b in S + {b0,b1} is linear, and that S1 = S + {b0,b1} - {b} is linear.
-  Choose corner regions of b0 and b1 for b to divide in S1 such that S0 is a section of S1. Apply section theorem to find linear S2 = S + {b0,b1}.
+  If space S extended by b0 is pseudolinear and S extended by b1 is pseudolinear, then there is a pseudolinear space extended by b0 and b1.
+  Choose b in S, and assume by recursion that S0 = the section by b in S + {b0,b1} is pseudolinear, and that S1 = S + {b0,b1} - {b} is pseudolinear.
+  Choose corner regions of b0 and b1 for b to divide in S1 such that S0 is a section of S1. Apply section theorem to find pseudolinear S2 = S + {b0,b1}.
 
-Limit:
-  For each section b of space S of dimension n, there exist n vertices {v} such that no boundary or section of S divides the simplex formed by b and any v in {v}.
-  This is true for simplex spaces, so assume there are vertices {v} that nothing separates b from in space S with b0 removed.
-  If b0 separates b from any v in {v}, replace v by the intersection of b0 by an edge of the simplex of v and b.
-  The result is not separated from b by boundary or section of S.
+Cospace:
+  For constructible space S with cospace C, C is constructible.
+  TODO
 
 Sample:
-  For each linear n space S there exist sets of hyperplanes that classify as S.
-  This is true for simplex spaces, so assume there is sample space R for linear space S with b removed.
-  From the limit theorem, find vertices {v}, and construct hyperplane p arbitrarily close to {v} in R, such that p has the same sidednesses as b wrt {v}.
-  If the classification of p is not b, it would violate the limit theorem, so R with p classifies to S with b.
+  For each pseudolinear space S with cospace C there exist sets of hyperplanes that classify as S.
+  This is true for simplex spaces, so assume there hyperplanes that classify to pseudolinear space S' that is S with b removed.
+  By Cospace theorem the subspace C', of C with the b vertex removed, is constructible.
+  Thus, the construction of S is S' with hyperplane given by vertex in the superregion of b vertex in C'.

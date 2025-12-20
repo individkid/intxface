@@ -747,14 +747,18 @@ Bootstrap = {
 	{"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
 		-- continue timer and increment count
 		"mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShlBitopb[0]:IntOp(750)opb[1]:IntOp(8)))"..
-		"mux[1]:SavOp(kys:Str(count)sav[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"},
+		"mux[1]:SavOp(lhs:Str(count)rhs[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"},
+	-- {"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:$(Fes Int 3 Op "..
+		-- "Set RegisterTime Shl #750 #8 Bit Op "..
+		-- "Sav count Add Val count Op Int 1 Op Op Op "..
+		-- "Op))"},
 	{"Int","16","Str","Kernelz(siz:0idx:0slf:0)"}, -- for plans after Bringup
 	{"Int","17","Str","Configurez(siz:0idx:0slf:0)"},
 	{"Int","18","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","19","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","20","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","21","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
-	{"Int","22","Str","SavOp(kys:Str(count)sav[0]:IntOp(0))"}, -- initialize count
+	{"Int","22","Str","SavOp(lhs:Str(count)rhs[0]:IntOp(0))"}, -- initialize count
 	-- TODO initialize Str(pass) Str(fail) Str(wake) to 0
 	{"Int","23","Str","Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
@@ -890,17 +894,13 @@ Express = {
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},1},
-	{"key","Str",{["opr"]={["ValOp"]=true}},{}},
-	{"kys","Str",{["opr"]={["SavOp"]=true}},{}},
-	{"sav","Express",{["opr"]={["SavOp"]=true}},1},
-	{"rex","Str",{["opr"]={["RexOp"]=true}},{}},
-	{"irx","Str",{["opr"]={["IrxOp"]=true}},{}},
+	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["ImmOp"]=true,["StrOp"]=true}},{}},
+	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
+	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
 	{"put","Express",{["opr"]={["PutOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
-	{"val","Str",{["opr"]={["ImmOp"]=true}},{}},
-	{"ivl","Int",{["opr"]={["IntOp"]=true}},{}},
-	{"svl","Str",{["opr"]={["StrOp"]=true}},{}},
+	{"val","Int",{["opr"]={["IntOp"]=true}},{}},
 }
 Machine = {
 	{"xfr","Transfer",{},""},

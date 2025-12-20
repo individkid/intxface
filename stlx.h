@@ -479,7 +479,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
     int insert(Only &tmp) {
         if (pool.empty()) {
         auto itr = keyord.rbegin();
-        if (itr != keyord.rend() && (*itr)[Dim] > keysiz[tmp]+1)
+        if (keysiz.find(tmp) == keysiz.end() || (*itr)[Dim] > keysiz[tmp]+1)
         remove(oldest[get(*itr)]); else remove(oldest[tmp]);}
         Indx idx = pool.front(); pool.pop_front();
         insert(tmp,idx);

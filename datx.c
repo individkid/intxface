@@ -620,21 +620,21 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
 		int typ0 = 0; void *dat0 = 0; void *key = 0;
-		typ0 = datxEval(&dat0,exp->sav,-1); datxStr(&key,exp->kys); datxInsert(key,dat0,typ0); free(key); free(dat0);
+		typ0 = datxEval(&dat0,exp->rhs,-1); datxStr(&key,exp->lhs); datxInsert(key,dat0,typ0); free(key); free(dat0);
 		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (RexOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxRegcmp(exp->rex));} break;
+		datxInt(dat,datxRegcmp(exp->key));} break;
 	case (IrxOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,datxIrrcmp(exp->irx));} break;
+		datxInt(dat,datxIrrcmp(exp->key));} break;
 	case (GetOp): {
 		if (!getptr) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxStr(dat,getptr());} break;
 	case (PutOp): {
 		if (!putptr) ERROR();
-		int typ0 = datxEval(dat,exp->set,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		int typ0 = datxEval(dat,exp->put,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ0 != identType("Str")) {
 		if (!typptr) ERROR();
 		typptr(dat,typ0);}
@@ -648,19 +648,19 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ = fldptr(dat,dat0,dat1,*datxIntz(0,dat2),*datxIntz(0,dat3),typ0,typ1);} break;
 	case (ExtOp): {
 		if (!extptr) ERROR();
-		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
-		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],identType("Int")); if (typ1 != identType("Int")) ERROR();
-		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
+		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->ext[1],identType("Int")); if (typ1 != identType("Int")) ERROR();
+		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
 		typ = extptr(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0);} break;
 	case (ImmOp):
 		if (!immptr) ERROR();
-		typ = immptr(dat,exp->val); break;
+		typ = immptr(dat,exp->key); break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,exp->ivl);} break;
+		datxInt(dat,exp->val);} break;
 	case (StrOp): {
 		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
-		datxStr(dat,exp->svl);} break;
+		datxStr(dat,exp->key);} break;
 	default: ERROR();}
 	// debug--;
 	return typ;
