@@ -235,7 +235,7 @@ int compSugar(const char *str, int *idx)
 }
 void rightSugar(const char *str, int *idx)
 {
-	while (str[*idx] && !isspace(str[*idx]) && compSugar(str,idx)) *idx += 1;
+	while (str[*idx] && !isspace(str[*idx]) && !compSugar(str,idx)) *idx += 1;
 }
 void copySugar(char **idt, int lft, int rgt, const char *str)
 {
@@ -290,15 +290,15 @@ void moreSugar(char **raw, const char *str, int *idx) // find all til Op
 	int rgt = *idx;
 	copySugar(raw,lft,rgt,str);
 }
-int debug = 0;
+// int sugarDebug = 0;
 void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 {
-	debug += 1;
+	// sugarDebug += 1;
 	int siz = sizeExpr(lst);
 	while (str[*idx] && (lim < 0 || sizeExpr(lst)-siz < lim)) {
-	fprintf(stderr,"Recurse ");
-	for (int i = 0; i < debug; i++) fprintf(stderr,"-");
-	fprintf(stderr,"- %s -- %d\n",str+*idx,*idx);
+	// fprintf(stderr,"Recurse ");
+	// for (int i = 0; i < sugarDebug; i++) fprintf(stderr,"-");
+	// fprintf(stderr,"- %s -- %d\n",str+*idx,*idx);
 	if (strncmp(str+*idx,"Op",2)==0) break;
 	if (strncmp(str+*idx,"Bit",3)==0) break;
 	if (strncmp(str+*idx,"Cmp",3)==0) break;
@@ -404,7 +404,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"Shl",3)==0) {
 		*idx += 3;
 		sugarBitwise(lst,BitOp,ShlBit,str,idx);
-		fprintf(stderr,"Shl %s\n",str+*idx);
 		skipSugar("Bit",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"<<",2)==0) {
@@ -592,6 +591,7 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		skipSugar("Op",str,idx);
 		continue;}
 	*idx += 1;}
+	// sugarDebug -= 1;
 }
 void sugarExpand(char **ptr, const char *str)
 {
@@ -599,6 +599,5 @@ void sugarExpand(char **ptr, const char *str)
 	sugarRecurse(lst, 1, str, &idx);
 	if (sizeExpr(lst) != 1) ERROR();
 	sugarShow(ptr,lst);
-	fprintf(stderr,"%s\n",*ptr);
 	freeExpr(lst);
 }

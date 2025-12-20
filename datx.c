@@ -534,8 +534,8 @@ int datxIrrexe(const char *str, int idx)
 }
 int datxEval(void **dat, struct Express *exp, int typ)
 {
-	// {char *opr = 0; showOperate(exp->opr,&opr);
-	// printf("datxEval %d %s\n",debug++,opr); free(opr);}
+	/*{char *opr = 0; showOperate(exp->opr,&opr);
+	fprintf(stderr,"datxEval %s\n",opr); free(opr);}*/
 	switch (exp->opr) {
 	case (AddOp): BINARY_BLOCK(BINARY_ADD,"add",opa) break;
 	case (SubOp): BINARY_BLOCK(BINARY_SUB,"sub",opa) break;
