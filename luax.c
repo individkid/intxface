@@ -131,12 +131,7 @@ int nestSkip(const char **str)
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
-sftype sugar = 0;
-void luaxSugar(sftype sug)
-{
-	sugar = sug;
-}
-void nestSugar(char **ptr)
+void nestSugar(char **ptr, sftype sug)
 {
 	if (!*ptr) return;
 	const char *str = *ptr;
@@ -161,7 +156,7 @@ void nestSugar(char **ptr)
 	strncpy(keep[dim],lst,fin); keep[dim][fin] = 0;
 	char **repl = malloc(dim*sizeof(char*));
 	for (int i = 0; i < dim; i++) {
-	repl[i] = 0; sugar(&repl[i],expr[i]);
+	repl[i] = 0; sug(&repl[i],expr[i]);
 	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
 	free(expr); free(*ptr); *ptr = malloc(tot+1); tot = 0;
 	for (int i = 0; i < dim; i++) {
@@ -265,7 +260,7 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
-	if (sugar) nestSugar(&rslt[i]); return rslt[i];
+	return rslt[i];
 }
 void wrapFace(lua_State *L);
 void wrapLuax(lua_State *L);

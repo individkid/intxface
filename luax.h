@@ -9,5 +9,4 @@ void nestScan(); // get expressions from strings
 int nestPass(); // evaluate expressions and return if any yielded
 const char *nestRepl(int i); // get string with expressions replaced
 typedef void (*sftype)(char **ptr, const char *str);
-void luaxSugar(sftype sug);
-void nestSugar(char **ptr);
+void nestSugar(char **ptr, sftype sug);
