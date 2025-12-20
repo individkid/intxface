@@ -744,13 +744,9 @@ Bootstrap = {
 		-- TODO Goto(FnsOp of ((Str(fail) if nonzero) or (Str(fail) set to RawOp of register)))
 		-- TODO Goto(FnsOp of ((Str(wake) if nonzero) or (Str(wake) set to RawOp of register)))
 		")"},
-	-- {"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:FesOp(num:2msk[0]:IntOp(3)"..
-		-- continue timer and increment count
-		-- "mux[0]:SetOp(cgs:Configure(RegisterTime)set[0]:BitOp(bit:ShlBitopb[0]:IntOp(750)opb[1]:IntOp(8)))"..
-		-- "mux[1]:SavOp(lhs:Str(count)rhs[0]:AddOp(opa[0]:ValOp(key:Str(count))opa[1]:IntOp(1)))))"},
-	{"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:$(Fes Int 3 Op "..
-		"Set RegisterTime Shl #750 #8 Bit Op "..
-		"Sav count Add Val count Op Int 1 Op Op Op "..
+	{"Int","15","Str","Expressz(siz:1idx:0slf:0exp[0]:$(Fes #3 "..
+		"RegisterTime := #750 << #8 "..
+		"count = @count + #1 "..
 		"Op))"},
 	{"Int","16","Str","Kernelz(siz:0idx:0slf:0)"}, -- for plans after Bringup
 	{"Int","17","Str","Configurez(siz:0idx:0slf:0)"},
