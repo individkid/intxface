@@ -1,3 +1,5 @@
+struct Express;
+int sugarHide(struct Express ***ptr, const char *str);
 void sugarShow(char **ptr, const char *str);
 void sugarRepl(char **ptr, char chr);
 typedef void (*sftype)(const char *str);

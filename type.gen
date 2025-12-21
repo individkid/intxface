@@ -745,7 +745,7 @@ Bootstrap = {
 		-- TODO Goto(FnsOp of ((Str(fail) if nonzero) or (Str(fail) set to RawOp of register)))
 		-- TODO Goto(FnsOp of ((Str(wake) if nonzero) or (Str(wake) set to RawOp of register)))
 		")"},
-	{"Int","%(return idx())","Str","!(express = #%(return count))!(count = #5)"..
+	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Fes #3 "..
 		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
@@ -756,7 +756,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
-	{"Int","%(return idx())","Str","!(pass = #0)!(fail = #0)!(wake = #0)"..
+	{"Int","%(return idx())","Str","!(pass = #0 fail = #0 wake = #0)"..
 		"Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
 		"cnd[1]:CmpOp(cmp:EOCmpopc[0]:AddOp("..

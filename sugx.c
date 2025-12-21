@@ -30,18 +30,37 @@ void sugarCopy(struct Express *dst, struct Express **src)
 	allocExpress(src,0);
 }
 void sugarRecurse(void *lst, int lim, const char *str, int *idx);
-void sugarShow(char **ptr, const char *str)
+int sugarHide(struct Express ***ptr, const char *str)
 {
 	void *lst = allocExpr(); int idx = 0;
-	sugarRecurse(lst,1,str,&idx);
-	if (sizeExpr(lst) != 1) ERROR();
-	struct Express *exp = frontExpr(lst);
-	free(*ptr); *ptr = 0;
-	showExpress(exp,ptr);
-	freeExpress(exp);
-	allocExpress(&exp,0);
-	dropExpr(lst);
+	sugarRecurse(lst,-1,str,&idx);
+	int dim = sizeExpr(lst);
+	free(*ptr); *ptr = malloc(dim*sizeof(struct Express *)); dim = 0;
+	while (sizeExpr(lst) > 0) {
+	(*ptr)[dim] = frontExpr(lst);
+	dim += 1;
+	dropExpr(lst);}
 	freeExpr(lst);
+	return dim;
+}
+void sugarShow(char **ptr, const char *str)
+{
+	struct Express **exp = 0;
+	int dim = sugarHide(&exp,str);
+	char **ary = malloc(dim*sizeof(char *));
+	int tot = 0;
+	for (int i = 0; i < dim; i++) {
+	ary[i] = 0; showExpress(exp[i],&ary[i]);
+	freeExpress(exp[i]);
+	allocExpress(&exp[i],0); exp[i] = 0;
+	tot += strlen(ary[i]);}
+	free(exp); exp = 0;
+	free(*ptr); *ptr = malloc(tot+1); tot = 0;
+	for (int i = 0; i < dim; i++) {
+	strcpy(*ptr+tot,ary[i]);
+	tot += strlen(ary[i]);
+	free(ary[i]); ary[i] = 0;}
+	free(ary); ary = 0;
 }
 void sugarBinary(void *lst, enum Operate opr, const char *str, int *idx)
 {
