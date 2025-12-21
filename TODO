@@ -1,5 +1,5 @@
 
-Bringup: Add Call Transfer. Move display of Peekz value to Bringup Machinez. Add option for indexed buffers instead of fetched buffers. Add option for coincidence color. Add Express to file.c so Persist can do read modify write of fields.
+Bringup: Move display of Peekz value to Bringup Machinez. Add option for indexed buffers instead of fetched buffers. Add option for coincidence color. Add Express to file.c so Persist can do read modify write of fields.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 

@@ -715,8 +715,8 @@ void planeMachine(enum Thread tag, int idx)
     /*{char *opr = 0; showMachine(mptr,&opr);
     printf("%s\n",opr); free(opr);}*/
     switch (mptr->xfr) {default: machineSwitch(mptr); break;
-    case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
     case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
+    case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
     case (Nest): break;}}
     centerPlace(current,index);
     if (waitSafe(safeSafe(CopyThd,0)) < 0) break;}
