@@ -1067,6 +1067,14 @@ void planeSugar(const char *str)
     if (!hideExpress(&exp, str, &siz)) ERROR();
     machineVoid(&exp); freeExpress(&exp);
 }
+int planeSugval(const char *str)
+{
+    char *ptr = 0; struct Express exp = {0}; int siz = 0;
+    sugarShow(&ptr,str);
+    if (!hideExpress(&exp,ptr,&siz)) ERROR();
+    int ret = machineIval(&exp); freeExpress(&exp);
+    return ret;
+}
 
 void initSafe()
 {
@@ -1135,8 +1143,8 @@ void initPlan()
     default: ERROR();
     break; case (Bringup): // no commandline arguments
     callJnfo(RegisterPoll,1,planeWcfg);
-    callJnfo(MachineIndex,Machinez,planeWcfg);
-    callJnfo(RegisterExpr,Expressz,planeWcfg);
+    callJnfo(MachineIndex,planeSugval("@machine"),planeWcfg);
+    callJnfo(RegisterExpr,planeSugval("@express"),planeWcfg);
     callJnfo(RegisterAble,(((1<<FnceMsk)<<8)|TestThd),planeWcfg);
     callJnfo(RegisterAble,(((1<<TimeMsk)<<8)|CopyThd),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
