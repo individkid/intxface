@@ -29,16 +29,20 @@ void sugarCopy(struct Express *dst, struct Express **src)
 	freeExpress(*src);
 	allocExpress(src,0);
 }
-void sugarShow(char **ptr, void *lst)
+void sugarRecurse(void *lst, int lim, const char *str, int *idx);
+void sugarShow(char **ptr, const char *str)
 {
-	free(*ptr); *ptr = 0;
+	void *lst = allocExpr(); int idx = 0;
+	sugarRecurse(lst,1,str,&idx);
+	if (sizeExpr(lst) != 1) ERROR();
 	struct Express *exp = frontExpr(lst);
+	free(*ptr); *ptr = 0;
 	showExpress(exp,ptr);
 	freeExpress(exp);
 	allocExpress(&exp,0);
 	dropExpr(lst);
+	freeExpr(lst);
 }
-void sugarRecurse(void *lst, int lim, const char *str, int *idx);
 void sugarBinary(void *lst, enum Operate opr, const char *str, int *idx)
 {
 	void *nst = allocExpr();
@@ -654,11 +658,54 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	*idx += 1;}
 	// sugarDebug -= 1;
 }
-void sugarExpand(char **ptr, const char *str)
+
+int sugarSkip(const char **str)
 {
-	void *lst = allocExpr(); int idx = 0;
-	sugarRecurse(lst, 1, str, &idx);
-	if (sizeExpr(lst) != 1) ERROR();
-	sugarShow(ptr,lst);
-	freeExpr(lst);
+	char *bas = strchr(*str,'(');
+	char *lim = strchr(*str,')');
+	if (!lim) ERROR();
+	if (bas && bas < lim) {*str = bas+1; return 1;}
+	if (!bas || lim < bas) {*str = lim+1; return -1;}
+	return 0;
+}
+void sugarNest(char **ptr, sftype sid)
+{
+	if (!*ptr) return;
+
+	const char *str = *ptr;
+	int dim = 0;
+	for (const char *lim = str;
+	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
+	dim++) {
+	for (int nst = 1; nst; nst += sugarSkip(&lim)) {}}
+
+	char **keep = malloc((dim+1)*sizeof(char*));
+	char **expr = malloc((dim)*sizeof(char*));
+	int tot = 0; const char *lst = str; dim = 0;
+	for (const char *lim = str;
+	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
+	dim++, lst = lim) {
+	const char *exp = lim;
+	int len = lim-lst-2; keep[dim] = malloc(len+1);
+	strncpy(keep[dim],lst,len); keep[dim][len] = 0; tot += len;
+	for (int nst = 1; nst; nst += sugarSkip(&lim)) {}
+	int lth = lim-exp-1; expr[dim] = malloc(lth+1);
+	strncpy(expr[dim],exp,lth); expr[dim][lth] = 0;}
+	int fin = strlen(lst); keep[dim] = malloc(fin+1); tot += fin;
+	strncpy(keep[dim],lst,fin); keep[dim][fin] = 0;
+
+	char **repl = malloc(dim*sizeof(char*));
+	for (int i = 0; i < dim; i++) {
+	repl[i] = 0; sugarShow(&repl[i],expr[i]);
+	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
+
+	free(*ptr); *ptr = malloc(tot+1); tot = 0;
+	for (int i = 0; i < dim; i++) {
+	strcpy(&(*ptr)[tot],keep[i]); tot += strlen(keep[i]);
+	strcpy(&(*ptr)[tot],repl[i]); tot += strlen(repl[i]);
+	free(keep[i]); keep[i] = 0; free(repl[i]); repl[i] = 0;}
+	strcpy(&(*ptr)[tot],keep[dim]); tot += strlen(keep[dim]);
+	free(keep[dim]); keep[dim] = 0; (*ptr)[tot] = 0;
+
+	free(expr); free(keep); free(repl);
 }

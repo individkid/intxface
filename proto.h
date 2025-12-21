@@ -73,7 +73,6 @@ typedef void (*chtype)();
 typedef void (*hgtype)(int val);
 typedef void (*eftype)(const char *str, int num, int idx);
 
-void stackErr();
 void exitErr(const char *file, int line);
 void intrFunc(chtype fnc);
 void noteFunc(hgtype fnc);
@@ -81,9 +80,6 @@ void errFunc(eftype fnc);
 void callIntr();
 void callNote(const char *str, int num, int idx);
 void callErr(const char *str, int num, int idx);
-void protoSet(const char *str);
-const char *protoGet(int i);
 void protoErr(const char *fmt, ...);
 const char *protoMsg();
-int protoPath(const char *exp);
 #endif

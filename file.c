@@ -55,7 +55,7 @@ void hubSig(int sig)
 	if (pthread_cancel(thread[i]) < 0) ERROR();
 	if (pthread_join(thread[i],0) < 0) ERROR();}
 	fprintf(stderr,"hubSig %d\n",sig); fflush(stderr);
-	stackErr();
+	ERROR();
 	exit(-1);
 }
 
@@ -64,7 +64,7 @@ void spokeSig(void *arg)
 	for (int i = 0; i < NUMFILE; i++)
 	if (thread[i] && pthread_equal(pthread_self(),thread[i])) {
 	fprintf(stderr,"spokeSig %d\n",i); fflush(stderr);
-	stackErr();}
+	ERROR();}
 }
 
 int fileTerm(const char *str, int len, int idx)

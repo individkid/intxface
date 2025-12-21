@@ -1,1 +1,2 @@
-void sugarExpand(char **ptr, const char *str);
+typedef void (*sftype)(const char *str);
+void sugarNest(char **ptr, sftype sid);

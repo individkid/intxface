@@ -58,25 +58,6 @@ int luaxLoad(lua_State *luastate, const char *exp)
 	if (retval != LUA_OK) {luaxErr(); return -1;}
 	return 0;
 }
-int luaxPath(const char *exp, const char *fnc)
-{
-	int i = protoPath(exp);
-	char *temp = 0;
-	int val = 0;
-	if (i < 0) return -1;
-	asprintf(&temp,"%s(\"%s%s\")",fnc,protoGet(i),exp);
-	val = luaxSide(temp);
-	free(temp);
-	return val;
-}
-int luaxFile(const char *exp)
-{
-	return luaxPath(exp,"dofile");
-}
-int luaxLib(const char *exp)
-{
-	return luaxPath(exp,"require");
-}
 void wrapCallback(const struct Close *arg);
 int luaxUnwrap(lua_State *L)
 {
@@ -130,42 +111,6 @@ int nestSkip(const char **str)
 	if (bas && bas < lim) {*str = bas+1; return 1;}
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
-}
-void nestSugar(char **ptr, sftype sug)
-{
-	if (!*ptr) return;
-	const char *str = *ptr;
-	int dim = 0;
-	for (const char *lim = str;
-	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
-	dim++) {
-	for (int nst = 1; nst; nst += nestSkip(&lim)) {}}
-	char **keep = malloc((dim+1)*sizeof(char*));
-	char **expr = malloc((dim)*sizeof(char*));
-	int tot = 0; const char *lst = str; dim = 0;
-	for (const char *lim = str;
-	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
-	dim++, lst = lim) {
-	const char *exp = lim;
-	int len = lim-lst-2; keep[dim] = malloc(len+1);
-	strncpy(keep[dim],lst,len); keep[dim][len] = 0; tot += len;
-	for (int nst = 1; nst; nst += nestSkip(&lim)) {}
-	int lth = lim-exp-1; expr[dim] = malloc(lth+1);
-	strncpy(expr[dim],exp,lth); expr[dim][lth] = 0;}
-	int fin = strlen(lst); keep[dim] = malloc(fin+1); tot += fin;
-	strncpy(keep[dim],lst,fin); keep[dim][fin] = 0;
-	char **repl = malloc(dim*sizeof(char*));
-	for (int i = 0; i < dim; i++) {
-	repl[i] = 0; sug(&repl[i],expr[i]);
-	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
-	free(expr); free(*ptr); *ptr = malloc(tot+1); tot = 0;
-	for (int i = 0; i < dim; i++) {
-	strcpy(&(*ptr)[tot],keep[i]); tot += strlen(keep[i]);
-	strcpy(&(*ptr)[tot],repl[i]); tot += strlen(repl[i]);
-	free(keep[i]); keep[i] = 0; free(repl[i]); repl[i] = 0;}
-	strcpy(&(*ptr)[tot],keep[dim]); tot += strlen(keep[dim]);
-	free(keep[dim]); keep[dim] = 0;
-	(*ptr)[tot] = 0; free(keep); free(repl);
 }
 void nestFree()
 {
