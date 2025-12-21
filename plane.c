@@ -1063,8 +1063,9 @@ int planeImmed(void **dat, const char *str)
 }
 void planeSugar(const char *str)
 {
-    struct Express exp = {0}; int siz = 0;
-    if (!hideExpress(&exp, str, &siz)) ERROR();
+    char *ptr = 0; struct Express exp = {0}; int siz = 0;
+    sugarShow(&ptr,str);
+    if (!hideExpress(&exp,ptr,&siz)) ERROR();
     machineVoid(&exp); freeExpress(&exp);
 }
 int planeSugval(const char *str)

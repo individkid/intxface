@@ -725,38 +725,38 @@ MicroAlt = {
 -- TODO in Release, use mouse and roller instead of Center spoofs.
 Bootstrap = {
 	{"Int","%(count = 0; function idx() count = count + 1; return count end;"..
-		"return count)","Str","!($(index = #%(return count)))Indexz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(bringup = #%(return count)))Bringupz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(image = #%(return count)))Imagez(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(uniform = #%(return count)))Uniformz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(matrix = #%(return count)))Matrixz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(triangle = #%(return count)))Trianglez(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(numeric = #%(return count)))Numericz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(vertex = #%(return count)))Vertexz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(basis = #%(return count)))Basisz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(peek = #%(return count)))Peekz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(poke = #%(return count)))Pokez(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(draw = #%(return count)))Drawz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(instr = #%(return count)))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(string = #%(return count)))Stringz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(machine = #%(return count)))Machinez(siz:1idx:0slf:0"..
+		"return count)","Str","!(index = #%(return count))Indexz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(bringup = #%(return count))Bringupz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(image = #%(return count))Imagez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(uniform = #%(return count))Uniformz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(matrix = #%(return count))Matrixz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(triangle = #%(return count))Trianglez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(numeric = #%(return count))Numericz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(vertex = #%(return count))Vertexz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(peek = #%(return count))Peekz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(poke = #%(return count))Pokez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:1idx:0slf:0"..
 		"mch[0]:Goto(exp[0]:IntOp(0))"..
 		-- TODO Goto(FnsOp of ((Str(pass) if nonzero) or (Str(pass) set to RawOp of register)))
 		-- TODO Goto(FnsOp of ((Str(fail) if nonzero) or (Str(fail) set to RawOp of register)))
 		-- TODO Goto(FnsOp of ((Str(wake) if nonzero) or (Str(wake) set to RawOp of register)))
 		")"},
-	{"Int","%(return idx())","Str","!($(express = #%(return count)))!($(count = #5))"..
+	{"Int","%(return idx())","Str","!(express = #%(return count))!(count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Fes #3 "..
 		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
 		"Op))"},
-	{"Int","%(return idx())","Str","!($(kernel = #%(return count)))Kernelz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!($(configure = #%(return count)))Configurez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
-	{"Int","%(return idx())","Str","!($(pass = #0))!($(fail = #0))!($(wake = #0))"..
+	{"Int","%(return idx())","Str","!(pass = #0)!(fail = #0)!(wake = #0)"..
 		"Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
 		"cnd[1]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
