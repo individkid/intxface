@@ -1105,7 +1105,9 @@ void initBoot()
     int len = strlen(temp[i]);
     boot[i] = malloc(len+1);
     strncpy(boot[i],temp[i],len); boot[i][len] = 0;
-    sugarNest(&boot[i],planeSugar);}
+    sugarRepl(&boot[i],'$');
+    sugarEval(planeSugar,boot[i],'!');
+    sugarFilt(&boot[i],'!');}
     for (int i = 0; i < size; i++) {
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};

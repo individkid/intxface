@@ -668,36 +668,39 @@ int sugarSkip(const char **str)
 	if (!bas || lim < bas) {*str = lim+1; return -1;}
 	return 0;
 }
-void sugarNest(char **ptr, sftype sid)
+void sugarNest(int *dim, char ***keep, char ***expr, const char *str, char chr)
+{
+	char open[3] = {chr,'(',0}; *dim = 0;
+	for (const char *lim = str;
+	strstr(lim,open) && *(lim = strstr(lim,open)) && *(lim += 2);
+	*dim += 1) {
+	for (int nst = 1; nst; nst += sugarSkip(&lim)) {}}
+	*keep = malloc((*dim+1)*sizeof(char*));
+	*expr = malloc((*dim)*sizeof(char*));
+	const char *lst = str; *dim = 0;
+	for (const char *lim = str;
+	strstr(lim,open) && *(lim = strstr(lim,open)) && *(lim += 2);
+	*dim += 1, lst = lim) {
+	const char *exp = lim;
+	int len = lim-lst-2; (*keep)[*dim] = malloc(len+1);
+	strncpy((*keep)[*dim],lst,len); (*keep)[*dim][len] = 0;
+	for (int nst = 1; nst; nst += sugarSkip(&lim)) {}
+	int lth = lim-exp-1; (*expr)[*dim] = malloc(lth+1);
+	strncpy((*expr)[*dim],exp,lth); (*expr)[*dim][lth] = 0;}
+	int fin = strlen(lst); (*keep)[*dim] = malloc(fin+1);
+	strncpy((*keep)[*dim],lst,fin); (*keep)[*dim][fin] = 0;
+}
+void sugarRepl(char **ptr, char chr)
 {
 	if (!*ptr) return;
+	int dim = 0; char **keep = 0; char **expr = 0;
+	sugarNest(&dim,&keep,&expr,*ptr,chr);
 
-	const char *str = *ptr;
-	int dim = 0;
-	for (const char *lim = str;
-	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
-	dim++) {
-	for (int nst = 1; nst; nst += sugarSkip(&lim)) {}}
-
-	char **keep = malloc((dim+1)*sizeof(char*));
-	char **expr = malloc((dim)*sizeof(char*));
-	int tot = 0; const char *lst = str; dim = 0;
-	for (const char *lim = str;
-	strstr(lim,"$(") && *(lim = strstr(lim,"$(")) && *(lim += 2);
-	dim++, lst = lim) {
-	const char *exp = lim;
-	int len = lim-lst-2; keep[dim] = malloc(len+1);
-	strncpy(keep[dim],lst,len); keep[dim][len] = 0; tot += len;
-	for (int nst = 1; nst; nst += sugarSkip(&lim)) {}
-	int lth = lim-exp-1; expr[dim] = malloc(lth+1);
-	strncpy(expr[dim],exp,lth); expr[dim][lth] = 0;}
-	int fin = strlen(lst); keep[dim] = malloc(fin+1); tot += fin;
-	strncpy(keep[dim],lst,fin); keep[dim][fin] = 0;
-
-	char **repl = malloc(dim*sizeof(char*));
+	char **repl = malloc(dim*sizeof(char*)); int tot = 0;
 	for (int i = 0; i < dim; i++) {
 	repl[i] = 0; sugarShow(&repl[i],expr[i]);
-	free(expr[i]); expr[i] = 0; tot += strlen(repl[i]);}
+	free(expr[i]); expr[i] = 0; tot += strlen(keep[i]) + strlen(repl[i]);}
+	tot += strlen(keep[dim]);
 
 	free(*ptr); *ptr = malloc(tot+1); tot = 0;
 	for (int i = 0; i < dim; i++) {
@@ -708,4 +711,32 @@ void sugarNest(char **ptr, sftype sid)
 	free(keep[dim]); keep[dim] = 0; (*ptr)[tot] = 0;
 
 	free(expr); free(keep); free(repl);
+}
+void sugarEval(sftype exe, const char *str, char chr)
+{
+	if (!exe) return;
+	int dim = 0; char **keep = 0; char **expr = 0;
+	sugarNest(&dim,&keep,&expr,str,chr);
+	for (int i = 0; i < dim; i++) {
+	exe(expr[i]);
+	free(expr[i]); expr[i] = 0;
+	free(keep[i]); keep[i] = 0;}
+	free(keep[dim]); keep[dim] = 0;
+	free(expr); free(keep);
+}
+void sugarFilt(char **ptr, char chr)
+{
+	if (!*ptr) return;
+	int dim = 0; char **keep = 0; char **expr = 0;
+	sugarNest(&dim,&keep,&expr,*ptr,chr);
+	int tot = 0;
+	for (int i = 0; i < dim; i++) {
+	free(expr[i]); expr[i] = 0; tot += strlen(keep[i]);}
+	tot += strlen(keep[dim]);
+	free(*ptr); *ptr = malloc(tot+1); tot = 0;
+	for (int i = 0; i < dim; i++) {
+	strcpy(&(*ptr)[tot],keep[i]); tot += strlen(keep[i]);
+	free(keep[i]); keep[i] = 0;}
+	strcpy(&(*ptr)[tot],keep[dim]); tot += strlen(keep[dim]);
+	free(expr); free(keep);
 }
