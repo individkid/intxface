@@ -360,7 +360,7 @@ template <class Type, int Size = 0> struct HeapState {
 };
 
 template <int Size, int Dim, int Min> struct SimpleState {
-    struct PairState {
+    struct Pair {
         int resrc;
         bool reuse;
     };
@@ -417,9 +417,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
     std::map<int,Only> idxkey; // handle for qualifier
-    std::map<int,int> orders; // multiple insance helper
-    int ordkey; // unique per thread
-    SimpleState() : seqn(0), ordkey(0) {
+    SimpleState() : seqn(0) {
         for (int i = 0; i < Size; i++) pool.push_back(i);
     }
     Only get(int idx, int tag, int val) {
@@ -500,15 +498,15 @@ template <int Size, int Dim, int Min> struct SimpleState {
         insert(tmp,idx);
         return idx;
     }
-    PairState oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
-        PairState ret;
+    Pair oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
+        Pair ret;
         ret.reuse = (oldest.find(tmp) == oldest.end());
         if (ret.reuse) insert(tmp);
         ret.resrc = oldest[tmp];
         return ret;
     }
-    PairState getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
-        PairState ret;
+    Pair getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
+        Pair ret;
         ret.reuse = (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < Min || !pool.empty());
         if (ret.reuse) {int idx = insert(tmp);
         while (oldest[tmp] != idx) {
@@ -516,8 +514,8 @@ template <int Size, int Dim, int Min> struct SimpleState {
         ret.resrc = oldest[tmp];
         return ret;
     }
-    PairState newbuf(Only &tmp) { // used for depend, so returns result of last advance
-        PairState ret;
+    Pair newbuf(Only &tmp) { // used for depend, so returns result of last advance
+        Pair ret;
         ret.reuse = (newest.find(tmp) == newest.end());
         if (ret.reuse) insert(tmp);
         ret.resrc = newest[tmp];
@@ -532,38 +530,17 @@ template <int Size, int Dim, int Min> struct SimpleState {
         Only tmp = get(idx,tag,val);
         return insert(tmp);
     }
-    PairState oldbuf(int idx, int tag, int val) {
+    Pair oldbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return oldbuf(tmp);
     }
-    PairState getbuf(int idx, int tag, int val) {
+    Pair getbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return getbuf(tmp);
     }
-    PairState newbuf(int idx, int tag, int val) {
+    Pair newbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return newbuf(tmp);
-    }
-    int setord() {
-        int tmp = ordkey; ordkey += 1; orders[tmp] = 0;
-        return tmp;
-    }
-    int getord(int idx) {
-        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
-        int tmp = orders[idx]; orders[idx] += 1;
-        return tmp;
-    }
-    int limord(int idx) {
-        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
-        return 0; // TODO maintain current and limit
-    }
-    void setord(int idx) {
-        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
-        orders[idx] = 0;
-    }
-    void clrord(int idx) {
-        if (orders.find(idx) == orders.end()) {*(int*)0=0;exit(-1);}
-        orders.erase(idx);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}

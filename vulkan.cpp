@@ -208,10 +208,6 @@ struct StackState {
     virtual void advance(int hdl, Quality key, int val) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
-    virtual int setord() = 0;
-    virtual int getord(int i) = 0;
-    virtual int limord(int i) = 0;
-    virtual void clrord(int i) = 0;
     virtual int buftag(int i, Quality t) = 0;
     virtual const char *bufnam() = 0;
     static StackState* self;
@@ -781,7 +777,8 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.post();
         return ptr;
     }
-    void advance(int hdl, Quality key, int val) override { // make oldest into newest, with current tags
+    void advance(int hdl, Quality key, int val) override {
+        // make oldbuf into newbuf
         safe.wait();
         auto idx = tag.oldbuf(hdl,key,val);
         tag.remove(idx.resrc);
@@ -797,29 +794,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     void advance() override {
         safe.wait();
         idx = (idx+1)%Size;
-        safe.post();
-    }
-    int setord() override {
-        safe.wait();
-        int idx = tag.setord();
-        safe.post();
-        return idx;
-    }
-    int getord(int i) override {
-        safe.wait();
-        int idx = tag.getord(i);
-        safe.post();
-        return idx;
-    }
-    int limord(int i) override {
-        safe.wait();
-        int idx = tag.limord(i);
-        safe.post();
-        return idx;
-    }
-    void clrord(int i) override {
-        safe.wait();
-        tag.clrord(i);
         safe.post();
     }
     int buftag(int i, Quality t) override {
