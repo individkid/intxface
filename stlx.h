@@ -477,10 +477,10 @@ template <int Size, int Dim, int Min> struct SimpleState {
         seqn = (seqn+1)%wrap;
     }
     int insert(Only &tmp) {
-        if (pool.empty()) {
         auto itr = keyord.rbegin();
-        if (keysiz.find(tmp) == keysiz.end() || (*itr)[Dim] > keysiz[tmp]+1)
-        remove(oldest[get(*itr)]); else remove(oldest[tmp]);}
+        if (pool.empty() && keysiz.find(tmp) == keysiz.end()) remove(oldest[get(*itr)]);
+        else if (pool.empty() && (*itr)[Dim] > keysiz[tmp]+1) remove(oldest[get(*itr)]);
+        else if (pool.empty()) remove(oldest[tmp]);
         Indx idx = pool.front(); pool.pop_front();
         insert(tmp,idx);
         return idx;
@@ -506,9 +506,9 @@ template <int Size, int Dim, int Min> struct SimpleState {
     }
     bool quality(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
-        if (pool.empty()) {
-        auto itr = keyord.rbegin();
-        return !(keysiz.find(tmp) == keysiz.end() || (*itr)[Dim] > keysiz[tmp]+1);}
+        if (!pool.empty()) return true;
+        if (keysiz.find(tmp) == keysiz.end()) return false;
+        if ((*keyord.rbegin())[Dim] > keysiz[tmp]+1) return false;
         return true;
     }
     int insert(int idx, int tag, int val) {
