@@ -360,6 +360,10 @@ template <class Type, int Size = 0> struct HeapState {
 };
 
 template <int Size, int Dim, int Min> struct SimpleState {
+    struct PairState {
+        int resrc;
+        bool reuse;
+    };
     enum Prior {
         PoolPri,
         QualPri,
@@ -419,14 +423,22 @@ template <int Size, int Dim, int Min> struct SimpleState {
         for (int i = 0; i < Size; i++) pool.push_back(i);
     }
     Only get(int idx, int tag, int val) {
-        if (idxkey.find(idx) == idxkey.end()) {Only tmp = {0}; idxkey[idx] = tmp;}
-        Only tmp = idxkey[idx]; if (tag >= 0 && tag < Dim) tmp[tag] = val; return tmp;
+        if (idxkey.find(idx) == idxkey.end()) {
+        Only tmp = {0}; idxkey[idx] = tmp;}
+        Only tmp = idxkey[idx];
+        if (tag >= 0 && tag < Dim) tmp[tag] = val;
+        return tmp;
     }
     Wseq get(const Only &key, int num) {
-        Wseq tmp; for (int i = 0; i < Dim; i++) tmp[i] = key[i]; tmp[Dim] = num; return tmp;
+        Wseq tmp; 
+        for (int i = 0; i < Dim; i++) tmp[i] = key[i];
+        tmp[Dim] = num;
+        return tmp;
     }
     Only get(const Wsiz &ord) {
-        Only tmp; for (int i = 0; i < Dim; i++) tmp[i] = ord[i]; return tmp;
+        Only tmp;
+        for (int i = 0; i < Dim; i++) tmp[i] = ord[i];
+        return tmp;
     }
     void set(int siz) {
         // remove any Indx not less than siz
@@ -472,8 +484,11 @@ template <int Size, int Dim, int Min> struct SimpleState {
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
         seqnum[idx] = seqn;
-        if (keysiz.find(tmp) == keysiz.end()) {keysiz[tmp] = 1; keyord.insert(get(tmp,1));}
-        else {keyord.erase(get(tmp,keysiz[tmp])); keysiz[tmp] += 1; keyord.insert(get(tmp,keysiz[tmp]));}
+        if (keysiz.find(tmp) == keysiz.end()) {
+        keysiz[tmp] = 1; keyord.insert(get(tmp,1));} else {
+        keyord.erase(get(tmp,keysiz[tmp]));
+        keysiz[tmp] += 1;
+        keyord.insert(get(tmp,keysiz[tmp]));}
         seqn = (seqn+1)%wrap;
     }
     int insert(Only &tmp) {
@@ -485,45 +500,47 @@ template <int Size, int Dim, int Min> struct SimpleState {
         insert(tmp,idx);
         return idx;
     }
-    int oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
-        if (oldest.find(tmp) == oldest.end()) insert(tmp);
-        return oldest[tmp];
+    PairState oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
+        PairState ret;
+        ret.reuse = (oldest.find(tmp) == oldest.end());
+        if (ret.reuse) insert(tmp);
+        ret.resrc = oldest[tmp];
+        return ret;
     }
-    int getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
-        if (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < Min || !pool.empty()) {
-        int idx = insert(tmp);
+    PairState getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
+        PairState ret;
+        ret.reuse = (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < Min || !pool.empty());
+        if (ret.reuse) {int idx = insert(tmp);
         while (oldest[tmp] != idx) {
         remove(oldest[tmp]); insert(tmp);}}
-        return oldest[tmp];
+        ret.resrc = oldest[tmp];
+        return ret;
     }
-    int newbuf(Only &tmp) { // used for depend, so returns result of last advance
-        if (newest.find(tmp) == newest.end()) insert(tmp);
-        return newest[tmp];
+    PairState newbuf(Only &tmp) { // used for depend, so returns result of last advance
+        PairState ret;
+        ret.reuse = (newest.find(tmp) == newest.end());
+        if (ret.reuse) insert(tmp);
+        ret.resrc = newest[tmp];
+        return ret;
     }
     void qualify(int idx, int tag, int val) {
-        if (idxkey.find(idx) == idxkey.end()) {Only tmp = {0}; idxkey[idx] = tmp;}
+        if (idxkey.find(idx) == idxkey.end()) {
+        Only tmp = {0}; idxkey[idx] = tmp;}
         if (tag >= 0 && tag < Dim) idxkey[idx][tag] = val;
-    }
-    bool quality(int idx, int tag, int val) {
-        Only tmp = get(idx,tag,val);
-        if (!pool.empty()) return true;
-        if (keysiz.find(tmp) == keysiz.end()) return false;
-        if ((*keyord.rbegin())[Dim] > keysiz[tmp]+1) return false;
-        return true;
     }
     int insert(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return insert(tmp);
     }
-    int oldbuf(int idx, int tag, int val) {
+    PairState oldbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return oldbuf(tmp);
     }
-    int getbuf(int idx, int tag, int val) {
+    PairState getbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return getbuf(tmp);
     }
-    int newbuf(int idx, int tag, int val) {
+    PairState newbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return newbuf(tmp);
     }

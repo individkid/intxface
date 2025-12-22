@@ -184,6 +184,10 @@ struct Onl {
     int hdl; Quality key; int val;
 };
 struct BaseState;
+struct Res {
+    BaseState *resrc;
+    bool reuse;
+};
 struct StackState {
     static const int descrs = 4; // maximum descriptor sets in use
     static const int micros = 3; // eventually equal to Micros
@@ -195,9 +199,9 @@ struct StackState {
     static const int handls = 4; // maximum number of classifications
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
-    virtual BaseState *newbuf(int hdl, Quality key, int val) = 0;
-    virtual BaseState *oldbuf(int hdl, Quality key, int val) = 0;
-    virtual BaseState *getbuf(int hdl, Quality key, int val) = 0;
+    virtual Res newbuf(int hdl, Quality key, int val) = 0;
+    virtual Res oldbuf(int hdl, Quality key, int val) = 0;
+    virtual Res getbuf(int hdl, Quality key, int val) = 0;
     virtual BaseState *idxbuf(int i) = 0;
     virtual BaseState *newbuf() = 0;
     virtual BaseState *oldbuf() = 0;
@@ -721,61 +725,109 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     ArrayState() : safe(1), idx(0) {
     }
     void qualify(int hdl, Quality key, int val) override { // set current tags
-        safe.wait(); tag.qualify(hdl,key,val); safe.post();
+        safe.wait();
+        tag.qualify(hdl,key,val);
+        safe.post();
     }
     bool compare(Onl one, Onl oth) override {
-        safe.wait(); bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val)); safe.post(); return ret;
-    }
-    BaseState *newbuf(int hdl, Quality key, int val) override { // buffer of newest, with current tags
         safe.wait();
-        bool vld = tag.quality(hdl,key,val);
-        int idx = tag.newbuf(hdl,key,val);
-        BaseState *ptr = &state[idx];
-        if (!vld) ptr->finish();
+        bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val));
         safe.post();
-        return ptr;
+        return ret;
     }
-    BaseState *oldbuf(int hdl, Quality key, int val) override { // buffer of oldest, with current tags
-        safe.wait(); int idx = tag.oldbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
+    Res newbuf(int hdl, Quality key, int val) override {
+        safe.wait();
+        auto idx = tag.newbuf(hdl,key,val);
+        Res ret;
+        ret.resrc = &state[idx.resrc];
+        ret.reuse = idx.reuse;
+        safe.post();
+        return ret;
     }
-    BaseState *getbuf(int hdl, Quality key, int val) override { // buffer of oldest, with current tags
-        safe.wait(); int idx = tag.getbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
+    Res oldbuf(int hdl, Quality key, int val) override {
+        safe.wait();
+        auto idx = tag.oldbuf(hdl,key,val);
+        Res ret;
+        ret.resrc = &state[idx.resrc];
+        ret.reuse = idx.reuse;
+        safe.post();
+        return ret;
+    }
+    Res getbuf(int hdl, Quality key, int val) override {
+        safe.wait();
+        auto idx = tag.getbuf(hdl,key,val);
+        Res ret;
+        ret.resrc = &state[idx.resrc];
+        ret.reuse = idx.reuse;
+        safe.post();
+        return ret;
     }
     BaseState *idxbuf(int i) override {
         if (i < 0 || i >= Size) EXIT
-        safe.wait(); State *ptr = &state[i]; safe.post(); return ptr;
+        safe.wait();
+        BaseState *ptr = &state[i];
+        safe.post();
+        return ptr;
     }
     BaseState *newbuf() override {
-        safe.wait(); State *ptr = &state[idx]; safe.post(); return ptr;
+        safe.wait();
+        BaseState *ptr = &state[idx];
+        safe.post();
+        return ptr;
     }
     BaseState *oldbuf() override {
-        safe.wait(); State *ptr = &state[(idx+1)%Size]; safe.post(); return ptr;
+        safe.wait();
+        BaseState *ptr = &state[(idx+1)%Size];
+        safe.post();
+        return ptr;
     }
     void advance(int hdl, Quality key, int val) override { // make oldest into newest, with current tags
-        safe.wait(); int i = tag.oldbuf(hdl,key,val); tag.remove(i); if (tag.insert(hdl,key,val)!=i) EXIT safe.post();
+        safe.wait();
+        auto idx = tag.oldbuf(hdl,key,val);
+        tag.remove(idx.resrc);
+        if (tag.insert(hdl,key,val)!=idx.resrc) EXIT
+        safe.post();
     }
     void advance(int i) override {
         if (i < 0 || i >= Size) EXIT
-        safe.wait(); idx = i; safe.post();
+        safe.wait();
+        idx = i;
+        safe.post();
     }
     void advance() override {
-        safe.wait(); idx = (idx+1)%Size; safe.post();
+        safe.wait();
+        idx = (idx+1)%Size;
+        safe.post();
     }
     int setord() override {
-        safe.wait(); int idx = tag.setord(); safe.post(); return idx;
+        safe.wait();
+        int idx = tag.setord();
+        safe.post();
+        return idx;
     }
     int getord(int i) override {
-        safe.wait(); int idx = tag.getord(i); safe.post(); return idx;
+        safe.wait();
+        int idx = tag.getord(i);
+        safe.post();
+        return idx;
     }
     int limord(int i) override {
-        safe.wait(); int idx = tag.limord(i); safe.post(); return idx;
+        safe.wait();
+        int idx = tag.limord(i);
+        safe.post();
+        return idx;
     }
     void clrord(int i) override {
-        safe.wait(); tag.clrord(i); safe.post();
+        safe.wait();
+        tag.clrord(i);
+        safe.post();
     }
     int buftag(int i, Quality t) override {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
-        safe.wait(); int val = tag.get(i,t); safe.post(); return val;
+        safe.wait();
+        int val = tag.get(i,t);
+        safe.post();
+        return val;
     }
     const char *bufnam() override {
         switch (Type) {
@@ -1122,12 +1174,14 @@ struct CopyState {
         switch (ins) {default: break;
         case(QDerIns): case(TDerIns):
         case(WDeeIns): case(TDeeIns):
-        case(RDeeIns): case(SDeeIns):
-        return src(res)->newbuf(idx,key,val);
+        case(RDeeIns): case(SDeeIns): {
+        auto ptr = src(res)->newbuf(idx,key,val);
+        if (ptr.reuse) ptr.resrc->finish();
+        return ptr.resrc;}
         break; case(PDerIns): case(SDerIns):
-        return src(res)->getbuf(idx,key,val);
+        return src(res)->getbuf(idx,key,val).resrc;
         break; case(ODerIns): case(RDerIns):
-        return src(res)->oldbuf(idx,key,val);
+        return src(res)->oldbuf(idx,key,val).resrc;
         break; case(IDerIns): case(IDeeIns):
         return src(res)->idxbuf(idx);}
         return 0;
@@ -1167,7 +1221,7 @@ struct CopyState {
             break; case(TDeeIns): case(SDeeIns): case(IDeeIns): count += 1;}}
         log << "choose binding" << '\n';
         BindState *bind = 0; int min = 0;
-        if (count > min) bind = stack[BindRes]->getbuf(0,Qualitys,0)->getBind(log);
+        if (count > min) bind = stack[BindRes]->getbuf(0,Qualitys,0).resrc->getBind(log);
         int lim = num; // number checked for reservation
         if (count > min && bind == 0) lim = -1;
         log << "check binding" << '\n';
@@ -1578,11 +1632,11 @@ struct CopyState {
             push(ptr->mem,TexRet,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
         break; case (Peekz): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
-            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0)->getExtent(); // TODO unsafe if SwapRes is changing
+            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
             push(ptr->mem,GetRet,(void*)ptr->eek,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Pokez): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
-            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0)->getExtent(); // TODO unsafe if SwapRes is changing
+            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
             push(ptr->mem,SetRet,(void*)ptr->oke,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}}
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
