@@ -504,6 +504,13 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (idxkey.find(idx) == idxkey.end()) {Only tmp = {0}; idxkey[idx] = tmp;}
         if (tag >= 0 && tag < Dim) idxkey[idx][tag] = val;
     }
+    bool quality(int idx, int tag, int val) {
+        Only tmp = get(idx,tag,val);
+        if (pool.empty()) {
+        auto itr = keyord.rbegin();
+        return !(keysiz.find(tmp) == keysiz.end() || (*itr)[Dim] > keysiz[tmp]+1);}
+        return true;
+    }
     int insert(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
         return insert(tmp);

@@ -440,7 +440,7 @@ struct BaseState {
     StackState *item;
     int indx;
     SafeState safe;
-    bool valid;
+    bool valid, ready;
     int plock, rlock, wlock;
     BindState *lock;
     Loc ploc[ResrcLocs];
@@ -453,6 +453,7 @@ struct BaseState {
         indx(StackState::index++),
         safe(1),
         valid(false),
+        ready(false),
         plock(0),
         rlock(0),
         wlock(0),
@@ -500,14 +501,26 @@ struct BaseState {
         if (ploc[i].max == SizeState(InitExt));
         else unsize(ploc[i],log);
     }
+    void finish() {
+        safe.wait();
+        ready = false;
+        safe.post();
+    }
     bool recall(Loc &loc, SmartState log) {
         SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
         SizeState ini = SizeState(InitExt);
         int msk = 1<<*loc;
         if (loc.max == max); else {
-        if (loc.max == ini); else {mask &= ~msk; if (mask == 0) valid = false; unsize(loc,log);}
+        if (loc.max == ini); else {
+        mask &= ~msk;
+        if (mask == 0) {
+        safe.wait(); valid = ready = false; safe.post();}
+        unsize(loc,log);}
         loc.max = max;
-        if (loc.max == ini); else {resize(loc,log); if (mask == 0) valid = true; mask |= msk;
+        if (loc.max == ini); else {resize(loc,log);
+        if (mask == 0) {
+        safe.wait(); valid = ready = true; safe.post();}
+        mask |= msk;
         return true;}}
         return false;
     }
@@ -517,7 +530,10 @@ struct BaseState {
         int msk = 1<<*loc;
         if (loc.max == ini) {
         loc.max = max;
-        if (loc.max == ini); else {resize(loc,log); if (mask == 0) valid = true; mask |= msk;}}
+        if (loc.max == ini); else {resize(loc,log);
+        if (mask == 0) {
+        safe.wait(); valid = ready = true; safe.post();}
+        mask |= msk;}}
     }
     VkFence basesiz(ResrcLoc loc, SmartState log) {
         // resize and setup
@@ -579,7 +595,7 @@ struct BaseState {
     bool incr(bool elock, int psav, int rsav, int wsav) {
         safe.wait();
         if (plock < psav || wlock < wsav || rlock < rsav) EXIT
-        if (!valid || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
+        if (!valid || !ready || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
         safe.post(); return false;}
         (elock ? wlock : rlock) += 1;
         safe.post();
@@ -711,9 +727,13 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.wait(); bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val)); safe.post(); return ret;
     }
     BaseState *newbuf(int hdl, Quality key, int val) override { // buffer of newest, with current tags
-        safe.wait(); int idx = tag.newbuf(hdl,key,val); BaseState *ptr = &state[idx];
-        // TODO invalidate *ptr if newbuf changed any of its Quality values
-        safe.post(); return ptr;
+        safe.wait();
+        bool vld = tag.quality(hdl,key,val);
+        int idx = tag.newbuf(hdl,key,val);
+        BaseState *ptr = &state[idx];
+        if (!vld) ptr->finish();
+        safe.post();
+        return ptr;
     }
     BaseState *oldbuf(int hdl, Quality key, int val) override { // buffer of oldest, with current tags
         safe.wait(); int idx = tag.oldbuf(hdl,key,val); BaseState *ptr = &state[idx]; safe.post(); return ptr;
