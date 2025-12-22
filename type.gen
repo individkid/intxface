@@ -260,9 +260,9 @@ Transfer = {
 	-- Matrix M
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
-	"Send", -- M = GSL; S = SL; L = I
-	"Self", -- G = M; S = M'S
-	"Glob", -- G = M
+	"Send", -- M = L; S = SL; L = I
+	"Self", -- G = GM; S = M'S
+	"Glob", -- G = GM
 	"Test", -- time to matrix
 	"Bopy", -- memory to memory
 	"Copy", -- center to resource
