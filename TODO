@@ -7,7 +7,7 @@ Regress: Test spoofed user actions and file changes with Center loaded through p
 
 Release: Use actual user actions to interact with actual file.
 
-Build: Fix conditional generate in show.lua, and integrate with depend.lua.
+Build: Remove conditional generate in show.lua; just generate type.c to link generally.
 
 Actions:
 Mouse transformations include
