@@ -577,15 +577,23 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int tmp = *datxIntz(0,dat0); free(dat0);
 		if (tmp == 0) {typ = datxEval(dat,&exp->lst[idx],typ); break;}
 		idx = (idx + tmp) % exp->siz;}} break;
-	case (FesOp): {
-		datxNone(dat); typ = identType("Dat");
-		if (exp->num <= 0) ERROR();
-		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->msk[0],-1);
-		if (typ0 != identType("Int")) ERROR();
-		int msk = *datxIntz(0,dat0); free(dat0);
-		for (int i = ffs(msk)-1; msk; i = ffs(msk&=~(1<<i))-1) {
-		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->mux[i],-1);
-		if (typ1 != typ) ERROR(); free(dat1);}} break;
+	case (HomOp): {
+		} break;
+	case (HetOp): {
+		} break;
+	case (LstOp): {
+		for (int i = 0; i < exp->num; i++) {
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->gen[i],-1);}
+		// TODO combine gen results into Dat with header 0 if momog type, 1 if hetero types, num, type if monog, types if hetero, and a list of results
+		datxNone(dat); int typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+	case (EleOp): {
+		} break;
+	case (CatOp): {
+		} break;
+	case (PreOp): {
+		} break;
+	case (PstOp): {
+		} break;
 	case (RetOp): {
 		if (!retptr) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
@@ -652,9 +660,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->ext[1],identType("Int")); if (typ1 != identType("Int")) ERROR();
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
 		typ = extptr(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0);} break;
-	case (ImmOp):
+	case (ImmOp): {
 		if (!immptr) ERROR();
-		typ = immptr(dat,exp->key); break;
+		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
+		typ = immptr(dat,dat0,typ0);} break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->val);} break;

@@ -709,7 +709,7 @@ void planeMachine(enum Thread tag, int idx)
     struct Center *current = centerPull(index);
     if (current->mem != Machinez) ERROR();
     int last = callInfo(MachineLast,0,planeRcfg)-1;
-    for (int next = last+1; next != last; last = ++next) {
+    for (int next = last+1; next != last; next += 1) {last = next;
     if (next < 0 || next >= current->siz) ERROR();
     struct Machine *mptr = &current->mch[next];
     /*{char *opr = 0; showMachine(mptr,&opr);
@@ -1051,18 +1051,9 @@ int planeExtract(void **fld, const void *src, int idx, int sub, int typ)
 {
     // TODO
 }
-int planeImmed(void **dat, const char *str)
+int planeImmed(void **dat, const void *src, int typ)
 {
-    struct Center *tmp = 0; int len = 0;
-    allocCenter(&tmp,1);
-    len = 0; if (hideCenter(tmp,str,&len)) {
-    if (waitSafe(dataSem) != 0) ERROR();
-    datxVoid(dat0,0); writeCenter(tmp,idx0); assignDat(dat,*dat0);
-    if (postSafe(dataSem) != 1) ERROR();
-    allocCenter(&tmp,0);
-    return identType("Center");}
-    allocCenter(&tmp,0);
-    return -1;
+    // TODO hide string type, show non-string type
 }
 void planeSugar(const char *str)
 {

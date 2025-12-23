@@ -419,7 +419,13 @@ Operate = { -- little language expressions
 	"BitOp",
 	"CmpOp",
 	"CndOp", -- touring machine
-	"FesOp", -- for each set
+	"HomOp", -- list of same type
+	"HetOp", -- list of different types
+	"LstOp", -- either hom or het
+	"EleOp", -- element of hom or het
+	"CatOp", -- concatination of lists
+	"PreOp", -- range from list
+	"PstOp", -- range from list
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
 	"WosOp", -- callback setbits config
@@ -746,7 +752,7 @@ Bootstrap = {
 		-- TODO Goto(FnsOp of ((Str(wake) if nonzero) or (Str(wake) set to RawOp of register)))
 		")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
-		"Expressz(siz:1idx:0slf:0exp[0]:$(Fes #3 "..
+		"Expressz(siz:1idx:0slf:0exp[0]:$(Lst "..
 		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
 		"Op))"},
@@ -877,7 +883,7 @@ Irrex = { -- permutation of permutations
 }
 Express = {
 	{"opr","Operate",{},""},
-	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true}},2},
+	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["EleOp"]=true,["CatOp"]=true,["PreOp"]=true,["PstOp"]=true}},2},
 	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
@@ -885,16 +891,15 @@ Express = {
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
-	{"num","Int",{["opr"]={["FesOp"]=true}},{}},
-	{"msk","Express",{["opr"]={["FesOp"]=true}},1},
-	{"mux","Express",{["opr"]={["FesOp"]=true}},"num"},
+	{"num","Int",{["opr"]={["HomOp"]=true,["HetOp"]=true,["LstOp"]=true}},{}},
+	{"gen","Express",{["opr"]={["HomOp"]=true,["HetOp"]=true,["LstOp"]=true}},"num"},
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},1},
-	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["ImmOp"]=true,["StrOp"]=true}},{}},
+	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["StrOp"]=true}},{}},
 	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
-	{"put","Express",{["opr"]={["PutOp"]=true}},1},
+	{"put","Express",{["opr"]={["PutOp"]=true,["ImmOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"val","Int",{["opr"]={["IntOp"]=true}},{}},

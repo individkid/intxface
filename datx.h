@@ -8,7 +8,7 @@ typedef void (*putfp)(const char *);
 typedef void (*typfp)(void **dst, int typ);
 typedef int (*fldfp)(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp);
 typedef int (*extfp)(void **fld, const void *src, int idx, int sub, int typ);
-typedef int (*immfp)(void **dat, const char *str);
+typedef int (*immfp)(void **dat, const void *src, int typ);
 int datxSub();
 void **datxDat(int sub);
 void datxNon();
