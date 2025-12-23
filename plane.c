@@ -429,10 +429,6 @@ int centerMod(struct Center *ptr)
     break; case (Kernelz): return sizeof(struct Kernel);}
     return 0;
 }
-void kernelClear(struct Kernel *ker)
-{
-    // TODO
-}
 
 // machine extensions
 struct Center *machineCenter(int sig, int *arg, int lim, int idx, int sub)
@@ -1051,18 +1047,6 @@ int planeExtract(void **fld, const void *src, int idx, int sub, int typ)
 {
     // TODO
 }
-int planeImmed(void **dat, const void *src, int typ)
-{
-    // TODO hide string type, show non-string type
-}
-int planeDelptr(void **dat, int typ)
-{
-    // TODO
-}
-int planeCpyptr(void **dat, const void *src, int typ)
-{
-    // TODO
-}
 void planeSugar(const char *str)
 {
     struct Express **exp = 0;
@@ -1104,9 +1088,7 @@ void initSafe()
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,
-    planeGetstr,planePutstr,
-    planeTypstr,planeField,planeExtract,
-    planeImmed,planeDelptr,planeCpyptr);
+    planeGetstr,planePutstr,planeTypstr,planeField,planeExtract);
     start = processTime();
 }
 void initBoot()

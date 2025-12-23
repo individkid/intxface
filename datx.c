@@ -21,9 +21,6 @@ putfp putptr = 0;
 typfp typptr = 0;
 fldfp fldptr = 0;
 extfp extptr = 0;
-immfp immptr = 0;
-delfp delptr = 0;
-immfp cpyptr = 0;
 
 // these are not thread safe
 DECLARE_MAP(void *,int,RefCnt)
@@ -57,6 +54,15 @@ regex_t *regexp = 0;
 int regsiz = 0;
 struct Irrex *irrexp = 0;
 int irrsiz = 0;
+
+// TODO move to type.h
+#define FOREACH_TYPE(TYPE,ARG,APPLY) \
+if (TYPE==identType("Center")) APPLY(Center,ARG) \
+else if (TYPE==identType("Matrix")) APPLY(Matrix,ARG)
+
+#define FREE_TYPE(NAME,ARG) {free ## NAME ARG;}
+#define COPY_TYPE(NAME,ARG) {copy ## NAME ARG;}
+#define ALLOC_TYPE(NAME,ARG) {datxVoid(ARG,sizeof(struct NAME));}
 
 int datxSub()
 {
@@ -331,19 +337,19 @@ void datxFree(void **dat, int typ)
 	else if (typ == identType("Num")) free(*dat);
 	else if (typ == identType("Old")) free(*dat);
 	else if (typ == identType("Str")) free(*dat);
-	else if (existRefCnt(*dat,refcnt) &&
+	else if (*dat && existRefCnt(*dat,refcnt) &&
 	findRefCnt(*dat,refcnt) > 1)
 	*ptrRefCnt(*dat,refcnt) -= 1;
-	else if (existRefCnt(*dat,refcnt) &&
-	delptr && delptr(dat,typ))
+	else if (*dat && existRefCnt(*dat,refcnt)) {
 	eraseRefCnt(*dat,refcnt);
+    FOREACH_TYPE(typ,(*dat),FREE_TYPE)
+	else ERROR();}
 	else ERROR();
-	*dat = 0;
+	free(*dat); *dat = 0;
 }
 void datxCopy(void **dat, void *src, int typ)
 {
 	datxFree(dat,typ);
-	// optimization of loopType
 	if (typ == identType("Int")) datxInt(dat,*datxIntz(0,src));
 	else if (typ == identType("Int32")) datxInt32(dat,*datxInt32z(0,src));
 	else if (typ == identType("New")) datxNew(dat,*datxNewz(0,src));
@@ -351,10 +357,20 @@ void datxCopy(void **dat, void *src, int typ)
 	else if (typ == identType("Old")) datxOld(dat,*datxOldz(0,src));
 	else if (typ == identType("Str")) datxStr(dat,datxChrz(0,src));
 	else if (existRefCnt(src,refcnt)) {
-	*dat = src; *ptrRefCnt(src,refcnt) += 1;}	
-	else if (cpyptr && cpyptr(dat,src,typ))
-	insertRefCnt(*dat,1,refcnt);
+	*dat = src; *ptrRefCnt(src,refcnt) += 1;}
+	else {insertRefCnt(*dat,1,refcnt);
+	FOREACH_TYPE(typ,(dat),ALLOC_TYPE)
 	else ERROR();
+	FOREACH_TYPE(typ,(*dat,src),COPY_TYPE)
+	else ERROR();}
+}
+int datxHide(void **dat, const char *str)
+{
+	// TODO
+}
+void datxShow(char **str, void *dat, int typ)
+{
+	// TODO
 }
 #define BINARY_STR(LFT,RGT) strcmp(LFT,RGT)
 #define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
@@ -710,10 +726,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
 		typ = extptr(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0);} break;
 	case (ImmOp): {
-		if (!immptr) ERROR();
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
-		typ = immptr(dat,dat0,typ0);
-		datxFree(dat0,typ0);} break;
+    	// TODO hide string type, show non-string type
+		datxFree(dat0,typ0);
+		typ = identType("Dat"); datxNone(dat);
+		int typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->val);} break;
@@ -733,8 +750,7 @@ void datxChanged(rktype fnc)
 	datxNoteFp = fnc;
 }
 void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
-	getfp get, putfp put, typfp typ, fldfp fld, extfp ext,
-	immfp imm, delfp del, immfp cpy)
+	getfp get, putfp put, typfp typ, fldfp fld, extfp ext)
 {
 	retptr = ret;
 	setptr = set;
@@ -746,7 +762,4 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
 	typptr = typ;
 	fldptr = fld;
 	extptr = ext;
-	immptr = imm;
-	delptr = del;
-	cpyptr = cpy;
 }
