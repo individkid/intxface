@@ -1,4 +1,4 @@
-datxC.o: datx.c datx.h type.h
+datxC.o: datx.c datx.h stlx.h type.h
 faceC.o: face.c face.h proto.h
 faceCpp.o: face.cpp face.h proto.h wrap.h
 facer.log: facer.lua facerC facerHs facerLua luax.so
@@ -32,13 +32,13 @@ luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h sugx.h type.h
 planra.log: planraC
-planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o
+planraC: datxC.o faceC.o planraC.o planraC.typeC.o protoC.o stlxCpp.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h type.h
 planraC.type.c: luax.so show.lua type.gen
 planraC.typeC.o: face.h type.h
 protoC.o: proto.c proto.h
 share: shareC
-shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o wrapCpp.o
+shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o shareC.typeC.o stlxCpp.o wrapCpp.o
 shareC.o: datx.h face.h proto.h share.c type.h
 shareC.type.c: luax.so show.lua type.gen
 shareC.typeC.o: face.h type.h
@@ -68,7 +68,7 @@ vertexDebugG: vulkan.g
 vertexPierceG: vulkan.g
 vertexTestG: vulkan.g
 vulkan.log: fragmentDebugG fragmentPierceG fragmentTestG texture.jpg vertexDebugG vertexPierceG vertexTestG vulkanCpp
-vulkanCpp: datxC.o faceC.o faceCpp.o fmtxC.o luaxC.o luaxCpp.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o vulkanCpp.o vulkanCpp.typeC.o wrapCpp.o
+vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o vulkanCpp.o vulkanCpp.typeC.o
 vulkanCpp.o: face.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen
 vulkanCpp.typeC.o: face.h type.h

@@ -1,1 +1,1 @@
- allocIrrex identType
+ identType

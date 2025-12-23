@@ -9,6 +9,7 @@ typedef void (*typfp)(void **dst, int typ);
 typedef int (*fldfp)(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp);
 typedef int (*extfp)(void **fld, const void *src, int idx, int sub, int typ);
 typedef int (*immfp)(void **dat, const void *src, int typ);
+typedef int (*delfp)(void **dat, int typ);
 int datxSub();
 void **datxDat(int sub);
 void datxNon();
@@ -17,9 +18,9 @@ int datxWriteFp(int fildes, const void *buf, int nbyte);
 void datxVoid(void **dat, int siz);
 void datxSplit(void **pre, void **suf, const void *dat, int len);
 void datxJoin(void **dat, const void *pre, const void *suf);
-int datxFind(void **val, void *key);
+int datxFind(void **val, const void *key);
 int datxFinds(void **val, const char *pre, const char *str);
-void datxInsert(void *key, void *val, int typ);
+void datxInsert(const void *key, const void *val, int typ);
 void datxInserts(const char *pre, const char *str, void *val, int typ);
 void datxNone(void **dat);
 void datxChr(void **dat, char val);
@@ -46,4 +47,5 @@ int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
 void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
-	getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm);
+	getfp get, putfp put, typfp typ, fldfp fld, extfp ext,
+	immfp imm, delfp del, immfp cpy);

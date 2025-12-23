@@ -1,6 +1,7 @@
+#include "datx.h"
 #include "type.h"
 #include "face.h"
-#include "datx.h"
+#include "stlx.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -21,6 +22,12 @@ typfp typptr = 0;
 fldfp fldptr = 0;
 extfp extptr = 0;
 immfp immptr = 0;
+delfp delptr = 0;
+immfp cpyptr = 0;
+
+// these are not thread safe
+DECLARE_MAP(void *,int,RefCnt)
+void *refcnt = 0;
 
 // these are not thread safe
 void ***datx = 0;
@@ -39,13 +46,13 @@ void **datxDat1 = 0;
 void **datxDat2 = 0;
 void **datxDat3 = 0;
 
-// TODO protect with sem_t for thread safety
+// these are not thread safe
 int sizs = 0;
 int *typs = 0;
 void **boxs = 0;
 void **keys = 0;
 
-// TODO protect with sem_t for thread safety
+// these are not thread safe
 regex_t *regexp = 0;
 int regsiz = 0;
 struct Irrex *irrexp = 0;
@@ -159,7 +166,7 @@ int datxCompare(void *one, void *oth)
 		if (*((char*)one+i) > *((char*)oth+i)) return 1;}
 	return 0;
 }
-int datxFind(void **val, void *key)
+int datxFind(void **val, const void *key)
 {
 	int idx = 0; int siz = sizs; void *dat = 0;
 	if (prefix) datxJoin(&dat,prefix,key); else assignDat(&dat,key);
@@ -172,7 +179,7 @@ int datxFind(void **val, void *key)
 	if (datxCompare(dat,keys[idx]) != 0) {free(dat); return -1;}
 	assignDat(val,boxs[idx]); free(dat); return typs[idx];
 }
-void datxInsert(void *key, void *val, int typ)
+void datxInsert(const void *key, const void *val, int typ)
 {
 	int idx = 0; int siz = sizs; void *dat = 0;
 	if (prefix) datxJoin(&dat,prefix,key);
@@ -314,6 +321,40 @@ void datxOld(void **dat, float val)
 	*dat = realloc(*dat,sizeof(val)+sizeof(int));
 	*(int*)*dat = sizeof(val);
 	*datxOldz(0,*dat) = val;
+}
+void datxFree(void **dat, int typ)
+{
+	if (!refcnt) refcnt = allocRefCnt();
+	if (typ == identType("Int")) free(*dat);
+	else if (typ == identType("Int32")) free(*dat);
+	else if (typ == identType("New")) free(*dat);
+	else if (typ == identType("Num")) free(*dat);
+	else if (typ == identType("Old")) free(*dat);
+	else if (typ == identType("Str")) free(*dat);
+	else if (existRefCnt(*dat,refcnt) &&
+	findRefCnt(*dat,refcnt) > 1)
+	*ptrRefCnt(*dat,refcnt) -= 1;
+	else if (existRefCnt(*dat,refcnt) &&
+	delptr && delptr(dat,typ))
+	eraseRefCnt(*dat,refcnt);
+	else ERROR();
+	*dat = 0;
+}
+void datxCopy(void **dat, void *src, int typ)
+{
+	datxFree(dat,typ);
+	// optimization of loopType
+	if (typ == identType("Int")) datxInt(dat,*datxIntz(0,src));
+	else if (typ == identType("Int32")) datxInt32(dat,*datxInt32z(0,src));
+	else if (typ == identType("New")) datxNew(dat,*datxNewz(0,src));
+	else if (typ == identType("Num")) datxNum(dat,*datxNumz(0,src));
+	else if (typ == identType("Old")) datxOld(dat,*datxOldz(0,src));
+	else if (typ == identType("Str")) datxStr(dat,datxChrz(0,src));
+	else if (existRefCnt(src,refcnt)) {
+	*dat = src; *ptrRefCnt(src,refcnt) += 1;}	
+	else if (cpyptr && cpyptr(dat,src,typ))
+	insertRefCnt(*dat,1,refcnt);
+	else ERROR();
 }
 #define BINARY_STR(LFT,RGT) strcmp(LFT,RGT)
 #define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
@@ -582,9 +623,17 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (HetOp): {
 		} break;
 	case (LstOp): {
+		void *dat0[exp->num]; int typ0[exp->num]; int typ2 = -1; enum Header hed = HomHed;
 		for (int i = 0; i < exp->num; i++) {
-		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->gen[i],-1);}
-		// TODO combine gen results into Dat with header 0 if momog type, 1 if hetero types, num, type if monog, types if hetero, and a list of results
+		dat0[i] = 0; typ0[i] = datxEval(&dat0[i],&exp->gen[i],-1);
+		if (typ2 < 0) typ2 = typ0[i]; if (typ2 != typ0[i]) hed = HetHed;}
+		// combine gen results into Dat with Hedr
+		struct Hedr hdr = {0}; hdr.hed = hed; hdr.siz = exp->num;
+		if (hed == HetHed) {allocInt(&hdr.tps,exp->num);
+		for (int i = 0; i < exp->num; i++) hdr.tps[i] = typ0[i];}
+		else hdr.typ = typ2;
+		int siz = sizeof(struct Hedr);
+		typ = identType("Dat");
 		datxNone(dat); int typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (EleOp): {
 		} break;
@@ -602,26 +651,26 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (!setptr) ERROR();
 		void *dat0 = 0; int typ1 = identType("Int");
 		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
-		setptr(*datxIntz(0,dat0),exp->cgs);
+		setptr(*datxIntz(0,dat0),exp->cgs); free(dat0);
 		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (WosOp): {
 		if (!wosptr) ERROR();
 		void *dat0 = 0; int typ1 = identType("Int");
 		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
-		wosptr(*datxIntz(0,dat0),exp->cgs);
+		wosptr(*datxIntz(0,dat0),exp->cgs); free(dat0);
 		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (WocOp): {
 		if (!wocptr) ERROR();
 		void *dat0 = 0; int typ1 = identType("Int");
 		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
-		wocptr(*datxIntz(0,dat0),exp->cgs);
+		wocptr(*datxIntz(0,dat0),exp->cgs); free(dat0);
 		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (RawOp): {
 		if (!rawptr) ERROR();
 		void *dat0 = 0; int typ1 = identType("Int");
 		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,rawptr(*datxIntz(0,dat0),exp->cgs));} break;
+		datxInt(dat,rawptr(*datxIntz(0,dat0),exp->cgs)); free(dat0);} break;
 	case (ValOp): {
 		int typ0 = 0; void *key = 0;
 		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
@@ -663,7 +712,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (ImmOp): {
 		if (!immptr) ERROR();
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
-		typ = immptr(dat,dat0,typ0);} break;
+		typ = immptr(dat,dat0,typ0);
+		datxFree(dat0,typ0);} break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->val);} break;
@@ -683,7 +733,8 @@ void datxChanged(rktype fnc)
 	datxNoteFp = fnc;
 }
 void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
-	getfp get, putfp put, typfp typ, fldfp fld, extfp ext, immfp imm)
+	getfp get, putfp put, typfp typ, fldfp fld, extfp ext,
+	immfp imm, delfp del, immfp cpy)
 {
 	retptr = ret;
 	setptr = set;
@@ -696,4 +747,6 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
 	fldptr = fld;
 	extptr = ext;
 	immptr = imm;
+	delptr = del;
+	cpyptr = cpy;
 }

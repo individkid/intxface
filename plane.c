@@ -1055,6 +1055,14 @@ int planeImmed(void **dat, const void *src, int typ)
 {
     // TODO hide string type, show non-string type
 }
+int planeDelptr(void **dat, int typ)
+{
+    // TODO
+}
+int planeCpyptr(void **dat, const void *src, int typ)
+{
+    // TODO
+}
 void planeSugar(const char *str)
 {
     struct Express **exp = 0;
@@ -1096,7 +1104,9 @@ void initSafe()
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,
-    planeGetstr,planePutstr,planeTypstr,planeField,planeExtract,planeImmed);
+    planeGetstr,planePutstr,
+    planeTypstr,planeField,planeExtract,
+    planeImmed,planeDelptr,planeCpyptr);
     start = processTime();
 }
 void initBoot()

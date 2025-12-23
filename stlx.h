@@ -575,6 +575,21 @@ int size ## NAME(void *ptr) {return sizeDeque(ptr);} \
 void free ## NAME(void *ptr) {freeDeque(ptr);} \
 TYPE maybe ## NAME(TYPE val, void *ptr) {if (size ## NAME(ptr)) {val = front ## NAME(ptr); drop ## NAME(ptr);} return val;}
 
+void *allocMap();
+void insertMap(int ksz, void *key, int siz, void *val, void *ptr);
+void eraseMap(int ksz, void *key, void *ptr);
+int existMap(int ksz, void *key, void *ptr);
+void *findMap(int ksz, void *key, void *ptr);
+void freeMap(void *ptr);
+#define DECLARE_MAP(KEY,TYPE,NAME) \
+void *alloc ## NAME() {return allocMap();} \
+void insert ## NAME(KEY key, TYPE val, void *ptr) {insertMap(sizeof(KEY),&key,sizeof(TYPE),&val,ptr);} \
+void erase ## NAME(KEY key, void *ptr) {eraseMap(sizeof(KEY),&key,ptr);} \
+int exist ## NAME(KEY key, void *ptr) {return existMap(sizeof(KEY),&key,ptr);} \
+TYPE find ## NAME(KEY key, void *ptr) {return *(TYPE*)findMap(sizeof(KEY),&key,ptr);} \
+TYPE *ptr ## NAME(KEY key, void *ptr) {return findMap(sizeof(KEY),&key,ptr);} \
+void free ## NAME(void *ptr) {freeMap(ptr);}
+
 void *allocSafe(int val);
 int waitSafe(void *ptr);
 int postSafe(void *ptr);

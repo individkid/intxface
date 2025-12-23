@@ -92,6 +92,51 @@ void freeDeque(void *ptr)
     delete que;
 }
 
+void *allocMap()
+{
+    return new std::map<std::vector<uint8_t>,std::vector<uint8_t>>;
+}
+void insertMap(int ksz, void *key, int siz, void *val, void *ptr)
+{
+    auto map = (std::map<std::vector<uint8_t>,std::vector<uint8_t>>*)ptr;
+    auto uik8 = (uint8_t*)key;
+    auto uiv8 = (uint8_t*)val;
+    std::vector<uint8_t> vek(ksz);
+    std::vector<uint8_t> vec(siz);
+    for (int i = 0; i < ksz; i++) vek[i] = uik8[i];
+    for (int i = 0; i < siz; i++) vec[i] = uiv8[i];
+    (*map)[vek] = vec;
+}
+void eraseMap(int ksz, void *key, void *ptr)
+{
+    auto map = (std::map<std::vector<uint8_t>,std::vector<uint8_t>>*)ptr;
+    auto uik8 = (uint8_t*)key;
+    std::vector<uint8_t> vek(ksz);
+    for (int i = 0; i < ksz; i++) vek[i] = uik8[i];
+    (*map).erase(vek);
+}
+int existMap(int ksz, void *key, void *ptr)
+{
+    auto map = (std::map<std::vector<uint8_t>,std::vector<uint8_t>>*)ptr;
+    auto uik8 = (uint8_t*)key;
+    std::vector<uint8_t> vek(ksz);
+    for (int i = 0; i < ksz; i++) vek[i] = uik8[i];
+    return (map->find(vek) != map->end());
+}
+void *findMap(int ksz, void *key, void *ptr)
+{
+    auto map = (std::map<std::vector<uint8_t>,std::vector<uint8_t>>*)ptr;
+    auto uik8 = (uint8_t*)key;
+    std::vector<uint8_t> vek(ksz);
+    for (int i = 0; i < ksz; i++) vek[i] = uik8[i];
+    return (void*)(*map)[vek].data();
+}
+void freeMap(void *ptr)
+{
+    auto map = (std::map<std::vector<uint8_t>,std::vector<uint8_t>>*)ptr;
+    delete map;
+}
+
 void *allocSafe(int val)
 {
     return new SafeState(val);

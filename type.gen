@@ -473,6 +473,10 @@ Order = { -- ireg expression operators
 	"ForkOrd",
 	"BeginOrd",
 }
+Header = { -- generic list
+	"HetHed",
+	"HomHed",
+}
 Program = { -- process type in standard commandline argument
 	"Filez", -- Persist
 	"Holez", -- Persist
@@ -880,6 +884,12 @@ Irrex = { -- permutation of permutations
 	{"ord","Order",{},{}}, -- type of comparison
 	{"siz","Int",{},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{},"siz"},
+}
+Hedr = { -- for interpreting Dat
+	{"hed","Header",{},{}},
+	{"siz","Int",{},{}},
+	{"tps","Int",{["hed"]={["HetHed"]=true}},"siz"},
+	{"typ","Int",{["hed"]={["HomHed"]=true}},{}},
 }
 Express = {
 	{"opr","Operate",{},""},
