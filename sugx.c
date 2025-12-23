@@ -524,7 +524,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Lst",3)==0) {
-		fprintf(stderr,"Lst %s\n",str+*idx);
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
 		sugarForeach(lst,LstOp,str,idx);

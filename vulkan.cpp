@@ -150,174 +150,6 @@ struct LogicalState {
     static VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
 };
 
-struct ConstState {
-    decltype(MemoryIns__Memory__Int__Instr) *memins;
-    decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
-    decltype(MemoryIns__Memory__Int__Format) *memfmt;
-    decltype(MemoryIns__Memory__Int__Resrc) *memres;
-    decltype(MemoryIns__Memory__Int__Memory) *memmem;
-    decltype(MemoryIns__Memory__Int__Micro) *memmic;
-    decltype(MemoryIns__Memory__Int__Quality) *memkey;
-    decltype(MemoryIns__Memory__Int__Default) *memdef;
-    decltype(MemoryIns__Memory__Int__Int) *memval;
-    decltype(ResrcIns__Resrc__Int__Instr) *resins;
-    decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
-    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
-    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
-    decltype(ResrcIns__Resrc__Int__Memory) *resmem;
-    decltype(ResrcIns__Resrc__Int__Micro) *resmic;
-    decltype(ResrcIns__Resrc__Int__Quality) *reskey;
-    decltype(ResrcIns__Resrc__Int__Default) *resdef;
-    decltype(ResrcIns__Resrc__Int__Int) *resval;
-    decltype(MicroIns__Micro__Int__Instr) *micins;
-    decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
-    decltype(MicroIns__Micro__Int__Format) *micfmt;
-    decltype(MicroIns__Micro__Int__Resrc) *micres;
-    decltype(MicroIns__Micro__Int__Memory) *micmem;
-    decltype(MicroIns__Micro__Int__Micro) *micmic;
-    decltype(MicroIns__Micro__Int__Quality) *mickey;
-    decltype(MicroIns__Micro__Int__Default) *micdef;
-    decltype(MicroIns__Micro__Int__Int) *micval;
-};
-
-struct Onl {
-    int hdl; Quality key; int val;
-};
-struct BaseState;
-struct Res {
-    BaseState *resrc;
-    bool reuse;
-};
-struct StackState {
-    static const int descrs = 4; // maximum descriptor sets in use
-    static const int micros = 3; // eventually equal to Micros
-    static const int frames = 2; // prevent blocking on resources
-    static const int images = 10; // fragment shader textures
-    static const int piercs = 2; // fragment shader feedback
-    static const int instrs = 20; // maximum steps in a binded submit
-    static const int resrcs = 2; // resource classification greediness
-    static const int handls = 4; // maximum number of classifications
-    virtual void qualify(int hdl, Quality key, int val) = 0;
-    virtual bool compare(Onl one, Onl oth) = 0;
-    virtual Res newbuf(int hdl, Quality key, int val) = 0;
-    virtual Res oldbuf(int hdl, Quality key, int val) = 0;
-    virtual Res getbuf(int hdl, Quality key, int val) = 0;
-    virtual BaseState *idxbuf(int i) = 0;
-    virtual BaseState *newbuf() = 0;
-    virtual BaseState *oldbuf() = 0;
-    virtual void advance(int hdl, Quality key, int val) = 0;
-    virtual void advance(int i) = 0;
-    virtual void advance() = 0;
-    virtual int buftag(int i, Quality t) = 0;
-    virtual const char *bufnam() = 0;
-    static StackState* self;
-    static int debug;
-    static int micro;
-    static int index;
-    static ChangeState<Configure,Configures> *change;
-    static GLFWwindow* window;
-    static VkSurfaceKHR surface;
-    static VkPhysicalDevice physical;
-    static VkSurfaceFormatKHR surfaceFormat;
-    static VkPresentModeKHR presentMode;
-    static uint32_t graphicsFamily;
-    static uint32_t presentFamily;
-    static VkPhysicalDeviceProperties properties;
-    static VkPhysicalDeviceMemoryProperties memProperties;
-    static VkDevice device;
-    static VkCommandPool commandPool;
-    static HeapState<VkRenderPass,LogicalState::passes> renderPass;
-    static HeapState<VkFormat,LogicalState::passes> imageFormat;
-    static VkFormat depthFormat;
-    static VkQueue graphics;
-    static VkQueue present;
-    static VkBufferUsageFlags flags;
-    static ConstState *constState;
-    StackState(
-        ChangeState<Configure,Configures> *change,
-        GLFWwindow* window,
-        VkSurfaceKHR surface,
-        VkPhysicalDevice physical,
-        VkSurfaceFormatKHR surfaceFormat,
-        VkPresentModeKHR presentMode,
-        uint32_t graphicsFamily,
-        uint32_t presentFamily,
-        VkPhysicalDeviceProperties properties,
-        VkPhysicalDeviceMemoryProperties memProperties,
-        VkDevice device,
-        VkCommandPool commandPool,
-        HeapState<VkRenderPass,LogicalState::passes> renderPass,
-        HeapState<VkFormat,LogicalState::passes> imageFormat,
-        VkFormat depthFormat,
-        VkQueue graphics,
-        VkQueue present) {
-        StackState::self = this;
-        StackState::debug = 0;
-        StackState::micro = 0;
-        StackState::index = 0;
-        StackState::change = change;
-        StackState::window = window;
-        StackState::surface = surface;
-        StackState::physical = physical;
-        StackState::surfaceFormat = surfaceFormat;
-        StackState::presentMode = presentMode;
-        StackState::graphicsFamily = graphicsFamily;
-        StackState::presentFamily = presentFamily;
-        StackState::properties = properties;
-        StackState::memProperties = memProperties;
-        StackState::device = device;
-        StackState::commandPool = commandPool;
-        StackState::renderPass = renderPass;
-        StackState::imageFormat = imageFormat;
-        StackState::depthFormat = depthFormat;
-        StackState::graphics = graphics;
-        StackState::present = present;
-    }
-    StackState(ConstState *constState) {
-        StackState::self = this;
-        StackState::debug = 0;
-        StackState::micro = 0;
-        StackState::index = 0;
-        StackState::constState = constState;
-    }
-    StackState(VkBufferUsageFlags flags) {
-        StackState::self = this;
-        StackState::debug = 0;
-        StackState::micro = 0;
-        StackState::index = 0;
-        StackState::flags = flags;        
-    }
-    StackState() {
-        StackState::self = this;
-        StackState::debug = 0;
-        StackState::micro = 0;        
-        StackState::index = 0;
-    }
-};
-StackState* StackState::self;
-int StackState::debug;
-int StackState::micro;
-int StackState::index;
-ChangeState<Configure,Configures> *StackState::change;
-GLFWwindow* StackState::window;
-VkSurfaceKHR StackState::surface;
-VkPhysicalDevice StackState::physical;
-VkSurfaceFormatKHR StackState::surfaceFormat;
-VkPresentModeKHR StackState::presentMode;
-uint32_t StackState::graphicsFamily;
-uint32_t StackState::presentFamily;
-VkPhysicalDeviceProperties StackState::properties;
-VkPhysicalDeviceMemoryProperties StackState::memProperties;
-VkDevice StackState::device;
-VkCommandPool StackState::commandPool;
-HeapState<VkRenderPass,LogicalState::passes> StackState::renderPass;
-HeapState<VkFormat,LogicalState::passes> StackState::imageFormat;
-VkFormat StackState::depthFormat;
-VkQueue StackState::graphics;
-VkQueue StackState::present;
-VkBufferUsageFlags StackState::flags;
-ConstState *StackState::constState;
-
 struct SizeState {
     Extent tag;
     union {
@@ -406,11 +238,13 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 }
 
 struct Syn {
-    VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
+    VkFence fen = VK_NULL_HANDLE;
+    VkSemaphore sem = VK_NULL_HANDLE;
 };
 struct BaseState;
 struct Lnk {
-    BaseState *ptr = 0; ResrcLoc loc;
+    BaseState *ptr = 0;
+    ResrcLoc loc;
 };
 enum Advance {
     PushAdv,
@@ -430,11 +264,18 @@ struct Unl {
     int siz; // number to unreserve of bind->resp
 };
 struct Loc {
-    ResrcLoc loc; SizeState max; Requ req; Unl unl; Syn syn; Lnk lst; Lnk nxt; ConstState *ary;
+    ResrcLoc loc;
+    SizeState max;
+    Requ req;
+    Unl unl;
+    Syn syn;
+    Lnk lst; 
+    Lnk nxt;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
 }
+struct StackState;
 struct BindState;
 struct BaseState {
     StackState *item;
@@ -448,9 +289,12 @@ struct BaseState {
     int nask; // which ploc setup called for
     Adv adv;
     char debug[64];
+    int index();
+    int count();
+    const char *bname();
     BaseState(const char *name, StackState *ptr) :
         item(ptr),
-        indx(StackState::index++),
+        indx(index()),
         safe(1),
         valid(false),
         ready(false),
@@ -461,13 +305,13 @@ struct BaseState {
         mask(0),
         nask(0),
         debug{} {
-        sprintf(debug,"%s_%s_%d",name,item->bufnam(),StackState::debug++);
+        sprintf(debug,"%s_%s_%d",name,bname(),count());
         // std::cout << debug << std::endl;
     }
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -481,7 +325,6 @@ struct BaseState {
         ploc[loc].req = req;
         ploc[loc].unl = unl;
         ploc[loc].loc = loc;
-        ploc[loc].ary = ary;
         return true;
     }
     void push(Adv adv, SmartState log) {
@@ -578,6 +421,7 @@ struct BaseState {
         return setup(ploc[loc],log);
     }
     void unlock(Loc &loc, SmartState log);
+    void advance(Adv &adv, SmartState log);
     void baseups(ResrcLoc loc, SmartState log) {
         // after fence triggered
         log << "baseups " << debug << '\n';
@@ -588,8 +432,7 @@ struct BaseState {
         plock -= 1;
         if (plock == 0) {
         lock = 0; nask = 0;
-        if (adv.adv == FnceAdv)
-        item->advance(adv.hdl,adv.key,adv.val);}
+        if (adv.adv == FnceAdv) advance(adv,log);}
         safe.post();
     }
     bool incr(bool elock, int psav, int rsav, int wsav) {
@@ -623,7 +466,7 @@ struct BaseState {
         return ploc[loc].req.tag;
     }
     BaseState *res(Resrc typ, int hdl);
-    int tag(Quality tag) {return item->buftag(indx,tag);}
+    int tag(Quality tag);
     bool msk(ResrcLoc loc) {return ((mask&(1<<loc)) != 0);}
     bool nsk(ResrcLoc loc) {return ((nask&(1<<loc)) != 0);}
     static Loc &lst(Loc &loc) {return loc.lst.ptr->get(loc.lst.loc);}
@@ -638,7 +481,6 @@ struct BaseState {
     static int &siz(Loc &loc) {return loc.req.siz;}
     static SizeState &max(Loc &loc) {return loc.max;}
     static Extent &ext(Loc &loc) {return loc.max.tag;}
-    static ConstState *ary(Loc &loc) {return loc.ary;}
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
     virtual VkFence setup(Loc &loc, SmartState log) EXIT
@@ -670,6 +512,134 @@ struct BaseState {
     static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
+
+struct Onl {
+    int hdl; Quality key; int val;
+};
+struct Res {
+    BaseState *resrc;
+    bool reuse;
+};
+struct StackState {
+    static const int descrs = 4; // maximum descriptor sets in use
+    static const int micros = 3; // eventually equal to Micros
+    static const int frames = 2; // prevent blocking on resources
+    static const int images = 10; // fragment shader textures
+    static const int piercs = 2; // fragment shader feedback
+    static const int instrs = 20; // maximum steps in a binded submit
+    static const int resrcs = 2; // resource classification greediness
+    static const int handls = 4; // maximum number of classifications
+    virtual void qualify(int hdl, Quality key, int val) = 0;
+    virtual bool compare(Onl one, Onl oth) = 0;
+    virtual Res newbuf(int hdl, Quality key, int val) = 0;
+    virtual Res oldbuf(int hdl, Quality key, int val) = 0;
+    virtual Res getbuf(int hdl, Quality key, int val) = 0;
+    virtual BaseState *idxbuf(int i) = 0;
+    virtual BaseState *newbuf() = 0;
+    virtual BaseState *oldbuf() = 0;
+    virtual void advance(int hdl, Quality key, int val) = 0;
+    virtual void advance(int i) = 0;
+    virtual void advance() = 0;
+    virtual int buftag(int i, Quality t) = 0;
+    virtual const char *bufnam() = 0;
+    static StackState* self;
+    static int debug;
+    static int micro;
+    static int index;
+    static ChangeState<Configure,Configures> *change;
+    static GLFWwindow* window;
+    static VkSurfaceKHR surface;
+    static VkPhysicalDevice physical;
+    static VkSurfaceFormatKHR surfaceFormat;
+    static VkPresentModeKHR presentMode;
+    static uint32_t graphicsFamily;
+    static uint32_t presentFamily;
+    static VkPhysicalDeviceProperties properties;
+    static VkPhysicalDeviceMemoryProperties memProperties;
+    static VkDevice device;
+    static VkCommandPool commandPool;
+    static HeapState<VkRenderPass,LogicalState::passes> renderPass;
+    static HeapState<VkFormat,LogicalState::passes> imageFormat;
+    static VkFormat depthFormat;
+    static VkQueue graphics;
+    static VkQueue present;
+    static VkBufferUsageFlags flags;
+    StackState(
+        ChangeState<Configure,Configures> *change,
+        GLFWwindow* window,
+        VkSurfaceKHR surface,
+        VkPhysicalDevice physical,
+        VkSurfaceFormatKHR surfaceFormat,
+        VkPresentModeKHR presentMode,
+        uint32_t graphicsFamily,
+        uint32_t presentFamily,
+        VkPhysicalDeviceProperties properties,
+        VkPhysicalDeviceMemoryProperties memProperties,
+        VkDevice device,
+        VkCommandPool commandPool,
+        HeapState<VkRenderPass,LogicalState::passes> renderPass,
+        HeapState<VkFormat,LogicalState::passes> imageFormat,
+        VkFormat depthFormat,
+        VkQueue graphics,
+        VkQueue present) {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::index = 0;
+        StackState::change = change;
+        StackState::window = window;
+        StackState::surface = surface;
+        StackState::physical = physical;
+        StackState::surfaceFormat = surfaceFormat;
+        StackState::presentMode = presentMode;
+        StackState::graphicsFamily = graphicsFamily;
+        StackState::presentFamily = presentFamily;
+        StackState::properties = properties;
+        StackState::memProperties = memProperties;
+        StackState::device = device;
+        StackState::commandPool = commandPool;
+        StackState::renderPass = renderPass;
+        StackState::imageFormat = imageFormat;
+        StackState::depthFormat = depthFormat;
+        StackState::graphics = graphics;
+        StackState::present = present;
+    }
+    StackState() {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::index = 0;
+    }
+    StackState(VkBufferUsageFlags flags) {
+        StackState::self = this;
+        StackState::debug = 0;
+        StackState::micro = 0;
+        StackState::index = 0;
+        StackState::flags = flags;        
+    }
+};
+StackState* StackState::self;
+int StackState::debug;
+int StackState::micro;
+int StackState::index;
+ChangeState<Configure,Configures> *StackState::change;
+GLFWwindow* StackState::window;
+VkSurfaceKHR StackState::surface;
+VkPhysicalDevice StackState::physical;
+VkSurfaceFormatKHR StackState::surfaceFormat;
+VkPresentModeKHR StackState::presentMode;
+uint32_t StackState::graphicsFamily;
+uint32_t StackState::presentFamily;
+VkPhysicalDeviceProperties StackState::properties;
+VkPhysicalDeviceMemoryProperties StackState::memProperties;
+VkDevice StackState::device;
+VkCommandPool StackState::commandPool;
+HeapState<VkRenderPass,LogicalState::passes> StackState::renderPass;
+HeapState<VkFormat,LogicalState::passes> StackState::imageFormat;
+VkFormat StackState::depthFormat;
+VkQueue StackState::graphics;
+VkQueue StackState::present;
+VkBufferUsageFlags StackState::flags;
 
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
@@ -716,22 +686,20 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
     }
-    ArrayState(ConstState *constState) : StackState(constState), safe(1), idx(0) {
-    }
     ArrayState() : safe(1), idx(0) {
     }
-    void qualify(int hdl, Quality key, int val) override { // set current tags
+    void qualify(int hdl, Quality key, int val) /*override*/ { // set current tags
         safe.wait();
         tag.qualify(hdl,key,val);
         safe.post();
     }
-    bool compare(Onl one, Onl oth) override {
+    bool compare(Onl one, Onl oth) /*override*/ {
         safe.wait();
         bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val));
         safe.post();
         return ret;
     }
-    Res newbuf(int hdl, Quality key, int val) override {
+    Res newbuf(int hdl, Quality key, int val) /*override*/ {
         safe.wait();
         auto idx = tag.newbuf(hdl,key,val);
         Res ret;
@@ -740,7 +708,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.post();
         return ret;
     }
-    Res oldbuf(int hdl, Quality key, int val) override {
+    Res oldbuf(int hdl, Quality key, int val) /*override*/ {
         safe.wait();
         auto idx = tag.oldbuf(hdl,key,val);
         Res ret;
@@ -749,7 +717,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.post();
         return ret;
     }
-    Res getbuf(int hdl, Quality key, int val) override {
+    Res getbuf(int hdl, Quality key, int val) /*override*/ {
         safe.wait();
         auto idx = tag.getbuf(hdl,key,val);
         Res ret;
@@ -758,26 +726,26 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         safe.post();
         return ret;
     }
-    BaseState *idxbuf(int i) override {
+    BaseState *idxbuf(int i) /*override*/ {
         if (i < 0 || i >= Size) EXIT
         safe.wait();
         BaseState *ptr = &state[i];
         safe.post();
         return ptr;
     }
-    BaseState *newbuf() override {
+    BaseState *newbuf() /*override*/ {
         safe.wait();
         BaseState *ptr = &state[idx];
         safe.post();
         return ptr;
     }
-    BaseState *oldbuf() override {
+    BaseState *oldbuf() /*override*/ {
         safe.wait();
         BaseState *ptr = &state[(idx+1)%Size];
         safe.post();
         return ptr;
     }
-    void advance(int hdl, Quality key, int val) override {
+    void advance(int hdl, Quality key, int val) /*override*/ {
         // make oldbuf into newbuf
         safe.wait();
         auto idx = tag.oldbuf(hdl,key,val);
@@ -785,25 +753,25 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (tag.insert(hdl,key,val)!=idx.resrc) EXIT
         safe.post();
     }
-    void advance(int i) override {
+    void advance(int i) /*override*/ {
         if (i < 0 || i >= Size) EXIT
         safe.wait();
         idx = i;
         safe.post();
     }
-    void advance() override {
+    void advance() /*override*/ {
         safe.wait();
         idx = (idx+1)%Size;
         safe.post();
     }
-    int buftag(int i, Quality t) override {
+    int buftag(int i, Quality t) /*override*/ {
         if (i < 0 || i >= Size || t < 0 || t >= Qualitys) EXIT
         safe.wait();
         int val = tag.get(i,t);
         safe.post();
         return val;
     }
-    const char *bufnam() override {
+    const char *bufnam() /*override*/ {
         switch (Type) {
         default: EXIT
         case (SwapRes): return "SwapRes";
@@ -824,16 +792,67 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         return 0;
     }
 };
+int BaseState::index()
+{
+    return StackState::index++;
+}
+int BaseState::count()
+{
+    return StackState::debug++;
+}
+const char *BaseState::bname()
+{
+    return item->bufnam();
+}
+void BaseState::advance(Adv &adv, SmartState log)
+{
+    item->advance(adv.hdl,adv.key,adv.val);
+}
+int BaseState::tag(Quality tag)
+{
+    return item->buftag(indx,tag);
+}
+
+struct ConstState {
+    decltype(MemoryIns__Memory__Int__Instr) *memins;
+    decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
+    decltype(MemoryIns__Memory__Int__Format) *memfmt;
+    decltype(MemoryIns__Memory__Int__Resrc) *memres;
+    decltype(MemoryIns__Memory__Int__Memory) *memmem;
+    decltype(MemoryIns__Memory__Int__Micro) *memmic;
+    decltype(MemoryIns__Memory__Int__Quality) *memkey;
+    decltype(MemoryIns__Memory__Int__Default) *memdef;
+    decltype(MemoryIns__Memory__Int__Int) *memval;
+    decltype(ResrcIns__Resrc__Int__Instr) *resins;
+    decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
+    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
+    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
+    decltype(ResrcIns__Resrc__Int__Memory) *resmem;
+    decltype(ResrcIns__Resrc__Int__Micro) *resmic;
+    decltype(ResrcIns__Resrc__Int__Quality) *reskey;
+    decltype(ResrcIns__Resrc__Int__Default) *resdef;
+    decltype(ResrcIns__Resrc__Int__Int) *resval;
+    decltype(MicroIns__Micro__Int__Instr) *micins;
+    decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
+    decltype(MicroIns__Micro__Int__Format) *micfmt;
+    decltype(MicroIns__Micro__Int__Resrc) *micres;
+    decltype(MicroIns__Micro__Int__Memory) *micmem;
+    decltype(MicroIns__Micro__Int__Micro) *micmic;
+    decltype(MicroIns__Micro__Int__Quality) *mickey;
+    decltype(MicroIns__Micro__Int__Default) *micdef;
+    decltype(MicroIns__Micro__Int__Int) *micval;
+};
+
+struct SaveState {
+    BaseState *bind; int psav, rsav, wsav;
+    BaseState *buf; int fst, fin; Onl onl;
+    SaveState() : bind(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
+};
 
 struct Dec {
     Resrc typ;
     int hdl;
     Instr ins;
-};
-struct SaveState {
-    BaseState *bind; int psav, rsav, wsav;
-    BaseState *buf; int fst, fin; Onl onl;
-    SaveState() : bind(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
 };
 struct BindState : public BaseState {
     HeapState<SaveState,StackState::handls> bind[Resrcs];
@@ -894,14 +913,14 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return bind[typ][hdl].bind;
     }
-    bool push(Resrc typ, ResrcLoc loc, Requ req, Unl unl, ConstState *ary, SmartState log) {
+    bool push(Resrc typ, ResrcLoc loc, Requ req, Unl unl, SmartState log) {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         int hdl = hand[typ];
         if (hdl < 0 || hdl >= StackState::handls) EXIT
         SaveState &ref = bind[typ][hdl];
         if (!ref.buf) EXIT
-        if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,ary,log)) return false;
+        if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,log)) return false;
         log << "push " << debug << " " << ref.buf->debug << " lock:" << lock << '\n';
         if (ref.bind == 0) lock += 1;
         if (ref.bind != 0 && ref.bind != ref.buf) EXIT
@@ -1237,7 +1256,7 @@ struct CopyState {
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
             break; case(WDeeIns): case(RDeeIns):
             case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;} slog.clr();
-            if (!bind->push(ins[i].res,ins[i].req.loc,ins[i].req,unl,array,log)) lim = i;
+            if (!bind->push(ins[i].res,ins[i].req.loc,ins[i].req,unl,log)) lim = i;
             if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
             sav->bind->push(adv,log);}}
@@ -2306,7 +2325,7 @@ struct MainState {
             logicalState.device,logicalState.commandPool,logicalState.renderPass,
             logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
-        pipelineState(constState),
+        pipelineState(),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
