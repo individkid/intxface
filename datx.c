@@ -18,13 +18,6 @@ setfp wocptr = 0;
 rawfp rawptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
-typfp typptr = 0;
-fldfp fldptr = 0;
-extfp extptr = 0;
-
-// these are not thread safe
-DECLARE_MAP(void *,int,RefCnt)
-void *refcnt = 0;
 
 // these are not thread safe
 void ***datx = 0;
@@ -42,6 +35,14 @@ void **datxDat0 = 0;
 void **datxDat1 = 0;
 void **datxDat2 = 0;
 void **datxDat3 = 0;
+int datxTyp0 = -1;
+int datxTyp1 = -1;
+int datxTyp2 = -1;
+int datxTyp3 = -1;
+
+// these are not thread safe
+DECLARE_MAP(void *,int,RefCnt)
+void *refcnt = 0;
 
 // these are not thread safe
 int sizs = 0;
@@ -54,15 +55,6 @@ regex_t *regexp = 0;
 int regsiz = 0;
 struct Irrex *irrexp = 0;
 int irrsiz = 0;
-
-// TODO move to type.h
-#define FOREACH_TYPE(TYPE,ARG,APPLY) \
-if (TYPE==identType("Center")) APPLY(Center,ARG) \
-else if (TYPE==identType("Matrix")) APPLY(Matrix,ARG)
-
-#define FREE_TYPE(NAME,ARG) {free ## NAME ARG;}
-#define COPY_TYPE(NAME,ARG) {copy ## NAME ARG;}
-#define ALLOC_TYPE(NAME,ARG) {datxVoid(ARG,sizeof(struct NAME));}
 
 int datxSub()
 {
@@ -79,7 +71,7 @@ void **datxDat(int sub)
 }
 void datxNon()
 {
-	// TODO free memory created by datxSub
+	// TODO free memory created by datxSingle
 }
 void datxSingle()
 {
@@ -328,49 +320,46 @@ void datxOld(void **dat, float val)
 	*(int*)*dat = sizeof(val);
 	*datxOldz(0,*dat) = val;
 }
-void datxFree(void **dat, int typ)
+#define FREE_BASIC(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
+#define FREE_ENUM(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
+#define FREE_STRUCT(NAME,NUM) break; case(NUM): free ## NAME(*dat); free(*dat); *dat = 0; *typ = -1;
+void datxFree(void **dat, int *typ)
 {
-	if (!refcnt) refcnt = allocRefCnt();
-	if (typ == identType("Int")) free(*dat);
-	else if (typ == identType("Int32")) free(*dat);
-	else if (typ == identType("New")) free(*dat);
-	else if (typ == identType("Num")) free(*dat);
-	else if (typ == identType("Old")) free(*dat);
-	else if (typ == identType("Str")) free(*dat);
-	else if (*dat && existRefCnt(*dat,refcnt) &&
-	findRefCnt(*dat,refcnt) > 1)
-	*ptrRefCnt(*dat,refcnt) -= 1;
-	else if (*dat && existRefCnt(*dat,refcnt)) {
-	eraseRefCnt(*dat,refcnt);
-    FOREACH_TYPE(typ,(*dat),FREE_TYPE)
-	else ERROR();}
-	else ERROR();
-	free(*dat); *dat = 0;
+	switch (*typ) {default: ERROR();
+	FOREACH_BASIC(FREE_BASIC)
+	FOREACH_ENUM(FREE_ENUM)
+	FOREACH_STRUCT(FREE_STRUCT)}
 }
-void datxCopy(void **dat, void *src, int typ)
+#define TYPSTR_CASE(NAME,NUM) break; case(NUM): datxStr(dat,#NAME);
+void datxTypstr(void **dat, int typ)
 {
-	datxFree(dat,typ);
-	if (typ == identType("Int")) datxInt(dat,*datxIntz(0,src));
-	else if (typ == identType("Int32")) datxInt32(dat,*datxInt32z(0,src));
-	else if (typ == identType("New")) datxNew(dat,*datxNewz(0,src));
-	else if (typ == identType("Num")) datxNum(dat,*datxNumz(0,src));
-	else if (typ == identType("Old")) datxOld(dat,*datxOldz(0,src));
-	else if (typ == identType("Str")) datxStr(dat,datxChrz(0,src));
-	else if (existRefCnt(src,refcnt)) {
-	*dat = src; *ptrRefCnt(src,refcnt) += 1;}
-	else {insertRefCnt(*dat,1,refcnt);
-	FOREACH_TYPE(typ,(dat),ALLOC_TYPE)
-	else ERROR();
-	FOREACH_TYPE(typ,(*dat,src),COPY_TYPE)
-	else ERROR();}
+	switch (typ) {
+	FOREACH_BASIC(TYPSTR_CASE)
+	FOREACH_ENUM(TYPSTR_CASE)
+	FOREACH_STRUCT(TYPSTR_CASE)}
 }
-int datxHide(void **dat, const char *str)
+void datxField(void **dst, void *src, void *fld, int idx, int sub, int stp, int ftp)
 {
-	// TODO
+	// "void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)" reads into field of struct
+	datxFree(datxDat0,&datxTyp0); assignDat(datxDat0,src);
+	datxFree(datxDat1,&datxTyp1); assignDat(datxDat1,fld);
+	datxFree(datxDat2,&datxTyp2); datxNone(datxDat2);
+	readField(stp,idx,sub,datxIdx0,datxIdx1,datxIdx2);
+	assignDat(dst,datxDat2);
+	free(datxDat0); free(datxDat1); free(datxDat2);
+	datxDat0 = datxDat1 = datxDat2 = 0;
+	datxTyp0 = datxTyp1 = datxTyp2 = -1;
 }
-void datxShow(char **str, void *dat, int typ)
+void datxExtract(void **fld, void *src, int idx, int sub, int stp, int ftp)
 {
-	// TODO
+	// "void writeField(int typ, int fld, int sub, int ifd, int ofd)" writes from field of struct
+	datxFree(datxDat0,&datxTyp0); assignDat(datxDat0,src);
+	datxFree(datxDat1,&datxTyp1); datxNone(datxDat1);
+	writeField(stp,idx,sub,datxIdx0,datxIdx1);
+	assignDat(fld,datxDat1);
+	free(datxDat0); free(datxDat1);
+	datxDat0 = datxDat1 = 0;
+	datxTyp0 = datxTyp1 = -1;
 }
 #define BINARY_STR(LFT,RGT) strcmp(LFT,RGT)
 #define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
@@ -709,26 +698,26 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (!putptr) ERROR();
 		int typ0 = datxEval(dat,exp->put,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ0 != identType("Str")) {
-		if (!typptr) ERROR();
-		typptr(dat,typ0);}
+		datxTypstr(dat,typ0);}
 		putptr(datxChrz(0,dat));} break;
 	case (FldOp): {
-		if (!fldptr) ERROR();
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
 		void *dat3 = 0; int typ3 = datxEval(&dat3,&exp->fld[3],identType("Int")); if (typ3 != identType("Int")) ERROR();
-		typ = fldptr(dat,dat0,dat1,*datxIntz(0,dat2),*datxIntz(0,dat3),typ0,typ1);} break;
+		typ = typ0; datxField(dat,dat0,dat1,*datxIntz(0,dat2),*datxIntz(0,dat3),typ0,typ1);
+		datxFree(dat0,&typ0); datxFree(dat1,&typ1); free(dat2); free(dat3);} break;
 	case (ExtOp): {
-		if (!extptr) ERROR();
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->ext[1],identType("Int")); if (typ1 != identType("Int")) ERROR();
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[2],identType("Int")); if (typ2 != identType("Int")) ERROR();
-		typ = extptr(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0);} break;
+		typ = identSubtype(typ0,*datxIntz(0,dat1));
+		datxExtract(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0,typ);
+		datxFree(dat1,&typ0); free(dat1); free(dat2);} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
     	// TODO hide string type, show non-string type
-		datxFree(dat0,typ0);
+		datxFree(dat0,&typ0);
 		typ = identType("Dat"); datxNone(dat);
 		int typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
 	case (IntOp): {
@@ -750,7 +739,7 @@ void datxChanged(rktype fnc)
 	datxNoteFp = fnc;
 }
 void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
-	getfp get, putfp put, typfp typ, fldfp fld, extfp ext)
+	getfp get, putfp put)
 {
 	retptr = ret;
 	setptr = set;
@@ -759,7 +748,4 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
 	rawptr = raw;
 	getptr = get;
 	putptr = put;
-	typptr = typ;
-	fldptr = fld;
-	extptr = ext;
 }

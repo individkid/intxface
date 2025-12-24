@@ -64,7 +64,7 @@ Migration:
   A migration is a space with a region replaced by a region opposite wrt attached boundaries.
 
 Cospace:
-  TODO
+  A cospace C of a space S has boundary per vertex in S, such that boundaries in C corresponding to vertices in S on a boundary in S go through a vertex in C, and such vertices in C have sidedness wrt boundaries in C given by sidedness of their boundary in S wrt vertices in S.
 
 Theorems:
   

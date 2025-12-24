@@ -628,9 +628,10 @@ void machineEval(struct Express *exp, int idx)
     if (!ptr) allocCenter(&ptr,1);
     int val = identType("Center");
     if (waitSafe(dataSem) != 0) ERROR();
-    datxStr(dat0,""); writeCenter(ptr,sub1); datxInsert(*dat0,*dat1,val);
+    datxStr(dat0,""); writeCenter(ptr,sub1);
     if (postSafe(dataSem) != 1) ERROR();
     if (waitSafe(evalSem) != 0) ERROR();
+    datxInsert(*dat0,*dat1,val);
     void *dat = 0; int val0 = datxEval(&dat,exp,val);
     if (postSafe(evalSem) != 1) ERROR();
     if (val0 != val) ERROR();
@@ -1013,40 +1014,6 @@ int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
-void planeTypstr(void **dat, int typ)
-{
-    char *str = 0;
-    if (waitSafe(dataSem) != 0) ERROR();
-    assignDat(dat0,*dat);
-    showType(&str, typ, idx0);
-    datxStr(dat,str);
-    free(str);
-    if (postSafe(dataSem) != 1) ERROR();
-}
-int planeField(void **dst, const void *src, const void *fld, int idx, int sub, int stp, int ftp)
-{
-    if (stp == identType("Center")) {
-    struct Center *tmp = 0;
-    allocCenter(&tmp,1);
-    if (waitSafe(dataSem) != 0) ERROR();
-    assignDat(dat0,src); readCenter(tmp,idx0);
-    if (postSafe(dataSem) != 1) ERROR();
-    switch (idx) {default: ERROR();
-    break; case(5):
-    if (ftp != identType("Int")) ERROR();
-    if (sub < 0 || sub >= tmp->siz) ERROR(); // TODO reallocate when siz field changes
-    if (waitSafe(dataSem) != 0) ERROR();
-    assignDat(dat0,fld); tmp->val[sub] = readInt(idx0);}
-    datxVoid(dat0,0); writeCenter(tmp,idx0); assignDat(dst,*dat0);
-    if (postSafe(dataSem) != 1) ERROR();
-    allocCenter(&tmp,0);
-    return stp;}
-    return -1;
-}
-int planeExtract(void **fld, const void *src, int idx, int sub, int typ)
-{
-    // TODO
-}
 void planeSugar(const char *str)
 {
     struct Express **exp = 0;
@@ -1087,8 +1054,7 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
-    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,
-    planeGetstr,planePutstr,planeTypstr,planeField,planeExtract);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
 void initBoot()

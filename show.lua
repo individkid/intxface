@@ -1105,6 +1105,53 @@ function showIdentC(list)
 	result = result.."}"
 	return result
 end
+function showForeach(list)
+	local result = ""
+	result = result.."#define FOREACH_BASIC(APPLY)"
+	for k,v in ipairs(list) do
+		result = result.." \\\n"
+		if (not (Structz[v] == nil)) then
+		elseif (not (Enumz[v] == nil)) then
+		elseif (v == "Dat") or (v == "Str") then
+		else
+			result = result.."APPLY("..v..","..(k-1)..")"
+		end
+	end
+	result = result.."\n"
+	result = result.."#define FOREACH_POINTER(APPLY)"
+	for k,v in ipairs(list) do
+		result = result.." \\\n"
+		if (not (Structz[v] == nil)) then
+		elseif (not (Enumz[v] == nil)) then
+		elseif (v == "Dat") or (v == "Str") then
+			result = result.."APPLY("..v..","..(k-1)..")"
+		else
+		end
+	end
+	result = result.."\n"
+	result = result.."#define FOREACH_ENUM(APPLY)"
+	for k,v in ipairs(list) do
+		result = result.." \\\n"
+		if (not (Structz[v] == nil)) then
+		elseif (not (Enumz[v] == nil)) then
+			result = result.."APPLY("..v..","..(k-1)..")"
+		elseif (v == "Dat") or (v == "Str") then
+		else
+		end
+	end
+	result = result.."\n"
+	result = result.."#define FOREACH_STRUCT(APPLY)"
+	for k,v in ipairs(list) do
+		result = result.." \\\n"
+		if (not (Structz[v] == nil)) then
+			result = result.."APPLY("..v..","..(k-1)..")"
+		elseif (not (Enumz[v] == nil)) then
+		elseif (v == "Dat") or (v == "Str") then
+		else
+		end
+	end
+	return result
+end
 function showCopyC(name,struct)
 	local result = ""
 	result = result.."void copy"..name.."(struct "..name.." *dst, struct "..name.." *ptr)"
@@ -1227,77 +1274,6 @@ function showFreadC(name,struct)
 	result = result.."}"
 	return result
 end
-function showFcopyC(name,struct)
-	local result = ""
-	result = result.."void fcopy"..name.."(struct "..name.." *dst, struct "..name.." *ptr, int fld, int sub)"
-	if prototype then return result..";\n" end
-	result = result.."\n{\n"
-	result = result..showIndent(1).."if (dst == 0 || ptr == 0) ERROR();\n"
-	result = result..showIndent(1).."if (fld < 0 || sub < 0) ERROR();\n"
-	result = result..showIndent(1).."switch (fld) {\n"
-	for ky,vl in ipairs(struct) do
-		local condit = showCondC(vl)
-		local limit = showLimitC(vl)
-		local lval = "dst->"..vl[1]
-		local rval = "ptr->"..vl[1]
-		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
-			rval = "(("..showCtypeC(vl).."*)("..rval.."))"
-		end
-		if ((not (type(vl[4]) == "table") or (#vl[4] > 0)) and (not (type(vl[4]) == "string") or (vl[4] ~= ""))) then
-			lval = lval.."[sub]"
-			rval = rval.."[sub]"
-		end
-		result = result..showIndent(1).."case("..(ky-1).."): {\n"
-		if (condit ~= "") then
-			result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
-		end
-		if (limit == "") then
-			result = result..showIndent(2).."if (sub > 0) ERROR();\n"
-		else
-			result = result..showIndent(2).."if (sub >= "..limit..") ERROR();\n"
-		end
-		if (not (Structz[vl[2]] == nil)) then
-			result = result..showIndent(2).."copy"..vl[2].."(&"..lval..",&"..rval..");\n"
-		elseif (not (Enumz[vl[2]] == nil)) then
-			result = result..showIndent(2)..lval.." = "..rval..";\n"
-		elseif (vl[2] == "Str") then
-			result = result..showIndent(2).."assignStr(&"..lval..","..rval..");\n"
-		elseif (vl[2] == "Dat") then
-			result = result..showIndent(2).."assignDat(&"..lval..","..rval..");\n"
-		else
-			result = result..showIndent(2)..lval.." = "..rval..";\n"
-		end
-		result = result..showIndent(2).."break;}\n"
-	end
-	result = result..showIndent(1).."default: ERROR();}\n"
-	result = result.."}"
-	return result
-end
-function showFallocC(name,struct)
-	local result = ""
-	result = result.."void falloc"..name.."(struct "..name.." *ptr, int fld)"
-	if prototype then return result..";\n" end
-	result = result.."\n{\n"
-	result = result..showIndent(1).."if (fld < 0) ERROR();\n"
-	result = result..showIndent(1).."switch (fld) {\n"
-	for ky,vl in ipairs(struct) do
-		local condit = showCondC(vl)
-		result = result..showIndent(1).."case("..(ky-1).."): {\n"
-		if (condit ~= "") then
-			result = result..showIndent(2).."if (!("..condit..")) ERROR();\n"
-		end
-		if (type(vl[4]) == "number") then
-			result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..","..vl[4]..");\n"
-		elseif (type(vl[4]) == "string" and vl[4] ~= "") then
-			result = result..showIndent(2).."alloc"..vl[2].."(&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
-		end
-		result = result..showIndent(2).."break;}\n"
-	end
-	result = result..showIndent(1).."default: ERROR();}\n"
-	result = result.."}"
-	return result
-end
 function showRfieldC(list,map)
 	local result = ""
 	result = result.."void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)"
@@ -1306,24 +1282,10 @@ function showRfieldC(list,map)
 	result = result..showIndent(1).."switch (typ) {\n"
 	for k,v in ipairs(list) do if Structz[v] ~= nil then
 		result = result..showIndent(1).."case("..(k-1).."): {\n"
-		result = result..showIndent(2).."int found = 0; int i = 0; int j = 0;\n"
-		result = result..showIndent(2).."struct "..v.." src = {0};\n"
-		result = result..showIndent(2).."struct "..v.." dst = {0};\n"
-		result = result..showIndent(2).."read"..v.."(&src,ifd);\n"
-		result = result..showIndent(2).."copy"..v.."(&dst,&src);\n"
-		result = result..showIndent(2).."while (1) {\n"
-		result = result..showIndent(3).."int vrc = fvalid"..v.."(&src,i,j);\n"
-		result = result..showIndent(3).."int vst = fvalid"..v.."(&dst,i,j);\n"
-		result = result..showIndent(3).."int vld = (i == fld && j == sub);\n"
-		result = result..showIndent(3).."if (vst < 0) break;\n"
-		result = result..showIndent(3).."if (vst != 1) {i++; j = 0; continue;}\n"
-		result = result..showIndent(3).."if (vld) {found = 1; fread"..v.."(&dst,i,j,xfd);}\n"
-		result = result..showIndent(3).."else if (vrc == 1) fcopy"..v.."(&dst,&src,i,j);\n"
-		result = result..showIndent(3).."else if (j == 0) falloc"..v.."(&dst,i);\n"
-		result = result..showIndent(3).."j++;\n"
-		result = result..showIndent(2).."}\n"
-		result = result..showIndent(2).."if (found != 1) ERROR();\n"
-		result = result..showIndent(2).."write"..v.."(&dst,ofd);\n"
+		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
+		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
+		result = result..showIndent(2).."fread"..v.."(&tmp,fld,sub,xfd);\n"
+		result = result..showIndent(2).."write"..v.."(&tmp,ofd);\n"
 		result = result..showIndent(2).."break;}\n"
 	end end
 	result = result..showIndent(1).."default: ERROR();}\n"
@@ -2665,8 +2627,6 @@ function showFuncC(args)
 	result = result..showCall(Structs,Structz,showCopyC,args,"copy").."\n"
 	result = result..showCall(Structs,Structz,showFvalidC,args,"fvalid").."\n"
 	result = result..showCall(Structs,Structz,showFreadC,args,"fread").."\n"
-	result = result..showCall(Structs,Structz,showFcopyC,args,"fcopy").."\n"
-	result = result..showCall(Structs,Structz,showFallocC,args,"falloc").."\n"
 	result = result..showCall(Structs,Structz,showFwriteC,args,"fwrite").."\n"
 	if (not args) then
 	result = result..showRfieldC(types,Structz).."\n"
@@ -2677,8 +2637,10 @@ function showFuncC(args)
 end
 function showCallH()
 	local result = ""
+	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
 	result = result..showCall(Structs,Structz,showStructC).."\n"
+	result = result..showForeach(types).."\n"
 	prototype = true
 	result = result..showFuncC()
 	return result
