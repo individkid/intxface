@@ -318,12 +318,15 @@ void datxOld(void **dat, float val)
 	*datxOldz(0,*dat) = val;
 }
 #define FREE_BASIC(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
+#define FREE_POINTER(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
 #define FREE_ENUM(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
 #define FREE_STRUCT(NAME,NUM) break; case(NUM): free ## NAME(*dat); free(*dat); *dat = 0; *typ = -1;
 void datxFree(void **dat, int *typ)
 {
-	switch (*typ) {default: ERROR();
+	if (*typ < 0) {free(*dat); *dat = 0;}
+	else switch (*typ) {default: ERROR();
 	FOREACH_BASIC(FREE_BASIC)
+	FOREACH_POINTER(FREE_POINTER)
 	FOREACH_ENUM(FREE_ENUM)
 	FOREACH_STRUCT(FREE_STRUCT)}
 }
@@ -332,63 +335,27 @@ void datxTypstr(void **dat, int typ)
 {
 	switch (typ) {
 	FOREACH_BASIC(TYPSTR_CASE)
+	FOREACH_POINTER(TYPSTR_CASE)
 	FOREACH_ENUM(TYPSTR_CASE)
 	FOREACH_STRUCT(TYPSTR_CASE)}
 }
 void datxField(void **dst, void *src, void *fld, int idx, int sub, int stp, int ftp)
 {
 	// "void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)" reads into field of struct
-	datxFree(datxDat0,&datxTyp0); assignDat(datxDat0,src);
-	datxFree(datxDat1,&datxTyp1); assignDat(datxDat1,fld);
-	datxFree(datxDat2,&datxTyp2); datxNone(datxDat2);
+	datxFree(datxDat0,&datxTyp0); assignDat(datxDat0,src); datxTyp0 = stp;
+	datxFree(datxDat1,&datxTyp1); assignDat(datxDat1,fld); datxTyp1 = ftp;
+	datxFree(datxDat2,&datxTyp2); datxNone(datxDat2); datxTyp2 = -1;
 	readField(stp,idx,sub,datxIdx0,datxIdx1,datxIdx2);
 	assignDat(dst,datxDat2);
-	free(datxDat0); free(datxDat1); free(datxDat2);
-	datxDat0 = datxDat1 = datxDat2 = 0;
-	datxTyp0 = datxTyp1 = datxTyp2 = -1;
 }
 void datxExtract(void **fld, void *src, int idx, int sub, int stp, int ftp)
 {
 	// "void writeField(int typ, int fld, int sub, int ifd, int ofd)" writes from field of struct
-	datxFree(datxDat0,&datxTyp0); assignDat(datxDat0,src);
-	datxFree(datxDat1,&datxTyp1); datxNone(datxDat1);
+	datxFree(datxDat0,&datxTyp0); assignDat(datxDat0,src); datxTyp0 = stp;
+	datxFree(datxDat1,&datxTyp1); datxNone(datxDat1); datxTyp1 = -1;
 	writeField(stp,idx,sub,datxIdx0,datxIdx1);
 	assignDat(fld,datxDat1);
-	free(datxDat0); free(datxDat1);
-	datxDat0 = datxDat1 = 0;
-	datxTyp0 = datxTyp1 = -1;
 }
-#define BINARY_STR(LFT,RGT) strcmp(LFT,RGT)
-#define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
-#define BINARY_ADD(LFT,RGT) (LFT+RGT)
-#define BINARY_SUB(LFT,RGT) (LFT-RGT)
-#define BINARY_MUL(LFT,RGT) (LFT*RGT)
-#define BINARY_DIV(LFT,RGT) (LFT/RGT)
-#define BINARY_REM(LFT,RGT) (LFT%RGT)
-#define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
-#define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
-#define BINARY_BIT(LFT,RGT) datxBitwise(LFT,RGT,exp->bit)
-#define BINARY_BEGIN(FLD) {\
-	void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0;\
-	typ0 = datxEval(&dat0,&exp->FLD[0],typ);\
-	typ1 = datxEval(&dat1,&exp->FLD[1],typ);\
-	if (typ == -1) typ = typ0; if (typ0 != typ1 || typ != typ0) ERROR();
-#define BINARY_DONE() ERROR();\
-	free(dat0); free(dat1);}
-#define BINARY_TYPE(TYPE,STR,GET,SET,OP)\
-	if (typ0 == identType(STR)) {\
-	TYPE lft = GET(0,dat0);\
-	TYPE rgt = GET(0,dat1);\
-	SET(dat,OP(lft,rgt));}
-#define BINARY_BLOCK(OP,STR,FLD)\
-	BINARY_BEGIN(FLD)\
-	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
-	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else\
-	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
-	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
-	BINARY_DONE()
-#define BINARY_SET(DAT,VAL) datxInt(DAT,VAL)
-#define BINARY_CMP(DAT,VAL) datxInt(DAT,datxComp(VAL,exp->cmp))
 int datxBitwise(int lft, int rgt, enum Bitwise bit)
 {
 	switch (bit) {
@@ -575,6 +542,37 @@ int datxIrrexe(const char *str, int idx)
 	if (!datxIrrnxt(ptr)) break;}
 	return 0;
 }
+#define BINARY_STR(LFT,RGT) strcmp(LFT,RGT)
+#define BINARY_TRI(LFT,RGT) (LFT>RGT?1:(LFT<RGT?-1:0))
+#define BINARY_ADD(LFT,RGT) (LFT+RGT)
+#define BINARY_SUB(LFT,RGT) (LFT-RGT)
+#define BINARY_MUL(LFT,RGT) (LFT*RGT)
+#define BINARY_DIV(LFT,RGT) (LFT/RGT)
+#define BINARY_REM(LFT,RGT) (LFT%RGT)
+#define BINARY_MOD(LFT,RGT) fmod(LFT,RGT)
+#define BINARY_FLM(LFT,RGT) fmodf(LFT,RGT)
+#define BINARY_BIT(LFT,RGT) datxBitwise(LFT,RGT,exp->bit)
+#define BINARY_BEGIN(FLD) {\
+	void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0;\
+	typ0 = datxEval(&dat0,&exp->FLD[0],typ);\
+	typ1 = datxEval(&dat1,&exp->FLD[1],typ);\
+	if (typ == -1) typ = typ0; if (typ0 != typ1 || typ != typ0) ERROR();
+#define BINARY_DONE() ERROR();\
+	free(dat0); free(dat1);}
+#define BINARY_TYPE(TYPE,STR,GET,SET,OP)\
+	if (typ0 == identType(STR)) {\
+	TYPE lft = GET(0,dat0);\
+	TYPE rgt = GET(0,dat1);\
+	SET(dat,OP(lft,rgt));}
+#define BINARY_BLOCK(OP,STR,FLD)\
+	BINARY_BEGIN(FLD)\
+	BINARY_TYPE(int,"Int",*datxIntz,datxInt,OP) else\
+	BINARY_TYPE(int32_t,"Int32",*datxInt32z,datxInt32,OP) else\
+	BINARY_TYPE(double,"Num",*datxNumz,datxNum,OP) else\
+	BINARY_TYPE(float,"Old",*datxOldz,datxOld,OP) else\
+	BINARY_DONE()
+#define BINARY_SET(DAT,VAL) datxInt(DAT,VAL)
+#define BINARY_CMP(DAT,VAL) datxInt(DAT,datxComp(VAL,exp->cmp))
 int datxEval(void **dat, struct Express *exp, int typ)
 {
 	/*{char *opr = 0; showOperate(exp->opr,&opr);
@@ -641,40 +639,37 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		} break;
 	case (RetOp): {
 		if (!retptr) ERROR();
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
-		datxInt(dat,retptr(exp->cfg));} break;
+		datxInt(dat,retptr(exp->cfg));
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();} break;
 	case (SetOp): {
 		if (!setptr) ERROR();
-		void *dat0 = 0; int typ1 = identType("Int");
-		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
-		setptr(*datxIntz(0,dat0),exp->cgs); free(dat0);
-		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		int typ0 = datxEval(dat,exp->set,typ); if (typ0 != typ) ERROR();
+		setptr(*datxIntz(0,*dat),exp->cgs);} break;
 	case (WosOp): {
 		if (!wosptr) ERROR();
-		void *dat0 = 0; int typ1 = identType("Int");
-		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
-		wosptr(*datxIntz(0,dat0),exp->cgs); free(dat0);
-		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		int typ0 = datxEval(dat,exp->set,typ); if (typ0 != typ) ERROR();
+		wosptr(*datxIntz(0,*dat),exp->cgs);} break;
 	case (WocOp): {
 		if (!wocptr) ERROR();
-		void *dat0 = 0; int typ1 = identType("Int");
-		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
-		wocptr(*datxIntz(0,dat0),exp->cgs); free(dat0);
-		datxNone(dat); typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		int typ0 = datxEval(dat,exp->set,typ); if (typ0 != typ) ERROR();
+		wocptr(*datxIntz(0,*dat),exp->cgs);} break;
 	case (RawOp): {
 		if (!rawptr) ERROR();
-		void *dat0 = 0; int typ1 = identType("Int");
-		int typ0 = datxEval(&dat0,exp->set,typ1); if (typ0 != typ1) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->set,typ); if (typ0 != typ) ERROR();
 		datxInt(dat,rawptr(*datxIntz(0,dat0),exp->cgs)); free(dat0);} break;
 	case (ValOp): {
-		int typ0 = 0; void *key = 0;
-		datxStr(&key,exp->key); typ0 = datxFind(dat,key); free(key);
+		void *dat1 = 0; datxStr(&dat1,exp->key);
+		int typ0 = datxFind(dat,dat1); free(dat1);
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (SavOp): {
-		int typ0 = 0; void *dat0 = 0; void *key = 0;
-		typ0 = datxEval(&dat0,exp->rhs,-1); datxStr(&key,exp->lhs); datxInsert(key,dat0,typ0); free(key); free(dat0);
-		datxNone(dat); typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
+		int typ0 = datxEval(dat,exp->rhs,typ);
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+		void *dat1 = 0; datxStr(&dat1,exp->lhs);
+		datxInsert(dat1,*dat,typ); free(dat1);} break;
 	case (RexOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,datxRegcmp(exp->key));} break;
@@ -683,13 +678,13 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxInt(dat,datxIrrcmp(exp->key));} break;
 	case (GetOp): {
 		if (!getptr) ERROR();
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
 		datxStr(dat,getptr());} break;
 	case (PutOp): {
 		if (!putptr) ERROR();
-		int typ0 = datxEval(dat,exp->put,typ); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-		if (typ0 != identType("Str")) {
-		datxTypstr(dat,typ0);}
+		if (typ == -1) typ = identType("Str"); if (typ != identType("Str")) ERROR();
+		int typ0 = datxEval(dat,exp->put,-1);
+		if (typ0 != identType("Str")) datxTypstr(dat,typ0);
 		putptr(datxChrz(0,dat));} break;
 	case (FldOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);

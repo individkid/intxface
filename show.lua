@@ -1117,21 +1117,21 @@ function showForeach(list)
 	local result = ""
 	result = result.."#define FOREACH_BASIC(APPLY)"
 	for k,v in ipairs(list) do
-		result = result.." \\\n"
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then
 		elseif (v == "Dat") or (v == "Str") then
 		else
+			result = result.." \\\n"
 			result = result.."APPLY("..v..","..(k-1)..")"
 		end
 	end
 	result = result.."\n"
 	result = result.."#define FOREACH_POINTER(APPLY)"
 	for k,v in ipairs(list) do
-		result = result.." \\\n"
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then
 		elseif (v == "Dat") or (v == "Str") then
+			result = result.." \\\n"
 			result = result.."APPLY("..v..","..(k-1)..")"
 		else
 		end
@@ -1139,9 +1139,9 @@ function showForeach(list)
 	result = result.."\n"
 	result = result.."#define FOREACH_ENUM(APPLY)"
 	for k,v in ipairs(list) do
-		result = result.." \\\n"
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then
+			result = result.." \\\n"
 			result = result.."APPLY("..v..","..(k-1)..")"
 		elseif (v == "Dat") or (v == "Str") then
 		else
@@ -1150,8 +1150,8 @@ function showForeach(list)
 	result = result.."\n"
 	result = result.."#define FOREACH_STRUCT(APPLY)"
 	for k,v in ipairs(list) do
-		result = result.." \\\n"
 		if (not (Structz[v] == nil)) then
+			result = result.." \\\n"
 			result = result.."APPLY("..v..","..(k-1)..")"
 		elseif (not (Enumz[v] == nil)) then
 		elseif (v == "Dat") or (v == "Str") then

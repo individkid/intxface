@@ -654,8 +654,7 @@ int machineIval(struct Express *exp)
 void machineVoid(struct Express *exp)
 {
     if (waitSafe(evalSem) != 0) ERROR();
-    void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    int typ0 = identType("Dat"); if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,-1); datxFree(&dat,&typ);
     if (postSafe(evalSem) != 1) ERROR();
 }
 int machineEscape(struct Center *current, int level, int next)

@@ -17,6 +17,7 @@ int datxFind(void **val, const void *key);
 int datxFinds(void **val, const char *pre, const char *str);
 void datxInsert(const void *key, const void *val, int typ);
 void datxInserts(const char *pre, const char *str, void *val, int typ);
+void datxFree(void **dat, int *typ);
 void datxNone(void **dat);
 void datxChr(void **dat, char val);
 void datxStr(void **dat, const char *val);
