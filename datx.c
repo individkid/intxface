@@ -1,7 +1,6 @@
 #include "datx.h"
 #include "type.h"
 #include "face.h"
-#include "stlx.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -39,10 +38,6 @@ int datxTyp0 = -1;
 int datxTyp1 = -1;
 int datxTyp2 = -1;
 int datxTyp3 = -1;
-
-// these are not thread safe
-DECLARE_MAP(void *,int,RefCnt)
-void *refcnt = 0;
 
 // these are not thread safe
 int sizs = 0;
