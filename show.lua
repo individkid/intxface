@@ -1113,6 +1113,13 @@ function showIdentC(list)
 	result = result.."}"
 	return result
 end
+function showDefine(list)
+	local result = ""
+	for k,v in ipairs(list) do
+		result = result.."#define TYPE"..v.." "..(k-1).."\n"
+	end
+	return result
+end
 function showForeach(list)
 	local result = ""
 	result = result.."#define FOREACH_BASIC(APPLY)"
@@ -2650,6 +2657,7 @@ function showCallH()
 	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
 	result = result..showCall(Structs,Structz,showStructC).."\n"
+	result = result..showDefine(types).."\n"
 	result = result..showForeach(types).."\n"
 	prototype = true
 	result = result..showFuncC()
