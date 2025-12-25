@@ -885,11 +885,12 @@ Irrex = { -- permutation of permutations
 	{"siz","Int",{},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{},"siz"},
 }
-Hedr = { -- for interpreting Dat
+Generic = { -- list of Dat
 	{"hed","Header",{},{}},
 	{"siz","Int",{},{}},
 	{"tps","Int",{["hed"]={["HetHed"]=true}},"siz"},
 	{"typ","Int",{["hed"]={["HomHed"]=true}},{}},
+	{"dat","Dat",{},"siz"},
 }
 Express = {
 	{"opr","Operate",{},""},

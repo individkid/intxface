@@ -56,6 +56,8 @@ int regsiz = 0;
 struct Irrex *irrexp = 0;
 int irrsiz = 0;
 
+// TODO generate defined constants in type.h instead of using identType
+
 int datxSub()
 {
 	int sub = ndatx;
@@ -632,14 +634,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		for (int i = 0; i < exp->num; i++) {
 		dat0[i] = 0; typ0[i] = datxEval(&dat0[i],&exp->gen[i],-1);
 		if (typ2 < 0) typ2 = typ0[i]; if (typ2 != typ0[i]) hed = HetHed;}
-		// combine gen results into Dat with Hedr
-		struct Hedr hdr = {0}; hdr.hed = hed; hdr.siz = exp->num;
-		if (hed == HetHed) {allocInt(&hdr.tps,exp->num);
-		for (int i = 0; i < exp->num; i++) hdr.tps[i] = typ0[i];}
-		else hdr.typ = typ2;
-		int siz = sizeof(struct Hedr);
-		typ = identType("Dat");
-		datxNone(dat); int typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+		// combine results into Generic with Header
+		typ = identType("Dat"); datxNone(dat);} break;
 	case (EleOp): {
 		} break;
 	case (CatOp): {
@@ -718,8 +714,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
     	// TODO hide string type, show non-string type
 		datxFree(dat0,&typ0);
-		typ = identType("Dat"); datxNone(dat);
-		int typ1 = identType("Dat"); if (typ == -1) typ = typ1; if (typ != typ1) ERROR();} break;
+		typ = identType("Dat"); datxNone(dat);} break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->val);} break;

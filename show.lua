@@ -327,6 +327,8 @@ function showReadC(name,struct)
 		local limits = showLimitsC(vl)
 		local arg = ""..#limits
 		local lval = "ptr->"..vl[1]
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
 			arg = arg..",sub"..key
@@ -336,7 +338,7 @@ function showReadC(name,struct)
 			depth = depth + 1
 		end
 		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
-			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..","..limit..");\n"
 		end
 		for key,val in ipairs(limits) do
 			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
@@ -462,6 +464,8 @@ function showFreeC(name,struct)
 		local limits = showLimitsC(vl)
 		local arg = ""..#limits
 		local lval = "ptr->"..vl[1]
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
 			arg = arg..",sub"..key
@@ -490,7 +494,7 @@ function showFreeC(name,struct)
 			result = result..showIndent(depth).."}\n"
 		end
 		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
-			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..",0);\n"
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..",0);\n"
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
@@ -546,6 +550,8 @@ function showRandC(name,struct)
 		local limits = showLimitsC(vl)
 		local arg = ""..#limits
 		local lval = "ptr->"..vl[1]
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
 			arg = arg..",sub"..key
@@ -555,7 +561,7 @@ function showRandC(name,struct)
 			depth = depth + 1
 		end
 		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
-			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..","..limit..");\n"
 		end
 		for key,val in ipairs(limits) do
 			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
@@ -791,6 +797,8 @@ function showHideSC(name,struct)
 		local limits = showLimitsC(vl)
 		local arg = ""..#limits
 		local lval = "ptr->"..vl[1]
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
 			arg = arg..",sub"..key
@@ -800,7 +808,7 @@ function showHideSC(name,struct)
 			depth = depth + 1
 		end
 		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
-			result = result..showIndent(depth).."alloc"..vl[2].."(&ptr->"..vl[1]..","..limit..");\n"
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..","..limit..");\n"
 		end
 		for key,val in ipairs(limits) do
 			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
@@ -1165,6 +1173,8 @@ function showCopyC(name,struct)
 		local depth = 1
 		local lval = "dst->"..vl[1]
 		local rval = "ptr->"..vl[1]
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
 			rval = rval.."[sub"..key.."]"
@@ -1174,9 +1184,9 @@ function showCopyC(name,struct)
 			depth = depth + 1
 		end
 		if (type(vl[4]) == "number") then
-			result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..","..vl[4]..");\n"
+			result = result..showIndent(depth)..alloc.."&dst->"..vl[1]..","..vl[4]..");\n"
 		elseif (type(vl[4]) == "string" and vl[4] ~= "") then
-			result = result..showIndent(depth).."alloc"..vl[2].."(&dst->"..vl[1]..",ptr->"..vl[4]..");\n"
+			result = result..showIndent(depth)..alloc.."&dst->"..vl[1]..",ptr->"..vl[4]..");\n"
 		end
 		for key,val in ipairs(limits) do
 			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
