@@ -148,34 +148,34 @@ function showStructCJ(field)
 end
 function showCtypeC(field)
 	local result
-	if (Enumz[field[2]]~=nil) then
-		result = "enum "..field[2]
-	elseif (Structz[field[2]]~=nil) then
-		result = "struct "..field[2]
-	elseif (field[2] == "Chr") then
+	if (Enumz[field]~=nil) then
+		result = "enum "..field
+	elseif (Structz[field]~=nil) then
+		result = "struct "..field
+	elseif (field == "Chr") then
 		result = "char"
-	elseif (field[2] == "Int") then
+	elseif (field == "Int") then
 		result = "int"
-	elseif (field[2] == "Int32") then
+	elseif (field == "Int32") then
 		result = "int32_t"
-	elseif (field[2] == "New") then
+	elseif (field == "New") then
 		result = "long long"
-	elseif (field[2] == "Num") then
+	elseif (field == "Num") then
 		result = "double"
-	elseif (field[2] == "Old") then
+	elseif (field == "Old") then
 		result = "float"
-	elseif (field[2] == "Str") then
+	elseif (field == "Str") then
 		result = "char*"
-	elseif (field[2] == "Dat") then
+	elseif (field == "Dat") then
 		result = "void*"
 	else
-		result = field[2]
+		result = field
 	end
 	return result
 end
 function showStructCI(field)
 	local result
-	result = showCtypeC(field)
+	result = showCtypeC(field[2])
 	if (type(field[4]) == "number") then
 		result = result.."*"
 	elseif (type(field[4]) == "string" and field[4] ~= "") then
@@ -1122,7 +1122,7 @@ function showForeach(list)
 		elseif (v == "Dat") or (v == "Str") then
 		else
 			result = result.." \\\n"
-			result = result.."APPLY("..v..","..(k-1)..")"
+			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
 		end
 	end
 	result = result.."\n"
@@ -1132,7 +1132,7 @@ function showForeach(list)
 		elseif (not (Enumz[v] == nil)) then
 		elseif (v == "Dat") or (v == "Str") then
 			result = result.." \\\n"
-			result = result.."APPLY("..v..","..(k-1)..")"
+			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
 		else
 		end
 	end
@@ -1142,7 +1142,7 @@ function showForeach(list)
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then
 			result = result.." \\\n"
-			result = result.."APPLY("..v..","..(k-1)..")"
+			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
 		elseif (v == "Dat") or (v == "Str") then
 		else
 		end
@@ -1152,7 +1152,7 @@ function showForeach(list)
 	for k,v in ipairs(list) do
 		if (not (Structz[v] == nil)) then
 			result = result.." \\\n"
-			result = result.."APPLY("..v..","..(k-1)..")"
+			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
 		elseif (not (Enumz[v] == nil)) then
 		elseif (v == "Dat") or (v == "Str") then
 		else
@@ -1253,7 +1253,7 @@ function showFreadC(name,struct)
 		local limit = showLimitC(vl)
 		local lval = "ptr->"..vl[1]
 		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+			lval = "(("..showCtypeC(vl[2]).."*)("..lval.."))"
 		end
 		if ((not (type(vl[4]) == "table") or (#vl[4] > 0)) and (not (type(vl[4]) == "string") or (vl[4] ~= ""))) then
 			lval = lval.."[sub]"
@@ -1313,7 +1313,7 @@ function showFwriteC(name,struct)
 		local limit = showLimitC(vl)
 		local lval = "ptr->"..vl[1]
 		if ((type(vl[4]) == "table") and (#vl[4] > 1)) then
-			lval = "(("..showCtypeC(vl).."*)("..lval.."))"
+			lval = "(("..showCtypeC(vl[2]).."*)("..lval.."))"
 		end
 		if ((not (type(vl[4]) == "table") or (#vl[4] > 0)) and (not (type(vl[4]) == "string") or (vl[4] ~= ""))) then
 			lval = lval.."[sub]"

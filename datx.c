@@ -317,10 +317,10 @@ void datxOld(void **dat, float val)
 	*(int*)*dat = sizeof(val);
 	*datxOldz(0,*dat) = val;
 }
-#define FREE_BASIC(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
-#define FREE_POINTER(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
-#define FREE_ENUM(NAME,NUM) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
-#define FREE_STRUCT(NAME,NUM) break; case(NUM): free ## NAME(*dat); free(*dat); *dat = 0; *typ = -1;
+#define FREE_BASIC(NAME,NUM,TYPE) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
+#define FREE_POINTER(NAME,NUM,TYPE) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
+#define FREE_ENUM(NAME,NUM,TYPE) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
+#define FREE_STRUCT(NAME,NUM,TYPE) break; case(NUM): free ## NAME(*dat); free(*dat); *dat = 0; *typ = -1;
 void datxFree(void **dat, int *typ)
 {
 	if (*typ < 0) {free(*dat); *dat = 0;}
@@ -330,7 +330,7 @@ void datxFree(void **dat, int *typ)
 	FOREACH_ENUM(FREE_ENUM)
 	FOREACH_STRUCT(FREE_STRUCT)}
 }
-#define TYPSTR_CASE(NAME,NUM) break; case(NUM): datxStr(dat,#NAME);
+#define TYPSTR_CASE(NAME,NUM,TYPE) break; case(NUM): datxStr(dat,#NAME);
 void datxTypstr(void **dat, int typ)
 {
 	switch (typ) {
@@ -355,6 +355,20 @@ void datxExtract(void **fld, void *src, int idx, int sub, int stp, int ftp)
 	datxFree(datxDat1,&datxTyp1); datxNone(datxDat1); datxTyp1 = -1;
 	writeField(stp,idx,sub,datxIdx0,datxIdx1);
 	assignDat(fld,datxDat1);
+}
+#define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxIdx0); datxTyp0 = NUM; break;}}
+#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx)) {writeInt(val,datxIdx0); datxTyp0 = NUM; break;}}
+#define HIDE_STRUCT(NAME,NUM,TYPE) {TYPE val = {0}; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(&val,datxIdx0); datxTyp0 = NUM; free ## NAME(&val); break;}}
+int datxHide(void **dat, const char *str)
+{
+	datxFree(datxDat0,&datxTyp0); datxNone(datxDat0); datxTyp0 = -1;
+	while (1) {
+	FOREACH_BASIC(HIDE_BASIC)
+	// FOREACH_POINTER(HIDE_POINTER) // Dat and Str never happen
+	FOREACH_ENUM(HIDE_ENUM)
+	FOREACH_STRUCT(HIDE_STRUCT)
+	writeStr(str,datxIdx0); datxTyp0 = identType("Str"); break;}
+	return datxIdx0;
 }
 int datxBitwise(int lft, int rgt, enum Bitwise bit)
 {
@@ -639,8 +653,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		} break;
 	case (RetOp): {
 		if (!retptr) ERROR();
-		datxInt(dat,retptr(exp->cfg));
-		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();} break;
+		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
+		datxInt(dat,retptr(exp->cfg));} break;
 	case (SetOp): {
 		if (!setptr) ERROR();
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
@@ -702,9 +716,14 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxFree(dat1,&typ0); free(dat1); free(dat2);} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
-    	// TODO hide string type, show non-string type
-		datxFree(dat0,&typ0);
-		typ = identType("Dat"); datxNone(dat);} break;
+		if (typ0 == identType("Str")) {
+			typ = datxHide(dat,datxChrz(0,dat0));
+		} else {
+    		// "void showType(char **str, int typ, int idx)"
+    		datxFree(datxDat0,&datxTyp0); datxNone(datxDat0); datxTyp0 = -1;
+    		char *str = 0; showType(&str,typ0,datxIdx0);
+    		datxStr(dat,str); free(str); typ = identType("Str");}
+		datxFree(dat0,&typ0);} break;
 	case (IntOp): {
 		if (typ == -1) typ = identType("Int"); if (typ != identType("Int")) ERROR();
 		datxInt(dat,exp->val);} break;
