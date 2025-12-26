@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <regex.h>
+#include <time.h>
 
 // these are thread safe is set once and left
 void *prefix = 0;
@@ -17,6 +18,7 @@ setfp wocptr = 0;
 rawfp rawptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
+long long fntime;
 
 // these are not thread safe
 void ***datx = 0;
@@ -368,6 +370,13 @@ int datxHide(void **dat, const char *str)
 	writeStr(str,datxIdx0); datxTyp0 = TYPEStr; break;}
 	return datxIdx0;
 }
+void datxTime(void **dat)
+{
+	struct timespec  ts;
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
+	long long nsec = ts.tv_sec*NANOSECONDS+ts.tv_nsec;
+	datxNew(dat,nsec-fntime);
+}
 int datxBitwise(int lft, int rgt, enum Bitwise bit)
 {
 	switch (bit) {
@@ -716,6 +725,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ = identSubtype(typ0,*datxIntz(0,dat1));
 		datxExtract(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0,typ);
 		datxFree(dat1,&typ0); free(dat1); free(dat2);} break;
+	case (TimOp): {
+		datxTime(dat); typ = TYPENew;
+	} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
 		if (typ0 == TYPEStr) {
@@ -754,4 +766,7 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
 	rawptr = raw;
 	getptr = get;
 	putptr = put;
+	struct timespec  ts;
+	if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
+	fntime = ts.tv_sec*NANOSECONDS+ts.tv_nsec;
 }

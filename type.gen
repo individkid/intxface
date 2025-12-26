@@ -439,6 +439,7 @@ Operate = { -- little language expressions
 	"PutOp", -- callback with string
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
+	"TimOp", -- time since process start
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
