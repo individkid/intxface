@@ -433,6 +433,9 @@ Operate = { -- little language expressions
 	"RawOp", -- callback read and clear config
 	"ValOp", -- value from lookup
 	"SavOp", -- value for lookup
+	"SrcOp", -- push value
+	"DstOp", -- peek value
+	"PopOp", -- pop value
 	"RexOp", -- regex sugar
 	"IrxOp", -- irrex sugar
 	"GetOp", -- string from callback
@@ -440,6 +443,7 @@ Operate = { -- little language expressions
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
 	"TimOp", -- time since process start
+	"CstOp", -- cast first to type of second
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -895,7 +899,7 @@ Generic = { -- list of Dat
 }
 Express = {
 	{"opr","Operate",{},""},
-	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["EleOp"]=true,["CatOp"]=true,["PreOp"]=true,["PstOp"]=true}},2},
+	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["EleOp"]=true,["CatOp"]=true,["PreOp"]=true,["PstOp"]=true,["CstOp"]=true}},2},
 	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
@@ -911,7 +915,7 @@ Express = {
 	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["StrOp"]=true}},{}},
 	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
-	{"put","Express",{["opr"]={["PutOp"]=true,["ImmOp"]=true}},1},
+	{"put","Express",{["opr"]={["PutOp"]=true,["SrcOp"]=true,["ImmOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"val","Int",{["opr"]={["IntOp"]=true}},{}},

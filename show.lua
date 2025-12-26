@@ -1133,6 +1133,17 @@ function showForeach(list)
 		end
 	end
 	result = result.."\n"
+	result = result.."#define FOREACH_INNER(APPLY)"
+	for k,v in ipairs(list) do
+		if (not (Structz[v] == nil)) then
+		elseif (not (Enumz[v] == nil)) then
+		elseif (v == "Dat") or (v == "Str") then
+		else
+			result = result.." \\\n"
+			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
+		end
+	end
+	result = result.."\n"
 	result = result.."#define FOREACH_POINTER(APPLY)"
 	for k,v in ipairs(list) do
 		if (not (Structz[v] == nil)) then
