@@ -709,25 +709,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int tmp = *datxIntz(0,dat0); free(dat0);
 		if (tmp == 0) {typ = datxEval(dat,&exp->lst[idx],typ); break;}
 		idx = (idx + tmp) % exp->siz;}} break;
-	case (HomOp): {
-		} break;
-	case (HetOp): {
-		} break;
-	case (LstOp): {
-		void *dat0[exp->num]; int typ0[exp->num]; int typ2 = -1; enum Header hed = HomHed;
+	case (NonOp): {
 		for (int i = 0; i < exp->num; i++) {
-		dat0[i] = 0; typ0[i] = datxEval(&dat0[i],&exp->gen[i],-1);
-		if (typ2 < 0) typ2 = typ0[i]; if (typ2 != typ0[i]) hed = HetHed;}
-		// combine results into Generic with Header
+		void *dat = 0; int typ = datxEval(&dat,&exp->non[i],-1);
+		datxFree(&dat,&typ);}
 		typ = TYPEDat; datxNone(dat);} break;
-	case (EleOp): {
-		} break;
-	case (CatOp): {
-		} break;
-	case (PreOp): {
-		} break;
-	case (PstOp): {
-		} break;
 	case (RetOp): {
 		if (!retptr) ERROR();
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
@@ -811,8 +797,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(&dat0,&exp->opa[0],typ0);
 		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
 		switch (typ0) {default: ERROR();
-		FOREACH_BASIC(CAST_OUTER)}
-	} break;
+		FOREACH_BASIC(CAST_OUTER)}} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
 		if (typ0 == TYPEStr) {

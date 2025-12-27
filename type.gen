@@ -419,13 +419,7 @@ Operate = { -- little language expressions
 	"BitOp",
 	"CmpOp",
 	"CndOp", -- touring machine
-	"HomOp", -- list of same type
-	"HetOp", -- list of different types
-	"LstOp", -- either hom or het
-	"EleOp", -- element of hom or het
-	"CatOp", -- concatination of lists
-	"PreOp", -- range from list
-	"PstOp", -- range from list
+	"NonOp", -- discard list of values
 	"RetOp", -- config from callback
 	"SetOp", -- callback with config
 	"WosOp", -- callback setbits config
@@ -477,10 +471,6 @@ Order = { -- ireg expression operators
 	"PermOrd",
 	"ForkOrd",
 	"BeginOrd",
-}
-Header = { -- generic list
-	"HetHed",
-	"HomHed",
 }
 Program = { -- process type in standard commandline argument
 	"Filez", -- Persist
@@ -761,7 +751,7 @@ Bootstrap = {
 		-- TODO Goto(FnsOp of ((Str(wake) if nonzero) or (Str(wake) set to RawOp of register)))
 		")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
-		"Expressz(siz:1idx:0slf:0exp[0]:$(Lst "..
+		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
 		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
 		"Op))"},
@@ -890,16 +880,9 @@ Irrex = { -- permutation of permutations
 	{"siz","Int",{},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{},"siz"},
 }
-Generic = { -- list of Dat
-	{"hed","Header",{},{}},
-	{"siz","Int",{},{}},
-	{"tps","Int",{["hed"]={["HetHed"]=true}},"siz"},
-	{"typ","Int",{["hed"]={["HomHed"]=true}},{}},
-	{"dat","Dat",{},"siz"},
-}
 Express = {
 	{"opr","Operate",{},""},
-	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["EleOp"]=true,["CatOp"]=true,["PreOp"]=true,["PstOp"]=true,["CstOp"]=true}},2},
+	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["CstOp"]=true}},2},
 	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
@@ -907,8 +890,8 @@ Express = {
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
-	{"num","Int",{["opr"]={["HomOp"]=true,["HetOp"]=true,["LstOp"]=true}},{}},
-	{"gen","Express",{["opr"]={["HomOp"]=true,["HetOp"]=true,["LstOp"]=true}},"num"},
+	{"num","Int",{["opr"]={["NonOp"]=true}},{}},
+	{"non","Express",{["opr"]={["NonOp"]=true}},"num"},
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},1},

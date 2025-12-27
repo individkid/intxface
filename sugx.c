@@ -192,9 +192,9 @@ void sugarForeach(void *lst, enum Operate opr, const char *str, int *idx)
 	sugarRecurse(nst,-1,str,idx);
 	struct Express *exp = 0; allocExpress(&exp,1);
 	exp->opr = opr; exp->num = sizeExpr(nst);
-	allocExpress(&exp->gen,exp->num);
+	allocExpress(&exp->non,exp->num);
 	for (int i = 0; i < exp->num; i++) {
-	sugarFront(&exp->gen[i],nst);}
+	sugarFront(&exp->non[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
 }
 void sugarGetcfg(void *lst, enum Operate opr, enum Configure cfg, const char *str, int *idx)
@@ -523,10 +523,10 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		sugarCondit(lst,CndOp,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
-	if (strncmp(str+*idx,"Lst",3)==0) {
+	if (strncmp(str+*idx,"Non",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		sugarForeach(lst,LstOp,str,idx);
+		sugarForeach(lst,NonOp,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Ret",3)==0) {
