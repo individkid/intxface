@@ -32,12 +32,6 @@ int *refs = 0; // per value list length
 int vals = 0; // number of values in expressions
 int wake = 0; // first to process before waiting for readable pipe
 int vlds = 0;
-int sub0 = 0;
-int sub1 = 0;
-int idx0 = 0;
-int idx1 = 0;
-void **dat0 = 0;
-void **dat1 = 0;
 const char *err1 = "ERROR: argument after Combine should be Fanout or Buffer\n";
 const char *err2 = "ERROR: argument after Execute should be Fanout or Buffer\n";
 const char *err3 = "ERROR: argument after Constant should be Fanout or Buffer\n";
@@ -59,8 +53,8 @@ int shareExec(const char *exe, struct Argument *arg)
 	if (openCheck(idx) == -1) return idx;
 	arg->inp = openRdfd(idx);
 	arg->out = openWrfd(idx);
-	datxNone(dat0); writeArgument(arg,idx0);
-	showType(&str,TYPEArgument,idx0);
+	writeArgument(arg,datxIdx(0,TYPEArgument));
+	showType(&str,TYPEArgument,datxGet(0));
 	return openExec(exe,str);
 }
 void shareArgs(int sub, const char *str)
@@ -75,21 +69,21 @@ void shareVals(int sub, const char *str)
 	switch (arg.tag) {
 	case (Fanout): { // allocate links; map name; set type; take name
 		ptr->siz = arg.siz; ptr->dst = malloc(arg.siz*sizeof(struct Wrap *));
-		datxInt(dat1,sub); datxInserts("P",arg.str,*dat1,TYPEInt);
+		datxInt(datxRef(1,TYPEInt),sub); datxInserts("P",arg.str,datxPtr(1),TYPEInt);
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
 		ptr->str = arg.str; arg.str = 0;
 		break;}
 	case (Combine): // index variables; allocate link; take expression
 		if (!nxt) {fprintf(stderr,"%s",err1); exit(-1);} else {
 		for (int i = 0; i < arg.num; i++) {
-		int typ = datxFinds(dat1,"R",arg.dep[i]); if (*dat1 == 0) {
-		datxInt(dat1,vals++); datxInserts("R",arg.dep[i],*dat1,TYPEInt);}
-		else if (typ != TYPEInt) ERROR();}
+		int *typ = 0; int tmp = datxFinds(datxVar(1,&typ),"R",arg.dep[i]); *typ = tmp; if (datxPtr(1) == 0) {
+		datxInt(datxRef(1,TYPEInt),vals++); datxInserts("R",arg.dep[i],datxPtr(1),TYPEInt);}
+		else if (tmp != TYPEInt) ERROR();}
 		ptr->siz = 1; ptr->dst = malloc(sizeof(struct Wrap *));
 		ptr->exp = arg.exp; arg.exp = 0;
 		break;}
 	case (Buffer): { // map name; set type; take name
-		datxInt(dat1,sub); datxInserts("P",arg.str,*dat1,TYPEInt);
+		datxInt(datxRef(1,TYPEInt),sub); datxInserts("P",arg.str,datxPtr(1),TYPEInt);
 		ptr->vld |= 1; ptr->inp = identType(arg.typ);
 		ptr->str = arg.str; arg.str = 0;
 		break;}
@@ -113,9 +107,9 @@ void shareRefs(int sub, const char *str)
 		ptr->vld |= 6; ptr->idx = openPipe(); ptr->out = identType(arg.typ);}
 		*userIdent(ptr->idx) = (void*)(intptr_t)sub;
 		for (int i = 0; i < ptr->siz; i++) {
-		int typ = datxFinds(dat1,"P",arg.dst[i]);
+		void *dat = 0; int typ = datxFinds(&dat,"P",arg.dst[i]);
 		if (typ != TYPEInt) ERROR();
-		ptr->dst[i] = &wrap[*datxIntz(0,*dat1)];}
+		ptr->dst[i] = &wrap[*datxIntz(0,dat)];}
 		break;}
 	case (Combine): // link next; count references
 		if (ptr->vld != 0) {fprintf(stderr,"%s",err2); exit(-1);}
@@ -123,9 +117,9 @@ void shareRefs(int sub, const char *str)
 		else if (nxt->vld == 0) {fprintf(stderr,"%s",err1); exit(-1);} else {
 		ptr->dst[0] = nxt;
 		for (int i = 0; i < arg.num; i++) {
-		int typ = datxFinds(dat1,"R",arg.dep[i]);
+		void *dat = 0; int typ = datxFinds(&dat,"R",arg.dep[i]);
 		if (typ != TYPEInt) ERROR();
-		refs[*datxIntz(0,*dat1)] += 1;}
+		refs[*datxIntz(0,dat)] += 1;}
 		break;}
 	case (Buffer): { // open pipe; register wake
 		if (ptr->vld != 1 && ptr->vld != 7) {ERROR();} else if (ptr->vld == 1) {
@@ -146,10 +140,10 @@ void shareBack(int sub, const char *str)
 	case (Fanout): break;
 	case (Combine): { // add backrefs
 		for (int i = 0; i < arg.num; i++) {
-		int typ = datxFinds(dat1,"R",arg.dep[i]);
+		void *dat = 0; int typ = datxFinds(&dat,"R",arg.dep[i]);
 		if (typ != TYPEInt) ERROR();
-		back[*datxIntz(0,*dat1)][refs[*datxIntz(0,*dat1)]] = sub;
-		refs[*datxIntz(0,*dat1)] += 1;}
+		back[*datxIntz(0,dat)][refs[*datxIntz(0,dat)]] = sub;
+		refs[*datxIntz(0,dat)] += 1;}
 		break;}
 	case (Buffer): break;
 	case (Execute): break;
@@ -193,7 +187,7 @@ int sharePeek(const char *str, int *len)
 {
 	for (enum Tag tag = 0; tag < Tags; tag++) {
 		int typ = identUnion(tag); int tmp = 0; note = 0;
-		datxNone(dat0); hideType(str,&tmp,typ,idx0);
+		hideType(str,&tmp,typ,datxIdx(0,typ));
 		if (tmp > *len) *len = tmp;
 		if (strchr(str+tmp,'(') != 0) continue;
 		if (note == 0) return typ;}
@@ -223,10 +217,10 @@ void shareLoop(int src, int dst, int stp, int dtp)
 {
 	if (stp == dtp) {loopType(stp,src,dst); return;}
 	if (stp == TYPEDat && dtp == TYPEStr) ERROR();
-	if (stp == TYPEDat) {readDat(dat0,src); loopType(dtp,idx0,dst); return;}
-	if (stp == TYPEStr && dtp == TYPEDat) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); datxNone(dat0); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,idx0); writeDat(*dat0,dst); free(str); return;}
+	if (stp == TYPEDat) {readDat(datxRef(0,TYPEDat),src); loopType(dtp,datxGet(0),dst); return;}
+	if (stp == TYPEStr && dtp == TYPEDat) {char *str = 0; int len = 0; int typ = 0; readStr(&str,src); typ = sharePeek(str,&len); len = 0; hideType(str,&len,typ,datxIdx(0,typ)); writeDat(datxPtr(0),dst); free(str); return;}
 	if (stp == TYPEStr) {char *str = 0; int len = 0; readStr(&str,src); hideType(str,&len,dtp,dst); free(str); return;}
-	if (dtp == TYPEDat) {datxNone(dat0); loopType(stp,src,idx0); writeDat(*dat0,dst); return;}
+	if (dtp == TYPEDat) {loopType(stp,src,datxIdx(0,stp)); writeDat(datxPtr(0),dst); return;}
 	if (dtp == TYPEStr) {char *str = 0; showType(&str,stp,src); writeStr(str,dst); free(str); return;}
 	// TODO convert between Tag types
 	ERROR();
@@ -237,16 +231,19 @@ void shareWrap(struct Wrap *ptr)
 	case (Fanout): { // read from pipe and write to others
 		note = 0; shareLoop(ptr->idx,ptr->dst[ptr->sub]->idx,ptr->inp,ptr->dst[ptr->sub]->out);
 		if (note == 0) {if (++ptr->sub == ptr->siz) ptr->sub = 0;} else {
-		datxStr(dat1,""); datxStr(dat0,ptr->str); datxInsert(*dat1,*dat0,TYPEStr);}
+		datxStr(datxRef(1,TYPEStr),""); datxStr(datxRef(0,TYPEStr),ptr->str);
+		datxInsert(datxPtr(1),datxPtr(0),TYPEStr);}
 		break;}
 	case (Combine): { // evaluate expression and write to other
-		datxEval(dat0,ptr->exp,ptr->dst[0]->out);
-		shareLoop(idx0,ptr->dst[0]->idx,TYPEDat,ptr->dst[0]->out);
+		int *typ = 0; int tmp = datxEval(datxVar(0,&typ),ptr->exp,ptr->dst[0]->out); *typ = tmp;
+		shareLoop(datxGet(0),ptr->dst[0]->idx,TYPEDat,ptr->dst[0]->out);
 		break;}
 	case (Buffer): { // read from pipe and set variable
-		datxNone(dat0); note = 0; loopType(ptr->inp,ptr->idx,idx0);
-		if (note == 0) {datxStr(dat1,ptr->str); datxInsert(*dat1,*dat0,ptr->inp);} else {
-		datxStr(dat1,""); datxStr(dat0,ptr->str); datxInsert(*dat1,*dat0,TYPEStr);}
+		note = 0; loopType(ptr->inp,ptr->idx,datxIdx(0,ptr->inp));
+		if (note == 0) {datxStr(datxRef(1,TYPEStr),ptr->str);
+		datxInsert(datxPtr(1),datxPtr(0),ptr->inp);} else {
+		datxStr(datxRef(1,TYPEStr),""); datxStr(datxRef(0,TYPEStr),ptr->str);
+		datxInsert(datxPtr(1),datxPtr(0),TYPEStr);}
 		break;}
 	case (Execute): ERROR();
 	default: ERROR();}
@@ -289,24 +286,14 @@ void shareArgv(int *argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct sigaction act;
-#ifdef __linux__
 	act.sa_handler = shareExit;
-#else
-	act.__sigaction_u.__sa_handler = shareExit;
-#endif
 	if (sigaction(SIGCHLD,&act,0) < 0) ERROR();
-	sub0 = datxSub();
-	sub1 = datxSub();
-	idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp);
-	idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp);
-	dat0 = datxDat(sub0);
-	dat1 = datxDat(sub1);
 	noteFunc(shareNote); shareArgv(&argc,argv);
 	shareParse(argc,argv,shareSyntax,shareNone,shareArgs); // initialize args
 	wrap = malloc((args+1)*sizeof(struct Wrap)); memset(wrap,0,(args+1)*sizeof(struct Wrap));
 	wrap[args].idx = openPipe(); wrap[args].out = TYPEStr;
 	*userIdent(wrap[args].idx) = (void*)(intptr_t)args;
-	datxInt(dat1,args); datxInserts("P","",*dat1,TYPEInt);
+	datxInt(datxRef(1,TYPEInt),args); datxInserts("P","",datxPtr(1),TYPEInt);
 	shareParse(argc,argv,shareError,shareNone,shareVals); // map strings to subscripts; open filters
 	back = malloc(vals*sizeof(int*)); refs = malloc(vals*sizeof(int));
 	for (int i = 0; i < vals; i++) {back[i] = 0; refs[i] = 0;}

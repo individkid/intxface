@@ -86,10 +86,13 @@ Simplex:
   Note, f(1,2) = 2^2-1. If f(n-1,n) = 2^n-1, then f(n,n+1) = f(n,n) + f(n-1,n) = 2^n + 2^n-1 = 2^(n+1)-1.
 
 Migration:
-  A pseudolinear space S with sidedness of a region wrt its attached boundaries reversed is pseudolinear.
+  A pseudolinear space S with sidedness of an inside region or outside region opposite pair wrt its attached boundaries reversed is pseudolinear.
   The number of regions in each subspace is the same, because the migrated region is combined, though to different regions, by the removal of the same boundaries. And other regions are also combined by the same removals.
 
 Independent:
   If space S extended by b0 is pseudolinear and S extended by b1 is pseudolinear, then there is a pseudolinear space extended by b0 and b1.
   Choose b in S, and assume by recursion that S0 = the section by b in S + {b0,b1} is pseudolinear, and that S1 = S + {b0,b1} - {b} is pseudolinear.
   Choose corner regions of b0 and b1 for b to divide in S1 such that S0 is a section of S1. Apply section theorem to find pseudolinear S2 = S + {b0,b1}.
+
+Construction:
+  To find all constructible spaces, start with an arbitrary set of hyperlines, and find all migrations that are also migrations of the cospace.

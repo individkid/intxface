@@ -34,9 +34,6 @@ int keepSem[Threads];
 int sizeSem[Threads];
 struct Argument argument = {0}; // constant from commandline
 void *chrq = 0; // temporary queue to convert chars to str
-int sub0 = 0; int idx0 = 0; void **dat0 = 0; // protect with dataSem
-int sub1 = 0; int idx1 = 0; void **dat1 = 0; // protect with dataSem
-void *dataSem = 0;
 void *evalSem = 0;
 int jknfo = 0;
 uftype callCopy = 0;
@@ -626,29 +623,24 @@ void machineEval(struct Express *exp, int idx)
 {
     struct Center *ptr = centerPull(idx);
     if (!ptr) allocCenter(&ptr,1);
-    int val = identType("Center");
-    if (waitSafe(dataSem) != 0) ERROR();
-    datxStr(dat0,""); writeCenter(ptr,sub1);
-    if (postSafe(dataSem) != 1) ERROR();
     if (waitSafe(evalSem) != 0) ERROR();
-    datxInsert(*dat0,*dat1,val);
-    void *dat = 0; int val0 = datxEval(&dat,exp,val);
+    writeCenter(ptr,datxIdx(1,TYPECenter));
+    datxInsert(datxPtr(0),datxPtr(1),TYPECenter);
+    void *dat = 0; int val0 = datxEval(&dat,exp,TYPECenter);
+    if (val0 != TYPECenter) ERROR();
+    assignDat(datxRef(0,TYPECenter),dat); free(dat);
+    readCenter(ptr,datxGet(0));
     if (postSafe(evalSem) != 1) ERROR();
-    if (val0 != val) ERROR();
-    if (waitSafe(dataSem) != 0) ERROR();
-    assignDat(dat0,dat); free(dat); readCenter(ptr,sub0);
-    if (postSafe(dataSem) != 1) ERROR();
     centerPlace(ptr,idx);
 }
 int machineIval(struct Express *exp)
 {
     if (waitSafe(evalSem) != 0) ERROR();
-    void *dat = 0; int typ = datxEval(&dat,exp,identType("Int"));
-    if (postSafe(evalSem) != 1) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
     if (typ != identType("Int")) ERROR();
-    if (waitSafe(dataSem) != 0) ERROR();
-    assignDat(dat0,dat); free(dat); int val = readInt(idx0);
-    if (postSafe(dataSem) != 1) ERROR();
+    assignDat(datxRef(0,TYPEInt),dat); free(dat);
+    int val = readInt(datxGet(0));
+    if (postSafe(evalSem) != 1) ERROR();
     return val;
 }
 void machineVoid(struct Express *exp)
@@ -1040,10 +1032,7 @@ void initSafe()
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
-    if (!(dataSem = allocSafe(1))) ERROR(); // protect data conversion
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
-    sub0 = datxSub(); idx0 = puntInit(sub0,sub0,datxReadFp,datxWriteFp); dat0 = datxDat(sub0);
-    sub1 = datxSub(); idx1 = puntInit(sub1,sub1,datxReadFp,datxWriteFp); dat1 = datxDat(sub1);
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); wakeq = allocWakeq();
@@ -1287,7 +1276,6 @@ void planeDone()
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();
     if (sem_destroy(&evalSem) != 0) ERROR();
-    if (sem_destroy(&dataSem) != 0) ERROR();
     if (sem_destroy(&timeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
