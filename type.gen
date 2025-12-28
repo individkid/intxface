@@ -754,6 +754,7 @@ Bootstrap = {
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
 		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
+		"Put Imm TimOp Op Op "..
 		"Op))"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},

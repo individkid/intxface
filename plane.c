@@ -737,10 +737,12 @@ void planeString(enum Thread tag, int idx)
 {
     while (1) {
     if (waitSafe(safeSafe(StdioThd,idx)) < 0) break;
+    while (1) {
     if (waitSafe(stdioSem) != 0) ERROR();
     char *str = maybeStrq(0,strout);
     if (postSafe(stdioSem) != 1) ERROR();
-    if (str) {writeStr(str,console); free(str);}}
+    if (str == 0) break;
+    writeStr(str,console); writeChr('\n',console); free(str);}}
 }
 void planeConsole(enum Thread tag, int idx)
 {
@@ -763,26 +765,21 @@ void planeConsole(enum Thread tag, int idx)
 void planeTime(enum Thread tag, int idx)
 {
     // wait for smallest requested time, send interrupt first time it is exceeded
-    float time = 0.0; // time requested
-    int wake = 0; // expression to evaluate
-    float delta = 0.0; // delay or 0.0 for forever
-    int size = 0; // whether time is changed
-    int init = 0; // whether time is valid
     while (1) {
     if (waitSafe(timeSem) != 0) ERROR();
-    size = sizeTimeq(timeq);
-    if (size != sizeWakeq(wakeq)) ERROR();
-    if (!init && size != 0) {init = 1;
-    time = frontTimeq(timeq); wake = frontWakeq(wakeq);
-    dropTimeq(timeq); dropWakeq(wakeq);}
+    if (sizeTimeq(timeq) == 0) {
     if (postSafe(timeSem) != 1) ERROR();
-    if (init) delta = time-(float)processTime(); // how long to wait
-    else delta = 0.0; // wait forever
-    if (init && (delta == 0.0 || delta <= 0.0 || delta < 0.0)) delta = -1.0; // wait not at all
+    if (timeSafe(safeSafe(TimeThd,0),0.0) < 0) break; else continue;}
+    if (sizeTimeq(timeq) != sizeWakeq(wakeq)) ERROR();
+    float time = frontTimeq(timeq); int wake = frontWakeq(wakeq);
+    if (postSafe(timeSem) != 1) ERROR();
+    float delta = time-(float)processTime(); // how long to wait
     if (timeSafe(safeSafe(TimeThd,0),delta) < 0) break;
-    if (init && (float)processTime() >= time) {init = 0;
+    if ((float)processTime() >= time) {
+    if (waitSafe(timeSem) != 0) ERROR();
+    dropTimeq(timeq); dropWakeq(wakeq);
+    if (postSafe(timeSem) != 1) ERROR();
     // TODO move the following to Bringup Bootstrap
-    printf("time %.3f\n",(float)processTime());
     callJnfo(RegisterEval,wake,planeWcfg);
     callJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
 }
@@ -830,7 +827,6 @@ void planeTest(enum Thread tag, int idx)
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
     callCopy(drw,Memorys+2,RptRsp,0,(debug?"debug":0));}
     else if (count%8 == 2 || count%8 == 6) {
-    printf("test %.3f\n",(float)processTime());
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
@@ -979,6 +975,7 @@ void planePutstr(const char *src)
     if (waitSafe(stdioSem) != 0) ERROR();
     char *str = malloc(strlen(src)+1);
     strcpy(str,src); pushStrq(str,strout);
+    if (postSafe(safeSafe(StdioThd,0)) <= 0) ERROR();
     if (postSafe(stdioSem) != 1) ERROR();
 }
 void planeSetcfg(int val, int sub)

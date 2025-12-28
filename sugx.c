@@ -315,15 +315,39 @@ void moreSugar(char **raw, const char *str, int *idx) // find all til Op
 	int rgt = *idx;
 	copySugar(raw,lft,rgt,str);
 }
+int identSugar(const char *str, int sub)
+{
+	while (str[sub] && isspace(str[sub])) sub += 1;
+	while (str[sub] && !isspace(str[sub])) sub += 1;
+	while (str[sub] && isspace(str[sub])) sub += 1;
+	return sub;
+}
 // int sugarDebug = 0;
 void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 {
 	// sugarDebug += 1;
 	int siz = sizeExpr(lst);
+	int idt = *idx;
 	while (str[*idx]) {
 	// fprintf(stderr,"Recurse ");
 	// for (int i = 0; i < sugarDebug; i++) fprintf(stderr,"-");
 	// fprintf(stderr,"- %s -- %d\n",str+*idx,*idx);
+	if (idt <= *idx) idt = identSugar(str,*idx);
+	if (strncmp(str+idt,":=",2)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		char *ptr = 0; int tmp = 0; enum Configure cfg;
+		lastSugar(&ptr,str,idt);
+		hideConfigure(&cfg,ptr,&tmp);
+		free(ptr);
+		*idx = idt+2;
+		sugarSetcfg(lst,SetOp,cfg,str,idx);
+		continue;}
+	if (str[idt] == '=' && str[idt+1] != '=') {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		char *ptr = 0; lastSugar(&ptr,str,idt);
+		*idx = idt+1;
+		sugarSetval(lst,SavOp,ptr,str,idx);
+		continue;}
 	if (strncmp(str+*idx,"Op",2)==0) break;
 	if (strncmp(str+*idx,"Bit",3)==0) break;
 	if (strncmp(str+*idx,"Cmp",3)==0) break;
@@ -549,16 +573,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		sugarSetcfg(lst,SetOp,cfg,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
-	if (strncmp(str+*idx,":=",2)==0) {
-		if (lim >= 0 && sizeExpr(lst)-siz >= lim) {
-		int tmp; backSugar(idx,&tmp,str,*idx); break;}
-		char *idt = 0; int tmp = 0; enum Configure cfg;
-		lastSugar(&idt,str,*idx);
-		hideConfigure(&cfg,idt,&tmp);
-		free(idt);
-		*idx += 2;
-		sugarSetcfg(lst,SetOp,cfg,str,idx);
-		continue;}
 	if (strncmp(str+*idx,"Wos",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
@@ -600,13 +614,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		sugarSetval(lst,SavOp,idt,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
-	if (str[*idx] == '=' && str[*idx+1] != '=') {
-		if (lim >= 0 && sizeExpr(lst)-siz >= lim) {
-		int tmp; backSugar(idx,&tmp,str,*idx); break;}
-		char *idt = 0; lastSugar(&idt,str,*idx);
-		*idx += 1;
-		sugarSetval(lst,SavOp,idt,str,idx);
-		continue;}
 	if (strncmp(str+*idx,"Rex",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
@@ -645,11 +652,22 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		sugarTrinary(lst,ExtOp,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
+	if (strncmp(str+*idx,"Tim",3)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 3;
+		sugarZeroary(lst,TimOp);
+		skipSugar("Op",str,idx);
+		continue;}
+	if (strncmp(str+*idx,"Cst",3)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 3;
+		sugarBinary(lst,CstOp,str,idx);
+		skipSugar("Op",str,idx);
+		continue;}
 	if (strncmp(str+*idx,"Imm",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		char *idt = 0; hideSugar(&idt,str,idx);
-		sugarGetval(lst,ImmOp,idt,str,idx);
+		sugarUnary(lst,ImmOp,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Int",3)==0) {

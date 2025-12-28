@@ -18,7 +18,7 @@ setfp wocptr = 0;
 rawfp rawptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
-long long fntime;
+float fntime;
 
 // these are not thread safe
 int datxIdx0 = 0;
@@ -339,7 +339,7 @@ int32_t *datxInt32z(int num, void *dat)
 }
 long long *datxNewz(int num, void *dat)
 {
-	if (num >= datxInt32s(dat)) ERROR();
+	if (num >= datxNews(dat)) ERROR();
 	return (long long*)datxVoidz(num*sizeof(long long),dat);
 }
 double *datxNumz(int num, void *dat)
@@ -349,7 +349,7 @@ double *datxNumz(int num, void *dat)
 }
 float *datxOldz(int num, void *dat)
 {
-	if (num >= datxNums(dat)) ERROR();
+	if (num >= datxOlds(dat)) ERROR();
 	return (float*)datxVoidz(num*sizeof(double),dat);
 }
 void datxNone(void **dat)
@@ -772,42 +772,43 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = TYPEStr; if (typ != TYPEStr) ERROR();
 		int typ0 = datxEval(dat,exp->put,-1);
 		if (typ0 != TYPEStr) datxTypstr(dat,typ0);
-		putptr(datxChrz(0,dat));} break;
+		putptr(datxChrz(0,*dat));} break;
 	case (FldOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],TYPEInt); if (typ2 != TYPEInt) ERROR();
 		void *dat3 = 0; int typ3 = datxEval(&dat3,&exp->fld[3],TYPEInt); if (typ3 != TYPEInt) ERROR();
 		typ = typ0; datxField(dat,dat0,dat1,*datxIntz(0,dat2),*datxIntz(0,dat3),typ0,typ1);
-		datxFree(dat0,&typ0); datxFree(dat1,&typ1); free(dat2); free(dat3);} break;
+		datxFree(&dat0,&typ0); datxFree(&dat1,&typ1); free(dat2); free(dat3);} break;
 	case (ExtOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->ext[1],TYPEInt); if (typ1 != TYPEInt) ERROR();
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[2],TYPEInt); if (typ2 != TYPEInt) ERROR();
 		typ = identSubtype(typ0,*datxIntz(0,dat1));
 		datxExtract(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0,typ);
-		datxFree(dat1,&typ0); free(dat1); free(dat2);} break;
+		datxFree(&dat1,&typ0); free(dat1); free(dat2);} break;
 	case (TimOp): {
 		struct timespec ts;
 		if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
-		long long nsec = ts.tv_sec*NANOSECONDS+ts.tv_nsec;
-		datxNew(dat,nsec-fntime); typ = TYPENew;} break;
+		float sec = (float)ts.tv_sec+(float)ts.tv_nsec/(float)NANOSECONDS;
+		datxOld(dat,sec-fntime); typ = TYPEOld;} break;
 	case (CstOp): {
 		void *dat0 = 0; int typ0 = -1; void *dat1 = 0; int typ1 = -1;
 		typ0 = datxEval(&dat0,&exp->opa[0],typ0);
 		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
 		switch (typ0) {default: ERROR();
-		FOREACH_BASIC(CAST_OUTER)}} break;
+		FOREACH_BASIC(CAST_OUTER)}
+		datxFree(&dat0,&typ0); datxFree(&dat1,&typ1);} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
 		if (typ0 == TYPEStr) {
 			typ = datxHide(dat,datxChrz(0,dat0));
 		} else {
     		// "void showType(char **str, int typ, int idx)"
-    		datxFree(datxDat0,&datxTyp0); datxNone(datxDat0); datxTyp0 = -1;
-    		char *str = 0; showType(&str,typ0,datxIdx0);
+    		assignDat(datxRef(0,-1),dat0);
+    		char *str = 0; showType(&str,typ0,datxGet(0));
     		datxStr(dat,str); free(str); typ = TYPEStr;}
-		datxFree(dat0,&typ0);} break;
+		datxFree(&dat0,&typ0);} break;
 	case (IntOp): {
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
 		datxInt(dat,exp->val);} break;
@@ -839,5 +840,5 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
 	datxSingle();
 	struct timespec  ts;
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
-	fntime = ts.tv_sec*NANOSECONDS+ts.tv_nsec;
+	fntime = (float)ts.tv_sec+(float)ts.tv_nsec/(float)NANOSECONDS;
 }
