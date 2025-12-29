@@ -860,9 +860,9 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {freeIdent(external); closeIdent(extdone);} else safeJoin(tag,idx);
-    break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);} else safeJoin(tag,idx);
-    break; case (CopyThd): case (TimeThd): case (TestThd): safeJoin(tag,idx);}
+    break; case (PipeThd): if (idx) {freeIdent(external); closeIdent(extdone);}
+    break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
+    break; case (CopyThd): case (TimeThd): case (TestThd):}
 }
 void planeWake(enum Thread tag, int idx)
 {
@@ -871,14 +871,6 @@ void planeWake(enum Thread tag, int idx)
     postSafe(safeSafe(tag,idx));
 }
 
-void safeOpen()
-{
-    safeInit(PipeThd,1,0);
-    safeInit(StdioThd,1,0);
-    safeInit(CopyThd,1,0);
-    safeInit(TimeThd,1,0);
-    safeInit(TestThd,2,0);
-}
 // register callbacks
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
@@ -1046,7 +1038,11 @@ void initSafe()
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
-    safeOpen();
+    safeInit(PipeThd,1,0);
+    safeInit(StdioThd,1,0);
+    safeInit(CopyThd,1,0);
+    safeInit(TimeThd,1,0);
+    safeInit(TestThd,2,0);
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); wakeq = allocWakeq();
@@ -1256,6 +1252,8 @@ int planeLoop()
 }
 void planeDone()
 {
+    // doneTest();
+    // donePlan();
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup):
@@ -1279,8 +1277,10 @@ void planeDone()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
     // TODO after other destructors on the heap
     // TODO also free heap pointers from face datx fmtx and local globals
-    /*datxFnptr(0,0,0,0,0,0,0);
-    callBack(RegisterTime,0);
+    // doneBoot();
+    // doneSafe();
+    // datxFnptr(0,0,0,0,0,0,0);
+    /*callBack(RegisterTime,0);
     callBack(RegisterAble,0);
     callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
@@ -1289,6 +1289,9 @@ void planeDone()
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();
+ else safeJoin(tag,idx);
+ else safeJoin(tag,idx);
+ safeJoin(tag,idx);
     if (sem_destroy(&evalSem) != 0) ERROR();
     if (sem_destroy(&timeSem) != 0) ERROR();
     if (sem_destroy(&stdioSem) != 0) ERROR();
