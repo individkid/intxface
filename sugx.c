@@ -182,8 +182,8 @@ void sugarCondit(void *lst, enum Operate opr, const char *str, int *idx)
 	exp->opr = opr; exp->siz = sizeExpr(nst)/2;
 	allocExpress(&exp->cnd,exp->siz); allocExpress(&exp->lst,exp->siz);
 	for (int i = 0; i < exp->siz; i++) {
-	sugarFront(&exp->cnd[i*2],nst);
-	sugarFront(&exp->cnd[i*2+1],nst);}
+	sugarFront(&exp->cnd[i],nst);
+	sugarFront(&exp->lst[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
 }
 void sugarForeach(void *lst, enum Operate opr, const char *str, int *idx)
@@ -311,7 +311,7 @@ void skipSugar(const char *opr, const char *str, int *idx)
 void moreSugar(char **raw, const char *str, int *idx) // find all til Op
 {
 	int lft = *idx;
-	while (str[*idx] && compSugar(str,*idx)) *idx += 1;
+	while (str[*idx] && !compSugar(str,*idx)) *idx += 1;
 	int rgt = *idx;
 	copySugar(raw,lft,rgt,str);
 }
@@ -348,9 +348,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		*idx = idt+1;
 		sugarSetval(lst,SavOp,ptr,str,idx);
 		continue;}
-	if (strncmp(str+*idx,"Op",2)==0) break;
-	if (strncmp(str+*idx,"Bit",3)==0) break;
-	if (strncmp(str+*idx,"Cmp",3)==0) break;
 	if (strncmp(str+*idx,"Add",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
@@ -687,9 +684,12 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
 		char *raw = 0; moreSugar(&raw,str,idx);
-		sugarGetval(lst,ImmOp,raw,str,idx);
+		sugarGetval(lst,StrOp,raw,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
+	if (strncmp(str+*idx,"Op",2)==0) break;
+	if (strncmp(str+*idx,"Bit",3)==0) break;
+	if (strncmp(str+*idx,"Cmp",3)==0) break;
 	*idx += 1;}
 	// sugarDebug -= 1;
 }

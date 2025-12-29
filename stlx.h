@@ -177,7 +177,7 @@ template <class Conf, int Size> struct ChangeState {
     }
     int knfo(Conf cfg, int val, yftype fnc) { // called from callback
         nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
-        {std::cerr << "invalid knfo! " << depth << std::endl; exit(-1);} nest.post();
+        {std::cerr << "invalid knfo! " << depth << std::endl; *(int*)0=0; exit(-1);} nest.post();
         int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         // would not block if called from jnfo, but thread safe since pthread_equal to calling jnfo
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];

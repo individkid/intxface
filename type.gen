@@ -198,7 +198,6 @@ Configure = {
 	"ArgumentInp", -- staged field
 	"ArgumentOut",
 	"MachineIndex", -- running machine
-	"MachineLast", -- reset vector
 	"RegisterOpen", -- thread mask
 	"RegisterShow", -- commandline mask
 	"RegisterPlan", -- testing plan
@@ -249,7 +248,8 @@ Transfer = {
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
-	"Eval", -- call datxEval
+	"Eval", -- call datxEval to rmw center
+	"Void", -- discard result of datxEval
 	"Comb", -- combine src to dst
 	-- identity I
 	-- current manipulation C
@@ -730,6 +730,7 @@ MicroAlt = {
 -- TODO in Release, use mouse and roller instead of Center spoofs.
 Bootstrap = {
 	{"Int","%(count = 0; function idx() count = count + 1; return count end;"..
+		"dount = 0; function jdx() dount = dount + 1; return dount end;"..
 		"return count)","Str","!(index = #%(return count))Indexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(bringup = #%(return count))Bringupz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(image = #%(return count))Imagez(siz:0idx:0slf:0)"},
@@ -744,12 +745,51 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:1idx:0slf:0"..
-		"mch[0]:Goto(exp[0]:IntOp(0))"..
-		-- TODO Goto(FnsOp of ((Str(pass) if nonzero) or (Str(pass) set to RawOp of register)))
-		-- TODO Goto(FnsOp of ((Str(fail) if nonzero) or (Str(fail) set to RawOp of register)))
-		-- TODO Goto(FnsOp of ((Str(wake) if nonzero) or (Str(wake) set to RawOp of register)))
-		")"},
+	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:33idx:0slf:0"..
+		"mch[%(return dount)]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str Zero Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(mask = Raw RegisterWake #0 Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(tmp = #0))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(fns = @tmp))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(tmp = @mask >> @fns))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
+		" EC @tmp @fns Cmp #0-#2"..
+		" EC @tmp #%(return 1<<castMask(\"FnceMsk\")) Cmp #1"..
+		" EC @tmp #%(return 1<<castMask(\"SizeMsk\")) Cmp #2"..
+		" EC @tmp #%(return 1<<castMask(\"SlctMsk\")) Cmp #3"..
+		" EC @tmp #%(return 1<<castMask(\"CnslMsk\")) Cmp #4"..
+		" EC @tmp #%(return 1<<castMask(\"TimeMsk\")) Cmp #5"..
+		" EC @tmp #%(return 1<<castMask(\"PassMsk\")) Cmp #6"..
+		" EC @tmp #%(return 1<<castMask(\"FailMsk\")) Cmp #7"..
+		" EC @tmp #%(return 1<<castMask(\"PollMsk\")) Cmp #8"..
+		"Op))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str FnceMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str SizeMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#2))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str SlctMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#3))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str CnslMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#4))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str TimeMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#5))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str PassMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#6))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str FailMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#7))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put Str PollMsk Op Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#8))"..
+	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
 		"RegisterTime := #750 << #8 "..
@@ -918,7 +958,7 @@ Machine = {
 		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={["Comb"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
-	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true}},1},
+	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
 Uniform = {

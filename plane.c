@@ -643,19 +643,23 @@ int machineIval(struct Express *exp)
     if (postSafe(evalSem) != 1) ERROR();
     return val;
 }
-void machineVoid(struct Express *exp)
+void machineVoid(struct Express *exp, int jki)
 {
     if (waitSafe(evalSem) != 0) ERROR();
+    int save = jknfo; jknfo = jki;
     void *dat = 0; int typ = datxEval(&dat,exp,-1); datxFree(&dat,&typ);
+    jknfo = save;
     if (postSafe(evalSem) != 1) ERROR();
 }
 int machineEscape(struct Center *current, int level, int next)
 {
     int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
-    for (next += inc; level > 0; next += inc) {
+    while (1) {
+    next += inc;
     if (next < 0 || next >= current->siz) break;
     struct Machine *mptr = &current->mch[next];
-    if (mptr->xfr == Nest) level += mptr->lvl*inc;}
+    if (mptr->xfr == Nest) level += mptr->lvl*inc;
+    if (level <= 0) break;}
     return next;
 }
 void machineArg(int *arg, int sig, struct Express *exp)
@@ -674,6 +678,7 @@ void machineSwitch(struct Machine *mptr)
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(mptr->res)); break;
+    case (Void): machineVoid(&mptr->exp[0],0); break;
     case (Comb): MACHINE(Comb) break;
     case (Comp): MACHINE(Comp) break;
     case (Form): MACHINE(Form) break;
@@ -691,23 +696,31 @@ void machineSwitch(struct Machine *mptr)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
-    while (1) {
-    int index = callInfo(MachineIndex,0,planeRcfg);
+    int next = 0;
+    while (next >= 0) {
+    int index = -1;
+    struct Center *current = 0;
+    if (current == 0) {
+    index = callInfo(MachineIndex,0,planeRcfg);
     if (index < 0) break;
-    struct Center *current = centerPull(index);
-    if (current->mem != Machinez) ERROR();
-    int last = callInfo(MachineLast,0,planeRcfg)-1;
-    for (int next = last+1; next != last; next += 1) {last = next;
-    if (next < 0 || next >= current->siz) ERROR();
+    current = centerPull(index);
+    if (current == 0) break;
+    if (current->mem != Machinez) break;
+    if (current->siz <= 0) break;
+    next = 0;}
+    while (next >= 0 && next < current->siz) {
     struct Machine *mptr = &current->mch[next];
     /*{char *opr = 0; showMachine(mptr,&opr);
-    printf("%s\n",opr); free(opr);}*/
-    switch (mptr->xfr) {default: machineSwitch(mptr); break;
-    case (Goto): next = next + machineIval(&mptr->exp[0]) - 1; break;
-    case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next) - 1; break;
-    case (Nest): break;}}
-    centerPlace(current,index);
-    if (waitSafe(safeSafe(CopyThd,0)) < 0) break;}
+    fprintf(stderr,"%d-%.3f-%s\n",next,(float)processTime(),opr); free(opr);}*/
+    int save = next;
+    switch (mptr->xfr) {default: machineSwitch(mptr); next += 1; break;
+    case (Goto): next += machineIval(&mptr->exp[0]); break;
+    case (Jump): next = machineEscape(current,machineIval(&mptr->exp[0]),next); break;
+    case (Nest): next += 1; break;}
+    if (next == save) {
+    if (waitSafe(safeSafe(CopyThd,0)) < 0) next = -1;
+    else next += 1;}}
+    centerPlace(current,index); current = 0;}
 }
 void planeCenter(enum Thread tag, int idx)
 {
@@ -742,7 +755,9 @@ void planeString(enum Thread tag, int idx)
     char *str = maybeStrq(0,strout);
     if (postSafe(stdioSem) != 1) ERROR();
     if (str == 0) break;
-    writeStr(str,console); writeChr('\n',console); free(str);}}
+    writeStr(str,console);
+    writeChr('\n',console); // TODO add EndOp instead
+    free(str);}}
 }
 void planeConsole(enum Thread tag, int idx)
 {
@@ -856,6 +871,14 @@ void planeWake(enum Thread tag, int idx)
     postSafe(safeSafe(tag,idx));
 }
 
+void safeOpen()
+{
+    safeInit(PipeThd,1,0);
+    safeInit(StdioThd,1,0);
+    safeInit(CopyThd,1,0);
+    safeInit(TimeThd,1,0);
+    safeInit(TestThd,2,0);
+}
 // register callbacks
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
@@ -863,7 +886,6 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         extdone = openPipe();
         if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
-        safeInit(PipeThd,1,0);
         callFork(PipeThd,0,planeCenter,planeClose,planeJoin,planeWake);
         callFork(PipeThd,1,planeExternal,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
@@ -872,25 +894,21 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         condone = openPipe();
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
-        safeInit(StdioThd,1,0);
         callFork(StdioThd,0,planeString,planeClose,planeJoin,planeWake);
         callFork(StdioThd,1,planeConsole,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         doneSafe(safeSafe(StdioThd,0));
         writeChr(0,condone);}
     if ((act & (1<<CopyThd)) && !(sav & (1<<CopyThd))) {
-        safeInit(CopyThd,1,0);
         callFork(CopyThd,0,planeMachine,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<CopyThd)) && (sav & (1<<CopyThd))) {
         callKnfo(MachineIndex,-1,planeWcfg);
         doneSafe(safeSafe(CopyThd,0));}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
-        safeInit(TimeThd,1,0);
         callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         doneSafe(safeSafe(TimeThd,0));}
     if ((act & (1<<TestThd)) && !(sav & (1<<TestThd))) {
-        safeInit(TestThd,2,0);
         callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);
         callFork(TestThd,1,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
@@ -903,7 +921,8 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
     int mask = act&~sav;
     int wake = 0;
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
-    wake |= (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);}
+    int able = (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);
+    wake |= able;}
     wake &= callKnfo(RegisterOpen,0,planeRcfg);
     for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) {
     planeWake(i,0);}
@@ -954,10 +973,7 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     if (ptr && ptr->mem == Expressz && val < ptr->siz) {
     /*{char *exp = 0; showExpress(&ptr->exp[val],&exp);
     printf("%s\n",exp); free(exp);}*/
-    if (waitSafe(evalSem) != 0) ERROR();
-    jknfo = 1; // TODO when is this cleared
-    if (postSafe(evalSem) != 1) ERROR();    
-    machineVoid(&ptr->exp[val]);}
+    machineVoid(&ptr->exp[val],1);}
     centerPlace(ptr,idx);
 }
 
@@ -1007,7 +1023,7 @@ void planeSugar(const char *str)
     struct Express **exp = 0;
     int dim = sugarHide(&exp,str);
     for (int i = 0; i < dim; i++) {
-    machineVoid(exp[i]);
+    machineVoid(exp[i],0);
     freeExpress(exp[i]);
     allocExpress(&exp[i],0); exp[i] = 0;}
     free(exp);
@@ -1030,6 +1046,7 @@ void initSafe()
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
+    safeOpen();
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); wakeq = allocWakeq();
@@ -1073,7 +1090,7 @@ void initBoot()
     machineSwitch(&mchn); freeMachine(&mchn);
     if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
     else if (hideExpress(&expr, boot[i], &esiz)) {
-    machineVoid(&expr); freeExpress(&expr);
+    machineVoid(&expr,0); freeExpress(&expr);
     if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
     else if (hideStr(&str,boot[i],&ssiz)) {
     planePutstr(str); freeStr(&str,1);

@@ -703,12 +703,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		free(dat0); free(dat1);} break;
 	case (CndOp): {
 		if (exp->siz <= 0) ERROR();
-		int idx = 0; while (1) {
-		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->cnd[idx],-1);
+		for (int i = 0; i < exp->siz; i++) {
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->cnd[i],-1);
 		if (typ0 != TYPEInt) ERROR();
 		int tmp = *datxIntz(0,dat0); free(dat0);
-		if (tmp == 0) {typ = datxEval(dat,&exp->lst[idx],typ); break;}
-		idx = (idx + tmp) % exp->siz;}} break;
+		if (tmp == 0) {typ = datxEval(dat,&exp->lst[i],typ); break;}}} break;
 	case (NonOp): {
 		for (int i = 0; i < exp->num; i++) {
 		void *dat = 0; int typ = datxEval(&dat,&exp->non[i],-1);
