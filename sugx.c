@@ -634,7 +634,7 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"Put",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		sugarUnary(lst,PutOp,str,idx);
+		sugarForeach(lst,PutOp,str,idx);
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Fld",3)==0) {
@@ -685,6 +685,14 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		*idx += 3;
 		char *raw = 0; moreSugar(&raw,str,idx);
 		sugarGetval(lst,StrOp,raw,str,idx);
+		skipSugar("Op",str,idx);
+		continue;}
+	if (strncmp(str+*idx,"End",3)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 3;
+		char *raw = malloc(2);
+		raw[0] = '\n'; raw[1] = 0;
+		sugarGetval(lst,StrOp,raw,str,idx);		
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Op",2)==0) break;

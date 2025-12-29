@@ -756,7 +756,6 @@ void planeString(enum Thread tag, int idx)
     if (postSafe(stdioSem) != 1) ERROR();
     if (str == 0) break;
     writeStr(str,console);
-    writeChr('\n',console); // TODO add EndOp instead
     free(str);}}
 }
 void planeConsole(enum Thread tag, int idx)
@@ -1073,6 +1072,7 @@ void initBoot()
     sugarEval(planeSugar,boot[i],'!');
     sugarFilt(&boot[i],'!');}
     for (int i = 0; i < size; i++) {
+    // fprintf(stderr,"boot--%s--\n",boot[i]);
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;

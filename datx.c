@@ -768,10 +768,15 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxStr(dat,getptr());} break;
 	case (PutOp): {
 		if (!putptr) ERROR();
-		if (typ == -1) typ = TYPEStr; if (typ != TYPEStr) ERROR();
-		int typ0 = datxEval(dat,exp->put,-1);
-		if (typ0 != TYPEStr) datxTypstr(dat,typ0);
-		putptr(datxChrz(0,*dat));} break;
+		for (int i = 0; i < exp->num; i++) {
+		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->non[i],-1);
+		if (typ0 != TYPEStr) {
+    		// "void showType(char **str, int typ, int idx)"
+    		assignDat(datxRef(0,-1),dat0); datxFree(&dat0,&typ0);
+    		char *str = 0; showType(&str,typ0,datxGet(0));
+    		datxStr(&dat0,str); free(str); typ0 = TYPEStr;}
+    	putptr(datxChrz(0,dat0)); datxFree(&dat0,&typ0);}
+		typ = TYPEDat; datxNone(dat);} break;
 	case (FldOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);

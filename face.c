@@ -1205,7 +1205,7 @@ int hideStr(char **val, const char *str, int *siz)
 	int depth = 1;
 	int limit = 0;
 	int num = -1;
-	sscanf(str+*siz," Str ( %n",&base); if (base < 0) return 0;
+	sscanf(str+*siz," Str (%n",&base); if (base < 0) return 0;
 	while (str[*siz+base+limit] && depth > 0) {
 	// TODO add ascii escape
 	int num0 = -1; sscanf(str+*siz+base+limit," (%n",&num0);

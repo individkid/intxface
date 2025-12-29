@@ -441,6 +441,7 @@ Operate = { -- little language expressions
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
+	"EndOp", -- endline sugar
 }
 Compare = { -- little language comparisons
 	-- Less Equal More
@@ -747,7 +748,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:33idx:0slf:0"..
 		"mch[%(return dount)]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str Zero Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Ok AgainOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(mask = Raw RegisterWake #0 Op))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(tmp = #0))"..
@@ -766,35 +767,35 @@ Bootstrap = {
 		" EC @tmp #%(return 1<<castMask(\"PollMsk\")) Cmp #8"..
 		"Op))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str FnceMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str SizeMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSizeMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#2))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str SlctMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSlctMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#3))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str CnslMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#4))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str TimeMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrTimeMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#5))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str PassMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPassMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#6))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str FailMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrFailMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#7))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put Str PollMsk Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPollMskOp EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#8))"..
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
 		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
-		"Put Imm TimOp Op Op "..
+		"Put Imm TimOp Op EndOp Op "..
 		"Op))"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
@@ -931,15 +932,15 @@ Express = {
 	{"siz","Int",{["opr"]={["CndOp"]=true}},{}},
 	{"cnd","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
-	{"num","Int",{["opr"]={["NonOp"]=true}},{}},
-	{"non","Express",{["opr"]={["NonOp"]=true}},"num"},
+	{"num","Int",{["opr"]={["NonOp"]=true,["PutOp"]=true}},{}},
+	{"non","Express",{["opr"]={["NonOp"]=true,["PutOp"]=true}},"num"},
 	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},1},
 	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["StrOp"]=true}},{}},
 	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
-	{"put","Express",{["opr"]={["PutOp"]=true,["SrcOp"]=true,["ImmOp"]=true}},1},
+	{"put","Express",{["opr"]={["SrcOp"]=true,["ImmOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
 	{"val","Int",{["opr"]={["IntOp"]=true}},{}},
