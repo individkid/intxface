@@ -2321,7 +2321,7 @@ function showCastLua(name,list)
 end
 function showIdentLua(list)
 	local result = ""
-	result = result.."function castStruct(val)\n"
+	result = result.."function castType(val)\n"
 	for key,val in ipairs(list) do
 		if (key == 1) then
 			result = result..showIndent(1).."if (val == \""..val.."\") then return "..(key-1).."\n"
@@ -2637,6 +2637,8 @@ function showFuncC(args)
 	result = result..showCall(Enums,Enumz,showShowEC).."\n"
 	result = result..showCall(Enums,Enumz,showHideEC).."\n"
 	for k,v in ipairs(Enums) do luaxSide(showCastLua(v,Enumz[v])) end
+	luaxSide(showIdentLua(types))
+	for k,v in ipairs(Structs) do luaxSide(showFieldLua(v,Structz[v])) end
 	result = result..showCall(Constants,Constantz,showConstantC).."\n"
 	result = result..showCall(Structs,Structz,showFreeC,args,"free").."\n"
 	result = result..showCall(Structs,Structz,showAllocSC,args,"alloc").."\n"
@@ -2703,12 +2705,13 @@ function showCallHs()
 end
 function showCallLua()
 	local result = ""
+	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	showhide = false
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	showhide = true
 	result = result..showCall(Enums,Enumz,showCodeLua).."\n"
 	result = result..showCall(Enums,Enumz,showCastLua).."\n"
-	result = result..showIdentLua(Structs).."\n"
+	result = result..showIdentLua(types).."\n"
 	result = result..showCall(Structs,Structz,showFieldLua).."\n"
 	showhide = false
 	result = result..showCall(Structs,Structz,showReadLua).."\n"

@@ -348,6 +348,15 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		*idx = idt+1;
 		sugarSetval(lst,SavOp,ptr,str,idx);
 		continue;}
+	// if (str[*idx] == '.') {
+		// if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		// *idx = idt+1;
+		// TODO get identifier for identField
+		// TODO try for . to continue for nested FldOp or ExtOp
+		// TODO try for [exp]. to continue for nested FldOp or ExtOp
+		// TODO try for [exp] for subscript
+		// TODO try for = to decide between FldOp and ExtOp  
+		// continue;}
 	if (strncmp(str+*idx,"Add",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
