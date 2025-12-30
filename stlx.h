@@ -184,6 +184,10 @@ template <class Conf, int Size> struct ChangeState {
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val,config[cfg]);
         return ret;
     }
+    int hnfo() { // whether in callback
+        nest.wait(); int ret = (depth && pthread_equal(self,pthread_self())); nest.post();
+        return ret;
+    }
     static int readFn(int *ref, int val) {return *ref;}
     int read(Conf cfg) {return info(cfg,0,readFn);}
     static int writeFn(int *ref, int val) {*ref = val; return 0;}

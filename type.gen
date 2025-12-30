@@ -752,44 +752,44 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(mask = Raw RegisterWake #0 Op))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(tmp = #0))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Nest(lvl:8)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(fns = @tmp))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(tmp = @mask >> @fns))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
-		" EC @tmp @fns Cmp #0-#2"..
-		" EC @tmp #%(return 1<<castMask(\"FnceMsk\")) Cmp #1"..
-		" EC @tmp #%(return 1<<castMask(\"SizeMsk\")) Cmp #2"..
-		" EC @tmp #%(return 1<<castMask(\"SlctMsk\")) Cmp #3"..
-		" EC @tmp #%(return 1<<castMask(\"CnslMsk\")) Cmp #4"..
-		" EC @tmp #%(return 1<<castMask(\"TimeMsk\")) Cmp #5"..
-		" EC @tmp #%(return 1<<castMask(\"PassMsk\")) Cmp #6"..
-		" EC @tmp #%(return 1<<castMask(\"FailMsk\")) Cmp #7"..
-		" EC @tmp #%(return 1<<castMask(\"PollMsk\")) Cmp #8"..
+		" EO @tmp @fns Cmp #0-#9"..
+		" EO @tmp - #1 #%(return castMask(\"FnceMsk\")) Cmp #1"..
+		" EO @tmp - #1 #%(return castMask(\"SizeMsk\")) Cmp #2"..
+		" EO @tmp - #1 #%(return castMask(\"SlctMsk\")) Cmp #3"..
+		" EO @tmp - #1 #%(return castMask(\"CnslMsk\")) Cmp #4"..
+		" EO @tmp - #1 #%(return castMask(\"TimeMsk\")) Cmp #5"..
+		" EO @tmp - #1 #%(return castMask(\"PassMsk\")) Cmp #6"..
+		" EO @tmp - #1 #%(return castMask(\"FailMsk\")) Cmp #7"..
+		" EO @tmp - #1 #%(return castMask(\"PollMsk\")) Cmp #8"..
 		"Op))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#1))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSizeMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#2))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSlctMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#3))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#4))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrTimeMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#5))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPassMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#6))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrFailMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#7))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Non Put StrTimeMsk Op Op RegisterEval := #0 Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPassMsk Op Imm ?RegisterPass Op EndOp Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrFailMsk Op Imm ?RegisterPass Op EndOp Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPollMskOp EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1-#8))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..

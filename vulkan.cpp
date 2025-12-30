@@ -1101,9 +1101,7 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) EXIT}
         if (push.base) {
         push.base->baseups(push.loc,push.log);}
-        if (push.ptr) {
-        centerPlace(push.ptr,push.sub);
-        change->wots((push.ptr->slf?RegisterFail:RegisterPass),1<<(push.sub<32?push.sub:31));}
+        if (push.ptr) centerDone(push.ptr,push.sub);
         change->wots(RegisterWake,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
@@ -2366,6 +2364,9 @@ int vulkanJnfo(Configure cfg, int val, yftype fnc) {
 int vulkanKnfo(Configure cfg, int val, yftype fnc) {
     return mptr->changeState.knfo(cfg,val,fnc);
 }
+int vulkanHnfo() {
+    return mptr->changeState.hnfo();
+}
 // builtin callback
 void vulkanBack(Configure cfg, int sav, int val, int act) {
     if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
@@ -2421,7 +2422,7 @@ int main(int argc, const char **argv) {
     main.changeState.call(RegisterOpen,vulkanBack);
     main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanCmnd,vulkanWait);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait);
     // TODO move glfw functions to WindowState
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     int count = 0;

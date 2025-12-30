@@ -35,13 +35,13 @@ int sizeSem[Threads];
 struct Argument argument = {0}; // constant from commandline
 void *chrq = 0; // temporary queue to convert chars to str
 void *evalSem = 0;
-int jknfo = 0;
 uftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
+bftype callHnfo = 0;
 oftype callCmnd = 0;
 aftype callWait = 0;
 float start = 0.0;
@@ -396,6 +396,20 @@ void centerPlace(struct Center *ptr, int idx)
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
+// int _debug_ = 0;
+void centerDone(struct Center *ptr, int idx)
+{
+    centerPlace(ptr,idx);
+    if (ptr && ptr->slf == 0) {
+    callJnfo(RegisterWake,(1<<PassMsk),planeWots);
+    /*if ((1<<idx)&~_debug_) {_debug_ |= (1<<idx);
+    char *st0 = 0; showMemory((enum Memory)idx,&st0);
+    fprintf(stderr,"centerDone 0x%x %s\n",_debug_,st0); free(st0);}*/
+    callJnfo(RegisterPass,(1<<idx),planeWots);}
+    else if (ptr) {
+    callJnfo(RegisterWake,(1<<FailMsk),planeWots);
+    callJnfo(RegisterFail,(1<<idx),planeWots);}
+}
 int centerCheck(int idx)
 {
     centerSize(idx);
@@ -643,13 +657,11 @@ int machineIval(struct Express *exp)
     if (postSafe(evalSem) != 1) ERROR();
     return val;
 }
-void machineVoid(struct Express *exp, int jki)
+void machineVoid(struct Express *exp)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
-    int save = jknfo; jknfo = jki;
+    if (!callHnfo() && waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,-1); datxFree(&dat,&typ);
-    jknfo = save;
-    if (postSafe(evalSem) != 1) ERROR();
+    if (!callHnfo() && postSafe(evalSem) != 1) ERROR();
 }
 int machineEscape(struct Center *current, int level, int next)
 {
@@ -678,7 +690,7 @@ void machineSwitch(struct Machine *mptr)
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(mptr->res)); break;
-    case (Void): machineVoid(&mptr->exp[0],0); break;
+    case (Void): machineVoid(&mptr->exp[0]); break;
     case (Comb): MACHINE(Comb) break;
     case (Comp): MACHINE(Comp) break;
     case (Form): MACHINE(Form) break;
@@ -793,8 +805,6 @@ void planeTime(enum Thread tag, int idx)
     if (waitSafe(timeSem) != 0) ERROR();
     dropTimeq(timeq); dropWakeq(wakeq);
     if (postSafe(timeSem) != 1) ERROR();
-    // TODO move the following to Bringup Bootstrap
-    callJnfo(RegisterEval,wake,planeWcfg);
     callJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
 }
 void planeTest(enum Thread tag, int idx)
@@ -964,7 +974,7 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     if (ptr && ptr->mem == Expressz && val < ptr->siz) {
     /*{char *exp = 0; showExpress(&ptr->exp[val],&exp);
     printf("%s\n",exp); free(exp);}*/
-    machineVoid(&ptr->exp[val],1);}
+    machineVoid(&ptr->exp[val]);}
     centerPlace(ptr,idx);
 }
 
@@ -987,22 +997,22 @@ void planePutstr(const char *src)
 }
 void planeSetcfg(int val, int sub)
 {
-    if (jknfo) callKnfo((enum Configure)sub,val,planeWcfg);
+    if (callHnfo()) callKnfo((enum Configure)sub,val,planeWcfg);
     else callJnfo((enum Configure)sub,val,planeWcfg);
 }
 void planeWoscfg(int val, int sub)
 {
-    if (jknfo) callKnfo((enum Configure)sub,val,planeWots);
+    if (callHnfo()) callKnfo((enum Configure)sub,val,planeWots);
     else callJnfo((enum Configure)sub,val,planeWots);
 }
 void planeWoccfg(int val, int sub)
 {
-    if (jknfo) callKnfo((enum Configure)sub,val,planeWotc);
+    if (callHnfo()) callKnfo((enum Configure)sub,val,planeWotc);
     else callJnfo((enum Configure)sub,val,planeWotc);
 }
 int planeRawcfg(int val, int sub)
 {
-    if (jknfo) callKnfo((enum Configure)sub,val,planeRdwr);
+    if (callHnfo()) callKnfo((enum Configure)sub,val,planeRdwr);
     else callJnfo((enum Configure)sub,val,planeRdwr);
 }
 int planeRetcfg(int sub)
@@ -1014,7 +1024,7 @@ void planeSugar(const char *str)
     struct Express **exp = 0;
     int dim = sugarHide(&exp,str);
     for (int i = 0; i < dim; i++) {
-    machineVoid(exp[i],0);
+    machineVoid(exp[i]);
     freeExpress(exp[i]);
     allocExpress(&exp[i],0); exp[i] = 0;}
     free(exp);
@@ -1086,7 +1096,7 @@ void initBoot()
     machineSwitch(&mchn); freeMachine(&mchn);
     if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
     else if (hideExpress(&expr, boot[i], &esiz)) {
-    machineVoid(&expr,0); freeExpress(&expr);
+    machineVoid(&expr); freeExpress(&expr);
     if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
     else if (hideStr(&str,boot[i],&ssiz)) {
     planePutstr(str); freeStr(&str,1);
@@ -1101,7 +1111,6 @@ void initPlan()
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(MachineIndex,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterExpr,planeSugval("@express"),planeWcfg);
-    callJnfo(RegisterAble,(((1<<FnceMsk)<<8)|TestThd),planeWcfg);
     callJnfo(RegisterAble,(((1<<TimeMsk)<<8)|CopyThd),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
@@ -1226,7 +1235,7 @@ void initTest()
     break; case (Builtin): case (Regress): case (Release): {}}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, oftype cmnd, aftype wait)
+void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
 {
     callCopy = copy;
     callBack = call;
@@ -1234,6 +1243,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callInfo = info;
     callJnfo = jnfo;
     callKnfo = knfo;
+    callHnfo = hnfo;
     callCmnd = cmnd;
     callWait = wait;
     initSafe();
