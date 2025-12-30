@@ -378,7 +378,6 @@ void centerSize(int idx)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (postSafe(copySem) != 1) ERROR();
 }
-// TODO add sanity check by allowing only a few centerPull without corresponsing centerPlace
 struct Center *centerPull(int idx)
 {
     centerSize(idx);
@@ -639,6 +638,7 @@ void machineEval(struct Express *exp, int idx)
     if (!ptr) allocCenter(&ptr,1);
     if (waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxIdx(1,TYPECenter));
+    datxStr(datxRef(0,TYPEStr),"_");
     datxInsert(datxPtr(0),datxPtr(1),TYPECenter);
     void *dat = 0; int val0 = datxEval(&dat,exp,TYPECenter);
     if (val0 != TYPECenter) ERROR();
@@ -689,7 +689,7 @@ void machineSwitch(struct Machine *mptr)
     case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
-    case (Eval): machineEval(&mptr->fnc[0],machineIval(mptr->res)); break;
+    case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break;
     case (Void): machineVoid(&mptr->exp[0]); break;
     case (Comb): MACHINE(Comb) break;
     case (Comp): MACHINE(Comp) break;

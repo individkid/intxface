@@ -709,10 +709,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		int tmp = *datxIntz(0,dat0); free(dat0);
 		if (tmp == 0) {typ = datxEval(dat,&exp->lst[i],typ); break;}}} break;
 	case (NonOp): {
+		int typ0 = TYPEDat; datxNone(dat);
 		for (int i = 0; i < exp->num; i++) {
-		void *dat = 0; int typ = datxEval(&dat,&exp->non[i],-1);
-		datxFree(&dat,&typ);}
-		typ = TYPEDat; datxNone(dat);} break;
+		datxFree(dat,&typ0);
+		typ0 = datxEval(dat,&exp->non[i],-1);}
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (RetOp): {
 		if (!retptr) ERROR();
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
