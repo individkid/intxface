@@ -398,6 +398,9 @@ void centerPlace(struct Center *ptr, int idx)
 // int _debug_ = 0;
 void centerDone(struct Center *ptr, int idx)
 {
+    if ((callJnfo(RegisterSave,0,planeRcfg) & (1<<idx)) != 0) {
+    callJnfo(RegisterWake,(1<<DropMsk),planeWots);
+    freeCenter(ptr); allocCenter(&ptr,0); return;}
     centerPlace(ptr,idx);
     if (ptr && ptr->slf == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
@@ -740,8 +743,11 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Center *center = maybeCenterq(0,response);
+    int self = center->slf;
+    if (self < 0) pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (center) {writeCenter(center,external); freeCenter(center); allocCenter(&center,0);}}
+    if (center && self >= 0) {
+    writeCenter(center,external); freeCenter(center); allocCenter(&center,0);}}
 }
 void planeExternal(enum Thread tag, int idx)
 {
@@ -976,6 +982,12 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     printf("%s\n",exp); free(exp);}*/
     machineVoid(&ptr->exp[val]);}
     centerPlace(ptr,idx);
+}
+void registerSave(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != RegisterPass && cfg != RegisterFail) ERROR();
+    callKnfo(RegisterSave,act&~sav,planeWots);
+    callKnfo(RegisterSave,~act&sav,planeWotc);
 }
 
 // expression callbacks
