@@ -791,7 +791,8 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- "mch[%(return jdx())]:Eval(res[0]:$(@smp - 1)fnc[0]:$(Cnd"..
-		-- " @_.slf != 0 | @_.mem != Peekz | @_.siz != 1: Non Put StrPeek Op, Imm TimOp Op, Str Op, Imm @_.eek[#0].num Op, EndOp Op; @_ Op"
+		-- " Ext@_,slf,0Op != #0 | Ext@_,mem,0Op != #%(return castMemory(\"Peekz\")) | Ext@_,siz,0Op != #1: "..
+		-- "  Non Put StrPeek Op, Imm TimOp Op, Str Op, Imm FldFld@_,eek,0Op,num,0Op Op, EndOp Op; @_ Op"
 		-- " #0: Non Put StrPassMsk Op, Imm @smp - #1 Op, EndOp Op; @_ Op"..
 		-- "Op))"..
 		"mch[%(return jdx())]:Void($(Put StrPassMsk Center:%(return castType(\"Center\")) slf:%(return castCenter(\"slf\")) Op , Imm @smp - #1 Op , EndOp Op))"..
@@ -964,8 +965,12 @@ Express = {
 	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
 	{"put","Express",{["opr"]={["SrcOp"]=true,["ImmOp"]=true}},1},
-	{"fld","Express",{["opr"]={["FldOp"]=true}},4},
-	{"ext","Express",{["opr"]={["ExtOp"]=true}},3},
+	{"fld","Express",{["opr"]={["FldOp"]=true}},2},
+	{"fid","Str",{["opr"]={["FldOp"]=true}},{}},
+	{"fub","Int",{["opr"]={["FldOp"]=true}},{}},
+	{"ext","Express",{["opr"]={["ExtOp"]=true}},1},
+	{"eid","Str",{["opr"]={["ExtOp"]=true}},{}},
+	{"eub","Int",{["opr"]={["ExtOp"]=true}},{}},
 	{"val","Int",{["opr"]={["IntOp"]=true}},{}},
 }
 Machine = {

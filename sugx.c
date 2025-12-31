@@ -118,27 +118,30 @@ void sugarUnary(void *lst, enum Operate opr, const char *str, int *idx)
 	sugarFront(&exp->put[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
 }
-void sugarTrinary(void *lst, enum Operate opr, const char *str, int *idx)
+struct Express *sugarTrinary(void *lst, enum Operate opr, const char *str, int *idx)
 {
 	void *nst = allocExpr();
-	sugarRecurse(nst,3,str,idx);
-	if (sizeExpr(nst) != 3) ERROR();
+	sugarRecurse(nst,1,str,idx);
+	if (sizeExpr(nst) != 1) ERROR();
 	struct Express *exp = 0; allocExpress(&exp,1);
-	exp->opr = opr; allocExpress(&exp->ext,3);
-	for (int i = 0; i < 3; i++) {
-	sugarFront(&exp->ext[i],nst);}
+	exp->opr = opr;
+	allocExpress(&exp->ext,1);
+	sugarFront(&exp->ext[0],nst);
 	freeExpr(nst); pushExpr(exp,lst);
+	return exp;
 }
-void sugarQuadary(void *lst, enum Operate opr, const char *str, int *idx)
+struct Express *sugarQuadary(void *lst, enum Operate opr, const char *str, int *idx)
 {
 	void *nst = allocExpr();
-	sugarRecurse(nst,4,str,idx);
-	if (sizeExpr(nst) != 4) ERROR();
+	sugarRecurse(nst,2,str,idx);
+	if (sizeExpr(nst) != 2) ERROR();
 	struct Express *exp = 0; allocExpress(&exp,1);
-	exp->opr = opr; allocExpress(&exp->fld,4);
-	for (int i = 0; i < 4; i++) {
+	exp->opr = opr;
+	allocExpress(&exp->fld,2);
+	for (int i = 0; i < 2; i++) {
 	sugarFront(&exp->fld[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
+	return exp;
 }
 void sugarInfix(void *lst, enum Operate opr, const char *str, int *idx)
 {
@@ -649,13 +652,19 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"Fld",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		sugarQuadary(lst,FldOp,str,idx);
+		struct Express *exp = sugarQuadary(lst,FldOp,str,idx);
+		char *idt = 0; hideSugar(&idt,str,idx);
+		int sub; scanSugar(&sub,str,idx);
+		exp->fid = idt; exp->fub = sub;
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Ext",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		sugarTrinary(lst,ExtOp,str,idx);
+		struct Express *exp = sugarTrinary(lst,ExtOp,str,idx);
+		char *idt = 0; hideSugar(&idt,str,idx);
+		int sub; scanSugar(&sub,str,idx);
+		exp->eid = idt; exp->eub = sub;
 		skipSugar("Op",str,idx);
 		continue;}
 	if (strncmp(str+*idx,"Tim",3)==0) {

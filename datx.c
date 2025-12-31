@@ -408,18 +408,18 @@ void datxTypstr(void **dat, int typ)
 	FOREACH_ENUM(TYPSTR_CASE)
 	FOREACH_STRUCT(TYPSTR_CASE)}
 }
-void datxField(void **dst, void *src, void *fld, int idx, int sub, int stp, int ftp)
+void datxField(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp)
 {
 	// "void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)" reads into field of struct
 	assignDat(datxRef(0,-1),src); assignDat(datxRef(1,-1),fld); datxNone(datxRef(2,-1));
-	readField(stp,idx,sub,datxGet(0),datxGet(1),datxGet(2));
+	readField(stp,num,sub,datxGet(0),datxGet(1),datxGet(2));
 	assignDat(dst,datxPtr(2));
 }
-void datxExtract(void **fld, void *src, int idx, int sub, int stp, int ftp)
+void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)
 {
 	// "void writeField(int typ, int fld, int sub, int ifd, int ofd)" writes from field of struct
 	assignDat(datxRef(0,-1),src); datxNone(datxRef(1,-1));
-	writeField(stp,idx,sub,datxGet(0),datxGet(1));
+	writeField(stp,num,sub,datxGet(0),datxGet(1));
 	assignDat(fld,datxPtr(1));
 }
 #define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxGet(0)); *typ = NUM; break;}}
@@ -781,17 +781,16 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (FldOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
-		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],TYPEInt); if (typ2 != TYPEInt) ERROR();
-		void *dat3 = 0; int typ3 = datxEval(&dat3,&exp->fld[3],TYPEInt); if (typ3 != TYPEInt) ERROR();
-		typ = typ0; datxField(dat,dat0,dat1,*datxIntz(0,dat2),*datxIntz(0,dat3),typ0,typ1);
-		datxFree(&dat0,&typ0); datxFree(&dat1,&typ1); free(dat2); free(dat3);} break;
+		int num = identField(typ0,exp->fid);
+		if (identSubtype(typ0,num) != typ1) ERROR();
+		datxField(dat,dat0,dat1,num,exp->fub,typ0,typ1);
+		datxFree(&dat0,&typ0); datxFree(&dat1,&typ1);} break;
 	case (ExtOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
-		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->ext[1],TYPEInt); if (typ1 != TYPEInt) ERROR();
-		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[2],TYPEInt); if (typ2 != TYPEInt) ERROR();
-		typ = identSubtype(typ0,*datxIntz(0,dat1));
-		datxExtract(dat,dat0,*datxIntz(0,dat1),*datxIntz(0,dat2),typ0,typ);
-		datxFree(&dat1,&typ0); free(dat1); free(dat2);} break;
+		int num = identField(typ0,exp->eid);
+		typ = identSubtype(typ0,num);
+		datxExtract(dat,dat0,num,exp->eub,typ0,typ);
+		datxFree(&dat0,&typ0);} break;
 	case (TimOp): {
 		struct timespec ts;
 		if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
