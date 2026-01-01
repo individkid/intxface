@@ -719,7 +719,7 @@ void readDat(void **dat, int idx)
 	if (val < 0 && errno == EINTR) INTRFN() else break;}
 	if (val != 0 && val < size) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
-	if (val == 0) {/*TODO zero out dat*/ NOTICE(idx);}
+	if (val == 0 && size != 0) {/*TODO zero out dat*/ NOTICE(idx);}
 }
 void readEof(int idx)
 {
@@ -836,6 +836,7 @@ void flushBuf(int idx)
 void writeStr(const char *arg, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
+	if (arg == 0) {char tmp = 0; writeBuf(&tmp,sizeof(char),idx); return;}
 	int siz = (termfn ? termfn(arg,strlen(arg)+1,idx) : strlen(arg)+1);
 	if (siz <= 0) ERRFNC(idx);
 	int val = writeBuf(/*write(out[idx],*/arg,siz,idx);
@@ -844,6 +845,7 @@ void writeStr(const char *arg, int idx)
 void pwriteStr(const char *arg, long long loc, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] != Seek) ERRFNC(idx);
+	if (arg == 0) {char tmp = 0; writeBuf(&tmp,sizeof(char),idx); return;}
 	int siz = (termfn ? termfn(arg,strlen(arg)+1,idx) : strlen(arg)+1);
 	if (siz <= 0) ERRFNC(idx);
 	int val = pwrite(out[idx],arg,siz,loc);
@@ -852,6 +854,7 @@ void pwriteStr(const char *arg, long long loc, int idx)
 void writeDat(const void *arg, int idx)
 {
 	if (idx < 0 || idx >= lim || fdt[idx] == None) ERRFNC(idx);
+	if (arg == 0) {int tmp = 0; writeBuf(&tmp,sizeof(int),idx); return;}
 	int siz = *(int*)arg+sizeof(int);
 	int val = writeBuf(arg,siz,idx);
 	if (val < siz) ERRFNC(idx);

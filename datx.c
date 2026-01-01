@@ -29,10 +29,6 @@ void **datxDat0 = 0;
 void **datxDat1 = 0;
 void **datxDat2 = 0;
 void **datxDat3 = 0;
-int datxTyp0 = -1;
-int datxTyp1 = -1;
-int datxTyp2 = -1;
-int datxTyp3 = -1;
 
 // these are not thread safe
 int sizs = 0;
@@ -60,61 +56,39 @@ void datxSingle()
 {
 	if (datxDat0 && datxDat1 && datxDat2 && datxDat3) return;
 	if (datxDat0 || datxDat1 || datxDat2 || datxDat3) ERROR();
-	// after datxFree(datxDat) set &datxDat = 0 and datxTyp = -1
-	// after assignDat(,*datxDat) set &datxDat = 0 and datxTyp = -1
-	datxDat0 = malloc(sizeof(void*)); *datxDat0 = 0; datxTyp0 = -1;
-	datxDat1 = malloc(sizeof(void*)); *datxDat1 = 0; datxTyp1 = -1;
-	datxDat2 = malloc(sizeof(void*)); *datxDat2 = 0; datxTyp2 = -1;
-	datxDat3 = malloc(sizeof(void*)); *datxDat3 = 0; datxTyp3 = -1;
+	datxDat0 = malloc(sizeof(void*)); *datxDat0 = 0;
+	datxDat1 = malloc(sizeof(void*)); *datxDat1 = 0;
+	datxDat2 = malloc(sizeof(void*)); *datxDat2 = 0;
+	datxDat3 = malloc(sizeof(void*)); *datxDat3 = 0;
 	datxIdx0 = puntInit(0,0,datxReadFp,datxWriteFp);
 	datxIdx1 = puntInit(1,1,datxReadFp,datxWriteFp);
 	datxIdx2 = puntInit(2,2,datxReadFp,datxWriteFp);
 	datxIdx3 = puntInit(3,3,datxReadFp,datxWriteFp);
 }
-void **datxRef(int sub, int typ)
+int datxClr(int sub)
 {
 	switch (sub) {default: ERROR();
-	break; case (0): datxFree(datxDat0,&datxTyp0); datxTyp0 = typ; return datxDat0;
-	break; case (1): datxFree(datxDat1,&datxTyp1); datxTyp1 = typ; return datxDat1;
-	break; case (2): datxFree(datxDat2,&datxTyp2); datxTyp2 = typ; return datxDat2;
-	break; case (3): datxFree(datxDat3,&datxTyp3); datxTyp3 = typ; return datxDat3;}
-	return 0;
-}
-int datxIdx(int sub, int typ)
-{
-	switch (sub) {default: ERROR();
-	break; case (0): datxFree(datxDat0,&datxTyp0); datxTyp0 = typ; return datxIdx0;
-	break; case (1): datxFree(datxDat1,&datxTyp1); datxTyp1 = typ; return datxIdx1;
-	break; case (2): datxFree(datxDat2,&datxTyp2); datxTyp2 = typ; return datxIdx2;
-	break; case (3): datxFree(datxDat3,&datxTyp3); datxTyp3 = typ; return datxIdx3;}
+	break; case (0): datxNone(datxDat0); return datxIdx0;
+	break; case (1): datxNone(datxDat1); return datxIdx1;
+	break; case (2): datxNone(datxDat2); return datxIdx2;
+	break; case (3): datxNone(datxDat3); return datxIdx3;}
 	return -1;
 }
-void **datxVar(int sub, int **typ)
+void datxGet(int sub, void **dst)
 {
 	switch (sub) {default: ERROR();
-	break; case (0): datxFree(datxDat0,&datxTyp0); *typ = &datxTyp0; return datxDat0;
-	break; case (1): datxFree(datxDat1,&datxTyp1); *typ = &datxTyp1; return datxDat1;
-	break; case (2): datxFree(datxDat2,&datxTyp2); *typ = &datxTyp2; return datxDat2;
-	break; case (3): datxFree(datxDat3,&datxTyp3); *typ = &datxTyp3; return datxDat3;}
-	return 0;
+	break; case (0): assignDat(dst,*datxDat0);
+	break; case (1): assignDat(dst,*datxDat1);
+	break; case (2): assignDat(dst,*datxDat2);
+	break; case (3): assignDat(dst,*datxDat3);}
 }
-void *datxPtr(int sub)
+int datxPut(int sub, const void *src)
 {
 	switch (sub) {default: ERROR();
-	break; case (0): return *datxDat0;
-	break; case (1): return *datxDat1;
-	break; case (2): return *datxDat2;
-	break; case (3): return *datxDat3;}
-	return 0;
-}
-int datxGet(int sub)
-{
-	switch (sub) {default: ERROR();
-	break; case (0): return datxIdx0;
-	break; case (1): return datxIdx1;
-	break; case (2): return datxIdx2;
-	break; case (3): return datxIdx3;}
-	return -1;
+	break; case (0): assignDat(datxDat0,src); return datxIdx0;
+	break; case (1): assignDat(datxDat1,src); return datxIdx1;
+	break; case (2): assignDat(datxDat2,src); return datxIdx2;
+	break; case (3): assignDat(datxDat3,src); return datxIdx3;}
 }
 
 void datxVoid(void **dat, int siz)
@@ -195,29 +169,9 @@ int datxCompare(void *one, void *oth)
 	if (lne < lth) return -1;
 	if (lne > lth) return 1;
 	for (int i = sizeof(int); i < len; i++) {
-		if (*((char*)one+i) < *((char*)oth+i)) return -1;
-		if (*((char*)one+i) > *((char*)oth+i)) return 1;}
+	if (*((char*)one+i) < *((char*)oth+i)) return -1;
+	if (*((char*)one+i) > *((char*)oth+i)) return 1;}
 	return 0;
-}
-#define FREE_BASIC(NAME,NUM,TYPE) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
-#define FREE_POINTER(NAME,NUM,TYPE) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
-#define FREE_ENUM(NAME,NUM,TYPE) break; case(NUM): free(*dat); *dat = 0; *typ = -1;
-#define FREE_STRUCT(NAME,NUM,TYPE) break; case(NUM): free ## NAME(*dat); free(*dat); *dat = 0; *typ = -1;
-void datxFree(void **dat, int *typ)
-{
-	if (*typ < 0) {free(*dat); *dat = 0;}
-	else switch (*typ) {default: ERROR();
-	FOREACH_BASIC(FREE_BASIC)
-	FOREACH_POINTER(FREE_POINTER)
-	FOREACH_ENUM(FREE_ENUM)
-	FOREACH_STRUCT(FREE_STRUCT)}
-}
-void datxCopy(void **dat, void *src, int typ)
-{
-	// "void loopType(int typ, int one, int oth)"
-	assignDat(datxRef(0,-1),src); datxNone(datxRef(1,-1));
-	loopType(typ,datxGet(0),datxGet(1));
-	assignDat(dat,datxPtr(1));
 }
 int datxFind(void **val, const void *key)
 {
@@ -226,34 +180,43 @@ int datxFind(void **val, const void *key)
 	while (siz > 0) {int cmp = 0;
 	if (idx < 0 || idx >= sizs) ERROR();
 	cmp = datxCompare(dat,keys[idx+siz/2]);
-	if (cmp == 0) {assignDat(val,boxs[idx+siz/2]); free(dat); return typs[idx+siz/2];}
+	if (cmp == 0) {assignDat(val,boxs[idx+siz/2]);
+	free(dat); return typs[idx+siz/2];}
 	if (cmp < 0) {siz = siz/2;}
 	if (cmp > 0) {idx = idx + siz/2 + 1; siz = siz - siz/2 - 1;}}
-	if (datxCompare(dat,keys[idx]) != 0) {free(dat); return -1;}
-	datxCopy(val,boxs[idx],typs[idx]); free(dat); return typs[idx];
+	if (idx < 0 || idx >= sizs || datxCompare(dat,keys[idx]) != 0) {
+	free(dat); return -1;}
+	assignDat(val,boxs[idx]); free(dat); return typs[idx];
 }
-void datxInsert(const void *key, void *val, int typ)
+void datxInsert(const void *key, const void *val, int typ)
 {
+    // fprintf(stderr,"datxInsert %d %p\n",*datxIntz(0,val),((struct Center *)(datxIntz(0,val)))->ind);
 	int idx = 0; int siz = sizs; void *dat = 0;
 	if (prefix) datxJoin(&dat,prefix,key);
 	else assignDat(&dat,key);
 	while (siz > 0) {int cmp = 0;
 	if (idx < 0 || idx >= sizs) ERROR();
 	cmp = datxCompare(dat,keys[idx+siz/2]);
-	if (cmp == 0) {
-	datxCopy(&boxs[idx+siz/2],val,typ);
-	typs[idx+siz/2] = typ; free(dat); return;}
+	if (cmp == 0) {free(dat);
+	assignDat(&boxs[idx+siz/2],val);
+	typs[idx+siz/2] = typ; return;}
 	if (cmp < 0) {siz = siz/2;}
 	if (cmp > 0) {idx = idx + siz/2 + 1; siz = siz - siz/2 - 1;}}
-	sizs++; keys = realloc(keys,sizs*sizeof(void*)); boxs = realloc(boxs,sizs*sizeof(void*)); typs = realloc(typs,sizs*sizeof(int));
+	if (idx >= 0 && idx < sizs && datxCompare(dat,keys[idx]) == 0) {
+	free(dat); assignDat(&boxs[idx],val); typs[idx] = typ; return;}
+	sizs += 1;
+	keys = realloc(keys,sizs*sizeof(void*));
+	boxs = realloc(boxs,sizs*sizeof(void*));
+	typs = realloc(typs,sizs*sizeof(int));
+	keys[sizs-1] = 0; boxs[sizs-1] = 0; typs[sizs-1] = -1;
 	for (int i = sizs-1; i > idx; i--) {
-	keys[i] = 0; assignDat(&keys[i],keys[i-1]);
-	boxs[i] = 0; datxCopy(&boxs[i],boxs[i-1],typs[i-1]);
-	typs[i] = typs[i-1];}
+	keys[i] = keys[i-1]; keys[i-1] = 0;
+	boxs[i] = boxs[i-1]; boxs[i-1] = 0;
+	typs[i] = typs[i-1]; typs[i-1] = -1;}
 	if (datxNoteFp) datxNoteFp(dat);
-	keys[idx] = 0; assignDat(&keys[idx],dat);
-	boxs[idx] = 0; datxCopy(&boxs[idx],val,typ);
-	typs[idx] = typ; free(dat);
+	assignDat(&keys[idx],dat); free(dat);
+	assignDat(&boxs[idx],val);
+	typs[idx] = typ;
 }
 int datxFinds(void **val, const char *pre, const char *str)
 {
@@ -268,28 +231,29 @@ void datxInserts(const char *pre, const char *str, void *val, int typ)
 	datxStr(&prefix,pre); datxStr(&key,str); datxInsert(key,val,typ);
 	assignDat(&prefix,sav); free(sav);
 }
-void datxPush(void *dat, int typ)
+void datxPush(const void *dat, int typ)
 {
 	if (sbas == ssiz) {
 	ssiz += 1;
 	sval = realloc(sval,ssiz);
-	styp = realloc(styp,ssiz);}
-	datxCopy(&sval[sbas],dat,typ);
+	styp = realloc(styp,ssiz);
+	sval[sbas] = 0; styp[sbas] = -1;}
+	assignDat(&sval[sbas],dat);
 	styp[sbas] = typ;
 	sbas += 1;
 }
 int datxPeek(void **dat)
 {
 	if (sbas == 0) ERROR();
-	datxCopy(dat,sval[sbas-1],styp[sbas-1]);
+	assignDat(dat,sval[sbas-1]);
 	return styp[sbas-1];
 }
 int datxPop(void **dat)
 {
 	if (sbas == 0) ERROR();
 	sbas -= 1; int typ = styp[sbas];
-	datxCopy(dat,sval[sbas],typ);
-	datxFree(&sval[sbas],&styp[sbas]);
+	assignDat(dat,sval[sbas]);
+	free(sval[sbas]); sval[sbas] = 0; styp[sbas] = -1;
 	return typ;
 }
 int datxChrs(void *dat)
@@ -411,30 +375,26 @@ void datxTypstr(void **dat, int typ)
 void datxField(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp)
 {
 	// "void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)" reads into field of struct
-	assignDat(datxRef(0,-1),src); assignDat(datxRef(1,-1),fld); datxNone(datxRef(2,-1));
-	readField(stp,num,sub,datxGet(0),datxGet(1),datxGet(2));
-	assignDat(dst,datxPtr(2));
+	readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);
 }
 void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)
 {
 	// "void writeField(int typ, int fld, int sub, int ifd, int ofd)" writes from field of struct
-	assignDat(datxRef(0,-1),src); datxNone(datxRef(1,-1));
-	writeField(stp,num,sub,datxGet(0),datxGet(1));
-	assignDat(fld,datxPtr(1));
+	writeField(stp,num,sub,datxPut(0,src),datxClr(1)); datxGet(1,fld);
 }
-#define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxGet(0)); *typ = NUM; break;}}
-#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx)) {writeInt(val,datxGet(0)); *typ = NUM; break;}}
-#define HIDE_STRUCT(NAME,NUM,TYPE) {TYPE val = {0}; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(&val,datxGet(0)); *typ = NUM; free ## NAME(&val); break;}}
+#define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxClr(0)); break;}}
+#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx)) {writeInt(val,datxClr(0)); break;}}
+#define HIDE_STRUCT(NAME,NUM,TYPE) {TYPE val = {0}; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(&val,datxClr(0)); free ## NAME(&val); break;}}
 int datxHide(void **dat, const char *str)
 {
-	int *typ = 0; datxNone(datxVar(0,&typ));
+	int typ = -1;
 	while (1) {
 	FOREACH_BASIC(HIDE_BASIC)
 	// FOREACH_POINTER(HIDE_POINTER) // Dat and Str never happen
 	FOREACH_ENUM(HIDE_ENUM)
 	FOREACH_STRUCT(HIDE_STRUCT)
-	writeStr(str,datxGet(0)); *typ = TYPEStr; break;}
-	return *typ;
+	writeStr(str,datxClr(0)); typ = TYPEStr; break;}
+	return typ;
 }
 int datxBitwise(int lft, int rgt, enum Bitwise bit)
 {
@@ -711,7 +671,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (NonOp): {
 		int typ0 = TYPEDat; datxNone(dat);
 		for (int i = 0; i < exp->num; i++) {
-		datxFree(dat,&typ0);
+		datxNone(dat);
 		typ0 = datxEval(dat,&exp->non[i],-1);}
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();} break;
 	case (RetOp): {
@@ -769,50 +729,53 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		datxStr(dat,getptr());} break;
 	case (PutOp): {
 		if (!putptr) ERROR();
+		if (typ == -1) typ = TYPEStr; if (typ != TYPEStr) ERROR();
 		for (int i = 0; i < exp->num; i++) {
-		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->non[i],-1);
+		int typ0 = datxEval(dat,&exp->non[i],-1);
 		if (typ0 != TYPEStr) {
     		// "void showType(char **str, int typ, int idx)"
-    		assignDat(datxRef(0,-1),dat0); datxFree(&dat0,&typ0);
-    		char *str = 0; showType(&str,typ0,datxGet(0));
-    		datxStr(&dat0,str); free(str); typ0 = TYPEStr;}
-    	putptr(datxChrz(0,dat0)); datxFree(&dat0,&typ0);}
-		typ = TYPEDat; datxNone(dat);} break;
+    		char *str = 0; showType(&str,typ0,datxPut(0,dat));
+    		datxStr(dat,str); free(str);}
+    	putptr(datxChrz(0,*dat));}} break;
 	case (FldOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
 		int num = identField(typ0,exp->fid);
 		if (identSubtype(typ0,num) != typ1) ERROR();
+		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		datxField(dat,dat0,dat1,num,exp->fub,typ0,typ1);
-		datxFree(&dat0,&typ0); datxFree(&dat1,&typ1);} break;
+		free(dat0); free(dat1);} break;
 	case (ExtOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
 		int num = identField(typ0,exp->eid);
-		typ = identSubtype(typ0,num);
-		datxExtract(dat,dat0,num,exp->eub,typ0,typ);
-		datxFree(&dat0,&typ0);} break;
+		int typ1 = identSubtype(typ0,num);
+		if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
+		datxExtract(dat,dat0,num,exp->eub,typ0,typ1);
+		free(dat0);} break;
 	case (TimOp): {
 		struct timespec ts;
 		if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
 		float sec = (float)ts.tv_sec+(float)ts.tv_nsec/(float)NANOSECONDS;
-		datxOld(dat,sec-fntime); typ = TYPEOld;} break;
+		datxOld(dat,sec-fntime);
+		if (typ == -1) typ = TYPEOld; if (typ != TYPEOld) ERROR();} break;
 	case (CstOp): {
 		void *dat0 = 0; int typ0 = -1; void *dat1 = 0; int typ1 = -1;
 		typ0 = datxEval(&dat0,&exp->opa[0],typ0);
 		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
 		switch (typ0) {default: ERROR();
 		FOREACH_BASIC(CAST_OUTER)}
-		datxFree(&dat0,&typ0); datxFree(&dat1,&typ1);} break;
+		free(dat0); free(dat1);} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
 		if (typ0 == TYPEStr) {
-			typ = datxHide(dat,datxChrz(0,dat0));
+			int typ1 = datxHide(dat,datxChrz(0,dat0));
+			if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
 		} else {
     		// "void showType(char **str, int typ, int idx)"
-    		assignDat(datxRef(0,-1),dat0);
-    		char *str = 0; showType(&str,typ0,datxGet(0));
-    		datxStr(dat,str); free(str); typ = TYPEStr;}
-		datxFree(&dat0,&typ0);} break;
+    		char *str = 0; showType(&str,typ0,datxPut(0,dat0));
+    		datxStr(dat,str); free(str);
+    		if (typ == -1) typ = TYPEStr; if (typ != TYPEStr) ERROR();}
+		free(dat0);} break;
 	case (IntOp): {
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
 		datxInt(dat,exp->val);} break;

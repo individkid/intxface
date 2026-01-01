@@ -748,12 +748,13 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:52idx:0slf:0"..
+	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:53idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(mask = #0))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterWake @mask Op))"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Ok AgainOp , EndOp Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = ?RegisterWake ; tmp = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:9)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
@@ -769,6 +770,7 @@ Bootstrap = {
 		" EO @tmp - #1 #%(return castMask(\"DropMsk\")) Cmp , #8"..
 		" EO @tmp - #1 #%(return castMask(\"PollMsk\")) Cmp , #9"..
 		"Op))"..
+
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
@@ -796,12 +798,14 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO perhaps prevent center from changing if RegisterPass is set
-		-- "mch[%(return jdx())]:Eval(res[0]:$(@smp - 1)fnc[0]:$(Cnd"..
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd"..
 		-- " Ext@_,slf,0Op != #0 | Ext@_,mem,0Op != #%(return castMemory(\"Peekz\")) | Ext@_,siz,0Op != #1: "..
 		-- "  Non Put StrPeek Op, Imm TimOp Op, Str Op, Imm FldFld@_,eek,0Op,num,0Op Op, EndOp Op; @_ Op"
 		-- " #0: Non Put StrPassMsk Op, Imm @smp - #1 Op, EndOp Op; @_ Op"..
 		-- "Op))"..
-		"mch[%(return jdx())]:Void($(Put StrPassMsk Center:%(return castType(\"Center\")) slf:%(return castCenter(\"slf\")) Op , Imm @smp - #1 Op , EndOp Op))"..
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Non Put StrPassMsk Center:%(return castType(\"Center\")) slf:%(return castCenter(\"slf\")) Op , Imm @smp - #1 Op , EndOp Op ; @_ Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Non Put StrPassMsk Center:%(return castType(\"Center\")) slf:%(return castCenter(\"slf\")) Op , Imm @smp - #1 Op , EndOp Op ; @_ Op))"..
+		-- "mch[%(return jdx())]:Void($(Put StrPassMsk Center:%(return castType(\"Center\")) slf:%(return castCenter(\"slf\")) Op , Imm @smp - #1 Op , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterPass @nask Op))"..
