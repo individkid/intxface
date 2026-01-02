@@ -390,10 +390,6 @@ void planePutstr(const char *str);
 void centerPlace(struct Center *ptr, int idx)
 {
     centerSize(idx);
-    // TODO move the following to Bringup Bootstrap
-    if (ptr && ptr->mem == Peekz && ptr->siz == 1 && ptr->slf == 0) {
-    char *st0 = 0; asprintf(&st0,"peek %.3f %d\n",(float)processTime(),ptr->eek[0].num);
-    planePutstr(st0); free(st0);}
     if (waitSafe(copySem) != 0) ERROR();
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (postSafe(copySem) != 1) ERROR();
@@ -868,7 +864,7 @@ void planeTest(enum Thread tag, int idx)
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].val = 1.0;
+    eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].frm = UintFrm; eek->eek[0].num = -1;
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
     tested = count;}}}
 }
@@ -1129,7 +1125,7 @@ void initPlan()
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(MachineIndex,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterExpr,planeSugval("@express"),planeWcfg);
-    callJnfo(RegisterAble,(((1<<TimeMsk)<<8)|CopyThd),planeWcfg);
+    callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|CopyThd),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<CopyThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
@@ -1230,11 +1226,11 @@ void initTest()
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
     struct Center *oke = centerPull(Pokez); freeCenter(oke);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
-    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].val = 1.5;
+    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].frm = UintFrm; oke->oke[0].num = 2;
     callCopy(oke,Pokez,RptRsp,0,(debug?"poke":0));
     struct Center *eek = centerPull(Peekz); freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].val = 1.0;
+    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].frm = UintFrm; eek->eek[0].num = 1;
     callCopy(eek,Peekz,RptRsp,0,(debug?"peek":0));
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);

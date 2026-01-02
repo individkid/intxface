@@ -382,17 +382,18 @@ void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)
 	// "void writeField(int typ, int fld, int sub, int ifd, int ofd)" writes from field of struct
 	writeField(stp,num,sub,datxPut(0,src),datxClr(1)); datxGet(1,fld);
 }
-#define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxClr(0)); break;}}
-#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx)) {writeInt(val,datxClr(0)); break;}}
-#define HIDE_STRUCT(NAME,NUM,TYPE) {TYPE val = {0}; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(&val,datxClr(0)); free ## NAME(&val); break;}}
+#define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxClr(0)); typ = NUM; break;}}
+#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx)) {writeInt(val,datxClr(0)); typ = NUM; break;}}
+#define HIDE_STRUCT(NAME,NUM,TYPE) {TYPE val = {0}; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(&val,datxClr(0)); free ## NAME(&val); typ = NUM; break;}}
 int datxHide(void **dat, const char *str)
 {
 	int typ = -1;
 	while (1) {
-	FOREACH_BASIC(HIDE_BASIC)
-	// FOREACH_POINTER(HIDE_POINTER) // Dat and Str never happen
 	FOREACH_ENUM(HIDE_ENUM)
 	FOREACH_STRUCT(HIDE_STRUCT)
+	FOREACH_BASIC(HIDE_BASIC)
+	// TODO should hideChar be in FOREACH_POINTER instead of FOREACH_BASIC
+	// FOREACH_POINTER(HIDE_POINTER) // Dat and Str never happen
 	writeStr(str,datxClr(0)); typ = TYPEStr; break;}
 	return typ;
 }
@@ -617,9 +618,14 @@ int datxIrrexe(const char *str, int idx)
 #define CAST_INNER(NAME,NUM,TYP) \
 break; case (TYPE ## NAME): \
 datx ## NAME(dat,val); typ = TYPE ## NAME;
-#define CAST_OUTER(NAME,NUM,TYP) \
+#define CAST_BASIC(NAME,NUM,TYP) \
 break; case (TYPE ## NAME): { \
 TYP val = *datx ## NAME ## z(0,dat0); \
+switch (typ1) {default: ERROR(); \
+FOREACH_INNER(CAST_INNER)}}
+#define CAST_ENUM(NAME,NUM,TYP) \
+break; case (TYPE ## NAME): { \
+int val = *datxIntz(0,dat0); \
 switch (typ1) {default: ERROR(); \
 FOREACH_INNER(CAST_INNER)}}
 int datxEval(void **dat, struct Express *exp, int typ)
@@ -763,7 +769,8 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(&dat0,&exp->opa[0],typ0);
 		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
 		switch (typ0) {default: ERROR();
-		FOREACH_BASIC(CAST_OUTER)}
+		FOREACH_BASIC(CAST_BASIC)
+		FOREACH_ENUM(CAST_ENUM)}
 		free(dat0); free(dat1);} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);

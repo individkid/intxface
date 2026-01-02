@@ -54,9 +54,8 @@ int shareExec(const char *exe, struct Argument *arg)
 	if (openCheck(idx) == -1) return idx;
 	arg->inp = openRdfd(idx);
 	arg->out = openWrfd(idx);
-	writeArgument(arg,datxClr(0));
-	void *dat = 0; datxGet(0,&dat);
-	showType(&str,TYPEArgument,datxPut(0,dat)); free(dat);
+	int tmp = datxClr(0); writeArgument(arg,tmp);
+	showType(&str,TYPEArgument,tmp);
 	int ret = openExec(exe,str); free(str);
 	return ret;
 }
@@ -112,7 +111,7 @@ void shareRefs(int sub, const char *str)
 		for (int i = 0; i < ptr->siz; i++) {
 		void *dat = 0; int typ = datxFinds(&dat,"P",arg.dst[i]);
 		if (typ != TYPEInt) ERROR();
-		ptr->dst[i] = &wrap[*datxIntz(0,dat)];}
+		ptr->dst[i] = &wrap[*datxIntz(0,dat)]; free(dat);}
 		break;}
 	case (Combine): // link next; count references
 		if (ptr->vld != 0) {fprintf(stderr,"%s",err2); exit(-1);}
@@ -122,7 +121,7 @@ void shareRefs(int sub, const char *str)
 		for (int i = 0; i < arg.num; i++) {
 		void *dat = 0; int typ = datxFinds(&dat,"R",arg.dep[i]);
 		if (typ != TYPEInt) ERROR();
-		refs[*datxIntz(0,dat)] += 1;}
+		refs[*datxIntz(0,dat)] += 1; free(dat);}
 		break;}
 	case (Buffer): { // open pipe; register wake
 		if (ptr->vld != 1 && ptr->vld != 7) {ERROR();} else if (ptr->vld == 1) {
@@ -146,7 +145,7 @@ void shareBack(int sub, const char *str)
 		void *dat = 0; int typ = datxFinds(&dat,"R",arg.dep[i]);
 		if (typ != TYPEInt) ERROR();
 		back[*datxIntz(0,dat)][refs[*datxIntz(0,dat)]] = sub;
-		refs[*datxIntz(0,dat)] += 1;}
+		refs[*datxIntz(0,dat)] += 1; free(dat);}
 		break;}
 	case (Buffer): break;
 	case (Execute): break;
@@ -190,7 +189,7 @@ int sharePeek(const char *str, int *len)
 {
 	for (enum Tag tag = 0; tag < Tags; tag++) {
 		int typ = identUnion(tag); int tmp = 0; note = 0;
-		hideType(str,&tmp,typ,datxClr(0)); datxGet(0,&peek);
+		hideType(str,&tmp,typ,datxClr(0));
 		if (tmp > *len) *len = tmp;
 		if (strchr(str+tmp,'(') != 0) continue;
 		if (note == 0) return typ;}
@@ -210,7 +209,7 @@ void shareCallback(void *key)
 	typ = datxFinds(&dat,"R",datxChrz(0,key));
 	if (dat == 0) return;
 	if (typ != TYPEInt) ERROR();
-	ref = *datxIntz(0,dat);
+	ref = *datxIntz(0,dat); free(dat);
 	for (int i = 0; i < refs[ref]; i++) {
 	int sub = back[ref][i];
 	struct Wrap *ptr = &wrap[sub];
