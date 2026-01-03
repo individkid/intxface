@@ -2042,6 +2042,7 @@ struct ImageState : public BaseState {
         if (tag(RuseQua) == TexRet) {
         memcpy(data, ptr(loc), siz(loc));}
         if (tag(RuseQua) == SetRet) {
+        // TODO switch on pie[i].frm and perhaps use pie[i].idx
         for (int i = 0; i < siz(loc); i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));}
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}
@@ -2054,6 +2055,7 @@ struct ImageState : public BaseState {
         Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
         range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        // TODO switch on pie[i].frm and perhaps use pie[i].idx
         for (int i = 0; i < siz(loc); i++) memcpy(&pie[i].val, (void*)((char*)data + x*4 + y*texWidth*4), sizeof(pie[i].val));}
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);

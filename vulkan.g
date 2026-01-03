@@ -213,23 +213,30 @@ void display(uint tri, uint idx, uint num, uint tex, uint one, uint pol, uint al
 }
 void expand(out vec4 res[3], uint ref, uint use)
 {
-    uint bas = inNum.buf[ref].bas[0];
-    vec4 vec = inNum.buf[ref].vec;
-    for (uint i = 0; i < 3; i++) {
+    uint bas = inNum.buf[ref].bas[0]; // which direction is above
+    vec4 vec = inNum.buf[ref].vec; // distances above feet
+    for (uint i = 0; i < 3; i++) { // per foot
     res[i] = inBas.buf[use].buf[bas*3+i];
-    res[i][use] *= vec[i];}
+    res[i][bas] += vec[i];}
 }
 void vertex()
 {
+    switch (inUni.buf.mod) {default:
+    break; case (0): {
     uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
     index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
-    vec4 vec; if (inUni.buf.mod == 1) {
-    vec4 num[3/*plane*/][3/*tangent*/];
+    vec4 vec;
+    vec4 exp[3/*plane*/][3/*tangent*/];
     for (uint i = 0; i < 3; i++)
-    expand(num[i],inVer.buf[vtx].ref[i],use);
-    vec = intersect(num[0],num[1],num[2]);
-    } else vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,tex,one,pol,all,vtx,vec);
+    expand(exp[i],inVer.buf[vtx].ref[i],use);
+    vec = intersect(exp[0],exp[1],exp[2]);
+    display(tri,idx,num,tex,one,pol,all,vtx,vec);}
+    break; case(1): {
+    uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
+    vec4 vec;
+    vec = inVer.buf[vtx].vec;
+    display(tri,idx,num,tex,one,pol,all,vtx,vec);}}
 }
 #endif
 #if defined(vertexDisplay)
@@ -238,8 +245,21 @@ void vertexDisplay()
     vertex();
 }
 #endif
+#if defined(vertexPierce)
+void vertexPierce()
+{
+    gl_Position = inMat.buf[2].buf * inPosition;
+    fragIdx = gl_VertexIndex/3;
+    // instead TODO vertex();
+}
+#endif
+#if defined(vertexDepth)
+void vertexDepth()
+{
+    vertex();
+}
+#endif
 #if defined(vertexTest)
-// TODO normalize towards vertex()
 void vertexTest()
 {
     if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
@@ -257,21 +277,5 @@ void vertexDebug()
     fragTexCoord = inOrdClr.xy;
     vec4 tmp = inMat.buf[3].buf * vec4(-0.5,-0.5,0.2,1.0);
     fragIdx = (tmp.z > 0.4 ? inUni.buf.wid : inUni.buf.hei);
-}
-#endif
-#if defined(vertexPierce)
-// TODO normalize towards vertexDebug
-void vertexPierce()
-{
-    gl_Position = inMat.buf[2].buf * inPosition;
-    fragIdx = gl_VertexIndex/3;
-    // instead TODO vertex();
-}
-#endif
-#if defined(vertexDepth)
-// TODO normalize towards vertexDebug
-void vertexDepth()
-{
-    vertex();
 }
 #endif

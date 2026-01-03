@@ -749,7 +749,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:49idx:0slf:0"..
-		"mch[%(return dount)]:Void(exp[0]:$(mask = #0))"..
+		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterWake @mask Op))"..
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
@@ -792,14 +792,14 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterPass ; smp = #0 Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterPass ; smp = #0 ; pass = @pass + #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non gns = @smp ; smp = @nask >> @gns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd "..
 		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Peekz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str mem:Op , Imm @_ . mem 0 Op , Str sub:Op , Imm @smp - #1 Op , Str num:Op , Imm @_ . eek 0 . num 0 Op , EndOp Op ; @_ Op "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . eek 0 . num 0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -807,7 +807,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterFail ; smp = #0 Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterFail ; smp = #0 ; fail = @fail + #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non gns = @smp ; smp = @nask >> @gns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
