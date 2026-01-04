@@ -14,7 +14,7 @@ filer.log: fileC filer.lua filerLua type.lua
 filerLua: filer.lua
 fmtxC.o: fmtx.c
 fragmentDebugG: vulkan.g
-fragmentPierceG: vulkan.g
+fragmentDisplayG: vulkan.g
 fragmentTestG: vulkan.g
 hole: holeC
 holeC: faceC.o holeC.o holeC.typeC.o protoC.o
@@ -65,9 +65,9 @@ typerHs: face.hs faceC.o protoC.o
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexDebugG: vulkan.g
-vertexPierceG: vulkan.g
+vertexDisplayG: vulkan.g
 vertexTestG: vulkan.g
-vulkan.log: fragmentDebugG fragmentPierceG fragmentTestG texture.jpg vertexDebugG vertexPierceG vertexTestG vulkanCpp
+vulkan.log: fragmentDebugG fragmentDisplayG fragmentTestG texture.jpg vertexDebugG vertexDisplayG vertexTestG vulkanCpp
 vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o vulkanCpp.o vulkanCpp.typeC.o
 vulkanCpp.o: face.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen

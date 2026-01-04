@@ -1176,9 +1176,9 @@ void initTest()
     callCopy(ptr,Drawz,RptRsp,0,(debug?"swap":0));
     while (!centerCheck(Drawz)) usleep(1000);
     ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 2/*Micros*/;
+    ptr->mem = Drawz; ptr->siz = 3/*Micros*/;
     allocDraw(&ptr->drw,ptr->siz);
-    for (int i = 0; i < 2/*Micros*/; i++) {
+    for (int i = 0; i < 3/*Micros*/; i++) {
     ptr->drw[i].con.tag = ResrcCon;
     ptr->drw[i].con.res = PipeRes;
     int val[] = {/*IDerIns*/i,/*Micro*/i};

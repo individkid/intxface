@@ -522,7 +522,7 @@ struct Res {
 };
 struct StackState {
     static const int descrs = 4; // maximum descriptor sets in use
-    static const int micros = 2; // eventually equal to Micros
+    static const int micros = 3; // eventually equal to Micros
     static const int frames = 2; // prevent blocking on resources
     static const int images = 10; // fragment shader textures
     static const int piercs = 2; // fragment shader feedback

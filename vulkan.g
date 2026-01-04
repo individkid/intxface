@@ -123,6 +123,9 @@ layout (binding = 0) readonly uniform Uniforms {
 layout (binding = 1) readonly uniform Matrixs {
     Matrix buf[4]; // uniforms cannot be variable size
 } inMat;
+#endif
+
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
 layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
 } inBas;
@@ -135,9 +138,24 @@ layout (binding = 4) readonly buffer Numerics {
 layout (binding = 5) readonly buffer Vertexs {
     Vertex buf[];
 } inVer;
+#endif
+
+#if defined(vertexTest) || defined(vertexDebug)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uvec4 inRefer;
+void debug()
+{
+    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
+    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
+    else fragColor = vec3(1.0,0.0,0.0); // red
+    fragTexCoord = inOrdClr.xy;
+    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
+}
+#endif
+
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
 void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
 {
     tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
@@ -166,15 +184,6 @@ void expand(out vec4 res[3], uint ref, uint use)
     for (uint i = 0; i < 3; i++) { // per foot
     res[i] = inBas.buf[use].buf[bas*3+i];
     res[i][bas] += vec[i];}
-}
-void debug()
-{
-    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
-    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
-    else fragColor = vec3(1.0,0.0,0.0); // red
-    fragTexCoord = inOrdClr.xy;
-    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
 }
 void coplane()
 {
@@ -230,19 +239,19 @@ void vertexDepth()
 #if defined(vertexDisp)
 void vertexDisp()
 {
-    coplane();
+    vertex();
 }
 #endif
 #if defined(vertexPrce)
 void vertexPrce()
 {
-    coplane();
+    vertex();
 }
 #endif
 #if defined(vertexDpth)
 void vertexDpth()
 {
-    coplane();
+    vertex();
 }
 #endif
 
