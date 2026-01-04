@@ -125,37 +125,13 @@ layout (binding = 1) readonly uniform Matrixs {
 } inMat;
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
-layout (binding = 2) readonly buffer Basiss {
-    Basis buf[];
-} inBas;
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
 layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
-layout (binding = 4) readonly buffer Numerics {
-    Numeric buf[];
-} inNum;
 layout (binding = 5) readonly buffer Vertexs {
     Vertex buf[];
 } inVer;
-#endif
-
-#if defined(vertexTest) || defined(vertexDebug)
-layout (location = 0) in vec4 inPosition;
-layout (location = 1) in vec4 inOrdClr;
-layout (location = 2) in uvec4 inRefer;
-void debug()
-{
-    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
-    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
-    else fragColor = vec3(1.0,0.0,0.0); // red
-    fragTexCoord = inOrdClr.xy;
-    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
-}
-#endif
-
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
 void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
 {
     tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
@@ -177,6 +153,22 @@ void display(uint tri, uint idx, uint num, uint tex, uint one, uint pol, uint al
     fragIdx = tri;
     fragTex = tex;
 }
+void vertex()
+{
+    uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
+    index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
+    vec4 vec = inVer.buf[vtx].vec;
+    display(tri,idx,num,tex,one,pol,all,vtx,vec);
+}
+#endif
+
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth)
+layout (binding = 2) readonly buffer Basiss {
+    Basis buf[];
+} inBas;
+layout (binding = 4) readonly buffer Numerics {
+    Numeric buf[];
+} inNum;
 void expand(out vec4 res[3], uint ref, uint use)
 {
     uint bas = inNum.buf[ref].bas[0]; // which direction is above
@@ -189,20 +181,26 @@ void coplane()
 {
     uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
     index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
-    vec4 vec;
     vec4 exp[3/*plane*/][3/*tangent*/];
     for (uint i = 0; i < 3; i++)
     expand(exp[i],inVer.buf[vtx].ref[i],use);
-    vec = intersect(exp[0],exp[1],exp[2]);
+    vec4 vec = intersect(exp[0],exp[1],exp[2]);
     display(tri,idx,num,tex,one,pol,all,vtx,vec);
 }
-void vertex()
+#endif
+
+#if defined(vertexTest) || defined(vertexDebug)
+layout (location = 0) in vec4 inPosition;
+layout (location = 1) in vec4 inOrdClr;
+layout (location = 2) in uvec4 inRefer;
+void debug()
 {
-    uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
-    vec4 vec;
-    vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,tex,one,pol,all,vtx,vec);
+    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
+    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
+    else fragColor = vec3(1.0,0.0,0.0); // red
+    fragTexCoord = inOrdClr.xy;
+    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
 }
 #endif
 

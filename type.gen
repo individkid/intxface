@@ -529,35 +529,26 @@ MicroBinding = {
 	mif = {\"MicroPrce\",\"MicroDpth\"}\
 	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"}\
-	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" }\
-	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        }\
-	req = {\"PierceRes\"}\
-	phq = {\"RenderPhs\"}\
-	bnq = {\"0\"        }\
+	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
+	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"}\
+	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
+	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
 	rea = cat(rep,res) pha = cat(php,phs) bna = cat(bnp,bns)\
 	reb = cat(req,res) phb = cat(phq,phs) bnb = cat(bnq,bns)\
 	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"}\
-	rep = {\"SwapRes\",\"ChainRes\",\"PierceRes\" }\
-	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        }\
-	req = {\"PierceRes\"}\
-	phq = {\"RenderPhs\"}\
-	bnq = {\"0\"        }\
+	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"      }\
+	rep = {\"SwapRes\",\"ChainRes\",\"PierceRes\"} req = {\"PierceRes\"}\
+	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
+	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
 	rec = cat(rep,res) phc = cat(php,phs) bnc = cat(bnp,bns)\
 	red = cat(req,res) phd = cat(phq,phs) bnd = cat(bnq,bns)\
 	res = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"}\
-	rep = {\"SwapRes\",\"ChainRes\",\"PierceRes\" }\
-	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        }\
-	req = {\"PierceRes\"}\
-	phq = {\"RenderPhs\"}\
-	bnq = {\"0\"        }\
+	bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
+	rep = {\"SwapRes\",\"ChainRes\",\"PierceRes\"} req = {\"PierceRes\"}\
+	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
+	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
 	ree = cat(rep,res) phe = cat(php,phs) bne = cat(bnp,bns)\
 	ref = cat(req,res) phf = cat(phq,phs) bnf = cat(bnq,bns)\
 	return \"Micro\")","%(return gnc(mia,rea))","Int","%(return hnc(rea,0))","Resrc","%(return fnc(rea))"},
@@ -702,6 +693,7 @@ MicroIns = {
 	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\"}\
 	web = {\"PierceRes\",\"PierceRes\",\"PierceRes\"}\
+	\
 	def = {\"TrivDef\",\"TrivDef\",\
 	\"GiveDef\",\"GiveDef\",\"TrivDef\",\
 	\"BackDef\",\"BackDef\",\"BackDef\",\
@@ -714,10 +706,12 @@ MicroIns = {
 	\"4\",\
 	\"2\",\"3\",\"4\",\
 	\"4\"}\
+	\
 	deg = {\"GiveDef\",\"GiveDef\",\"TrivDef\",\
 	\"BackDef\"}\
 	dw0 = {\"0\",\"1\"}\
 	dw1 = {\"2\"}\
+	\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
