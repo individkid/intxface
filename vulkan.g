@@ -269,6 +269,9 @@ void fragmentDebug()
 }
 #endif
 #if defined(fragmentDisplay)
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
 layout (location = 0) out vec4 outColor;
 void fragmentDisplay()
 {
@@ -292,6 +295,9 @@ void fragmentDepth()
 #endif
 #if defined(fragmentDisp)
 layout (location = 0) out vec4 outColor;
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
 void fragmentDisp()
 {
     switch (fragTex) {default:
