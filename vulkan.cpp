@@ -908,7 +908,7 @@ struct BindState : public BaseState {
     void nxt(Resrc typ) { // done with qualified resource
         hand[typ] += 1;
     }
-    SaveState *inc(Resrc typ) { // add resource of type
+    SaveState *add(Resrc typ) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         hand[typ] = size[typ];
@@ -1242,7 +1242,7 @@ struct CopyState {
             Onl onl = get(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
             SaveState *sav = 0; if (!vld(ins[i].res,onl,bind)) {
             BaseState *buf = get(ins[i].ins,ins[i].res,ins[i].idx,ins[i].key,ins[i].val);
-            sav = bind->inc(ins[i].res);
+            sav = bind->add(ins[i].res);
             sav->buf = buf; sav->fst = i; sav->onl = onl;}
             else sav = bind->get(ins[i].res);
             sav->fin = i;
