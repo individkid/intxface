@@ -522,7 +522,7 @@ struct Res {
 };
 struct StackState {
     static const int descrs = 4; // maximum descriptor sets in use
-    static const int micros = 3; // eventually equal to Micros
+    static const int micros = Micros;
     static const int frames = 2; // prevent blocking on resources
     static const int images = 10; // fragment shader textures
     static const int piercs = 2; // fragment shader feedback
@@ -1739,10 +1739,10 @@ struct PipeState : public BaseState {
     VkPipeline pipeline;
     Render renderIndex(Micro micro) {
         switch (micro) {default:
-        break; case (MicroDepth): return SfloatFrm;
-        break; case (MicroPierce): return UintFrm;
+        break; case (MicroDepth): case (MicroDpth): return SfloatFrm;
+        break; case (MicroPierce): case (MicroPrce): return UintFrm;
         break; case (MicroDebug): return UintFrm;
-        break; case (MicroTest): case (MicroDisplay): return SrgbFrm;}
+        break; case (MicroTest): case (MicroDisplay): case (MicroDisp): return SrgbFrm;}
         return Renders;
     }
     PipeState() :
@@ -3004,8 +3004,12 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     HeapState<VkVertexInputBindingDescription> bindingDescriptions;
     HeapState<VkVertexInputAttributeDescription> attributeDescriptions;
+    /*{char *st2 = 0; showMicro(micro,&st2);
+    fprintf(stderr,"micro:%s\n",st2);}*/
     for (int i = 0; MicroBinding__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
     Resrc typ = MicroBinding__Micro__Int__Resrc(micro)(i);
+    /*{char *st0 = 0; showResrc(typ,&st0);
+    fprintf(stderr,"resrc:%s %d\n",st0,i);}*/
     switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
     break; case (FetchPhs): {
     VkVertexInputBindingDescription bindingDescription{};
@@ -3014,9 +3018,14 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     bindingDescriptions << bindingDescription;
     for (int j = 0; ResrcFormat__Resrc__Int__Render(typ)(j) != Renders; j++) {
+    // fprintf(stderr,"render:%d\n",j);
     VkVertexInputAttributeDescription attributeDescription{};
     attributeDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
     attributeDescription.location = j;
+    /*{char *st0 = 0; showResrc(typ,&st0);
+    char *st1 = 0; showRender(ResrcFormat__Resrc__Int__Render(typ)(j),&st1);
+    char *st2 = 0; showMicro(micro,&st2);
+    fprintf(stderr,"micro:%s resrc:%s %d render:%s %d\n",st2,st0,i,st1,j);}*/
     attributeDescription.format = PhysicalState::vulkanFormat(ResrcFormat__Resrc__Int__Render(typ)(j));
     attributeDescription.offset = ResrcOffset__Resrc__Int__Int(typ)(j);
     attributeDescriptions << attributeDescription;}}}}

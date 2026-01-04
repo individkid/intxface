@@ -106,7 +106,7 @@ layout (location = 4) flat in uint fragTex;
 layout (location = 5) in vec3 fragColor;
 layout (location = 6) in vec2 fragTexCoord;
 #endif
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
 layout (location = 0) out vec4 fragOrd;
 layout (location = 1) out uint fragIdx;
 layout (location = 2) out vec4 fragVec;
@@ -116,7 +116,7 @@ layout (location = 5) out vec3 fragColor;
 layout (location = 6) out vec2 fragTexCoord;
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 0) readonly uniform Uniforms {
     Uniform buf;
 } inUni;
@@ -125,7 +125,7 @@ layout (binding = 1) readonly uniform Matrixs {
 } inMat;
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
