@@ -76,11 +76,14 @@ Retyp = { -- per veriation of Resrc
 	"DptRet", -- from gpu depth to cpu
 }
 Micro = { -- what runs on gpu
-	"MicroTest", -- Bringup Plan
-	"MicroDebug", -- testing microcode
-	"MicroPierce", -- fragment feedback
-	"MicroDisplay", -- indexed storage
+	"MicroTest", -- fetch and texture
+	"MicroDebug", -- uint per pixel
+	"MicroDisplay", -- indexed planes
+	"MicroPierce", -- pierced triangle
 	"MicroDepth", -- fixed point
+	"MicroDisp", -- indexed vertices
+	"MicroPrce", -- pierced triangle
+	"MicroDpth", -- fixed point
 }
 Constant = {
 	"MicroCon",
@@ -517,20 +520,58 @@ MicroBinding = {
 	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
-	mic = {\"MicroTest\",\"MicroDisplay\"}\
-	res = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\",\"PipeRes\"}\
-	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\",\"PipePhs\"}\
-	bnd = {\"0\",      \"0\",       \"0\",         \"1\",         \"7\",        \"0\",       \"0\",       \"0\"}\
-	return \"Micro\")","%(return gnc(mic,res))","Int","%(return hnc(res,0))","Resrc","%(return fnc(res))"},
-	{"Micro","%(return gnc(mic,phs))","Int","%(return hnc(phs,0))","Phase","%(return fnc(phs))"},
-	{"Micro","%(return gnc(mic,bnd))","Int","%(return hnc(bnd,0))","Int","%(return fnc(bnd))"},
-	{"%(mia = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
-	rea = {\"PierceRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\",\"PipeRes\"}\
-	pha = {\"RenderPhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\",\"PipePhs\"}\
-	bna = {\"0\",        \"0\",         \"1\",         \"7\",        \"0\",       \"0\",       \"0\"}\
+	function cat (one,oth) local max = #one; for i,v in ipairs(oth) do max = max + 1; one[max] = v end return one end\
+	mia = {\"MicroTest\"}\
+	mib = {\"MicroDebug\"}\
+	mic = {\"MicroDisplay\"}\
+	mid = {\"MicroPierce\",\"MicroDepth\"}\
+	mie = {\"MicroDisp\"}\
+	mif = {\"MicroPrce\",\"MicroDpth\"}\
+	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
+	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
+	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"}\
+	rea = cat({\"SwapRes\",\"ChainRes\",\"ImageRes\" },res)\
+	pha = cat({\"SwapPhs\",\"FramePhs\",\"SamplePhs\"},phs)\
+	bna = cat({\"0\",      \"0\",       \"6\"        },bns)\
+	reb = cat({\"PierceRes\"},res)\
+	phb = cat({\"RenderPhs\"},phs)\
+	bnb = cat({\"0\"        },bns)\
+	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
+	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
+	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"}\
+	rec = cat({\"SwapRes\",\"ChainRes\",\"PierceRes\"},res)\
+	phc = cat({\"SwapPhs\",\"FramePhs\",\"RelatePhs\"},phs)\
+	bnc = cat({\"0\",      \"0\"       ,\"6\"},bns)\
+	red = cat({\"PierceRes\"},res)\
+	phd = cat({\"RenderPhs\"},phs)\
+	bnd = cat({\"0\"},bns)\
+	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"VertexRes\", \"PipeRes\"}\
+	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
+	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"5\",         \"0\"}\
+	ree = cat({\"SwapRes\",\"ChainRes\",\"PierceRes\"},res)\
+	phe = cat({\"SwapPhs\",\"FramePhs\",\"RelatePhs\"},phs)\
+	bne = cat({\"0\",      \"0\",       \"6\"},bns)\
+	ref = cat({\"PierceRes\"},res)\
+	phf = cat({\"RenderPhs\"},phs)\
+	bnf = cat({\"0\"},bns)\
 	return \"Micro\")","%(return gnc(mia,rea))","Int","%(return hnc(rea,0))","Resrc","%(return fnc(rea))"},
 	{"Micro","%(return gnc(mia,pha))","Int","%(return hnc(pha,0))","Phase","%(return fnc(pha))"},
 	{"Micro","%(return gnc(mia,bna))","Int","%(return hnc(bna,0))","Int","%(return fnc(bna))"},
+	{"Micro","%(return gnc(mib,reb))","Int","%(return hnc(reb,0))","Resrc","%(return fnc(reb))"},
+	{"Micro","%(return gnc(mib,phb))","Int","%(return hnc(phb,0))","Phase","%(return fnc(phb))"},
+	{"Micro","%(return gnc(mib,bnb))","Int","%(return hnc(bnb,0))","Int","%(return fnc(bnb))"},
+	{"Micro","%(return gnc(mic,rec))","Int","%(return hnc(rec,0))","Resrc","%(return fnc(rec))"},
+	{"Micro","%(return gnc(mic,phc))","Int","%(return hnc(phc,0))","Phase","%(return fnc(phc))"},
+	{"Micro","%(return gnc(mic,bnc))","Int","%(return hnc(bnc,0))","Int","%(return fnc(bnc))"},
+	{"Micro","%(return gnc(mid,red))","Int","%(return hnc(red,0))","Resrc","%(return fnc(red))"},
+	{"Micro","%(return gnc(mid,phd))","Int","%(return hnc(phd,0))","Phase","%(return fnc(phd))"},
+	{"Micro","%(return gnc(mid,bnd))","Int","%(return hnc(bnd,0))","Int","%(return fnc(bnd))"},
+	{"Micro","%(return gnc(mie,ree))","Int","%(return hnc(ree,0))","Resrc","%(return fnc(ree))"},
+	{"Micro","%(return gnc(mie,phe))","Int","%(return hnc(phe,0))","Phase","%(return fnc(phe))"},
+	{"Micro","%(return gnc(mie,bne))","Int","%(return hnc(bne,0))","Int","%(return fnc(bne))"},
+	{"Micro","%(return gnc(mif,ref))","Int","%(return hnc(ref,0))","Resrc","%(return fnc(ref))"},
+	{"Micro","%(return gnc(mif,phf))","Int","%(return hnc(phf,0))","Phase","%(return fnc(phf))"},
+	{"Micro","%(return gnc(mif,bnf))","Int","%(return hnc(bnf,0))","Int","%(return fnc(bnf))"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexTestG"},
@@ -538,6 +579,9 @@ VertexFile = {
 	{"Micro","MicroDisplay","Str","vertexDisplayG"},
 	{"Micro","MicroPierce","Str","vertexPierceG"},
 	{"Micro","MicroDepth","Str","vertexDepthG"},
+	{"Micro","MicroDisp","Str","vertexDispG"},
+	{"Micro","MicroPrce","Str","vertexPrceG"},
+	{"Micro","MicroDpth","Str","vertexDpthG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentTestG"},
@@ -545,6 +589,9 @@ FragmentFile = {
 	{"Micro","MicroDisplay","Str","fragmentDisplayG"},
 	{"Micro","MicroPierce","Str","fragmentPierceG"},
 	{"Micro","MicroDepth","Str","fragmentDepthG"},
+	{"Micro","MicroDisp","Str","fragmentDispG"},
+	{"Micro","MicroPrce","Str","fragmentPrceG"},
+	{"Micro","MicroDpth","Str","fragmentDpthG"},
 }
 -- queue blobs are per Memory Resrc or Micro
 -- Micro queue blobs are decoupled from bindings per Micro,
@@ -645,9 +692,9 @@ MicroIns = {
 	-- n>0: departures from n-1
 	-- TODO \"RelateRes\",
 	{"%(dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	mic = {\"MicroTest\",\"MicroDisplay\"}\
+	mic = {\"MicroTest\"}\
 	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	mib = {\"MicroDebug\",\"MicroPierce\",\"MicroDepth\"}\
+	mib = {\"MicroDebug\"}\
 	web = {\"PierceRes\",\"PierceRes\",\"PierceRes\"}\
 	def = {\"TrivDef\",\"TrivDef\",\
 	\"GiveDef\",\"GiveDef\",\"TrivDef\",\
@@ -668,6 +715,7 @@ MicroIns = {
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
+	\
 	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","STagIns"},
 		{"Memory","%(return gnc(mic,dee))","Int","0","Resrc","ImageRes"},
 		{"Memory","%(return gnc(mic,dee))","Int","0","Quality","RuseQua"},
@@ -698,6 +746,7 @@ MicroIns = {
 	{"Micro","%(return gnc(mic,dv0))","Int","%(return hnc(dv0,0))","Int","%(return fnc(dv0))"},
 	{"Micro","%(return fnc(mic))","Int","4","Int","%(return fnc(mic))"},
 	{"Micro","%(return gnc(mic,dv1))","Int","%(return hnc(dv1,5))","Int","%(return fnc(dv1))"},
+
 	{"Micro","%(return fnc(mib))","Int","0","Instr","QDerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},

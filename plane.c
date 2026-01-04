@@ -864,7 +864,7 @@ void planeTest(enum Thread tag, int idx)
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.5*width; eek->eek[0].hei = 0.5*height; eek->eek[0].frm = UintFrm; eek->eek[0].num = -1;
+    eek->eek[0].wid = 0.3*width; eek->eek[0].hei = 0.3*height; eek->eek[0].frm = UintFrm; eek->eek[0].num = -1;
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
     tested = count;}}}
 }
@@ -1176,9 +1176,9 @@ void initTest()
     callCopy(ptr,Drawz,RptRsp,0,(debug?"swap":0));
     while (!centerCheck(Drawz)) usleep(1000);
     ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 3/*Micros*/;
+    ptr->mem = Drawz; ptr->siz = 2/*Micros*/;
     allocDraw(&ptr->drw,ptr->siz);
-    for (int i = 0; i < 3/*Micros*/; i++) {
+    for (int i = 0; i < 2/*Micros*/; i++) {
     ptr->drw[i].con.tag = ResrcCon;
     ptr->drw[i].con.res = PipeRes;
     int val[] = {/*IDerIns*/i,/*Micro*/i};
