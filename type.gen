@@ -200,7 +200,8 @@ Configure = {
 	"CenterMask", -- which have changed
 	"ArgumentInp", -- staged field
 	"ArgumentOut",
-	"MachineIndex", -- running machine
+	"RegisterCall", -- start wake stop
+	"RegisterMain", -- main machine center
 	"RegisterOpen", -- thread mask
 	"RegisterShow", -- commandline mask
 	"RegisterPlan", -- testing plan
@@ -378,7 +379,7 @@ Fixed = { -- how motion interpreted
 Thread = { -- separate threads
 	"PipeThd",
 	"StdioThd",
-	"CopyThd",
+	"MachThd",
 	"FenceThd",
 	"TimeThd",
 	"TestThd",
@@ -776,7 +777,7 @@ MicroAlt = {
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
 -- i>Memorys+4 Machine arrays as callable procedures
--- i==Machinez is main machine that waits for bit CopyThd in RegisterWake
+-- i==Machinez is main machine that waits for bit MachThd in RegisterWake
 -- TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
 -- TODO in Regress, use Center pipe instead of planeTest.
 -- TODO in Release, use mouse and roller instead of Center spoofs.

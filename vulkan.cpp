@@ -905,7 +905,6 @@ struct BindState : public BaseState {
         if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
         if (sav->fin < i) ERROR();
         return sav;
-
     }
     SaveState *add(Resrc typ) { // add resource of type
         if (!excl) EXIT
