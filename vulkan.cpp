@@ -857,15 +857,14 @@ struct Dec {
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
     HeapState<SaveState,StackState::handls> bind[Resrcs];
-    int hand[Resrcs]; int size[Resrcs]; int seqn[Resrcs];
-    int wrap; int lock; bool excl;
+    int hand[Resrcs]; int size[Resrcs];
+    int lock; bool excl;
     HeapState<Dec,StackState::instrs> resp;
     BindState() :
         BaseState("BindState",StackState::self),
-        wrap(0), lock(0), excl(false) {
+        lock(0), excl(false) {
         for (int i = 0; i < StackState::handls; i++) hand[i] = -1;
         for (int i = 0; i < StackState::handls; i++) size[i] = 0;
-        for (int i = 0; i < StackState::handls; i++) seqn[i] = 0;
     }
     BindState *getBind(SmartState log) override {
         safe.wait();
@@ -892,21 +891,21 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         return size[typ];
     }
-    void wrp() { // restart to first qualification index
-        if (!excl) EXIT
-        wrap += 1;
-    }
     SaveState *get(Resrc typ) { // current resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        if (seqn[typ] != wrap) {hand[typ] = 0; seqn[typ] = wrap;}
         int hdl = hand[typ];
         if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return &bind[typ][hdl];
     }
-    void nxt(Resrc typ) { // done with qualified resource
-        hand[typ] += 1;
+    SaveState *nxt(Resrc typ, int i) { // current next or first
+        if (hand[typ] == size[typ]) hand[typ] = 0;
+        SaveState *sav = get(typ);
+        if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
+        if (sav->fin < i) ERROR();
+        return sav;
+
     }
     SaveState *add(Resrc typ) { // add resource of type
         if (!excl) EXIT
@@ -1229,7 +1228,6 @@ struct CopyState {
             break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): bind->clr(ins[i].res);
             break; case(WDeeIns): case(RDeeIns): bind->clr(ins[i].res);
             break; case(TDeeIns): case(SDeeIns): case(IDeeIns): bind->clr(ins[i].res);}}
-        if (bind) bind->wrp();
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1248,10 +1246,9 @@ struct CopyState {
             sav->fin = i;
             log << "DepIns idx:" << ins[i].idx << " " << sav->buf->debug << '\n';}}}
         log << "reserve chosen" << '\n';
-        if (bind) bind->wrp();
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
-            SaveState *sav = bind->get(ins[i].res);
+            SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
@@ -1268,33 +1265,27 @@ struct CopyState {
             break; case(WDeeIns): case(TDeeIns):
             if (!bind->winc(ins[i].res,sav->buf,log)) lim = i;
             break; case(RDeeIns): case(SDeeIns): case(IDeeIns): {
-            if (!bind->rinc(ins[i].res,sav->buf,log)) lim = i;}}
-            if (sav->fin == i) bind->nxt(ins[i].res);}
+            if (!bind->rinc(ins[i].res,sav->buf,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
-        if (bind) bind->wrp();
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->get(ins[i].res);
+            SaveState *sav = bind->nxt(ins[i].res,i);
             switch(ins[i].ins) {default:
             break; case(QDerIns): case (PDerIns): case (ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns):
             lnk = sav->buf->lnk(ins[i].req.loc,bas,lst,lnk);
-            bas = sav->buf; lst = ins[i].req.loc;}
-            if (sav->fin == i) bind->nxt(ins[i].res);}
+            bas = sav->buf; lst = ins[i].req.loc;}}
         log << "record bindings" << '\n';
-        if (bind) bind->wrp();
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->get(ins[i].res);
+            SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case (WDeeIns): case(RDeeIns):
             case (TDeeIns): case (SDeeIns): case(IDeeIns):
-            if (bind) bind->push(ins[i].res,ins[i].ins,log);}
-            if (sav->fin == i) bind->nxt(ins[i].res);}
+            if (bind) bind->push(ins[i].res,ins[i].ins,log);}}
         log << "submit buffers" << '\n';
-        if (bind) bind->wrp();
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->get(ins[i].res);
+            SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(TDerIns):
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
@@ -1306,8 +1297,7 @@ struct CopyState {
             break; case(IDerIns):
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx);
             log << "IDerIns push " << sav->buf->debug << '\n';
-            thread->push(log,sav->buf,ins[i].req.loc);}
-            if (sav->fin == i) bind->nxt(ins[i].res);}
+            thread->push(log,sav->buf,ins[i].req.loc);}}
         log << "notify pass" << '\n';
         ptr->slf = 0;
         switch (rsp) {default:
@@ -1315,9 +1305,8 @@ struct CopyState {
         if (bind) stack[BindRes]->advance(0,Qualitys,0);
         } else {
         log << "release reserved " << num << ">" << lim << '\n';
-        if (bind) bind->wrp();
         for (int i = 0; i < lim; i++) {
-            SaveState *sav = bind->get(ins[i].res);
+            SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(QDerIns): case(PDerIns): case(ODerIns):
             case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns):
@@ -1326,8 +1315,7 @@ struct CopyState {
             break; case(WDeeIns): case (TDeeIns):
             bind->wdec(ins[i].res,log);
             break; case(RDeeIns): case (SDeeIns): case(IDeeIns):
-            bind->rdec(ins[i].res,log);}
-            if (sav->fin == i) bind->nxt(ins[i].res);}
+            bind->rdec(ins[i].res,log);}}
         if (bind) bind->done(log);
         log << "notify fail" << '\n';
         switch (rsp) {default:
