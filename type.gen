@@ -215,7 +215,6 @@ Configure = {
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterEval", -- expression center index
-	"RegisterExpr", -- center expression index
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -341,8 +340,7 @@ Plan = { -- which test to run
 	-- initTest sets up gpu buffers for fetched tutorial points.
 	-- planeTest issues matrix buffer updates and draw requests as fast as possible.
 	-- initPlan starts machine and time threads, and direct time events to machine.
-	-- planeMachine reads count incremented by planeTime RegisterEval.
-	-- planeMachine advances matrix used by planeTest count number of times.
+	-- planeMachine prints primitive index from peek pass events, and time from time events.
 	"Builtin",
 	-- Bootstrap detects arguments but no Argument, sets RegisterPlan to Builtin.
 	-- similar to Bringup, except use indexed instead of fetched points.

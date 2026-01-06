@@ -1013,13 +1013,14 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
 void registerEval(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterEval) ERROR();
-    int idx = callKnfo(RegisterExpr,0,planeRcfg);
-    struct Center *ptr = centerPull(idx);
-    if (ptr && ptr->mem == Expressz && val >= 0 && val < ptr->siz) {
-    /*{char *exp = 0; showExpress(&ptr->exp[val],&exp);
+    int lwr = val & 0xff; // expr in center
+    int upr = val >> 8; // center of expr
+    struct Center *ptr = centerPull(upr);
+    if (ptr && ptr->mem == Expressz && lwr >= 0 && lwr < ptr->siz) {
+    /*{char *exp = 0; showExpress(&ptr->exp[lwr],&exp);
     printf("%s\n",exp); free(exp);}*/
-    machineVoid(&ptr->exp[val]);}
-    centerPlace(ptr,idx);
+    machineVoid(&ptr->exp[lwr]);}
+    centerPlace(ptr,upr);
 }
 void registerSave(enum Configure cfg, int sav, int val, int act)
 {
@@ -1157,7 +1158,6 @@ void initPlan()
     break; case (Bringup): // no commandline arguments
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    callJnfo(RegisterExpr,planeSugval("@express"),planeWcfg);
     callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|MachThd),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
