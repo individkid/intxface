@@ -160,6 +160,7 @@ Format = {
 	"ResrcFrm", -- LockReq ResrcExt resrc
 	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
 	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
+	"NullFrm", -- NullReq TrueExt
 	"ConstFrm", -- SizeReq MicroExt base(which shader set)
 	"FalseFrm", -- SizeReq FalseExt(always resize)
 	"TrueFrm", -- SizeReq TrueExt(resize once)
@@ -695,15 +696,11 @@ MicroIns = {
 	\
 	def = {\"TrivDef\",\"TrivDef\",\
 	\"GiveDef\",\"GiveDef\",\"TrivDef\",\
-	\"BackDef\",\"BackDef\",\"BackDef\",\
 	\"BackDef\",\
-	\"BackDef\",\"BackDef\",\"BackDef\",\
 	\"BackDef\"}\
 	dv0 = {\"0\",\"0\",\
 	\"0\",\"1\"}\
-	dv1 = {\"2\",\"3\",\"4\",\
-	\"4\",\
-	\"2\",\"3\",\"4\",\
+	dv1 = {\"4\",\
 	\"4\"}\
 	\
 	deg = {\"GiveDef\",\"GiveDef\",\"TrivDef\",\
@@ -723,13 +720,14 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","1","Memory","Memorys"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","Micro","Micros"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","ResrcLoc","BeforeLoc"},
-		{"Micro","%(return gnc(mic,dee))","Int","1","Format","MicroFrm"},
+		{"Micro","%(return gnc(mic,dee))","Int","1","Format","NullFrm"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","Quality","Qualitys"},
 	{"Micro","%(return gnc(mic,dee))","Int","2","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","2","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","3","Instr","QDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","3","Resrc","DrawRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","3","ResrcLoc","MiddleLoc"},
+		{"Micro","%(return gnc(mic,dee))","Int","3","Format","MicroFrm"},
 	{"Micro","%(return gnc(mic,dee))","Int","4","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return hnc(dee,4))","Resrc","%(return fnc(dee))"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Instr","IDeeIns"},
@@ -737,6 +735,7 @@ MicroIns = {
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Instr","QDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Resrc","ChainRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","ResrcLoc","AfterLoc"},
+		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Format","NullFrm"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Instr","RDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 6+#dee)","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 7+#dee)","Instr","IDeeIns"},

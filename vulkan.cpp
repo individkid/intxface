@@ -387,7 +387,7 @@ struct BaseState {
     void basenul(ResrcLoc loc, SmartState log) {
         // resize and setup
         safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != BothReq) EXIT
+        if (plock <= 0 || ploc[loc].req.tag != NullReq) EXIT
         safe.post();
         recall(ploc[loc],log);
         if (setup(ploc[loc],log) != VK_NULL_HANDLE) EXIT;
@@ -1386,6 +1386,8 @@ struct CopyState {
         req.tag = BothReq; req.ext = MicroExt;
         req.idx = get(arg,siz,idx,log,"MicroFrm.idx"); req.siz = get(arg,siz,idx,log,"MicroFrm.siz");
         req.base = get(arg,siz,idx,log,"MicroFrm.base");
+        break; case (NullFrm):
+        req.tag = NullReq; req.ext = TrueExt;
         break; case (ConstFrm):
         req.tag = SizeReq; req.ext = MicroExt;
         req.base = get(arg,siz,idx,log,"ConstFrm.base");
