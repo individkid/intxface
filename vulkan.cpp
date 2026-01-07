@@ -384,9 +384,13 @@ struct BaseState {
         recall(ploc[loc],log);
         return setup(ploc[loc],log);
     }
-    void unlink(Loc &loc, SmartState log) {
-        if (loc.lst.ptr) loc.lst.ptr->get(loc.lst.loc).nxt = loc.nxt;
-        if (loc.nxt.ptr) loc.nxt.ptr->get(loc.nxt.loc).lst = loc.lst;
+    void basenul(ResrcLoc loc, SmartState log) {
+        // resize and setup
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != BothReq) EXIT
+        safe.post();
+        recall(ploc[loc],log);
+        if (setup(ploc[loc],log) != VK_NULL_HANDLE) EXIT;
     }
     void baseres(ResrcLoc loc, SmartState log) {
         // resize only
@@ -394,7 +398,6 @@ struct BaseState {
         if (plock <= 0 || ploc[loc].req.tag != SizeReq) EXIT
         safe.post();
         recall(ploc[loc],log);
-        unlink(ploc[loc],log);
     }
     VkFence basesup(ResrcLoc loc, SmartState log) {
         // setup only
@@ -408,7 +411,7 @@ struct BaseState {
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != ExclReq) EXIT
         safe.post();
-        if (!recall(ploc[loc],log)) {unlink(ploc[loc],log); return VK_NULL_HANDLE;}
+        if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
         return setup(ploc[loc],log);        
     }
     VkFence baseone(ResrcLoc loc, SmartState log) {
@@ -451,10 +454,20 @@ struct BaseState {
     }
     Lnk *link(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
+        Loc &ref = ploc[loc];
+        SizeState max = SizeState(ref.req.ext,ref.req.base,ref.req.size);
+        SizeState ini = SizeState(InitExt);
+        switch (ref.req.tag) {default: EXIT
+        break; case(SizeReq): return 0;
+        break; case(LockReq):
+        break; case(BothReq):
+        break; case(NullReq): return 0;
+        break; case(ExclReq): if (ref.max == max || max == ini) return 0;
+        break; case(OnceReq):;}
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
-        ploc[loc].lst.ptr = ptr; ploc[loc].lst.loc = lst;
-        ploc[loc].nxt.ptr = 0; ploc[loc].nxt.loc = ResrcLocs;
-        return &ploc[loc].nxt;
+        ref.lst.ptr = ptr; ref.lst.loc = lst;
+        ref.nxt.ptr = 0; ref.nxt.loc = ResrcLocs;
+        return &ref.nxt;
     }
     Loc &get(ResrcLoc loc) {
         if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
@@ -469,8 +482,8 @@ struct BaseState {
     virtual BindState *getBind(SmartState log) EXIT
     virtual VkImage getImage() EXIT
     virtual VkSwapchainKHR getSwapChain() EXIT
-    virtual uint32_t getImageIndex() EXIT
-    virtual ResrcLoc getImageLoc() EXIT
+    virtual VkSemaphore getAcquireSem() EXIT
+    virtual VkSemaphore getPresentSem() EXIT
     virtual VkFramebuffer getFramebuffer() EXIT
     virtual VkFramebuffer getFramebuffer(int i) EXIT
     virtual VkPipeline getPipeline() EXIT
@@ -1072,6 +1085,7 @@ struct ThreadState : public DoneState {
         break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
         break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
         break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);
+        break; case(NullReq): push.fence = VK_NULL_HANDLE; push.base->basenul(push.loc,push.log);
         break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);
         break; case(OnceReq): push.fence = push.base->baseone(push.loc,push.log);}}
         after << push;}
@@ -1253,9 +1267,9 @@ struct CopyState {
             SaveState *sav = bind->nxt(ins[i].res,i);
             switch(ins[i].ins) {default:
             break; case(QDerIns): case (PDerIns): case (ODerIns):
-            case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns):
-            lnk = sav->buf->link(ins[i].req.loc,bas,lst,lnk);
-            bas = sav->buf; lst = ins[i].req.loc;}}
+            case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns): {
+            Lnk *tmp = sav->buf->link(ins[i].req.loc,bas,lst,lnk);
+            if (tmp) {lnk = tmp; bas = sav->buf; lst = ins[i].req.loc;}}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
             SaveState *sav = bind->nxt(ins[i].res,i);
@@ -1876,6 +1890,7 @@ struct BufferState : public BaseState {
 
 struct ImageState : public BaseState {
     // ResizeLoc create image buffer
+    // ReformLoc format for use as texture
     // BeforeLoc format for writing to image
     // MiddleLoc write data to buffer
     // AfterLoc format for use as textue
@@ -2056,6 +2071,7 @@ struct ChainState : public BaseState {
     uint32_t imageIndex;
     ResrcLoc imageLoc;
     VkFramebuffer framebuffer;
+    VkSemaphore acquire;
     ChainState() :
         BaseState("ChainState",StackState::self),
         device(StackState::device),
@@ -2064,17 +2080,19 @@ struct ChainState : public BaseState {
     ~ChainState() {
         reset(SmartState());
     }
-    uint32_t getImageIndex() override {return imageIndex;}
-    ResrcLoc getImageLoc() override {return imageLoc;}
+    VkSemaphore getAcquireSem() override {return acquire;}
+    VkSemaphore getPresentSem() override {return get(imageLoc).syn.sem;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << '\n';
         if (*loc == BeforeLoc) {
-        loc.syn.sem = createSemaphore(device);}
+        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device);
+        acquire = createSemaphore(device);}
     }
     void unsize(Loc &loc, SmartState log) override {
         if (*loc == BeforeLoc) {
-        vkDestroySemaphore(device, loc.syn.sem, nullptr);}
+        vkDestroySemaphore(device, acquire, nullptr);
+        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr);}
         log << "usize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
@@ -2082,17 +2100,19 @@ struct ChainState : public BaseState {
         log << "setup " << debug << '\n';
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
-        swp->getSwapChain(), UINT64_MAX, loc.syn.sem, VK_NULL_HANDLE, &imageIndex);
+        swp->getSwapChain(), UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
         imageLoc = (ResrcLoc)imageIndex;
         if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
         if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterWake,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
         framebuffer = swp->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
-        VkSemaphore before = loc.lst.ptr->get(imageLoc).syn.sem;
-        if (!presentFrame(present,swp->getSwapChain(),imageIndex,before))
+        // prior depender must interpret location as swap chain semaphore
+        if (!presentFrame(present,swp->getSwapChain(),imageIndex,get(imageLoc).syn.sem))
         change->wots(RegisterWake,1<<SizeMsk);}
-        return VK_NULL_HANDLE;
+        // TODO presentFrame might block and signals no fence
+        // TODO perhaps run on separate thread and allow block on progress in that thread instead of on fence
+        return VK_NULL_HANDLE; // no resources to release, use NullReq
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << '\n';
@@ -2155,30 +2175,33 @@ struct DrawState : public BaseState {
         for (int i = 0; MicroBinding__Micro__Int__Resrc(loc.max.micro)(i) != Resrcs; i++) {
         Resrc typ = MicroBinding__Micro__Int__Resrc(loc.max.micro)(i);
         int idx = MicroBinding__Micro__Int__Int(loc.max.micro)(i);
-        switch (MicroBinding__Micro__Int__Phase(loc.max.micro)(i)) {default: EXIT
-        break; case (PipePhs): pipePtr = res(typ,0);
-        break; case (FramePhs): framePtr = res(typ,0);
-        break; case (SwapPhs): swapPtr = res(typ,0);
-        break; case (RenderPhs): framePtr = swapPtr = res(typ,vulkanHandle(RenderPhs));
-        break; case (IndexPhs): indexPtr = res(typ,0);
-        break; case (FetchPhs): fetchPtr = res(typ,0);
+        Phase phs = MicroBinding__Micro__Int__Phase(loc.max.micro)(i);
+        BaseState *ptr = res(typ,vulkanHandle(phs));
+        switch (phs) {default: EXIT
+        break; case (PipePhs): if (pipePtr) EXIT else pipePtr = ptr;
+        break; case (FramePhs): if (framePtr) EXIT else framePtr = ptr;
+        break; case (SwapPhs): if (swapPtr) EXIT else swapPtr = ptr;
+        break; case (RenderPhs): if (framePtr || swapPtr) EXIT else framePtr = swapPtr = ptr;
+        break; case (IndexPhs): if (indexPtr) EXIT else indexPtr = ptr;
+        break; case (FetchPhs): if (fetchPtr) EXIT else fetchPtr = ptr;
         break; case (UniformPhs): {
-        if (res(typ,0)->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateUniformDescriptor(device,res(typ,0)->getBuffer(),res(typ,0)->getRange(),idx,descriptorSet);}
+        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (StoragePhs): {
-        if (res(typ,0)->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateStorageDescriptor(device,res(typ,0)->getBuffer(),res(typ,0)->getRange(),idx,descriptorSet);}
+        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (RelatePhs): {
-        if (res(typ,0)->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateStorageDescriptor(device,res(typ,0)->getBuffer(),res(typ,0)->getRange(),idx,descriptorSet);}
+        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (SamplePhs): {
-        updateTextureDescriptor(device,res(typ,0)->getImageView(),res(typ,0)->getTextureSampler(),idx,descriptorSet);}}}
+        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
-        VkExtent2D extent = swapPtr->getExtent();
-        recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,extent,loc.max.micro,loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
-        VkSemaphore before = VK_NULL_HANDLE; VkSemaphore after = VK_NULL_HANDLE;
-        if (framePtr != swapPtr) {before = loc.lst.ptr->get(loc.lst.loc).syn.sem; after = get(framePtr->getImageLoc()).syn.sem;}
-        drawFrame(commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,loc.max.micro,before,after,loc.syn.fen,VK_NULL_HANDLE);
+        recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.max.micro,loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
+        VkSemaphore after = VK_NULL_HANDLE; // (loc.nxt.ptr ? loc.syn.sem : VK_NULL_HANDLE);
+        VkSemaphore before = VK_NULL_HANDLE; // (loc.lst.ptr ? loc.lst.ptr->get(loc.lst.loc).syn.sem : VK_NULL_HANDLE);
+        VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
+        VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
+        drawFrame(commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,loc.max.micro,acquire,release,loc.syn.fen,before,after);
         return loc.syn.fen;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2193,7 +2216,7 @@ struct DrawState : public BaseState {
         VkImageView textureImageView, VkSampler textureSampler,
         int index, VkDescriptorSet descriptorSet);
     static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, Micro micro, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkBuffer vertexBuffer, VkBuffer indexBuffer);
-    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro, VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before);
+    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
 struct MainState {
@@ -3368,21 +3391,27 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     EXIT
 }
 void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro,
-    VkSemaphore acquire, VkSemaphore after, VkFence fence, VkSemaphore before) {
+    VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after) {
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     VkSemaphore waitSemaphores[] = {acquire,before};
     VkPipelineStageFlags waitStages[] = {
     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
     VK_PIPELINE_STAGE_ALL_COMMANDS_BIT};
-    submitInfo.waitSemaphoreCount = (acquire == VK_NULL_HANDLE ? 0 : (before == VK_NULL_HANDLE ? 1 : 2));
+    submitInfo.waitSemaphoreCount = 2;
+    if (acquire == VK_NULL_HANDLE && before == VK_NULL_HANDLE) submitInfo.waitSemaphoreCount = 0;
+    else if (acquire == VK_NULL_HANDLE) {waitSemaphores[0] = before; submitInfo.waitSemaphoreCount = 1;}
+    else if (before == VK_NULL_HANDLE) submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     VkCommandBuffer commandBuffers[] = {commandBuffer};
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffer;
-    VkSemaphore signalSemaphores[] = {after};
-    submitInfo.signalSemaphoreCount = (after == VK_NULL_HANDLE ? 0 : 1);
+    VkSemaphore signalSemaphores[] = {release,after};
+    submitInfo.signalSemaphoreCount = 2;
+    if (release == VK_NULL_HANDLE && after == VK_NULL_HANDLE) submitInfo.signalSemaphoreCount = 0;
+    else if (release == VK_NULL_HANDLE) {signalSemaphores[0] = after; submitInfo.signalSemaphoreCount = 1;}
+    else if (after == VK_NULL_HANDLE) submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
     if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
     EXIT

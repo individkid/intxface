@@ -114,6 +114,7 @@ Request = {
 	"BothReq", -- call resize if changed, and call setup
 	"LockReq", -- call setup
 	"SizeReq", -- call resize if changed
+	"NullReq", -- call resize if changed, call and ignore setup
 	"ExclReq", -- call resize and setup if changed
 	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
