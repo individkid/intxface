@@ -254,11 +254,15 @@ void vertexDpth()
 #endif
 
 #if defined(fragmentTest)
-layout (binding = 6) uniform sampler2D texSampler;
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
+layout (binding = 7) uniform sampler2D texSampler;
 layout (location = 0) out vec4 outColor;
 void fragmentTest()
 {
-    outColor = texture(texSampler, fragTexCoord); // vec4(fragColor,1.0);
+    if (fragIdx == 1) outColor = vec4(fragColor,1.0);
+    else outColor = texture(texSampler, fragTexCoord);
 }
 #endif
 #if defined(fragmentDebug)

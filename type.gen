@@ -197,7 +197,6 @@ Configure = {
 	"CenterIdx",
 	"CenterSlf",
 	"CenterPtr", -- whether staged
-	"CenterMask", -- which have changed
 	"ArgumentInp", -- staged field
 	"ArgumentOut",
 	"RegisterCall", -- start wake stop
@@ -531,7 +530,7 @@ MicroBinding = {
 	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
 	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"}\
 	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
+	bnp = {\"0\",      \"0\",       \"7\"        } bnq = {\"0\"        }\
 	rea = cat(rep,res) pha = cat(php,phs) bna = cat(bnp,bns)\
 	reb = cat(req,res) phb = cat(phq,phs) bnb = cat(bnq,bns)\
 	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
