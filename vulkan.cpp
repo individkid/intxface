@@ -1723,7 +1723,7 @@ struct PipeState : public BaseState {
         switch (micro) {default:
         break; case (MicroDepth): case (MicroDpth): return SfloatFrm;
         break; case (MicroPierce): case (MicroPrce): return UintFrm;
-        break; case (MicroDebug): return UintFrm;
+        break; case (MicroDebug): return SfloatFrm;
         break; case (MicroTest): case (MicroDisplay): case (MicroDisp): return SrgbFrm;}
         return Renders;
     }
@@ -1926,8 +1926,8 @@ struct ImageState : public BaseState {
     static Render vulkanRender(Retyp i) {
         switch (i) {default: EXIT
         break; case (TexRet): return SrgbFrm;
-        break; case (FdbRet): case (GetRet): case (SetRet): case (PieRet): return UintFrm;
-        break; case (DptRet): SfloatFrm;}
+        break; case (FdbRet): case (PieRet): return UintFrm;
+        break; case (GetRet): case (SetRet): case (DptRet): return SfloatFrm;}
         return Renders;
     }
     void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {

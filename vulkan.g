@@ -266,10 +266,10 @@ void fragmentTest()
 }
 #endif
 #if defined(fragmentDebug)
-layout (location = 0) out uint outColor;
+layout (location = 0) out float outColor;
 void fragmentDebug()
 {
-    outColor = fragIdx;
+    outColor = gl_FragCoord.z;
 }
 #endif
 #if defined(fragmentDisplay)

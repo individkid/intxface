@@ -846,7 +846,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd "..
 		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Peekz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . eek 0 . num 0 Op , EndOp Op ; @_ Op "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . eek 0 . val 0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..

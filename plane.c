@@ -884,7 +884,7 @@ void planeTest(enum Thread tag, int idx)
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.3*width; eek->eek[0].hei = 0.3*height; eek->eek[0].frm = UintFrm; eek->eek[0].num = -1;
+    eek->eek[0].wid = 0.3*width; eek->eek[0].hei = 0.3*height; eek->eek[0].frm = SfloatFrm; eek->eek[0].num = -1;
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
     tested = count;}}}
 }
@@ -1259,11 +1259,11 @@ void initTest()
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
     struct Center *oke = centerPull(Pokez); freeCenter(oke);
     oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
-    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].frm = UintFrm; oke->oke[0].num = 2;
+    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].frm = SfloatFrm; oke->oke[0].num = 2;
     callCopy(oke,Pokez,RptRsp,0,(debug?"poke":0));
     struct Center *eek = centerPull(Peekz); freeCenter(eek);
     eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].frm = UintFrm; eek->eek[0].num = 1;
+    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].frm = SfloatFrm; eek->eek[0].num = 1;
     callCopy(eek,Peekz,RptRsp,0,(debug?"peek":0));
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
