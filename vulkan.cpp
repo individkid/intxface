@@ -152,6 +152,7 @@ struct LogicalState {
 
 struct SizeState {
     Extent tag;
+    bool vld;
     union {
     struct {int base,size;};
     struct {VkImageLayout src,dst;};
@@ -160,10 +161,10 @@ struct SizeState {
     Micro micro;
     Resrc resrc;};
     SizeState() {
-        tag = InitExt;
+        tag = InitExt; vld = true;
     }
     SizeState(Extent ext, int base, int size) {
-        tag = ext; switch (ext) {
+        tag = ext; vld = true; switch (ext) {
         default: EXIT
         break; case (InitExt):
         break; case (IntExt): this->base = base; this->size = size;
@@ -176,35 +177,36 @@ struct SizeState {
         break; case (FalseExt):;}
     }
     SizeState(int base, int size) {
-        tag = IntExt;
+        tag = IntExt; vld = true;
         this->base = base;
         this->size = size;
     }
     SizeState(VkImageLayout src, VkImageLayout dst) {
-        tag = FormExt;
+        tag = FormExt; vld = true;
         this->src = src;
         this->dst = dst;
     }
     SizeState(VkExtent2D extent) {
-        tag = ExtentExt;
+        tag = ExtentExt; vld = true;
         this->extent = extent;
     }
     SizeState(int value) {
-        tag = FillExt;
+        tag = FillExt; vld = true;
         this->value = value;
     }
     SizeState(Micro micro) {
-        tag = MicroExt;
+        tag = MicroExt; vld = true;
         this->micro = micro;
     }
     SizeState(Resrc resrc) {
-        tag = ResrcExt;
+        tag = ResrcExt; vld = true;
         this->resrc = resrc;
     }
     SizeState(Extent tag) {
-        this->tag = tag;
+        this->tag = tag; vld = true;
     }
     bool operator==(const SizeState &other) const {
+        if (!vld || !other.vld) return false;
         if (tag == InitExt && other.tag == InitExt) return true;
         if (tag == IntExt && other.tag == IntExt &&
         base == other.base && size == other.size) return true;
@@ -481,7 +483,7 @@ struct BaseState {
     virtual void upset(Loc &loc, SmartState log) EXIT
     virtual BindState *getBind(SmartState log) EXIT
     virtual VkImage getImage() EXIT
-    virtual VkSwapchainKHR getSwapChain() EXIT
+    virtual VkSwapchainKHR getSwapchain() EXIT
     virtual VkSemaphore getAcquireSem() EXIT
     virtual VkSemaphore getPresentSem() EXIT
     virtual VkFramebuffer getFramebuffer() EXIT
@@ -1360,37 +1362,35 @@ struct CopyState {
         req.tag = SizeReq; req.ext = IntExt;
         req.base = get(arg,siz,idx,log,"SizeFrm.base"); req.size = get(arg,siz,idx,log,"SizeFrm.size");
         break; case (HighFrm):
-        req.tag = BothReq; req.ext = ExtentExt;
-        req.ptr = val; req.siz = get(arg,siz,idx,log,"HighFrm.siz");
+        req.tag = BothReq; req.ext = ExtentExt; req.ptr = val;
+        req.siz = get(arg,siz,idx,log,"HighFrm.siz");
         req.base = get(arg,siz,idx,log,"HighFrm.base"); req.size = get(arg,siz,idx,log,"HighFrm.size");;
         break; case (FillFrm):
         req.tag = BothReq; req.ext = FillExt;
         req.base = get(arg,siz,idx,log,"FillFrm.base");
         break; case (WholeFrm):
-        req.tag = BothReq; req.ext = IntExt;
-        req.ptr = val; req.idx = get(arg,siz,idx,log,"WholeFrm.idx"); req.siz = get(arg,siz,idx,log,"WholeFrm.siz");
+        req.tag = BothReq; req.ext = IntExt; req.ptr = val;
+        req.idx = get(arg,siz,idx,log,"WholeFrm.idx"); req.siz = get(arg,siz,idx,log,"WholeFrm.siz");
         req.base = req.idx; req.size = req.siz;
         break; case (OnceFrm):
-        req.tag = OnceReq; req.ext = IntExt;
-        req.ptr = val; req.idx = get(arg,siz,idx,log,"OnceFrm.idx"); req.siz = get(arg,siz,idx,log,"OnceFrm.siz");
+        req.tag = OnceReq; req.ext = IntExt; req.ptr = val;
+        req.idx = get(arg,siz,idx,log,"OnceFrm.idx"); req.siz = get(arg,siz,idx,log,"OnceFrm.siz");
         req.base = req.idx; req.size = req.siz;
         break; case (LockFrm):
-        req.tag = LockReq; req.ext = IntExt;
-        req.ptr = val; req.idx = get(arg,siz,idx,log,"LockFrm.idx"); req.siz = get(arg,siz,idx,log,"LockFrm.siz");
+        req.tag = LockReq; req.ext = IntExt; req.ptr = val;
+        req.idx = get(arg,siz,idx,log,"LockFrm.idx"); req.siz = get(arg,siz,idx,log,"LockFrm.siz");
         break; case (ResrcFrm):
         req.tag = LockReq; req.ext = ResrcExt;
         req.idx = get(arg,siz,idx,log,"ResrcFrm.idx");
         break; case (IndexFrm):
-        req.tag = SizeReq; req.ext = MicroExt; req.base = get(arg,siz,idx,log,"IndexFrm.base");
+        req.tag = SizeReq; req.ext = MicroExt;
+        req.base = get(arg,siz,idx,log,"IndexFrm.base");
         break; case (MicroFrm):
         req.tag = BothReq; req.ext = MicroExt;
         req.idx = get(arg,siz,idx,log,"MicroFrm.idx"); req.siz = get(arg,siz,idx,log,"MicroFrm.siz");
         req.base = get(arg,siz,idx,log,"MicroFrm.base");
         break; case (NullFrm):
         req.tag = NullReq; req.ext = TrueExt;
-        break; case (ConstFrm):
-        req.tag = SizeReq; req.ext = MicroExt;
-        req.base = get(arg,siz,idx,log,"ConstFrm.base");
         break; case (FalseFrm):
         req.tag = SizeReq; req.ext = FalseExt;
         break; case (TrueFrm):
@@ -1685,7 +1685,7 @@ struct SwapState : public BaseState {
     ~SwapState() {
         reset(SmartState());
     }
-    VkSwapchainKHR getSwapChain() override {return swapChain;}
+    VkSwapchainKHR getSwapchain() override {return swapChain;}
     VkFramebuffer getFramebuffer(int i) override {return framebuffers[i];}
     VkExtent2D getExtent() override {return capabilities.currentExtent;}
     void resize(Loc &loc, SmartState log) override {
@@ -1988,8 +1988,7 @@ struct ImageState : public BaseState {
         if (tag(RuseQua) != TexRet) {
         createImage(device, physical, loc.max.extent.width, loc.max.extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}
-        get(ReformLoc).max = SizeState(InitExt);}
+        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
@@ -2006,6 +2005,7 @@ struct ImageState : public BaseState {
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
         if (*loc == ResizeLoc) {
+        get(ReformLoc).max.vld = false;
         if (tag(RuseQua) != TexRet) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
@@ -2102,7 +2102,7 @@ struct ChainState : public BaseState {
         log << "setup " << debug << '\n';
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
-        swp->getSwapChain(), UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
+        swp->getSwapchain(), UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
         imageLoc = (ResrcLoc)imageIndex;
         if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
         if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterWake,1<<SizeMsk);
@@ -2110,7 +2110,7 @@ struct ChainState : public BaseState {
         framebuffer = swp->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
         // prior depender must interpret location as swap chain semaphore
-        if (!presentFrame(present,swp->getSwapChain(),imageIndex,get(imageLoc).syn.sem))
+        if (!presentFrame(present,swp->getSwapchain(),imageIndex,get(imageLoc).syn.sem))
         change->wots(RegisterWake,1<<SizeMsk);}
         // TODO presentFrame might block and signals no fence
         // TODO perhaps run on separate thread and allow block on progress in that thread instead of on fence

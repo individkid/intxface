@@ -85,6 +85,16 @@ Micro = { -- what runs on gpu
 	"MicroPrce", -- pierced triangle
 	"MicroDpth", -- fixed point
 }
+Swizzle = {
+	"InpPntSwz",
+	"BufPntSwz",
+	"InpHypSwz",
+	"BufHypSwz",
+	"InpMinSwz",
+	"BufMinSwz",
+	"InpMaxSwz",
+	"BufMaxSwz",
+}
 Constant = {
 	"MicroCon",
 	"MemoryCon",
@@ -161,7 +171,6 @@ Format = {
 	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
 	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
 	"NullFrm", -- NullReq TrueExt
-	"ConstFrm", -- SizeReq MicroExt base(which shader set)
 	"FalseFrm", -- SizeReq FalseExt(always resize)
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
@@ -1103,7 +1112,13 @@ Image = {
 	{"hei","Int",{},{}},
 	{"cha","Int",{},{}},
 }
-Pierce = {
+Decorate = {
+	{"dim","Int",{},{}},
+	{"swz","Swizzle",{},"dim"}, -- whether input/constant point/hyperplane/minimum/maximum
+	{"idx","Int",{},"dim"}, -- which input or buffer
+	{"edg","Int",{},"dim"}, -- where edge goes or point is result if invalid
+}
+Pierce = { -- TODO use idx/siz from Center instead of wid/hei/idx here
 	{"wid","Int32",{},{}},
 	{"hei","Int32",{},{}},
 	{"idx","Int32",{},{}},

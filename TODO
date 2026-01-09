@@ -1,4 +1,3 @@
-
 Bringup: Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
@@ -8,6 +7,9 @@ Regress: Test spoofed user actions and file changes with Center loaded through p
 Release: Use actual user actions to interact with actual file.
 
 Build: Remove conditional generate in show.lua; just generate type.c to link generally.
+
+Decoration: Fragment shader little language follows graph edges depending on inputs from vertex shader for filling with a constant, copying color or depth or identifier from vertex shader, copying from image buffer, applying texture sampler, calculating from normal, highlighting from adjacent identifiers.
+Edges are whether constants/inputs in hypersquare region of constants/inputs, or on hyperline sids of constants/inputs.
 
 Actions:
 Mouse transformations include
