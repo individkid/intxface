@@ -16,6 +16,8 @@ fmtxC.o: fmtx.c
 
 vertexTestG: vulkan.g
 vertexDebugG: vulkan.g
+vertexUintG: vulkan.g
+vertexFloatG: vulkan.g
 vertexDisplayG: vulkan.g
 vertexPierceG: vulkan.g
 vertexDepthG: vulkan.g
@@ -25,6 +27,8 @@ vertexDpthG: vulkan.g
 
 fragmentTestG: vulkan.g
 fragmentDebugG: vulkan.g
+fragmentUintG: vulkan.g
+fragmentFloatG: vulkan.g
 fragmentDisplayG: vulkan.g
 fragmentPierceG: vulkan.g
 fragmentDepthG: vulkan.g
@@ -83,7 +87,7 @@ typraLua: typra.lua
 vertexDebugG: vulkan.g
 vertexDisplayG: vulkan.g
 vertexTestG: vulkan.g
-vulkan.log: vertexTestG vertexDebugG vertexDisplayG vertexPierceG vertexDepthG vertexDispG vertexPrceG vertexDpthG fragmentTestG fragmentDebugG fragmentDisplayG fragmentPierceG fragmentDepthG fragmentDispG fragmentPrceG fragmentDpthG texture.jpg vulkanCpp
+vulkan.log: vertexTestG vertexDebugG vertexUintG vertexFloatG vertexDisplayG vertexPierceG vertexDepthG vertexDispG vertexPrceG vertexDpthG fragmentTestG fragmentDebugG fragmentUintG fragmentFloatG fragmentDisplayG fragmentPierceG fragmentDepthG fragmentDispG fragmentPrceG fragmentDpthG texture.jpg vulkanCpp
 vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o vulkanCpp.o vulkanCpp.typeC.o
 vulkanCpp.o: face.h plane.h proto.h stlx.h type.h vulkan.cpp
 vulkanCpp.type.c: luax.so show.lua type.gen

@@ -97,7 +97,7 @@ vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
     /*if (tmq > tmq0 && tmq > tmq1 && tmq > tmp0 && tmq > tmp1 && tmq > tmp)*/ return uec;
 }
 
-#if defined(fragmentTest) || defined(fragmentDebug) || defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
+#if defined(fragmentTest) || defined(fragmentDebug) || defined(fragmentUint) || defined(fragmentFloat) || defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in uint fragIdx;
 layout (location = 2) in vec4 fragVec;
@@ -106,7 +106,7 @@ layout (location = 4) flat in uint fragTex;
 layout (location = 5) in vec3 fragColor;
 layout (location = 6) in vec2 fragTexCoord;
 #endif
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexUint) || defined(vertexFloat) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
 layout (location = 0) out vec4 fragOrd;
 layout (location = 1) out uint fragIdx;
 layout (location = 2) out vec4 fragVec;
@@ -204,6 +204,23 @@ void debug()
 }
 #endif
 
+#if defined(vertexUint) || defined(vertexFloat)
+void fullscreen()
+{
+    switch (fragIdx = ((gl_VertexIndex / 3) % 2)) {
+    case (0): fragColor = vec3(0.0,0.0,1.0);
+    switch (gl_VertexIndex % 3) {
+    case (0): gl_Position = vec4(0.0,0.0,0.5,1.0);
+    case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
+    case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}
+    case (1): fragColor = vec3(0.0,0.0,1.0);
+    switch (gl_VertexIndex % 3) {
+    case (0): gl_Position = vec4(1.0,1.0,0.5,1.0);
+    case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
+    case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}}
+}
+#endif
+
 #if defined(vertexTest)
 void vertexTest()
 {
@@ -214,6 +231,18 @@ void vertexTest()
 void vertexDebug()
 {
     debug();
+}
+#endif
+#if defined(vertexUint)
+void vertexUint()
+{
+    fullscreen();
+}
+#endif
+#if defined(vertexFloat)
+void vertexFloat()
+{
+    fullscreen();
 }
 #endif
 #if defined(vertexDisplay)
@@ -268,6 +297,20 @@ void fragmentTest()
 #if defined(fragmentDebug)
 layout (location = 0) out float outColor;
 void fragmentDebug()
+{
+    outColor = gl_FragCoord.z;
+}
+#endif
+#if defined(fragmentUint)
+layout (location = 0) out uint outColor;
+void fragmentUint()
+{
+    outColor = fragIdx;
+}
+#endif
+#if defined(fragmentFloat)
+layout (location = 0) out float outColor;
+void fragmentFloat()
 {
     outColor = gl_FragCoord.z;
 }

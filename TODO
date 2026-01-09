@@ -9,7 +9,7 @@ Release: Use actual user actions to interact with actual file.
 Build: Remove conditional generate in show.lua; just generate type.c to link generally.
 
 Decoration: Fragment shader little language follows graph edges depending on inputs from vertex shader for filling with a constant, copying color or depth or identifier from vertex shader, copying from image buffer, applying texture sampler, calculating from normal, highlighting from adjacent identifiers.
-Edges are whether constants/inputs in hypersquare region of constants/inputs, or on hyperline sids of constants/inputs.
+Graph edges are constants/inputs in which hypersquare region of constants/inputs, or on which hyperline sids of constants/inputs.
 
 Actions:
 Mouse transformations include
