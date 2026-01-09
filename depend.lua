@@ -139,7 +139,7 @@ end
 function recopyxtra(values,target,ext)
 	-- add function or class to generated for target
 	local match = values[3]..ext -- type.gen
-	local base = target.."."..values[3]
+	local base = values[3] -- target.."."..values[3]
 	local extras = values[2]
 	local func = values[4]..values[5]
 	if (values[4] == values[5]) then func = values[4] end
@@ -152,7 +152,7 @@ end
 function uncopyxtra(values,target,ext)
 	-- add to generated for target
 	local match = values[3]..ext -- type.gen
-	local base = target.."."..values[3]
+	local base = values[3] -- target.."."..values[3]
 	local extras = values[2]
 	addextra(base,extras,nil)
 	values[3] = base
@@ -243,6 +243,12 @@ function trymatch(values,target)
 		dbgline[dbgent] = "3b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).so'.  Stop.$") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "3c"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Cpp'.  Stop.$") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "4a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o'.  Stop.$") and copyxtra(values,target,".gen") and makecopy(values,target,".c") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).c'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4c"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).h'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4d"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Lua'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4e"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Hs'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4f"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).lua'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "4g"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).hs'.  Stop.$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "5a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)Cpp.o', needed by '[%w.]*'.  Stop.$") and makecopy(values,target,"Cpp.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "5b"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o', needed by '[%w.]*'.  Stop.$") and makecopy(values,target,"C.o") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "6a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*).c', needed by '[%w.]*'.  Stop.$") and copysource(values,target,".c") then dbgent = dbgent - 1; return true end
@@ -343,7 +349,7 @@ function trymake(values,target)
 	os.execute("cp Makefile module.modulemap subdir."..target)
 	while true do
 		writeout("subdir."..target,depends)
-		writextra("subdir."..target,extras)
+		-- writextra("subdir."..target,extras)
 		-- io.stderr:write("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target.."\n")
 		os.execute("make -d -C subdir."..target.." "..target.." 2> stderr."..target.." >> stdout."..target)
 		local exists = filexists("subdir."..target.."/"..target);
@@ -390,5 +396,5 @@ for key,val in ipairs(targets) do
 	end
 end
 writeout(".",depends)
-writextra(".",extras)
+-- writextra(".",extras)
 io.stdout:write("all done\n")

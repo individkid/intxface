@@ -80,8 +80,6 @@ classifies sets of regions as polytopes, samples polytopes as region sets,
 finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
-planer.lua uses displayable free running transformations to find improve display tetrahedron overlaps.
-
 plane.lua allows user to manipulate polytopes.
 
 space.lua finds and/or prettifies complete sets of spaces and tetrahedron overlaps.

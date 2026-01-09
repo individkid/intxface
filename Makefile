@@ -113,16 +113,16 @@ fragment%G:
 	$(GC) -fshader-stage=frag -Dfragment$*=main $< -o $@
 endif
 
-%.h: %.mk
-	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
-%.c: %.mk
-	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
-%.cpp: %.mk
-	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
-%.hs: %.mk
-	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
-%.lua: %.mk
-	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@ $<
+%.h: %.gen
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@
+%.c: %.gen
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@
+%.cpp: %.gen
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@
+%.hs: %.gen
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@
+%.lua: %.gen
+	lua `echo $* | sed -e 's/.*\.\(.*\)/\1/'`.gen $@
 
 .PHONY:
 clean:
