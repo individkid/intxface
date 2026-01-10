@@ -1363,7 +1363,7 @@ struct CopyState {
         req.base = get(arg,siz,idx,log,"SizeFrm.base"); req.size = get(arg,siz,idx,log,"SizeFrm.size");
         break; case (HighFrm):
         req.tag = BothReq; req.ext = ExtentExt; req.ptr = val;
-        req.siz = get(arg,siz,idx,log,"HighFrm.siz");
+        req.idx = get(arg,siz,idx,log,"HighFrm.idx"); req.siz = get(arg,siz,idx,log,"HighFrm.siz");
         req.base = get(arg,siz,idx,log,"HighFrm.base"); req.size = get(arg,siz,idx,log,"HighFrm.size");;
         break; case (FillFrm):
         req.tag = BothReq; req.ext = FillExt;
@@ -1586,7 +1586,7 @@ struct CopyState {
         int mval[] = {
         0,ret, // STagIns
         width,height, // PDerIns ExtentFrm
-        siz,wid,hei}; // PDerIns HighFrm
+        idx,siz,wid,hei}; // PDerIns HighFrm
         int msiz = sizeof(mval)/sizeof(int); int midx = 0;
         push(mem,dat,0,mval,0,msiz,midx,ptr,sub,rsp,ary,log);
     }
@@ -1620,14 +1620,27 @@ struct CopyState {
             int tot = datxVoids(ptr->img[i].dat);
             push(ptr->mem,TexRet,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
-        break; case (Peekz): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
+        break; case (Getintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,GetRet,(void*)ptr->eek,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
-        break; case (Pokez): { // ptr->idx is the resource and ptr->siz is number of locations in the resource
+            // TODO decite between GetRet and SetRet based on Quality value
+            push(ptr->mem,GetRet,(void*)ptr->uns,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+        break; case (Getoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,SetRet,(void*)ptr->oke,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}}
+            // TODO decite between GetRet and SetRet based on Quality value
+            push(ptr->mem,GetRet,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+        break; case (Setintz): {
+            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
+            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
+            // TODO decite between GetRet and SetRet based on Quality value
+            push(ptr->mem,SetRet,(void*)ptr->uns,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+        break; case (Setoldz): {
+            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
+            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
+            // TODO decite between GetRet and SetRet based on Quality value
+            push(ptr->mem,SetRet,(void*)ptr->old,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+        }
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
 };
@@ -1947,28 +1960,6 @@ struct ImageState : public BaseState {
         break; case (GetRet): case (SetRet): case (DptRet): return SfloatFrm;}
         return Renders;
     }
-    void range(int &x, int &y, int &w, int &h, int &tw, int &th, VkDeviceSize &is, Pierce *&pie, Loc &loc, Loc &got, SmartState log) {
-        if (got.max.tag != ExtentExt) EXIT
-        tw = got.max.extent.width;
-        th = got.max.extent.height;
-        is = tw * th * 4;
-        pie = 0; x = 0; y = 0; w = tw; h = th;
-        if (loc.req.idx != 0) EXIT
-        log << "buftag:" << tag(RuseQua) << " (Imagez:" << Imagez << ",Peekz:" << Peekz << ",Pokez:" << Pokez << ")" << '\n';
-        if (tag(RuseQua) == GetRet || tag(RuseQua) == SetRet) {
-        pie = (Pierce*)loc.req.ptr; x = tw; y = th; w = 0; h = 0;
-        if (loc.req.siz == 0) {x = 0; y = 0;}
-        for (int i = 0; i < loc.req.siz; i++) {
-        if (pie[i].wid < x) x = pie[i].wid;
-        if (pie[i].hei < y) y = pie[i].hei;
-        if (pie[i].wid > w) w = pie[i].wid;
-        if (pie[i].hei > h) h = pie[i].hei;}
-        w = w-x+1; h = h-y+1;}
-        if (x < 0 || w < 0 || x + w > tw) EXIT
-        if (y < 0 || h < 0 || y + h > th) EXIT
-        if (tag(RuseQua) == TexRet && loc.req.siz != is) EXIT
-        // log << "range " << x << "/" << w << "," << y << "/" << h << " " << tw << "," << th << " " << x*4+y*tw*4 << "/" << is << '\n';
-    }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << '\n';
         if (*loc == ResizeLoc) {
@@ -2034,29 +2025,34 @@ struct ImageState : public BaseState {
         vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
         transitionImageLayout(device, graphics, commandAfter, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == MiddleLoc) {
-        Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
+        Loc &got = get(ResizeLoc);
+        int texWidth = got.max.extent.width;
+        int texHeight = got.max.extent.height;
+        VkDeviceSize imageSize = texWidth*texHeight*4;
         createBuffer(device, physical, imageSize, (tag(RuseQua) == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
         void* data; if (tag(RuseQua) == TexRet || tag(RuseQua) == SetRet) {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
         if (tag(RuseQua) == TexRet) {
+        // TODO start at loc.req.idx in data
         memcpy(data, loc.req.ptr, loc.req.siz);}
         if (tag(RuseQua) == SetRet) {
-        // TODO switch on pie[i].frm and perhaps use pie[i].idx
-        for (int i = 0; i < loc.req.siz; i++) memcpy((void*)((char*)data + x*4 + y*texWidth*4), &pie[i].val, sizeof(pie[i].val));}
+        // TODO allow widths other than 4 by interpreting idx and siz as bytes
+        memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(), /*x, y, w, h*/0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << " location:" << *loc << '\n';
         if (*loc == MiddleLoc) {
+        Loc &got = get(ResizeLoc);
+        int texWidth = got.max.extent.width;
+        int texHeight = got.max.extent.height;
+        VkDeviceSize imageSize = texWidth*texHeight*4;
         if (tag(RuseQua) == GetRet) {
-        Pierce *pie; int x, y, w, h, texWidth, texHeight; VkDeviceSize imageSize;
-        range(x,y,w,h,texWidth,texHeight,imageSize,pie,loc,get(ResizeLoc),log);
-        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        // TODO switch on pie[i].frm and perhaps use pie[i].idx
-        for (int i = 0; i < loc.req.siz; i++) memcpy(&pie[i].val, (void*)((char*)data + x*4 + y*texWidth*4), sizeof(pie[i].val));}
+        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
+        // TODO allow widths other than 4 by interpreting idx and siz as bytes
+        memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
         vkUnmapMemory(device, stagingBufferMemory);
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);}
@@ -2406,7 +2402,7 @@ void errorFunc(const char *str, int num, int idx) {
     std::cout << "errfnc called on " << idx << " in " << str << ": " << num << std::endl;
 }
 void sigintFunc(int sig) {
-    *(int*)0=0;
+    slog.clr(); *(int*)0=0;
 }
 
 int main(int argc, const char **argv) {

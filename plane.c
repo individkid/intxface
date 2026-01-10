@@ -443,14 +443,16 @@ int centerMod(struct Center *ptr)
     break; case (Indexz): return sizeof(int32_t);
     break; case (Bringupz): return sizeof(struct Vertex);
     break; case (Imagez): return sizeof(struct Image);
+    break; case (Getintz): return sizeof(int32_t);
+    break; case (Getoldz): return sizeof(float);
+    break; case (Setintz): return sizeof(int32_t);
+    break; case (Setoldz): return sizeof(float);
     break; case (Uniformz): return sizeof(struct Uniform);
     break; case (Matrixz): return sizeof(struct Matrix);
     break; case (Trianglez): return sizeof(struct Triangle);
     break; case (Numericz): return sizeof(struct Numeric);
     break; case (Vertexz): return sizeof(struct Vertex);
     break; case (Basisz): return sizeof(struct Basis);
-    break; case (Peekz): return sizeof(struct Pierce);
-    break; case (Pokez): return sizeof(struct Pierce);
     break; case (Drawz): return sizeof(struct Draw);
     break; case (Instrz): return sizeof(struct Inst);
     // Stringz
@@ -883,8 +885,8 @@ void planeTest(enum Thread tag, int idx)
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
-    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = 0.3*width; eek->eek[0].hei = 0.3*height; eek->eek[0].frm = SfloatFrm; eek->eek[0].num = -1;
+    eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
+    allocOld(&eek->old,eek->siz);
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
     tested = count;}}}
 }
@@ -1257,14 +1259,14 @@ void initTest()
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
-    struct Center *oke = centerPull(Pokez); freeCenter(oke);
-    oke->mem = Pokez; oke->siz = 1; allocPierce(&oke->oke,oke->siz);
-    oke->oke[0].wid = width/2; oke->oke[0].hei = height/2; oke->oke[0].frm = SfloatFrm; oke->oke[0].num = 2;
-    callCopy(oke,Pokez,RptRsp,0,(debug?"poke":0));
-    struct Center *eek = centerPull(Peekz); freeCenter(eek);
-    eek->mem = Peekz; eek->idx = 0; eek->siz = 1; allocPierce(&eek->eek,eek->siz);
-    eek->eek[0].wid = width/2; eek->eek[0].hei = height/2; eek->eek[0].frm = SfloatFrm; eek->eek[0].num = 1;
-    callCopy(eek,Peekz,RptRsp,0,(debug?"peek":0));
+    struct Center *oke = centerPull(Setoldz); freeCenter(oke);
+    oke->mem = Setoldz; oke->idx = (width/2)+(height/2)*width; oke->siz = 1;
+    allocOld(&oke->old,oke->siz); oke->old[0] = 1.0;
+    callCopy(oke,Setoldz,RptRsp,0,(debug?"poke":0));
+    struct Center *eek = centerPull(Getoldz); freeCenter(eek);
+    eek->mem = Getoldz; eek->idx = (width/2)+(height/2)*width; eek->siz = 1;
+    allocOld(&eek->old,eek->siz);
+    callCopy(eek,Getoldz,RptRsp,0,(debug?"peek":0));
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);

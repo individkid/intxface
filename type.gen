@@ -34,8 +34,10 @@ Memory = {
 	"Indexz", -- fetch buffer indices
 	"Bringupz", -- fetch buffer verticse
 	"Imagez", -- facet decorations
-	"Peekz", -- per fragment read
-	"Pokez", -- per fragment write
+	"Getintz", -- per fragment read
+	"Getoldz", -- per fragment read
+	"Setintz", -- per fragment write
+	"Setoldz", -- per fragment write
 	"Uniformz", -- references into arrays
 	"Matrixz", -- transformations
 	"Trianglez", -- indices of vertices of facet
@@ -179,7 +181,7 @@ Format = {
 	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
 	"FillFrm", -- LockReq FillExt base(value)
 	"SizeFrm", -- SizeReq IntExt base size
-	"HighFrm", -- BothReq FormExt ptr(raw data) siz(width*height*pixel_size) base(width) size(height)
+	"HighFrm", -- BothReq FormExt ptr(raw data) idx() siz() base(width) size(height)
 	"PartFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(from configure) size(from configure)
 	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
@@ -626,7 +628,7 @@ MemoryIns = {
 	{"Memory","Indexz","Int","0","Default","TrivDef"}, -- how to modify arguments
 	{"Memory","Indexz","Int","0","Int","0"}, -- value to modify argument with
 	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
-	{"%(mem={\"Imagez\",\"Pokez\",\"Peekz\"};"..
+	{"%(mem={\"Imagez\",\"Setoldz\",\"Getoldz\"};"..
 	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\"}"..
 	"siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
@@ -810,14 +812,16 @@ Bootstrap = {
 		"return count)","Str","!(index = #%(return count))Indexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(bringup = #%(return count))Bringupz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(image = #%(return count))Imagez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(getint = #%(return count))Getintz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(getold = #%(return count))Getoldz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(setint = #%(return count))Setintz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(setold = #%(return count))Setoldz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(uniform = #%(return count))Uniformz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(matrix = #%(return count))Matrixz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(triangle = #%(return count))Trianglez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(numeric = #%(return count))Numericz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(vertex = #%(return count))Vertexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(peek = #%(return count))Peekz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(poke = #%(return count))Pokez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
@@ -871,8 +875,8 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd "..
-		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Peekz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . eek 0 . val 0 Op , EndOp Op ; @_ Op "..
+		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . old 0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -1114,7 +1118,6 @@ Matrix = {
 	{"mat","Old",{},{16}},
 }
 Kernel = {
-	{"count","Int",{},{}},
 	{"saved","Matrix",{},{}},
 	{"local","Matrix",{},{}},
 	{"sent","Matrix",{},{}},
@@ -1136,14 +1139,6 @@ Decorate = {
 	{"src","Swizzle",{},"dim"}, -- which input or buffer array
 	{"idx","Int",{},"dim"}, -- which input or buffer element
 	{"acc","Swizzle",{},{}}, -- which accumulator
-}
-Pierce = { -- TODO use idx/siz from Center instead of wid/hei/idx here
-	{"wid","Int32",{},{}},
-	{"hei","Int32",{},{}},
-	{"idx","Int32",{},{}},
-	{"frm","Render",{},{}},
-	{"num","Int32",{["frm"]={["UintFrm"]=true}},{}},
-	{"val","Old",{["frm"]={["SfloatFrm"]=true}},{}},
 }
 Const = {
 	{"tag","Constant",{},{}},
@@ -1187,8 +1182,8 @@ Center = {
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"ver","Vertex",{["mem"]={["Bringupz"]=true}},"siz"},
 	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
-	{"eek","Pierce",{["mem"]={["Peekz"]=true}},"siz"},
-	{"oke","Pierce",{["mem"]={["Pokez"]=true}},"siz"},
+	{"uns","Int32",{["mem"]={["Getintz"]=true,["Setintz"]=true}},"siz"},
+	{"old","Old",{["mem"]={["Getoldz"]=true,["Setoldz"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},
