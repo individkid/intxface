@@ -85,15 +85,32 @@ Micro = { -- what runs on gpu
 	"MicroPrce", -- pierced triangle
 	"MicroDpth", -- fixed point
 }
-Swizzle = {
-	"InpPntSwz",
-	"BufPntSwz",
-	"InpHypSwz",
-	"BufHypSwz",
-	"InpMinSwz",
-	"BufMinSwz",
-	"InpMaxSwz",
-	"BufMaxSwz",
+Decor = { -- fragment shader graph operation
+	"MoveDec", -- move only
+	"DotDec", -- dot product
+	"CrossDec", -- cross product
+	"PlusDec", -- numwise sum
+	"MinusDec", -- numwise difference
+	"TimesDec", -- numwise product
+	"OverDec", -- numwise quotient
+	"PlaneDec", -- construct plane
+	"AboveDec", -- jump condition
+	"WriteDec", -- write output
+}
+Swizzle = { -- fragment shader operand selector
+	"PointSwz", -- comparison point
+	"PlaneSwz", -- constructed plane
+	"Corner0Swz", -- construct point
+	"Corner1Swz", -- construct point
+	"Conrer2Swz", -- construct point
+	"BufferSwz", -- located feedback
+	"ColorSwz", -- color suggestion
+	"CoordSwz", -- fragment location
+	"IndexSwz", -- primitive index
+	"TextureSwz", -- texture color
+	"RelateSwz", -- closeby indices
+	"NormalSwz", -- surface normal
+	"UniformSwz", -- uniform value
 }
 Constant = {
 	"MicroCon",
@@ -1113,10 +1130,12 @@ Image = {
 	{"cha","Int",{},{}},
 }
 Decorate = {
+	{"dec","Decor",{},{}}, -- operation
+	{"nxt","Int",{},{}}, -- next graph node unless compare fail
 	{"dim","Int",{},{}},
-	{"swz","Swizzle",{},"dim"}, -- whether input/constant point/hyperplane/minimum/maximum
-	{"idx","Int",{},"dim"}, -- which input or buffer
-	{"edg","Int",{},"dim"}, -- where edge goes or point is result if invalid
+	{"src","Swizzle",{},"dim"}, -- which input or buffer array
+	{"idx","Int",{},"dim"}, -- which input or buffer element
+	{"acc","Swizzle",{},{}}, -- which accumulator
 }
 Pierce = { -- TODO use idx/siz from Center instead of wid/hei/idx here
 	{"wid","Int32",{},{}},
