@@ -59,6 +59,7 @@ Resrc = { -- per variation of BaseState
 	"BringupRes",
 	"ImageRes",
 	"PierceRes",
+	"RelateRes",
 	"UniformRes",
 	"MatrixRes",
 	"TriangleRes",
@@ -68,14 +69,6 @@ Resrc = { -- per variation of BaseState
 	"ChainRes",
 	"DrawRes",
 	"BindRes",
-}
-Retyp = { -- per veriation of Resrc
-	"TexRet", -- texture from cpu to gpu
-	"FdbRet", -- feedback from gpu to gpu
-	"GetRet", -- from debug gpu to cpu
-	"SetRet", -- from cpu to debug gpu
-	"PieRet", -- from gpu pierce to cpu
-	"DptRet", -- from gpu depth to cpu
 }
 Micro = { -- what runs on gpu
 	"MicroTest", -- fetch and texture
@@ -215,6 +208,14 @@ Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
 	"RbutQua", -- radio button to use resource only after extracted processed or consumed
 	"RuseQua", -- resource use qualifier
+}
+Retyp = { -- RuseQua per variation of Resrc
+	"TexRet", -- texture from cpu to gpu
+	"FdbRet", -- feedback from gpu to gpu
+	"GetRet", -- from debug gpu to cpu
+	"SetRet", -- from cpu to debug gpu
+	"PieRet", -- from gpu pierce to cpu
+	"DptRet", -- from gpu depth to cpu
 }
 Default = { -- for value, interpret constant array as
 	"TrivDef", -- builtin
@@ -566,7 +567,7 @@ MicroBinding = {
 	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"PierceRes\"} req = {\"PierceRes\"}\
+	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"PierceRes\"}\
 	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
 	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
 	rec = cat(rep,res) phc = cat(php,phs) bnc = cat(bnp,bns)\
@@ -574,7 +575,7 @@ MicroBinding = {
 	res = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"PierceRes\"} req = {\"PierceRes\"}\
+	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"PierceRes\"}\
 	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
 	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
 	ree = cat(rep,res) phe = cat(php,phs) bne = cat(bnp,bns)\
@@ -723,14 +724,14 @@ MicroIns = {
 	web = {\"PierceRes\",\"PierceRes\",\"PierceRes\"}\
 	\
 	def = {\"GiveDef\",\"GiveDef\",\"TrivDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
-	\"BackDef\",--[[IdxDeeIns PipeRes idx]]\
-	\"BackDef\"--[[IdxDeeIns PipeRes idx]]}\
+	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
+	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
 	dv0 = {\"0\",\"1\"}\
 	dv1 = {\"2\",\
 	\"2\"}\
 	\
 	deg = {\"GiveDef\",\"GiveDef\",\"TrivDef\"--[[MicroFrm BothReq:idx/siz MicroExt:base]],\
-	\"BackDef\"--[[IdxDeeIns PipeRes idx]]}\
+	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
 	dw0 = {\"0\",\"1\"}\
 	dw1 = {\"2\"}\
 	\

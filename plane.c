@@ -1231,16 +1231,6 @@ void initTest()
     ptr->drw[0].con.res = ChainRes;
     callCopy(ptr,Drawz,MptRsp,0,(debug?"chain":0));
     while (!centerCheck(Drawz)) usleep(1000);}
-    if (0) for (int i = 0; i < frames; i++) { // TODO arg for each ResrcLoc of PierceRes
-    ptr->drw[0].con.tag = ResrcCon;
-    ptr->drw[0].con.res = PierceRes;
-    int val[] = {/*IDerIns*/i,callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg)};
-    ptr->drw[0].sze = sizeof(val)/sizeof(int);
-    allocInt(&ptr->drw[0].val,ptr->drw[0].sze);
-    for (int j = 0; j < ptr->drw[0].sze; j++) {
-    ptr->drw[0].val[j] = val[j];}
-    callCopy(ptr,Drawz,MptRsp,0,(debug?"pierce":0));
-    while (!centerCheck(Drawz)) usleep(1000);}
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);

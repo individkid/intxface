@@ -682,6 +682,9 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
     }
+    ArrayState(Quality key, Retyp val) : safe(1), idx(0) {
+        tag.qualify(0,key,val);
+    }
     ArrayState() : safe(1), idx(0) {
     }
     void qualify(int hdl, Quality key, int val) /*override*/ { // set current tags
@@ -776,6 +779,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (BringupRes): return "BringupRes";
         case (ImageRes): return "ImageRes";
         case (PierceRes): return "PierceRes";
+        case (RelateRes): return "RelateRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -1623,22 +1627,18 @@ struct CopyState {
         break; case (Getintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            // TODO decite between GetRet and SetRet based on Quality value
             push(ptr->mem,GetRet,(void*)ptr->uns,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Getoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            // TODO decite between GetRet and SetRet based on Quality value
             push(ptr->mem,GetRet,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Setintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            // TODO decite between GetRet and SetRet based on Quality value
             push(ptr->mem,SetRet,(void*)ptr->uns,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Setoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            // TODO decite between GetRet and SetRet based on Quality value
             push(ptr->mem,SetRet,(void*)ptr->old,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         }
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
@@ -2230,6 +2230,7 @@ struct MainState {
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
     ArrayState<ImageState,PierceRes,StackState::piercs> pierceState;
+    ArrayState<ImageState,RelateRes,StackState::frames> relateState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2251,6 +2252,7 @@ struct MainState {
             {BringupRes,&bringupState},
             {ImageRes,&imageState},
             {PierceRes,&pierceState},
+            {RelateRes,&relateState},
             {UniformRes,&uniformState},
             {MatrixRes,&matrixState},
             {TriangleRes,&triangleState},
@@ -2329,9 +2331,11 @@ struct MainState {
             logicalState.device,logicalState.commandPool,logicalState.renderPass,
             logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
-        pipelineState(),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        imageState(RuseQua,TexRet),
+        pierceState(RuseQua,PieRet),
+        relateState(RuseQua,FdbRet),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&changeState),
         copyState(&changeState,&threadState,enumState,constState) {
