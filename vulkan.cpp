@@ -969,8 +969,8 @@ struct BindState : public BaseState {
         Resrc typ = resp[unl.dee+i].typ;
         int hdl = resp[unl.dee+i].hdl;
         switch (resp[unl.dee+i].ins) {default:
-        break; case (RDeeIns): case (IDeeIns): rdec(typ,hdl,log);
-        break; case (WDeeIns): wdec(typ,hdl,log);}}
+        break; case (RdlDeeIns): case (IdxDeeIns): rdec(typ,hdl,log);
+        break; case (WrlDeeIns): wdec(typ,hdl,log);}}
         done(unl.der,unl.hdl,log); done(log);
     }
     bool incr(Resrc typ, BaseState *buf, bool elock, SmartState log) {
@@ -1175,28 +1175,28 @@ struct CopyState {
     BaseState *get(Instr ins, Resrc res, int idx, Quality key, int val) {
         // depender or dependee qualified resource
         switch (ins) {default: break;
-        case(QDerIns): case(TDerIns):
-        case(WDeeIns): case(TDeeIns):
-        case(RDeeIns): case(SDeeIns): {
+        case(NewDerIns): case(NidDerIns):
+        case(WrlDeeIns): case(WidDeeIns):
+        case(RdlDeeIns): case(RidDeeIns): {
         auto ptr = src(res)->newbuf(idx,key,val);
         if (ptr.reuse) ptr.resrc->finish();
         return ptr.resrc;}
-        break; case(PDerIns): case(SDerIns):
+        break; case(OldDerIns): case(OidDerIns):
         return src(res)->getbuf(idx,key,val).resrc;
-        break; case(ODerIns): case(RDerIns):
+        break; case(GetDerIns): case(GidDerIns):
         return src(res)->oldbuf(idx,key,val).resrc;
-        break; case(IDerIns): case(IDeeIns):
+        break; case(IdxDerIns): case(IdxDeeIns):
         return src(res)->idxbuf(idx);}
         return 0;
     }
     Onl get(Instr ins, int idx, Quality key, int val) {
         // qualifiers with modification
         switch (ins) {default: break;
-        case(QDerIns): case(TDerIns):
-        case(PDerIns): case(SDerIns):
-        case(ODerIns): case(RDerIns):
-        case(WDeeIns): case(TDeeIns):
-        case(RDeeIns): case(SDeeIns):
+        case(NewDerIns): case(NidDerIns):
+        case(OldDerIns): case(OidDerIns):
+        case(GetDerIns): case(GidDerIns):
+        case(WrlDeeIns): case(WidDeeIns):
+        case(RdlDeeIns): case(RidDeeIns):
         return {idx,key,val};}
         return {0,Qualitys,0};
     }
@@ -1208,10 +1208,10 @@ struct CopyState {
         int count = 0;
         for (int i = 0; i < num; i++) {
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns): count += 1;
-            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): count += 1;
-            break; case(WDeeIns): case(RDeeIns): count += 1;
-            break; case(TDeeIns): case(SDeeIns): case(IDeeIns): count += 1;}}
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns): count += 1;
+            break; case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): count += 1;
+            break; case(WrlDeeIns): case(RdlDeeIns): count += 1;
+            break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): count += 1;}}
         log << "choose binding" << '\n';
         BindState *bind = 0; int min = 0;
         if (count > min) bind = stack[BindRes]->getbuf(0,Qualitys,0).resrc->getBind(log);
@@ -1220,19 +1220,19 @@ struct CopyState {
         log << "check binding" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns): bind->clr(ins[i].res);
-            break; case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): bind->clr(ins[i].res);
-            break; case(WDeeIns): case(RDeeIns): bind->clr(ins[i].res);
-            break; case(TDeeIns): case(SDeeIns): case(IDeeIns): bind->clr(ins[i].res);}}
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns): bind->clr(ins[i].res);
+            break; case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): bind->clr(ins[i].res);
+            break; case(WrlDeeIns): case(RdlDeeIns): bind->clr(ins[i].res);
+            break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): bind->clr(ins[i].res);}}
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
-            break; case (STagIns): {
-            log << "STagIns res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
+            break; case (SetTagIns): {
+            log << "SetTagIns res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
             src(ins[i].res)->qualify(ins[i].idx,ins[i].key,ins[i].val);}
-            break; case(QDerIns): case(TDerIns): case(PDerIns): case(SDerIns):
-            case(ODerIns): case(RDerIns): case(IDerIns):
-            case(WDeeIns): case(TDeeIns): case(RDeeIns): case(SDeeIns): case(IDeeIns): {
+            break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
+            case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             Onl onl = get(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
             SaveState *sav = 0; if (!vld(ins[i].res,onl,bind)) {
             BaseState *buf = get(ins[i].ins,ins[i].res,ins[i].idx,ins[i].key,ins[i].val);
@@ -1246,21 +1246,21 @@ struct CopyState {
         for (int i = 0; i < num && i < lim; i++) {
             SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns):
-            case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): {
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
             Unl unl = {.der=ins[i].res,.hdl=bind->hdl(ins[i].res),.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns):
-            case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns): j = num-1;
-            break; case(WDeeIns): case(RDeeIns):
-            case(TDeeIns): case(SDeeIns): case(IDeeIns): resps += 1; unl.siz += 1;}
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
+            break; case(WrlDeeIns): case(RdlDeeIns):
+            case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): resps += 1; unl.siz += 1;}
             if (!bind->push(ins[i].res,ins[i].req.loc,ins[i].req,unl,log)) lim = i;
             if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
-            switch (ins[i].ins) {default: break; case(PDerIns): case(ODerIns): adv.adv = FnceAdv;}
+            switch (ins[i].ins) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->bind->push(adv,log);}}
-            break; case(WDeeIns): case(TDeeIns):
+            break; case(WrlDeeIns): case(WidDeeIns):
             if (!bind->winc(ins[i].res,sav->buf,log)) lim = i;
-            break; case(RDeeIns): case(SDeeIns): case(IDeeIns): {
+            break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             if (!bind->rinc(ins[i].res,sav->buf,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
@@ -1268,31 +1268,31 @@ struct CopyState {
         for (int i = 0; i < num; i++) {
             SaveState *sav = bind->nxt(ins[i].res,i);
             switch(ins[i].ins) {default:
-            break; case(QDerIns): case (PDerIns): case (ODerIns):
-            case(TDerIns): case(SDerIns): case(RDerIns): case (IDerIns): {
+            break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
             Lnk *tmp = sav->buf->link(ins[i].req.loc,bas,lst,lnk);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = ins[i].req.loc;}}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
             SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
-            break; case (WDeeIns): case(RDeeIns):
-            case (TDeeIns): case (SDeeIns): case(IDeeIns):
+            break; case (WrlDeeIns): case(RdlDeeIns):
+            case (WidDeeIns): case (RidDeeIns): case(IdxDeeIns):
             if (bind) bind->push(ins[i].res,ins[i].ins,log);}}
         log << "submit buffers" << '\n';
         for (int i = 0; i < num; i++) {
             SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(TDerIns):
+            break; case(NewDerIns): case(NidDerIns):
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
-            log << "QDerIns push " << sav->buf->debug << '\n';
+            log << "NewDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,ins[i].req.loc);
-            break; case(PDerIns): case(ODerIns): case(SDerIns): case(RDerIns):
-            log << "PDerIns push " << sav->buf->debug << '\n';
+            break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns):
+            log << "OldDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,ins[i].req.loc);
-            break; case(IDerIns):
+            break; case(IdxDerIns):
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx);
-            log << "IDerIns push " << sav->buf->debug << '\n';
+            log << "IdxDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,ins[i].req.loc);}}
         log << "notify pass" << '\n';
         ptr->slf = 0;
@@ -1304,13 +1304,13 @@ struct CopyState {
         for (int i = 0; i < lim; i++) {
             SaveState *sav = bind->nxt(ins[i].res,i);
             switch (ins[i].ins) {default:
-            break; case(QDerIns): case(PDerIns): case(ODerIns):
-            case(TDerIns): case(SDerIns): case(RDerIns): case(IDerIns):
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns):
             bind->done(ins[i].res,log);
             sav->buf->fail(log);
-            break; case(WDeeIns): case (TDeeIns):
+            break; case(WrlDeeIns): case (WidDeeIns):
             bind->wdec(ins[i].res,log);
-            break; case(RDeeIns): case (SDeeIns): case(IDeeIns):
+            break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns):
             bind->rdec(ins[i].res,log);}}
         if (bind) bind->done(log);
         log << "notify fail" << '\n';
@@ -1406,30 +1406,30 @@ struct CopyState {
         free(st0); free(st1); free(st2);}
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
-        break; case(QDerIns): case(PDerIns): case(ODerIns): {
+        break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
-        break; case(TDerIns): case(SDerIns): case(RDerIns): {
+        break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
         int pre = get(arg,siz,idx,log,"DerIns.idx");
         int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"DerIns.val"):0);
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
-        break; case(IDerIns): {
-        int pre = get(arg,siz,idx,log,"IDerIns.idx");
+        break; case(IdxDerIns): {
+        int pre = get(arg,siz,idx,log,"IdxDerIns.idx");
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
-        break; case(WDeeIns): case(RDeeIns): {
+        break; case(WrlDeeIns): case(RdlDeeIns): {
         return Inst{.ins=ins,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
-        break; case(TDeeIns): case(SDeeIns): {
+        break; case(WidDeeIns): case(RidDeeIns): {
         int pre = get(arg,siz,idx,log,"DeeIns.idx");
         int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"DeeIns.val"):0);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
-        break; case(IDeeIns): {
-        int pre = get(arg,siz,idx,log,"IDeeIns.idx");
+        break; case(IdxDeeIns): {
+        int pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
-        break; case(STagIns): {
-        int pre = get(arg,siz,idx,log,"STagIns.idx");
-        int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"STagIns.val"):0);
+        break; case(SetTagIns): {
+        int pre = get(arg,siz,idx,log,"SetTagIns.idx");
+        int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"SetTagIns.val"):0);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}}
         return Inst{.ins=Instrs};
     }
@@ -1441,7 +1441,7 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {PDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
@@ -1453,7 +1453,7 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {PDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
@@ -1465,7 +1465,7 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {QDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
@@ -1489,9 +1489,9 @@ struct CopyState {
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
         switch (ins.ins) {default: lst << ins;
-        break; case (RIncIns): push(lst,ins.res,val,arg,siz,idx,ary,log);
-        break; case (EIncIns): push(lst,ins.mem,val,arg,siz,idx,ary,log);
-        break; case (IIncIns): push(lst,ins.mic,val,arg,siz,idx,ary,log);}}
+        break; case (ResIncIns): push(lst,ins.res,val,arg,siz,idx,ary,log);
+        break; case (MemIncIns): push(lst,ins.mem,val,arg,siz,idx,ary,log);
+        break; case (MicIncIns): push(lst,ins.mic,val,arg,siz,idx,ary,log);}}
     }
     int size(Micro typ, int ary) {
         int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
@@ -1584,9 +1584,9 @@ struct CopyState {
     }
     void push(Memory mem, Retyp ret, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         int mval[] = {
-        0,ret, // STagIns
-        width,height, // PDerIns ExtentFrm
-        idx,siz,wid,hei}; // PDerIns HighFrm
+        0,ret, // SetTagIns
+        width,height, // OldDerIns ExtentFrm
+        idx,siz,wid,hei}; // OldDerIns HighFrm
         int msiz = sizeof(mval)/sizeof(int); int midx = 0;
         push(mem,dat,0,mval,0,msiz,midx,ptr,sub,rsp,ary,log);
     }
