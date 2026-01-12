@@ -11,11 +11,14 @@ fileC.o: face.h file.c proto.h type.h
 filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
 fmtxC.o: fmtx.c
+fragmentCompG: vulkan.g
+fragmentComputeG: vulkan.g
 fragmentDebugG: vulkan.g
 fragmentDepthG: vulkan.g
 fragmentDispG: vulkan.g
 fragmentDisplayG: vulkan.g
 fragmentDpthG: vulkan.g
+fragmentFillG: vulkan.g
 fragmentPierceG: vulkan.g
 fragmentPrceG: vulkan.g
 fragmentTestG: vulkan.g
@@ -61,15 +64,18 @@ typerHs: face.hs faceC.o protoC.o typer.gen
 typerLua: typer.gen
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
+vertexCompG: vulkan.g
+vertexComputeG: vulkan.g
 vertexDebugG: vulkan.g
 vertexDepthG: vulkan.g
 vertexDispG: vulkan.g
 vertexDisplayG: vulkan.g
 vertexDpthG: vulkan.g
+vertexFillG: vulkan.g
 vertexPierceG: vulkan.g
 vertexPrceG: vulkan.g
 vertexTestG: vulkan.g
-vulkan.log: fragmentDebugG fragmentDepthG fragmentDispG fragmentDisplayG fragmentDpthG fragmentPierceG fragmentPrceG fragmentTestG texture.jpg vertexDebugG vertexDepthG vertexDispG vertexDisplayG vertexDpthG vertexPierceG vertexPrceG vertexTestG vulkanCpp
+vulkan.log: fragmentCompG fragmentComputeG fragmentDebugG fragmentDepthG fragmentDispG fragmentDisplayG fragmentDpthG fragmentFillG fragmentPierceG fragmentPrceG fragmentTestG texture.jpg vertexCompG vertexComputeG vertexDebugG vertexDepthG vertexDispG vertexDisplayG vertexDpthG vertexFillG vertexPierceG vertexPrceG vertexTestG vulkanCpp
 vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o typeC.o vulkanCpp.o
 vulkanCpp.o: face.h plane.h proto.h stlx.h type.h vulkan.cpp
 wrapCpp.o: proto.h wrap.cpp wrap.h

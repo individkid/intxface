@@ -73,10 +73,13 @@ Resrc = { -- per variation of BaseState
 Micro = { -- what runs on gpu
 	"MicroTest", -- fetch and texture
 	"MicroDebug", -- uint per pixel
-	"MicroDisplay", -- indexed planes
+	"MicroFill", -- fill with uniform
+	"MicroDisplay", -- decorate vec4
+	"MicroCompute", -- decorate uvec4
 	"MicroPierce", -- pierced triangle
 	"MicroDepth", -- fixed point
 	"MicroDisp", -- indexed vertices
+	"MicroComp", -- decorate uvec4
 	"MicroPrce", -- pierced triangle
 	"MicroDpth", -- fixed point
 }
@@ -551,11 +554,11 @@ MicroBinding = {
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
 	function cat (one,oth) local max = #one; for i,v in ipairs(oth) do max = max + 1; one[max] = v end return one end\
 	mia = {\"MicroTest\"}\
-	mib = {\"MicroDebug\"}\
+	mib = {\"MicroDebug\",\"MicroFill\"}\
 	mic = {\"MicroDisplay\"}\
-	mid = {\"MicroPierce\",\"MicroDepth\"}\
+	mid = {\"MicroCompute\",\"MicroPierce\",\"MicroDepth\"}\
 	mie = {\"MicroDisp\"}\
-	mif = {\"MicroPrce\",\"MicroDpth\"}\
+	mif = {\"MicroComp\",\"MicroPrce\",\"MicroDpth\"}\
 	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
@@ -602,20 +605,26 @@ MicroBinding = {
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexTestG"},
 	{"Micro","MicroDebug","Str","vertexDebugG"},
+	{"Micro","MicroFill","Str","vertexFillG"},
 	{"Micro","MicroDisplay","Str","vertexDisplayG"},
+	{"Micro","MicroCompute","Str","vertexComputeG"},
 	{"Micro","MicroPierce","Str","vertexPierceG"},
 	{"Micro","MicroDepth","Str","vertexDepthG"},
 	{"Micro","MicroDisp","Str","vertexDispG"},
+	{"Micro","MicroComp","Str","vertexCompG"},
 	{"Micro","MicroPrce","Str","vertexPrceG"},
 	{"Micro","MicroDpth","Str","vertexDpthG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentTestG"},
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
+	{"Micro","MicroFill","Str","fragmentFillG"},
 	{"Micro","MicroDisplay","Str","fragmentDisplayG"},
+	{"Micro","MicroCompute","Str","fragmentComputeG"},
 	{"Micro","MicroPierce","Str","fragmentPierceG"},
 	{"Micro","MicroDepth","Str","fragmentDepthG"},
 	{"Micro","MicroDisp","Str","fragmentDispG"},
+	{"Micro","MicroComp","Str","fragmentCompG"},
 	{"Micro","MicroPrce","Str","fragmentPrceG"},
 	{"Micro","MicroDpth","Str","fragmentDpthG"},
 }
@@ -716,10 +725,10 @@ ResrcAlt = {
 MicroIns = {
 	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
-	{"%(dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	mic = {\"MicroTest\"}\
-	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
+	{"%(mic = {\"MicroTest\"}\
+	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\"}\
+	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	\
 	def = {\"GiveDef\",\"GiveDef\",\"TrivDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
@@ -737,6 +746,9 @@ MicroIns = {
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
 	\
+	-- perform DrawRes with Micro and RuseQua of MicroDecor bound to Center of Decor with fill a RelateRes with initial value\
+	-- perform DrawRes with Micor and RuseQua of MicroPrce to write the same RelateRes with pierce values\
+	-- bind the same RelateRes to the DrawRes below\
 	return \"Micro\")","%(return gnc(mic,dee))","Int","0","Instr","NewDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Resrc","ChainRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Memory","Memorys"},

@@ -1231,6 +1231,8 @@ void initTest()
     ptr->drw[0].con.res = ChainRes;
     callCopy(ptr,Drawz,MptRsp,0,(debug?"chain":0));
     while (!centerCheck(Drawz)) usleep(1000);}
+    // write to PierceRes with Setintz and read back the same with Getintz
+    // Getintz should use OldDerIns instead of GetDerIns
     int width = callInfo(WindowWidth,0,planeRcfg);
     int height = callInfo(WindowHeight,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);

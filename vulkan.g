@@ -12,7 +12,7 @@ struct Uniform {
     uint mat; // base of matrices
 
     uint bas; // base of basises
-    uint mod; // fetch/storage vertices/planes
+    uint mod; // fill constant
     uint wid; // width of image
     uint hei; // height of image
 };
@@ -37,6 +37,41 @@ struct Vertex {
     vec4 vec; // intersection of planes
     vec4 ord; // coordinate or color
     uvec4 ref; // backreference to planes
+};
+/*enum Decor { // fragment shader graph operation
+    MoveDec, // move only
+    DotDec, // dot product
+    CrossDec, // cross product
+    PlusDec, // numwise sum
+    MinusDec, // numwise difference
+    TimesDec, // numwise product
+    OverDec, // numwise quotient
+    PlaneDec, // construct plane
+    AboveDec, // jump condition
+    WriteDec, // write output
+};
+enum Swizzle { // fragment shader operand selector
+    PointSwz, // comparison point
+    PlaneSwz, // constructed plane
+    Corner0Swz, // construct point
+    Corner1Swz, // construct point
+    Conrer2Swz, // construct point
+    BufferSwz, // located feedback
+    ColorSwz, // color suggestion
+    CoordSwz, // fragment location
+    IndexSwz, // primitive index
+    TextureSwz, // texture color
+    RelateSwz, // closeby indices
+    NormalSwz, // surface normal
+    UniformSwz, // uniform value
+};*/
+struct Decorate {
+    /*Decor*/uint dec; // operation
+    uint nxt; // next graph node unless compare fail
+    uint dim; // always 4
+    /*Swizzle*/uint src[4]; // which input or buffer array
+    uint idx[4]; // which input or buffer element
+    /*Swizzle*/uint acc; // which accumulator
 };
 
 vec4 cross(out float acu, vec4 vec0, vec4 vec1)
@@ -97,26 +132,26 @@ vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
     /*if (tmq > tmq0 && tmq > tmq1 && tmq > tmp0 && tmq > tmp1 && tmq > tmp)*/ return uec;
 }
 
-#if defined(fragmentTest) || defined(fragmentDebug) || defined(fragmentUint) || defined(fragmentFloat) || defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth)
+#if defined(fragmentTest) || defined(fragmentDebug) || defined(fragmentFill) || defined(fragmentDisplay) || defined(fragmentCompute) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentDisp) || defined(fragmentComp) || defined(fragmentPrce) || defined(fragmentDpth)
 layout (location = 0) in vec4 fragOrd;
-layout (location = 1) flat in uint fragIdx;
-layout (location = 2) in vec4 fragVec;
-layout (location = 3) flat in uvec4 fragRef;
+layout (location = 1) flat in vec4 fragVec;
+layout (location = 2) flat in uvec4 fragRef;
+layout (location = 3) flat in uint fragIdx;
 layout (location = 4) flat in uint fragTex;
 layout (location = 5) in vec3 fragColor;
 layout (location = 6) in vec2 fragTexCoord;
 #endif
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexUint) || defined(vertexFloat) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
-layout (location = 0) out vec4 fragOrd;
-layout (location = 1) out uint fragIdx;
-layout (location = 2) out vec4 fragVec;
-layout (location = 3) out uvec4 fragRef;
-layout (location = 4) out uint fragTex;
-layout (location = 5) out vec3 fragColor;
-layout (location = 6) out vec2 fragTexCoord;
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexFloat) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
+layout (location = 0) out vec4 fragOrd; // interpolated vertex
+layout (location = 1) out vec4 fragVec; // calculated normal
+layout (location = 2) out uvec4 fragRef; // facet identifiers
+layout (location = 3) out uint fragIdx; // primitive identifier
+layout (location = 4) out uint fragTex; // decoration selector
+layout (location = 5) out vec3 fragColor; // interpolated color
+layout (location = 6) out vec2 fragTexCoord; // primitive space
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 0) readonly uniform Uniforms {
     Uniform buf;
 } inUni;
@@ -125,7 +160,7 @@ layout (binding = 1) readonly uniform Matrixs {
 } inMat;
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
@@ -162,7 +197,7 @@ void vertex()
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth)
 layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
 } inBas;
@@ -189,7 +224,7 @@ void coplane()
 }
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uvec4 inRefer;
@@ -202,9 +237,6 @@ void debug()
     fragTexCoord = inOrdClr.xy;
     fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
 }
-#endif
-
-#if defined(vertexUint) || defined(vertexFloat)
 void fullscreen()
 {
     switch (fragIdx = ((gl_VertexIndex / 3) % 2)) {
@@ -221,6 +253,7 @@ void fullscreen()
 }
 #endif
 
+// builitn
 #if defined(vertexTest)
 void vertexTest()
 {
@@ -233,20 +266,22 @@ void vertexDebug()
     debug();
 }
 #endif
-#if defined(vertexUint)
-void vertexUint()
+#if defined(vertexFill)
+void vertexFill()
 {
     fullscreen();
 }
 #endif
-#if defined(vertexFloat)
-void vertexFloat()
-{
-    fullscreen();
-}
-#endif
+
+// production
 #if defined(vertexDisplay)
 void vertexDisplay()
+{
+    coplane();
+}
+#endif
+#if defined(vertexCompute)
+void vertexCompute()
 {
     coplane();
 }
@@ -263,8 +298,16 @@ void vertexDepth()
     coplane();
 }
 #endif
+
+// fallback
 #if defined(vertexDisp)
 void vertexDisp()
+{
+    vertex();
+}
+#endif
+#if defined(vertexComp)
+void vertexComp()
 {
     vertex();
 }
@@ -301,29 +344,43 @@ void fragmentDebug()
     outColor = gl_FragCoord.z;
 }
 #endif
-#if defined(fragmentUint)
+#if defined(fragmentFill)
+layout (binding = 0) readonly uniform Uniforms {
+    Uniform buf;
+} inUni;
 layout (location = 0) out uint outColor;
-void fragmentUint()
+void fragmentFill()
 {
-    outColor = fragIdx;
+    outColor = inUni.buf.mod;
 }
 #endif
-#if defined(fragmentFloat)
-layout (location = 0) out float outColor;
-void fragmentFloat()
-{
-    outColor = gl_FragCoord.z;
-}
-#endif
+
 #if defined(fragmentDisplay)
 layout (binding = 6) readonly buffer Relates {
     uint buf[];
 } inRel;
+layout (binding = 7) uniform sampler2D texSampler;
+layout (binding = 8) readonly buffer Decorates {
+    Decorate buf[];
+} inDec;
 layout (location = 0) out vec4 outColor;
 void fragmentDisplay()
 {
-    switch (fragTex) {default:
-    break; case (0): outColor = fragOrd;}
+    outColor = fragOrd;
+}
+#endif
+#if defined(fragmentCompute)
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
+layout (binding = 7) uniform sampler2D texSampler;
+layout (binding = 8) readonly buffer Decorates {
+    Decorate buf[];
+} inDec;
+layout (location = 0) out uvec4 outColor;
+void fragmentCompute()
+{
+    outColor = fragRef;
 }
 #endif
 #if defined(fragmentPierce)
@@ -340,6 +397,7 @@ void fragmentDepth()
     outColor = gl_FragCoord.z;
 }
 #endif
+
 #if defined(fragmentDisp)
 layout (location = 0) out vec4 outColor;
 layout (binding = 6) readonly buffer Relates {
@@ -347,8 +405,21 @@ layout (binding = 6) readonly buffer Relates {
 } inRel;
 void fragmentDisp()
 {
-    switch (fragTex) {default:
-    break; case (0): outColor = fragOrd;}
+    outColor = fragOrd;
+}
+#endif
+#if defined(fragmentComp)
+layout (binding = 6) readonly buffer Relates {
+    uint buf[];
+} inRel;
+layout (binding = 7) uniform sampler2D texSampler;
+layout (binding = 8) readonly buffer Decorates {
+    Decorate buf[];
+} inDec;
+layout (location = 0) out uvec4 outColor;
+void fragmentComp()
+{
+    outColor = fragRef;
 }
 #endif
 #if defined(fragmentPrce)

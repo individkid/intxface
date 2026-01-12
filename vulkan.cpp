@@ -844,9 +844,9 @@ struct ConstState {
 };
 
 struct SaveState {
-    BaseState *bind; int psav, rsav, wsav;
+    BaseState *sav; int psav, rsav, wsav;
     BaseState *buf; int fst, fin; Onl onl;
-    SaveState() : bind(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
+    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
 };
 
 struct Dec {
@@ -899,7 +899,7 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return &bind[typ][hdl];
     }
-    SaveState *nxt(Resrc typ, int i) { // current next or first
+    SaveState *get(Resrc typ, int i) { // current next or first
         if (hand[typ] == size[typ]) hand[typ] = 0;
         SaveState *sav = get(typ);
         if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
@@ -918,7 +918,7 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
         if (hdl < 0 || hdl >= size[typ]) EXIT
-        return bind[typ][hdl].bind;
+        return bind[typ][hdl].sav;
     }
     bool push(Resrc typ, ResrcLoc loc, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
@@ -930,9 +930,9 @@ struct BindState : public BaseState {
         if (!ref.buf) EXIT
         if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,log)) return false;
         log << "push " << debug << " " << ref.buf->debug << " lock:" << lock << '\n';
-        if (ref.bind == 0) lock += 1;
-        if (ref.bind != 0 && ref.bind != ref.buf) EXIT
-        ref.bind = ref.buf;
+        if (ref.sav == 0) lock += 1;
+        if (ref.sav != 0 && ref.sav != ref.buf) EXIT
+        ref.sav = ref.buf;
         ref.psav += 1;
         return true;
     }
@@ -951,9 +951,9 @@ struct BindState : public BaseState {
         SaveState &ref = bind[typ][hdl];
         if (ref.psav <= 0) EXIT
         ref.psav -= 1;
-        BaseState *dbg = ref.bind;
+        BaseState *dbg = ref.sav;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        ref.bind = 0; lock -= 1;}
+        ref.sav = 0; lock -= 1;}
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
@@ -984,13 +984,13 @@ struct BindState : public BaseState {
         int hdl = hand[typ];
         if (hdl < 0 || hdl >= StackState::handls) EXIT
         SaveState &ref = bind[typ][hdl];
-        if (ref.bind && ref.bind != buf) EXIT
+        if (ref.sav && ref.sav != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         log << "incr fail " << buf->debug << '\n';
         return false;}
         log << "incr " << debug << " " << buf->debug << " lock:" << lock << '\n';
-        if (ref.bind == 0) lock += 1;
-        ref.bind = buf;
+        if (ref.sav == 0) lock += 1;
+        ref.sav = buf;
         (elock ? ref.wsav : ref.rsav) += 1;
         return true;
     }
@@ -999,13 +999,13 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         if (hdl < 0 || hdl >= StackState::handls) EXIT
         SaveState &ref = bind[typ][hdl];
-        if (lock <= 0 || ref.bind == 0) EXIT
-        ref.bind->decr(elock);
+        if (lock <= 0 || ref.sav == 0) EXIT
+        ref.sav->decr(elock);
         if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
         (elock ? ref.wsav : ref.rsav) -= 1;
-        BaseState *dbg = ref.bind;
+        BaseState *dbg = ref.sav;
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        ref.bind = 0; lock -= 1;}
+        ref.sav = 0; lock -= 1;}
         log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
     bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
@@ -1248,7 +1248,7 @@ struct CopyState {
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
-            SaveState *sav = bind->nxt(ins[i].res,i);
+            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
@@ -1261,7 +1261,7 @@ struct CopyState {
             if (!bind->push(ins[i].res,ins[i].req.loc,ins[i].req,unl,log)) lim = i;
             if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
-            sav->bind->push(adv,log);}}
+            sav->sav->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns):
             if (!bind->winc(ins[i].res,sav->buf,log)) lim = i;
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
@@ -1270,7 +1270,7 @@ struct CopyState {
         log << "link list" << '\n';
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->nxt(ins[i].res,i);
+            SaveState *sav = bind->get(ins[i].res,i);
             switch(ins[i].ins) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
@@ -1278,14 +1278,14 @@ struct CopyState {
             if (tmp) {lnk = tmp; bas = sav->buf; lst = ins[i].req.loc;}}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->nxt(ins[i].res,i);
+            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case (WrlDeeIns): case(RdlDeeIns):
             case (WidDeeIns): case (RidDeeIns): case(IdxDeeIns):
             if (bind) bind->push(ins[i].res,ins[i].ins,log);}}
         log << "submit buffers" << '\n';
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->nxt(ins[i].res,i);
+            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(NewDerIns): case(NidDerIns):
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
@@ -1306,7 +1306,7 @@ struct CopyState {
         } else {
         log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
-            SaveState *sav = bind->nxt(ins[i].res,i);
+            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns):
@@ -1750,9 +1750,9 @@ struct PipeState : public BaseState {
     VkPipeline pipeline;
     Render renderIndex(Micro micro) {
         switch (micro) {default:
-        break; case (MicroDepth): case (MicroDpth): return SfloatFrm;
-        break; case (MicroPierce): case (MicroPrce): return UintFrm;
-        break; case (MicroDebug): return SfloatFrm;
+        break; case (MicroDebug): case (MicroDepth): case (MicroDpth): return SfloatFrm;
+        break; case (MicroFill): case (MicroPierce): case (MicroPrce): return UintFrm;
+        break; case (MicroCompute): case (MicroComp): return UvecFrm;
         break; case (MicroTest): case (MicroDisplay): case (MicroDisp): return SrgbFrm;}
         return Renders;
     }
@@ -2931,7 +2931,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings << uboLayoutBinding;}
     break; case (StoragePhs): {
     VkDescriptorSetLayoutBinding storageLayoutBinding{};
