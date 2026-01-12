@@ -1627,7 +1627,7 @@ struct CopyState {
         break; case (Getintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,GetRet,(void*)ptr->uns,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,GetRet,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Getoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
@@ -1635,11 +1635,11 @@ struct CopyState {
         break; case (Setintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,SetRet,(void*)ptr->uns,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,SetRet,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Setoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,SetRet,(void*)ptr->old,0,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,SetRet,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         }
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }

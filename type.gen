@@ -716,12 +716,10 @@ ResrcAlt = {
 MicroIns = {
 	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
-	-- TODO \"RelateRes\",
 	{"%(dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mic = {\"MicroTest\"}\
 	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\"}\
-	web = {\"PierceRes\",\"PierceRes\",\"PierceRes\"}\
 	\
 	def = {\"GiveDef\",\"GiveDef\",\"TrivDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
@@ -774,7 +772,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},
 		{"Micro","%(return fnc(mib))","Int","0","Format","MicroFrm"},
 	{"Micro","%(return fnc(mib))","Int","1","Instr","WrlDeeIns"},
-		{"Micro","%(return fnc(mib))","Int","1","Resrc","%(return fnc(web))"},
+		{"Micro","%(return fnc(mib))","Int","1","Resrc","PierceRes"},
 	{"Micro","%(return fnc(mib))","Int","2","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mib,deb))","Int","%(return hnc(deb,2))","Resrc","%(return fnc(deb))"},
 	{"Micro","%(return fnc(mib))","Int","%(return 2+#deb)","Instr","IdxDeeIns"},
