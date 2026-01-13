@@ -1251,14 +1251,16 @@ void initTest()
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
+
     struct Center *oke = centerPull(Setoldz); freeCenter(oke);
-    oke->mem = Setoldz; oke->idx = (width/2)+(height/2)*width; oke->siz = 1;
+    oke->mem = Setoldz; oke->idx = (int)(0.3*width)+(int)(0.3*height)*width; oke->siz = 1;
     allocOld(&oke->old,oke->siz); oke->old[0] = 1.0;
     callCopy(oke,Setoldz,RptRsp,0,(debug?"poke":0));
     struct Center *eek = centerPull(Getoldz); freeCenter(eek);
-    eek->mem = Getoldz; eek->idx = (width/2)+(height/2)*width; eek->siz = 1;
+    eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz);
     callCopy(eek,Getoldz,RptRsp,0,(debug?"peek":0));
+
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);

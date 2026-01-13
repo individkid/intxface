@@ -480,7 +480,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         else {keyord.erase(get(tmp,keysiz[tmp])); keysiz[tmp] -= 1; keyord.insert(get(tmp,keysiz[tmp]));}
         pool.push_front(idx);
     }
-    void insert(Only &tmp, int idx) {
+    void insert(Only &tmp, int idx) { // after insert given idx is newest
         if (oldest.find(tmp) == oldest.end()) oldest[tmp] = idx;
         newest[tmp] = idx;
         ording[get(tmp,seqn)] = idx;
@@ -523,6 +523,15 @@ template <int Size, int Dim, int Min> struct SimpleState {
         ret.reuse = (newest.find(tmp) == newest.end());
         if (ret.reuse) insert(tmp);
         ret.resrc = newest[tmp];
+        return ret;
+    }
+    Pair newold(int idx, int tag, int val) { // move last of idx to tag val
+        Only src = get(idx,Dim,0);
+        Only dst = get(idx,tag,val);
+        Pair ret;
+        ret.reuse = (newest.find(src) == newest.end());
+        if (!ret.reuse) remove(newest[src]);
+        ret.resrc = insert(dst);
         return ret;
     }
     void qualify(int idx, int tag, int val) {

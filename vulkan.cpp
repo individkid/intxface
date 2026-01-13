@@ -273,6 +273,7 @@ struct Loc {
     Syn syn;
     Lnk lst; 
     Lnk nxt;
+    VkCommandBuffer commandBuffer;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -527,6 +528,7 @@ struct StackState {
     static const int handls = 4; // maximum number of classifications
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
+    virtual Res newold(int hdl, Quality key, int val) = 0;
     virtual Res newbuf(int hdl, Quality key, int val) = 0;
     virtual Res oldbuf(int hdl, Quality key, int val) = 0;
     virtual Res getbuf(int hdl, Quality key, int val) = 0;
@@ -695,6 +697,15 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     bool compare(Onl one, Onl oth) /*override*/ {
         safe.wait();
         bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val));
+        safe.post();
+        return ret;
+    }
+    Res newold(int hdl, Quality key, int val) /*override*/ {
+        safe.wait();
+        auto idx = tag.newold(hdl,key,val);
+        Res ret;
+        ret.resrc = &state[idx.resrc];
+        ret.reuse = idx.reuse;
         safe.post();
         return ret;
     }
@@ -1234,6 +1245,10 @@ struct CopyState {
             break; case (SetTagIns): {
             log << "SetTagIns res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
             src(ins[i].res)->qualify(ins[i].idx,ins[i].key,ins[i].val);}
+            break; case (MovTagIns): {
+            log << "MovTagIns res:" << ins[i].res << " idx:" << ins[i].idx << " key:" << ins[i].key << " val:" << ins[i].val << '\n';
+            src(ins[i].res)->newold(ins[i].idx,ins[i].key,ins[i].val);
+            bind->get(ins[i].res)->onl = Onl{ins[i].idx,ins[i].key,ins[i].val};}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
@@ -1848,7 +1863,6 @@ struct BufferState : public BaseState {
     VkBuffer buffer;
     VkDeviceMemory memory;
     int range;
-    VkCommandBuffer commandBuffer;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1872,12 +1886,12 @@ struct BufferState : public BaseState {
         range = loc.max.size;
         VkDeviceSize bufferSize = loc.max.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
-        commandBuffer = createCommandBuffer(device,commandPool);
+        loc.commandBuffer = createCommandBuffer(device,commandPool);
         loc.syn.fen = createFence(device);
     }
     void unsize(Loc &loc, SmartState log) override {
         vkDestroyFence(device, loc.syn.fen, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
     }
@@ -1890,9 +1904,9 @@ struct BufferState : public BaseState {
         memProperties, stagingBuffer, stagingBufferMemory);
         void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy((void*)((char*)data+tmp),loc.req.ptr,loc.req.siz);
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &loc.syn.fen);
-        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, commandBuffer, loc.syn.fen,VK_NULL_HANDLE,VK_NULL_HANDLE);
+        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, loc.commandBuffer, loc.syn.fen,VK_NULL_HANDLE,VK_NULL_HANDLE);
         return loc.syn.fen;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -1926,10 +1940,6 @@ struct ImageState : public BaseState {
     VkImageView depthImageView;
     VkFramebuffer framebuffer;
     VkSampler textureSampler;
-    VkCommandBuffer commandReform;
-    VkCommandBuffer commandBefore;
-    VkCommandBuffer commandBuffer;
-    VkCommandBuffer commandAfter;
     // temporary between sup and ups:
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1980,10 +1990,10 @@ struct ImageState : public BaseState {
         createImage(device, physical, loc.max.extent.width, loc.max.extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,loc.max.extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}}
-        if (*loc == ReformLoc) commandReform = createCommandBuffer(device,commandPool); 
-        if (*loc == BeforeLoc) commandBefore = createCommandBuffer(device,commandPool);
-        if (*loc == MiddleLoc) commandBuffer = createCommandBuffer(device,commandPool);
-        if (*loc == AfterLoc) commandAfter = createCommandBuffer(device,commandPool);
+        if (*loc == ReformLoc) loc.commandBuffer = createCommandBuffer(device,commandPool); 
+        if (*loc == BeforeLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
+        if (*loc == MiddleLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
+        if (*loc == AfterLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
         loc.syn.sem = createSemaphore(device); // TODO as needed
         loc.syn.fen = createFence(device); // TODO as needed
     }
@@ -1991,10 +2001,10 @@ struct ImageState : public BaseState {
         log << "unsize " << debug << " location:" << *loc << '\n';
         vkDestroyFence(device, loc.syn.fen, nullptr); // TODO as needed
         vkDestroySemaphore(device, loc.syn.sem, nullptr); // TODO as needed
-        if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandAfter);
-        if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-        if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandBefore);
-        if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &commandReform);
+        if (*loc == AfterLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
+        if (*loc == MiddleLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
+        if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
+        if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ResizeLoc) {
         get(ReformLoc).max.vld = false;
         if (tag(RuseQua) != TexRet) {
@@ -2016,14 +2026,14 @@ struct ImageState : public BaseState {
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
-        vkResetCommandBuffer(commandReform, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandReform, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
+        vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == BeforeLoc) {
-        vkResetCommandBuffer(commandBefore, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandBefore, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
+        vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == AfterLoc) {
-        vkResetCommandBuffer(commandAfter, /*VkCommandBufferResetFlagBits*/ 0);
-        transitionImageLayout(device, graphics, commandAfter, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
+        vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == MiddleLoc) {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
@@ -2038,8 +2048,8 @@ struct ImageState : public BaseState {
         if (tag(RuseQua) == SetRet) {
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, stagingBuffer, commandBuffer, tag(RuseQua) == GetRet);}
+        vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, stagingBuffer, loc.commandBuffer, tag(RuseQua) == GetRet);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2060,6 +2070,35 @@ struct ImageState : public BaseState {
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics, VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int offsWidth, int offsHeight, int texWidth, int texHeight, VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkBuffer stagingBuffer, VkCommandBuffer commandBuffer, bool direction);
     static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image, VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+};
+
+struct WrapState : public BaseState {
+    BaseState *ptr;
+    WrapState() : BaseState("WrapState",StackState::self), ptr(0) {}
+    ~WrapState() {}
+    VkImage getImage() override {return ptr->getImage();}
+    VkDeviceMemory getMemory() override {return ptr->getMemory();}
+    VkImageView getImageView() override {return ptr->getImageView();}
+    VkExtent2D getExtent() override {return ptr->getExtent();}
+    VkSampler getTextureSampler() override {return ptr->getTextureSampler();}
+    VkFramebuffer getFramebuffer() override {return ptr->getFramebuffer();}
+    // TODO add other accessors as needed
+    void unsize(Loc &loc, SmartState log) override {
+        if (*loc==ResizeLoc) ptr = 0;
+        else ptr->unsize(loc,log);
+    }
+    void resize(Loc &loc, SmartState log) override {
+        if (loc.max.tag != ResrcExt) EXIT
+        if (*loc==ResizeLoc) ptr = res(loc.max.resrc,0);
+        else ptr->resize(loc,log);
+    }
+    VkFence setup(Loc &loc, SmartState log) override {
+        if (*loc!=ResizeLoc) return ptr->setup(loc,log);
+        return VK_NULL_HANDLE;
+    }
+    void upset(Loc &loc, SmartState log) override {
+        if (*loc!=ResizeLoc) ptr->setup(loc,log);
+    }
 };
 
 struct ChainState : public BaseState {
@@ -2126,7 +2165,6 @@ struct DrawState : public BaseState {
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorLayout;
     VkDescriptorSet descriptorSet;
-    VkCommandBuffer commandBuffer;
     DrawState() :
         BaseState("DrawState",StackState::self),
         device(StackState::device),
@@ -2148,12 +2186,12 @@ struct DrawState : public BaseState {
         descriptorPool = pip->getDescriptorPool();
         descriptorLayout = pip->getDescriptorSetLayout();
         descriptorSet = createDescriptorSet(device,descriptorPool,descriptorLayout,frames);
-        commandBuffer = createCommandBuffer(device,commandPool);
+        loc.commandBuffer = createCommandBuffer(device,commandPool);
         loc.syn.fen = createFence(device);
     }
     void unsize(Loc &loc, SmartState log) override {
         vkDestroyFence(device, loc.syn.fen, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         vkFreeDescriptorSets(device,descriptorPool,1,&descriptorSet);
         log << "unsize " << debug << '\n';
     }
@@ -2161,7 +2199,7 @@ struct DrawState : public BaseState {
         log << "setup " << debug << '\n';
         if (loc.req.ptr != 0 || loc.req.idx != 0) EXIT
         vkResetFences(device, 1, &loc.syn.fen);
-        vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         BaseState *pipePtr = 0;
         BaseState *swapPtr = 0;
         BaseState *framePtr = 0;
@@ -2194,12 +2232,12 @@ struct DrawState : public BaseState {
         break; case (SamplePhs): {
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
-        recordCommandBuffer(commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.max.micro,loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
+        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.max.micro,loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
         VkSemaphore after = VK_NULL_HANDLE; // (loc.nxt.ptr ? loc.syn.sem : VK_NULL_HANDLE);
         VkSemaphore before = VK_NULL_HANDLE; // (loc.lst.ptr ? loc.lst.ptr->get(loc.lst.loc).syn.sem : VK_NULL_HANDLE);
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
         VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
-        drawFrame(commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,loc.max.micro,acquire,release,loc.syn.fen,before,after);
+        drawFrame(loc.commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,loc.max.micro,acquire,release,loc.syn.fen,before,after);
         return loc.syn.fen;
     }
     void upset(Loc &loc, SmartState log) override {

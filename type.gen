@@ -190,22 +190,23 @@ Format = {
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
 Instr = {
-	"NewDerIns", -- QDerIns -- advance before push to thread
-	"OldDerIns", -- PDerIns -- advance an oldest after fence
-	"GetDerIns", -- ODerIns -- advance the oldest after fence
-	"NidDerIns", -- TDerIns -- before newest indicated instance
-	"OidDerIns", -- SDerIns -- after an oldest indicated instance
-	"GidDerIns", -- RDerIns -- after the oldest indicated instance
-	"IdxDerIns", -- IDerIns -- process a particular instance
-	"WrlDeeIns", -- WDeeIns -- increment write lock in current
-	"RdlDeeIns", -- RDeeIns -- increment read lock in current
-	"WidDeeIns", -- TDeeIns -- increment write in indicated
-	"RidDeeIns", -- SDeeIns -- increment read in indicated
-	"IdxDeeIns", -- IDeeIns -- increment read lock in indexed
-	"SetTagIns", -- STagIns -- set tag value in given quality
-	"ResIncIns", -- RIncIns -- include instructions from Resrc
-	"MemIncIns", -- EIncIns -- include instructions from Memory
-	"MicIncIns", -- IIncIns -- include instructions from Micro
+	"NewDerIns", -- advance before push to thread
+	"OldDerIns", -- advance an oldest after fence
+	"GetDerIns", -- advance the oldest after fence
+	"NidDerIns", -- before newest indicated instance
+	"OidDerIns", -- after an oldest indicated instance
+	"GidDerIns", -- after the oldest indicated instance
+	"IdxDerIns", -- process a particular instance
+	"WrlDeeIns", -- increment write lock in current
+	"RdlDeeIns", -- increment read lock in current
+	"WidDeeIns", -- increment write in indicated
+	"RidDeeIns", -- increment read in indicated
+	"IdxDeeIns", -- increment read lock in indexed
+	"SetTagIns", -- set tag value in given quality
+	"MovTagIns", -- change tag of newest of handle
+	"ResIncIns", -- include instructions from Resrc
+	"MemIncIns", -- include instructions from Memory
+	"MicIncIns", -- include instructions from Micro
 }
 Quality = { -- quality of service tags for *TagIns
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
