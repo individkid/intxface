@@ -791,6 +791,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (ImageRes): return "ImageRes";
         case (PierceRes): return "PierceRes";
         case (RelateRes): return "RelateRes";
+        case (WrapRes): return "WrapRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -1402,7 +1403,7 @@ struct CopyState {
         req.tag = LockReq; req.ext = IntExt; req.ptr = val;
         req.idx = get(arg,siz,idx,log,"LockFrm.idx"); req.siz = get(arg,siz,idx,log,"LockFrm.siz");
         break; case (ResrcFrm):
-        req.tag = LockReq; req.ext = ResrcExt;
+        req.tag = SizeReq; req.ext = ResrcExt;
         req.idx = get(arg,siz,idx,log,"ResrcFrm.idx");
         break; case (IndexFrm):
         req.tag = SizeReq; req.ext = MicroExt;
@@ -2286,6 +2287,7 @@ struct MainState {
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
     ArrayState<ImageState,PierceRes,StackState::piercs> pierceState;
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
+    ArrayState<WrapState,WrapRes,StackState::images> wrapState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2308,6 +2310,7 @@ struct MainState {
             {ImageRes,&imageState},
             {PierceRes,&pierceState},
             {RelateRes,&relateState},
+            {WrapRes,&wrapState},
             {UniformRes,&uniformState},
             {MatrixRes,&matrixState},
             {TriangleRes,&triangleState},

@@ -58,6 +58,7 @@ Resrc = { -- per variation of BaseState
 	"IndexRes",
 	"BringupRes",
 	"ImageRes",
+	"WrapRes",
 	"PierceRes",
 	"RelateRes",
 	"UniformRes",
@@ -182,7 +183,7 @@ Format = {
 	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"LockFrm", -- LockReq IntExt ptr(raw data) idx(from center) siz(from center)
-	"ResrcFrm", -- LockReq ResrcExt resrc
+	"ResrcFrm", -- SizeReq ResrcExt resrc
 	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
 	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
 	"NullFrm", -- NullReq TrueExt
@@ -666,8 +667,6 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","5","Format","%(return fnc(aft))"},
 	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Default","GiveDef"},
 	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
-	-- {"Memory","Getoldz","Int","%(return rng(6,11))","Default","BackDef"},
-	-- {"Memory","Getoldz","Int","%(return rng(6,11))","Int","%(return rng(0,5))"},
 	{"%(nem = {\"Bringupz\",\"Indexz\",\"Uniformz\",\"Matrixz\",\"Trianglez\",\"Numericz\",\"Vertexz\",\"Basisz\"}\
 	ses={\"BringupRes\",\"IndexRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
 	return \"Memory\")","%(return fnc(nem))","Int","0","Resrc","%(return fnc(ses))"},
@@ -675,8 +674,7 @@ MemoryIns = {
 	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
 }
 MemoryAlt = {
-	{"%(function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
-	"return \"Memory\")","Matrixz","Int","0","Instr","OldDerIns"},
+	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Matrixz","Int","0","Memory","Memorys"},
 	{"Memory","Matrixz","Int","0","Micro","Micros"},
@@ -684,8 +682,44 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Format","LockFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
 	{"Memory","Matrixz","Int","0","Retyp","Retyps"},
-	{"Memory","Matrixz","Int","%(return rng(0,1))","Default","GiveDef"},
-	{"Memory","Matrixz","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
+	{"Memory","Matrixz","Int","0","Default","GiveDef"},
+	{"Memory","Matrixz","Int","0","Int","0"},
+	{"Memory","Matrixz","Int","1","Default","GiveDef"},
+	{"Memory","Matrixz","Int","1","Int","1"},
+
+	{"Memory","Getoldz","Int","0","Instr","SetTagIns"},
+	{"Memory","Getoldz","Int","0","Resrc","PierceRes"},
+	{"Memory","Getoldz","Int","0","Quality","RuseQua"},
+	{"Memory","Getoldz","Int","0","Retyp","SetRet"},
+	{"Memory","Getoldz","Int","1","Instr","OldDerIns"},
+	{"Memory","Getoldz","Int","1","ResrcLoc","ResizeLoc"},
+	{"Memory","Getoldz","Int","1","Format","ExtentFrm"},
+	{"Memory","Getoldz","Int","2","ResrcLoc","ReformLoc"},
+	{"Memory","Getoldz","Int","2","Format","PierceFrm"},
+	{"Memory","Getoldz","Int","3","ResrcLoc","BeforeLoc"},
+	{"Memory","Getoldz","Int","3","Format","PokeFrm"},
+	{"Memory","Getoldz","Int","4","ResrcLoc","MiddleLoc"},
+	{"Memory","Getoldz","Int","4","Format","HighFrm"},
+	{"Memory","Getoldz","Int","5","ResrcLoc","AfterLoc"},
+	{"Memory","Getoldz","Int","5","Format","DestFrm"},
+	{"Memory","Getoldz","Int","6","Instr","MovTagIns"},
+	{"Memory","Getoldz","Int","6","Quality","RuseQua"},
+	{"Memory","Getoldz","Int","6","Retyp","GetRet"},
+	{"Memory","Getoldz","Int","7","Instr","OldDerIns"},
+	{"Memory","Getoldz","Int","7","Resrc","WrapRes"},
+	{"Memory","Getoldz","Int","7","ResrcLoc","ResizeLoc"},
+	{"Memory","Getoldz","Int","7","Format","ResrcFrm"},
+	{"Memory","Getoldz","Int","8","ResrcLoc","BeforeLoc"},
+	{"Memory","Getoldz","Int","8","Format","PeekFrm"},
+	{"Memory","Getoldz","Int","9","ResrcLoc","MiddleLoc"},
+	{"Memory","Getoldz","Int","9","Format","HighFrm"},
+	{"Memory","Getoldz","Int","10","ResrcLoc","AfterLoc"},
+	{"Memory","Getoldz","Int","10","Format","SourceFrm"},
+	{"%(function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
+	"return \"Memory\")","Getoldz","Int","%(return rng(0,5))","Default","GiveDef"},
+	{"Memory","Getoldz","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
+	{"Memory","Getoldz","Int","%(return rng(6,11))","Default","BackDef"},
+	{"Memory","Getoldz","Int","%(return rng(6,11))","Int","%(return rng(0,5))"},
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Retyps
