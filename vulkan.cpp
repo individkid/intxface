@@ -832,6 +832,7 @@ struct ConstState {
     decltype(MemoryIns__Memory__Int__Memory) *memmem;
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
     decltype(MemoryIns__Memory__Int__Quality) *memkey;
+    decltype(MemoryIns__Memory__Int__Retyp) *memret;
     decltype(MemoryIns__Memory__Int__Default) *memdef;
     decltype(MemoryIns__Memory__Int__Int) *memval;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
@@ -841,6 +842,7 @@ struct ConstState {
     decltype(ResrcIns__Resrc__Int__Memory) *resmem;
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
     decltype(ResrcIns__Resrc__Int__Quality) *reskey;
+    decltype(ResrcIns__Resrc__Int__Retyp) *resret;
     decltype(ResrcIns__Resrc__Int__Default) *resdef;
     decltype(ResrcIns__Resrc__Int__Int) *resval;
     decltype(MicroIns__Micro__Int__Instr) *micins;
@@ -850,6 +852,7 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Memory) *micmem;
     decltype(MicroIns__Micro__Int__Micro) *micmic;
     decltype(MicroIns__Micro__Int__Quality) *mickey;
+    decltype(MicroIns__Micro__Int__Retyp) *micret;
     decltype(MicroIns__Micro__Int__Default) *micdef;
     decltype(MicroIns__Micro__Int__Int) *micval;
 };
@@ -1150,7 +1153,7 @@ struct EnumState {
 };
 struct Arg {
     Instr ins = Instrs;
-    ResrcLoc loc; Format fmt = Formats; Quality key = Qualitys;
+    ResrcLoc loc; Format fmt = Formats; Quality key = Qualitys; Retyp ret = Retyps;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
 };
 struct CopyState {
@@ -1417,6 +1420,16 @@ struct CopyState {
         }
         return req;
     }
+    void quality(Arg &dot, int &pre, int &vlu, const char *str, int *arg, int siz, int &idx, SmartState log) {
+        char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
+        char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
+        if (dot.key>=0&&dot.key<Qualitys&&dot.ret>=0&&dot.ret<Retyps) vlu = dot.ret;
+        else if (dot.key>=0&&dot.key<Qualitys) vlu = get(arg,siz,idx,log,vst);
+        else vlu = 0;
+        /*if (dot.key>=0&&dot.key<Qualitys&&dot.ret>=0&&dot.ret<Retyps) pre = 0;
+        else */pre = get(arg,siz,idx,log,ist);
+        free(vst); free(ist);
+    }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st1 = 0; showResrcLoc(dot[i].loc,&st1);
@@ -1429,8 +1442,7 @@ struct CopyState {
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
-        int pre = get(arg,siz,idx,log,"DerIns.idx");
-        int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"DerIns.val"):0);
+        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"DerIns",arg,siz,idx,log);
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
         break; case(IdxDerIns): {
@@ -1440,15 +1452,16 @@ struct CopyState {
         break; case(WrlDeeIns): case(RdlDeeIns): {
         return Inst{.ins=ins,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
         break; case(WidDeeIns): case(RidDeeIns): {
-        int pre = get(arg,siz,idx,log,"DeeIns.idx");
-        int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"DeeIns.val"):0);
+        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"DeeIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
         break; case(IdxDeeIns): {
         int pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
         break; case(SetTagIns): {
-        int pre = get(arg,siz,idx,log,"SetTagIns.idx");
-        int vlu = (dot[i].key>=0&&dot[i].key<Qualitys?get(arg,siz,idx,log,"SetTagIns.val"):0);
+        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"SetTagIns",arg,siz,idx,log);
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
+        break; case(MovTagIns): {
+        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"MovTagIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}}
         return Inst{.ins=Instrs};
     }
@@ -1460,11 +1473,12 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Retyps,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->memkey,typ,sub,Qualitys,log)) done = false;
+        if (builtin(sav.ret,dot.ret,ary->memret,typ,sub,Retyps,log)) done = false;
         if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->memmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->memmic,typ,sub,Micros,log)) done = false;
@@ -1472,11 +1486,12 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Retyps,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->reskey,typ,sub,Qualitys,log)) done = false;
+        if (builtin(sav.ret,dot.ret,ary->resret,typ,sub,Retyps,log)) done = false;
         if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->resmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->resmic,typ,sub,Micros,log)) done = false;
@@ -1484,11 +1499,12 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Retyps,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,ResrcLocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->mickey,typ,sub,Qualitys,log)) done = false;
+        if (builtin(sav.ret,dot.ret,ary->micret,typ,sub,Retyps,log)) done = false;
         if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->micmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->micmic,typ,sub,Micros,log)) done = false;
@@ -1547,7 +1563,6 @@ struct CopyState {
         // arg/siz only means profer only
         // val/sze only means packed force
         // neither means default only
-        log << "siz:" << siz << " sze:" << sze << '\n';
         if ((arg == 0) != (siz == 0)) EXIT
         if ((val == 0) != (sze == 0)) EXIT
         int tot = 0; int lim = size(typ,ary);
@@ -1562,10 +1577,10 @@ struct CopyState {
         if (tot < lim) tot = lim;
         int vlu[tot];
         // initialize with defaults
-        for (int i = 0; i < tot; i++)
+        for (int i = 0; i < tot; i++) {
             // ignore siz sze since TrivDef fill value is an immediate value
             if (i < lim && dflt(typ,i,ary) == TrivDef) vlu[i] = fill(typ,i,ary);
-            else vlu[i] = 0;
+            else vlu[i] = 0;}
         // copy from given
         if (siz) for (int i = 0; i < tot; i++)
             // ignore GiveDef if there is nothing proferred
@@ -1576,7 +1591,7 @@ struct CopyState {
             if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
             // siz no sze means all arg would be negative, and arg treated as proferred val
             else if (idx >= 0 && idx < tot) {vlu[i] = arg[idx];
-            log << "give:" << idx << " vlu[" << i << "]:" << vlu[i] << '\n';}}
+            log << "give:" << idx << " vlu[" << i << "]:" << vlu[i] << " " << idx << "/" << tot << '\n';}}
         // force from given
         if (sze) for (int i = 0; i < tot; i++) {
             // siz and sze means force index is from arg
@@ -1601,27 +1616,26 @@ struct CopyState {
         break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
         break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);}
     }
-    void push(Memory mem, Retyp ret, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         int mval[] = {
-        0,ret, // SetTagIns
         width,height, // OldDerIns ExtentFrm
         idx,siz,wid,hei}; // OldDerIns HighFrm
         int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-        push(mem,dat,0,mval,0,msiz,midx,ptr,sub,rsp,ary,log);
+        push(mem,dat,mval,0,msiz,0,midx,ptr,sub,rsp,ary,log);
     }
     void push(Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         switch (ptr->mem) {default: {
         int mod = centerMod(ptr); int idx = ptr->idx*mod; int siz = ptr->siz*mod;
         int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int); int adx = 0;
         switch (ptr->mem) {default: EXIT
-        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Numericz): push(ptr->mem,(void*)ptr->num,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);
-        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,0,val,0,aiz,adx,ptr,sub,rsp,ary,log);}}
+        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Numericz): push(ptr->mem,(void*)ptr->num,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);}}
         break; case (Drawz): {
             int mask = 0;
             for (int i = 0; i < ptr->siz; i++) {
@@ -1637,24 +1651,24 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) { // ptr->idx/ptr->siz is a range of resources
             int idx = ptr->idx+i; int wid = ptr->img[i].wid; int hei = ptr->img[i].hei;
             int tot = datxVoids(ptr->img[i].dat);
-            push(ptr->mem,TexRet,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
+            push(ptr->mem,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
         break; case (Getintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,GetRet,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Getoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,GetRet,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Setintz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,SetRet,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         break; case (Setoldz): {
             VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
             int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,SetRet,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
         }
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
@@ -2309,6 +2323,7 @@ struct MainState {
             MemoryIns__Memory__Int__Memory,
             MemoryIns__Memory__Int__Micro,
             MemoryIns__Memory__Int__Quality,
+            MemoryIns__Memory__Int__Retyp,
             MemoryIns__Memory__Int__Default,
             MemoryIns__Memory__Int__Int,
             ResrcIns__Resrc__Int__Instr,
@@ -2318,6 +2333,7 @@ struct MainState {
             ResrcIns__Resrc__Int__Memory,
             ResrcIns__Resrc__Int__Micro,
             ResrcIns__Resrc__Int__Quality,
+            ResrcIns__Resrc__Int__Retyp,
             ResrcIns__Resrc__Int__Default,
             ResrcIns__Resrc__Int__Int,
             MicroIns__Micro__Int__Instr,
@@ -2327,6 +2343,7 @@ struct MainState {
             MicroIns__Micro__Int__Memory,
             MicroIns__Micro__Int__Micro,
             MicroIns__Micro__Int__Quality,
+            MicroIns__Micro__Int__Retyp,
             MicroIns__Micro__Int__Default,
             MicroIns__Micro__Int__Int},{
             MemoryAlt__Memory__Int__Instr,
@@ -2336,6 +2353,7 @@ struct MainState {
             MemoryAlt__Memory__Int__Memory,
             MemoryAlt__Memory__Int__Micro,
             MemoryAlt__Memory__Int__Quality,
+            MemoryAlt__Memory__Int__Retyp,
             MemoryAlt__Memory__Int__Default,
             MemoryAlt__Memory__Int__Int,
             ResrcAlt__Resrc__Int__Instr,
@@ -2345,6 +2363,7 @@ struct MainState {
             ResrcAlt__Resrc__Int__Memory,
             ResrcAlt__Resrc__Int__Micro,
             ResrcAlt__Resrc__Int__Quality,
+            ResrcAlt__Resrc__Int__Retyp,
             ResrcAlt__Resrc__Int__Default,
             ResrcAlt__Resrc__Int__Int,
             MicroAlt__Micro__Int__Instr,
@@ -2354,6 +2373,7 @@ struct MainState {
             MicroAlt__Micro__Int__Memory,
             MicroAlt__Micro__Int__Micro,
             MicroAlt__Micro__Int__Quality,
+            MicroAlt__Micro__Int__Retyp,
             MicroAlt__Micro__Int__Default,
             MicroAlt__Micro__Int__Int}},
         vulkanState(windowState.window),

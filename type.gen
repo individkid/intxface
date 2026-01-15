@@ -633,23 +633,23 @@ FragmentFile = {
 -- Micro queue blobs are decoupled from bindings per Micro,
 -- because there can be different queue blobs with same Micro
 MemoryIns = {
-	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
+	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys,Retyps
 	-- n>0: departures from n-1
-	{"Memory","Indexz","Int","0","Resrc","IndexRes"},
-	{"Memory","Indexz","Int","0","Default","TrivDef"}, -- how to modify arguments
-	{"Memory","Indexz","Int","0","Int","0"}, -- value to modify argument with
-	{"Memory","Bringupz","Int","0","Resrc","BringupRes"},
-	{"%(mem={\"Imagez\",\"Setoldz\",\"Getoldz\"};"..
+	{"%(mem={\"Imagez\",\"Setoldz\",\"Getoldz\"}"..
 	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\"}"..
+	"ret={\"TexRet\",\"SetRet\",\"GetRet\"}"..
 	"siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
 	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
 	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
 	"aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
-	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #mem then coroutine.yield(v) else return v end end end;"..
+	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
+	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
+	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;"..
 	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","SetTagIns"},
 	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
 	{"Memory","%(return fnc(mem))","Int","0","Quality","RuseQua"},
+	{"Memory","%(return fnc(mem))","Int","0","Retyp","%(return fnc(ret))"},
 	{"Memory","%(return fnc(mem))","Int","1","Instr","OldDerIns"},
 	{"Memory","%(return fnc(mem))","Int","1","Memory","Memorys"},
 	{"Memory","%(return fnc(mem))","Int","1","Micro","Micros"},
@@ -664,27 +664,33 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(mid))"},
 	{"Memory","%(return fnc(mem))","Int","5","ResrcLoc","AfterLoc"},
 	{"Memory","%(return fnc(mem))","Int","5","Format","%(return fnc(aft))"},
-	{"Memory","Uniformz","Int","0","Resrc","UniformRes"},
-	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
-	{"Memory","Matrixz","Int","0","Format","LockFrm"},
-	{"Memory","Trianglez","Int","0","Resrc","TriangleRes"}, -- TODO
-	{"Memory","Numericz","Int","0","Resrc","NumericRes"}, -- TODO
-	{"Memory","Vertexz","Int","0","Resrc","VertexRes"}, -- TODO
-	{"Memory","Basisz","Int","0","Resrc","BasisRes"}, -- TODO
+	{"Memory","%(return fnc(mem))","Int","0","Default","TrivDef"},
+	{"Memory","%(return fnc(mem))","Int","0","Int","0"},
+	{"Memory","%(return rnc(mem,1,6))","Int","%(return rng(1,6))","Default","GiveDef"},
+	{"Memory","%(return rnc(mem,1,6))","Int","%(return rng(1,6))","Int","%(return rng(0,5))"},
+	-- {"Memory","Getoldz","Int","%(return rng(7,12))","Default","BackDef"},
+	-- {"Memory","Getoldz","Int","%(return rng(7,12))","Int","%(return rng(0,6))"},
+	{"%(nem = {\"Bringupz\",\"Indexz\",\"Uniformz\",\"Matrixz\",\"Trianglez\",\"Numericz\",\"Vertexz\",\"Basisz\"}\
+	ses={\"BringupRes\",\"IndexRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
+	return \"Memory\")","%(return fnc(nem))","Int","0","Resrc","%(return fnc(ses))"},
+	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Default","GiveDef"},
+	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
 }
 MemoryAlt = {
-	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},
+	{"%(function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
+	"return \"Memory\")","Matrixz","Int","0","Instr","OldDerIns"},
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Matrixz","Int","0","Memory","Memorys"},
 	{"Memory","Matrixz","Int","0","Micro","Micros"},
 	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
-	{"Memory","Matrixz","Int","0","Format","WholeFrm"},
+	{"Memory","Matrixz","Int","0","Format","LockFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
-	{"Memory","Matrixz","Int","0","Default","TrivDef"},
-	{"Memory","Matrixz","Int","0","Int","0"},
+	{"Memory","Matrixz","Int","0","Retyp","Retyps"},
+	{"Memory","Matrixz","Int","%(return rng(0,1))","Default","GiveDef"},
+	{"Memory","Matrixz","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
 }
 ResrcIns = {
-	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
+	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Retyps
 	-- n>0: departures from n-1
 	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
@@ -692,6 +698,7 @@ ResrcIns = {
 	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
+	 {"Resrc","SwapRes","Int","0","Retyp","Retyps"},
 	{"Resrc","PipeRes","Int","0","Instr","IdxDerIns"},
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
@@ -720,11 +727,12 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
+	 {"Resrc","SwapRes","Int","0","Retyp","Retyps"},
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
 MicroIns = {
-	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
+	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Retyps
 	-- n>0: departures from n-1
 	{"%(mic = {\"MicroTest\"}\
 	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
@@ -757,6 +765,7 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Format","NullFrm"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Quality","Qualitys"},
+		{"Micro","%(return gnc(mic,dee))","Int","0","Retyp","Retyps"},
 	{"Micro","%(return gnc(mic,dee))","Int","1","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","2","Instr","NewDerIns"},
@@ -803,6 +812,7 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
+		{"Micro","MicroTest","Int","0","Retyp","Retyps"},
 		{"Micro","MicroTest","Int","0","Default","TrivDef"},
 		{"Micro","MicroTest","Int","0","Int","0"},
 }

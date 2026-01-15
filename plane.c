@@ -849,7 +849,7 @@ void planeTest(enum Thread tag, int idx)
     mat->mem = Matrixz; mat->idx = 3; mat->siz = 1; allocMatrix(&mat->mat,mat->siz);
     float dbg[16]; planeDebug(dbg);
     memcpy(&mat->mat[0],dbg,sizeof(struct Matrix));
-    callCopy(mat,Memorys+0,RptRsp,0,(debug?"matrix":0));
+    callCopy(mat,Memorys+0,RptRsp,1,(debug?"matrix":0));
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {
@@ -1272,7 +1272,7 @@ void initTest()
     memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
-    callCopy(mat,Matrixz,RptRsp,1,(debug?"matrix":0));
+    callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}
