@@ -1420,14 +1420,13 @@ struct CopyState {
         }
         return req;
     }
-    void quality(Arg &dot, int &pre, int &vlu, const char *str, int *arg, int siz, int &idx, SmartState log) {
+    void quality(int &pre, Quality &key, Retyp &vlu, const char *str, int *arg, int siz, int &idx, SmartState log) {
         char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
         char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
-        if (dot.key>=0&&dot.key<Qualitys&&dot.ret>=0&&dot.ret<Retyps) vlu = dot.ret;
-        else if (dot.key>=0&&dot.key<Qualitys) vlu = get(arg,siz,idx,log,vst);
-        else vlu = 0;
-        /*if (dot.key>=0&&dot.key<Qualitys&&dot.ret>=0&&dot.ret<Retyps) pre = 0;
-        else */pre = get(arg,siz,idx,log,ist);
+        if (key==Qualitys&&vlu>=0&&vlu<Retyps) key = RuseQua;
+        if (key>=0&&key<Qualitys&&key!=RuseQua) vlu = (Retyp)get(arg,siz,idx,log,vst);
+        if (key==RuseQua&&vlu==Retyps) vlu = (Retyp)get(arg,siz,idx,log,vst);
+        if (key!=RuseQua) pre = get(arg,siz,idx,log,ist);
         free(vst); free(ist);
     }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
@@ -1442,9 +1441,10 @@ struct CopyState {
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
-        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"DerIns",arg,siz,idx,log);
+        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        quality(pre,key,vlu,"DerIns",arg,siz,idx,log);
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
-        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
+        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDerIns): {
         int pre = get(arg,siz,idx,log,"IdxDerIns.idx");
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
@@ -1452,17 +1452,20 @@ struct CopyState {
         break; case(WrlDeeIns): case(RdlDeeIns): {
         return Inst{.ins=ins,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
         break; case(WidDeeIns): case(RidDeeIns): {
-        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"DeeIns",arg,siz,idx,log);
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
+        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        quality(pre,key,vlu,"DeeIns",arg,siz,idx,log);
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDeeIns): {
         int pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
         break; case(SetTagIns): {
-        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"SetTagIns",arg,siz,idx,log);
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}
+        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        quality(pre,key,vlu,"SetTagIns",arg,siz,idx,log);
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(MovTagIns): {
-        int pre = 0; int vlu = 0; quality(dot[i],pre,vlu,"MovTagIns",arg,siz,idx,log);
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=dot[i].key,.val=vlu};}}
+        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        quality(pre,key,vlu,"MovTagIns",arg,siz,idx,log);
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}}
         return Inst{.ins=Instrs};
     }
     template <class Type, class Fnc, class Arg> bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {

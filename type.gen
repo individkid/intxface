@@ -664,12 +664,10 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(mid))"},
 	{"Memory","%(return fnc(mem))","Int","5","ResrcLoc","AfterLoc"},
 	{"Memory","%(return fnc(mem))","Int","5","Format","%(return fnc(aft))"},
-	{"Memory","%(return fnc(mem))","Int","0","Default","TrivDef"},
-	{"Memory","%(return fnc(mem))","Int","0","Int","0"},
-	{"Memory","%(return rnc(mem,1,6))","Int","%(return rng(1,6))","Default","GiveDef"},
-	{"Memory","%(return rnc(mem,1,6))","Int","%(return rng(1,6))","Int","%(return rng(0,5))"},
-	-- {"Memory","Getoldz","Int","%(return rng(7,12))","Default","BackDef"},
-	-- {"Memory","Getoldz","Int","%(return rng(7,12))","Int","%(return rng(0,6))"},
+	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Default","GiveDef"},
+	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
+	-- {"Memory","Getoldz","Int","%(return rng(6,11))","Default","BackDef"},
+	-- {"Memory","Getoldz","Int","%(return rng(6,11))","Int","%(return rng(0,5))"},
 	{"%(nem = {\"Bringupz\",\"Indexz\",\"Uniformz\",\"Matrixz\",\"Trianglez\",\"Numericz\",\"Vertexz\",\"Basisz\"}\
 	ses={\"BringupRes\",\"IndexRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
 	return \"Memory\")","%(return fnc(nem))","Int","0","Resrc","%(return fnc(ses))"},
