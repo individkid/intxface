@@ -267,6 +267,7 @@ struct Unl {
 };
 struct Loc {
     ResrcLoc loc;
+    Retyp ret;
     SizeState max;
     Requ req;
     Unl unl;
@@ -312,13 +313,13 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Requ req, Unl unl, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Retyp ret, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push fail" << " plock-pdec:" << plock-pdec << " rlock-rdec:" << rlock-rdec << " wlock-wdec:" << wlock-wdec << " " << debug << '\n';
         safe.post(); return false;}
-        log << "push pass " << debug << " loc:" << loc << '\n';
+        log << "push pass " << debug << " loc:" << loc << " ret:" << ret << '\n';
         plock += 1;
         safe.post();
         if (lock != 0 && lock != ptr) EXIT
@@ -326,6 +327,7 @@ struct BaseState {
         ploc[loc].req = req;
         ploc[loc].unl = unl;
         ploc[loc].loc = loc;
+        ploc[loc].ret = ret;
         return true;
     }
     void push(Adv adv, SmartState log) {
@@ -935,7 +937,7 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return bind[typ][hdl].sav;
     }
-    bool push(Resrc typ, ResrcLoc loc, Requ req, Unl unl, SmartState log) {
+    bool push(Resrc typ, ResrcLoc loc, Retyp ret, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -943,7 +945,7 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= StackState::handls) EXIT
         SaveState &ref = bind[typ][hdl];
         if (!ref.buf) EXIT
-        if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,req,unl,log)) return false;
+        if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,loc,ret,req,unl,log)) return false;
         log << "push " << debug << " " << ref.buf->debug << " lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         if (ref.sav != 0 && ref.sav != ref.buf) EXIT
@@ -1277,7 +1279,7 @@ struct CopyState {
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
             break; case(WrlDeeIns): case(RdlDeeIns):
             case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): resps += 1; unl.siz += 1;}
-            if (!bind->push(ins[i].res,ins[i].req.loc,ins[i].req,unl,log)) lim = i;
+            if (!bind->push(ins[i].res,ins[i].req.loc,(Retyp)ins[i].val,ins[i].req,unl,log)) lim = i;
             if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->sav->push(adv,log);}}
@@ -1434,31 +1436,37 @@ struct CopyState {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st1 = 0; showResrcLoc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
-        log << "instruct " << st0 << " " << st1 << " " << st2 << '\n';
-        free(st0); free(st1); free(st2);}
+        char *st3 = 0; showRetyp(dot[i].ret,&st3);
+        log << "instruct " << st0 << " " << st1 << " " << st3 << " " << st2 << '\n';
+        free(st0); free(st1); free(st2); free(st3);}
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
+        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
-        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
+        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
         int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
         quality(pre,key,vlu,"DerIns",arg,siz,idx,log);
+        log << "instruct " << vlu << "/" << dot[i].ret << '\n';
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDerIns): {
-        int pre = get(arg,siz,idx,log,"IdxDerIns.idx");
+        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        pre = get(arg,siz,idx,log,"IdxDerIns.idx");
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
-        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
+        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(WrlDeeIns): case(RdlDeeIns): {
-        return Inst{.ins=ins,.res=dot[i].res,.idx=0,.key=Qualitys,.val=0};}
+        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(WidDeeIns): case(RidDeeIns): {
         int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
         quality(pre,key,vlu,"DeeIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDeeIns): {
-        int pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=Qualitys,.val=0};}
+        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(SetTagIns): {
         int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
         quality(pre,key,vlu,"SetTagIns",arg,siz,idx,log);
@@ -1989,25 +1997,25 @@ struct ImageState : public BaseState {
         return Renders;
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << '\n';
+        log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.ret << '\n';
         if (*loc == ResizeLoc) {
         int texWidth = loc.max.extent.width;
         int texHeight = loc.max.extent.height;
         extent = loc.max.extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
-        if (tag(RuseQua) == TexRet) {
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.ret));
+        if (loc.ret == TexRet) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
-        if (tag(RuseQua) != TexRet) {
+        if (loc.ret != TexRet) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (tag(RuseQua) == TexRet) {
+        if (loc.ret == TexRet) {
         textureSampler = createTextureSampler(device,properties);}
-        if (tag(RuseQua) != TexRet) {
+        if (loc.ret != TexRet) {
         createImage(device, physical, loc.max.extent.width, loc.max.extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender((Retyp)tag(RuseQua))],imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender(loc.ret)],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) loc.commandBuffer = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
@@ -2025,23 +2033,23 @@ struct ImageState : public BaseState {
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ResizeLoc) {
         get(ReformLoc).max.vld = false;
-        if (tag(RuseQua) != TexRet) {
+        if (loc.ret != TexRet) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (tag(RuseQua) == TexRet) {
+        if (loc.ret == TexRet) {
         vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);}
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << '\n';
+        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.ret << '\n';
         VkFence fence = (*loc==AfterLoc?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (*loc!=ResizeLoc&&loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (*loc!=AfterLoc?loc.syn.sem:VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender((Retyp)tag(RuseQua)));
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.ret));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2057,17 +2065,17 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        createBuffer(device, physical, imageSize, (tag(RuseQua) == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; if (tag(RuseQua) == TexRet || tag(RuseQua) == SetRet) {
+        createBuffer(device, physical, imageSize, (loc.ret == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
+        void* data; if (loc.ret == TexRet || loc.ret == SetRet) {
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
-        if (tag(RuseQua) == TexRet) {
+        if (loc.ret == TexRet) {
         // TODO start at loc.req.idx in data
         memcpy(data, loc.req.ptr, loc.req.siz);}
-        if (tag(RuseQua) == SetRet) {
+        if (loc.ret == SetRet) {
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, stagingBuffer, loc.commandBuffer, tag(RuseQua) == GetRet);}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, stagingBuffer, loc.commandBuffer, loc.ret == GetRet);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2077,7 +2085,7 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        if (tag(RuseQua) == GetRet) {
+        if (loc.ret == GetRet) {
         void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
