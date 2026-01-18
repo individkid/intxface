@@ -275,6 +275,8 @@ struct Loc {
     Lnk lst; 
     Lnk nxt;
     VkCommandBuffer commandBuffer;
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
 };
 ResrcLoc &operator*(Loc &loc) {
     return loc.loc;
@@ -949,6 +951,9 @@ struct BindState : public BaseState {
         log << "push " << debug << " " << ref.buf->debug << " lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         if (ref.sav != 0 && ref.sav != ref.buf) EXIT
+        {char *st0 = 0; showResrc(typ,&st0);
+        log << "save " << debug << " " << st0 << " " << hdl << " " << ref.buf << '\n';
+        free(st0);} 
         ref.sav = ref.buf;
         ref.psav += 1;
         return true;
@@ -1269,10 +1274,10 @@ struct CopyState {
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
-            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             Unl unl = {.der=ins[i].res,.hdl=bind->hdl(ins[i].res),.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
@@ -1283,42 +1288,53 @@ struct CopyState {
             if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->sav->push(adv,log);}}
-            break; case(WrlDeeIns): case(WidDeeIns):
-            if (!bind->winc(ins[i].res,sav->buf,log)) lim = i;
+            break; case(WrlDeeIns): case(WidDeeIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
+            if (!bind->winc(ins[i].res,sav->buf,log)) lim = i;}
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             if (!bind->rinc(ins[i].res,sav->buf,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
         Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->get(ins[i].res,i);
             switch(ins[i].ins) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             Lnk *tmp = sav->buf->link(ins[i].req.loc,bas,lst,lnk);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = ins[i].req.loc;}}}}
+        /*for (int i = 0; i < num; i++) {
+            switch(ins[i].ins) {default:
+            break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
+            Lnk *nxt = &sav->buf->ploc[ins[i].req.loc].nxt;
+            Lnk *lst = &sav->buf->ploc[ins[i].req.loc].lst;
+            log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << ins[i].req.loc << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}*/
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case (WrlDeeIns): case(RdlDeeIns):
             case (WidDeeIns): case (RidDeeIns): case(IdxDeeIns):
             if (bind) bind->push(ins[i].res,ins[i].ins,log);}}
         log << "submit buffers" << '\n';
         for (int i = 0; i < num; i++) {
-            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
-            break; case(NewDerIns): case(NidDerIns):
+            break; case(NewDerIns): case(NidDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx,ins[i].key,ins[i].val);
             log << "NewDerIns push " << sav->buf->debug << '\n';
-            thread->push(log,sav->buf,ins[i].req.loc);
-            break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns):
+            thread->push(log,sav->buf,ins[i].req.loc);}
+            break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             log << "OldDerIns push " << sav->buf->debug << '\n';
-            thread->push(log,sav->buf,ins[i].req.loc);
-            break; case(IdxDerIns):
+            thread->push(log,sav->buf,ins[i].req.loc);}
+            break; case(IdxDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             if (sav->fst == i) src(ins[i].res)->advance(ins[i].idx);
             log << "IdxDerIns push " << sav->buf->debug << '\n';
-            thread->push(log,sav->buf,ins[i].req.loc);}}
+            thread->push(log,sav->buf,ins[i].req.loc);}}}
         log << "notify pass" << '\n';
         ptr->slf = 0;
         switch (rsp) {default:
@@ -1327,12 +1343,12 @@ struct CopyState {
         } else {
         log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
-            SaveState *sav = bind->get(ins[i].res,i);
             switch (ins[i].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
-            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
+            SaveState *sav = bind->get(ins[i].res,i);
             bind->done(ins[i].res,log);
-            sav->buf->fail(log);
+            sav->buf->fail(log);}
             break; case(WrlDeeIns): case (WidDeeIns):
             bind->wdec(ins[i].res,log);
             break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns):
@@ -1406,7 +1422,7 @@ struct CopyState {
         req.idx = get(arg,siz,idx,log,"LockFrm.idx"); req.siz = get(arg,siz,idx,log,"LockFrm.siz");
         break; case (ResrcFrm):
         req.tag = SizeReq; req.ext = ResrcExt;
-        req.idx = get(arg,siz,idx,log,"ResrcFrm.idx");
+        req.base = get(arg,siz,idx,log,"ResrcFrm.base");
         break; case (IndexFrm):
         req.tag = SizeReq; req.ext = MicroExt;
         req.base = get(arg,siz,idx,log,"IndexFrm.base");
@@ -1966,9 +1982,6 @@ struct ImageState : public BaseState {
     VkImageView depthImageView;
     VkFramebuffer framebuffer;
     VkSampler textureSampler;
-    // temporary between sup and ups:
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
     VkImage getImage() override {return image;}
     VkDeviceMemory getMemory() override {return imageMemory;}
     VkImageView getImageView() override {return imageView;}
@@ -2046,9 +2059,9 @@ struct ImageState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.ret << '\n';
-        VkFence fence = (*loc==AfterLoc?loc.syn.fen:VK_NULL_HANDLE);
-        VkSemaphore before = (*loc!=ResizeLoc&&loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
-        VkSemaphore after = (*loc!=AfterLoc?loc.syn.sem:VK_NULL_HANDLE);
+        VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
+        VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
+        VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.ret));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
@@ -2065,9 +2078,10 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        createBuffer(device, physical, imageSize, (loc.ret == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, stagingBuffer, stagingBufferMemory);
+        // TODO to save memory, make access to Loc virtual and make base class for Loc
+        createBuffer(device, physical, imageSize, (loc.ret == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
         void* data; if (loc.ret == TexRet || loc.ret == SetRet) {
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
+        vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
         if (loc.ret == TexRet) {
         // TODO start at loc.req.idx in data
         memcpy(data, loc.req.ptr, loc.req.siz);}
@@ -2075,7 +2089,7 @@ struct ImageState : public BaseState {
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, stagingBuffer, loc.commandBuffer, loc.ret == GetRet);}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, loc.ret == GetRet);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2086,12 +2100,12 @@ struct ImageState : public BaseState {
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
         if (loc.ret == GetRet) {
-        void* data; vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
+        void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
-        vkUnmapMemory(device, stagingBufferMemory);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);}
+        vkUnmapMemory(device, loc.stagingBufferMemory);
+        vkDestroyBuffer(device, loc.stagingBuffer, nullptr);
+        vkFreeMemory(device, loc.stagingBufferMemory, nullptr);}
     }
     static VkSampler createTextureSampler(VkDevice device, VkPhysicalDeviceProperties properties);
     static void copyTextureImage(VkDevice device, VkQueue graphics, VkPhysicalDeviceMemoryProperties memProperties, VkImage textureImage, int offsWidth, int offsHeight, int texWidth, int texHeight, VkSemaphore beforeSemaphore, VkSemaphore afterSemaphore, VkBuffer stagingBuffer, VkCommandBuffer commandBuffer, bool direction);
@@ -2099,9 +2113,12 @@ struct ImageState : public BaseState {
 };
 
 struct WrapState : public BaseState {
+    const VkDevice device;
     BaseState *ptr;
-    WrapState() : BaseState("WrapState",StackState::self), ptr(0) {}
-    ~WrapState() {}
+    WrapState() : BaseState("WrapState",StackState::self), device(StackState::device), ptr(0) {}
+    ~WrapState() {
+        reset(SmartState());
+    }
     VkImage getImage() override {return ptr->getImage();}
     VkDeviceMemory getMemory() override {return ptr->getMemory();}
     VkImageView getImageView() override {return ptr->getImageView();}
@@ -2109,21 +2126,26 @@ struct WrapState : public BaseState {
     VkSampler getTextureSampler() override {return ptr->getTextureSampler();}
     VkFramebuffer getFramebuffer() override {return ptr->getFramebuffer();}
     // TODO add other accessors as needed
-    void unsize(Loc &loc, SmartState log) override {
-        if (*loc==ResizeLoc) ptr = 0;
-        else ptr->unsize(loc,log);
-    }
     void resize(Loc &loc, SmartState log) override {
-        if (loc.max.tag != ResrcExt) EXIT
+        // loc.syn.sem = createSemaphore(device); // TODO as needed
+        // loc.syn.fen = createFence(device); // TODO as needed
+        if (*loc==ResizeLoc && loc.max.tag != ResrcExt) EXIT
         if (*loc==ResizeLoc) ptr = res(loc.max.resrc,0);
+        // TODO perhaps get index of resrc and use it instead of pointer
         else ptr->resize(loc,log);
+    }
+    void unsize(Loc &loc, SmartState log) override {
+        if (*loc==ResizeLoc); // TODO depends on how wrapee is allocated ptr = 0;
+        else ptr->unsize(loc,log);
+        // vkDestroyFence(device, loc.syn.fen, nullptr); // TODO as needed
+        // vkDestroySemaphore(device, loc.syn.sem, nullptr); // TODO as needed
     }
     VkFence setup(Loc &loc, SmartState log) override {
         if (*loc!=ResizeLoc) return ptr->setup(loc,log);
         return VK_NULL_HANDLE;
     }
     void upset(Loc &loc, SmartState log) override {
-        if (*loc!=ResizeLoc) ptr->setup(loc,log);
+        if (*loc!=ResizeLoc) ptr->upset(loc,log);
     }
 };
 
@@ -2149,13 +2171,13 @@ struct ChainState : public BaseState {
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << '\n';
         if (*loc == BeforeLoc) {
-        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device);
+        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device); // TODO as needed
         acquire = createSemaphore(device);}
     }
     void unsize(Loc &loc, SmartState log) override {
         if (*loc == BeforeLoc) {
         vkDestroySemaphore(device, acquire, nullptr);
-        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr);}
+        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr);} // TODO as needed
         log << "usize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
@@ -2197,10 +2219,10 @@ struct DrawState : public BaseState {
         graphics(StackState::graphics),
         commandPool(StackState::commandPool),
         frames(StackState::frames) {
-        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device);
+        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device); // TODO as needed
     }
     ~DrawState() {
-        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr);
+        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr); // TODO as needed
         reset(SmartState());
     }
     int vulkanHandle(Phase phs) {

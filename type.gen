@@ -718,8 +718,10 @@ MemoryAlt = {
 	{"%(function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
 	"return \"Memory\")","Getoldz","Int","%(return rng(0,5))","Default","GiveDef"},
 	{"Memory","Getoldz","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
-	{"Memory","Getoldz","Int","%(return rng(6,11))","Default","BackDef"},
-	{"Memory","Getoldz","Int","%(return rng(6,11))","Int","%(return rng(0,5))"},
+	{"Memory","Getoldz","Int","6","Default","TrivDef"},
+	{"Memory","Getoldz","Int","6","Int","%(return castResrc(\"PierceRes\"))"},
+	{"Memory","Getoldz","Int","%(return rng(7,10))","Default","BackDef"},
+	{"Memory","Getoldz","Int","%(return rng(7,10))","Int","%(return rng(2,5))"},
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Retyps

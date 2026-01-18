@@ -1254,12 +1254,12 @@ void initTest()
 
     struct Center *oke = centerPull(Setoldz); freeCenter(oke);
     oke->mem = Setoldz; oke->idx = (int)(0.3*width)+(int)(0.3*height)*width; oke->siz = 1;
-    allocOld(&oke->old,oke->siz); oke->old[0] = 1.0;
+    allocOld(&oke->old,oke->siz); oke->old[0] = 2.0;
     callCopy(oke,Setoldz,RptRsp,0,(debug?"poke":0));
     struct Center *eek = centerPull(Getoldz); freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
-    allocOld(&eek->old,eek->siz);
-    callCopy(eek,Getoldz,RptRsp,0,(debug?"peek":0));
+    allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
+    callCopy(eek,Getoldz,RptRsp,1,(debug?"peek":0));
 
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
