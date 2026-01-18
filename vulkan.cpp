@@ -1442,10 +1442,10 @@ struct CopyState {
     void quality(int &hdl, Quality &key, Retyp &val, const char *str, int *arg, int siz, int &idx, SmartState log) {
         char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
         char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
-        if (key==Qualitys&&val>=0&&val<Retyps) key = RuseQua;
-        if (key>=0&&key<Qualitys&&key!=RuseQua) val = (Retyp)get(arg,siz,idx,log,vst);
-        if (key==RuseQua&&val==Retyps) val = (Retyp)get(arg,siz,idx,log,vst);
-        if (key!=RuseQua) hdl = get(arg,siz,idx,log,ist);
+        if (key == RuseQua && val != Retyps);
+        else if (key != Qualitys) {
+        val = (Retyp)get(arg,siz,idx,log,vst);
+        hdl = get(arg,siz,idx,log,ist);}
         free(vst); free(ist);
     }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
