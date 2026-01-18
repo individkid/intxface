@@ -1442,8 +1442,7 @@ struct CopyState {
     void quality(int &hdl, Quality &key, Retyp &val, const char *str, int *arg, int siz, int &idx, SmartState log) {
         char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
         char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
-        if (key == RuseQua && val != Retyps);
-        else if (key != Qualitys) {
+        if (key != Qualitys && key != RuseQua) {
         val = (Retyp)get(arg,siz,idx,log,vst);
         hdl = get(arg,siz,idx,log,ist);}
         free(vst); free(ist);
