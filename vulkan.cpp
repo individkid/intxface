@@ -246,7 +246,7 @@ struct Syn {
 struct BaseState;
 struct Lnk {
     BaseState *ptr = 0;
-    ResrcLoc loc;
+    Reloc loc;
 };
 enum Advance {
     PushAdv,
@@ -266,8 +266,8 @@ struct Unl {
     int siz; // number to unreserve of bind->resp
 };
 struct Loc {
-    ResrcLoc loc;
-    Retyp ret;
+    Reloc loc;
+    Reuse ret;
     SizeState max;
     Requ req;
     Unl unl;
@@ -278,7 +278,7 @@ struct Loc {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
 };
-ResrcLoc &operator*(Loc &loc) {
+Reloc &operator*(Loc &loc) {
     return loc.loc;
 }
 struct StackState;
@@ -290,7 +290,7 @@ struct BaseState {
     bool valid, ready;
     int plock, rlock, wlock;
     BindState *lock;
-    Loc ploc[ResrcLocs];
+    Loc ploc[Relocs];
     int mask; // which ploc have valid max
     Adv adv;
     char debug[64];
@@ -315,7 +315,7 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, ResrcLoc loc, Retyp ret, Requ req, Unl unl, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, Reloc loc, Reuse ret, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
@@ -345,7 +345,7 @@ struct BaseState {
         safe.post();
     }
     void reset(SmartState log) {
-        for (int i = 0; i < ResrcLocs; i++)
+        for (int i = 0; i < Relocs; i++)
         if (ploc[i].max == SizeState(InitExt));
         else unsize(ploc[i],log);
     }
@@ -383,7 +383,7 @@ struct BaseState {
         safe.wait(); valid = ready = true; safe.post();}
         mask |= msk;}}
     }
-    VkFence basesiz(ResrcLoc loc, SmartState log) {
+    VkFence basesiz(Reloc loc, SmartState log) {
         // resize and setup
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != BothReq) EXIT
@@ -391,7 +391,7 @@ struct BaseState {
         recall(ploc[loc],log);
         return setup(ploc[loc],log);
     }
-    void basenul(ResrcLoc loc, SmartState log) {
+    void basenul(Reloc loc, SmartState log) {
         // resize and setup
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != NullReq) EXIT
@@ -399,21 +399,21 @@ struct BaseState {
         recall(ploc[loc],log);
         if (setup(ploc[loc],log) != VK_NULL_HANDLE) EXIT;
     }
-    void baseres(ResrcLoc loc, SmartState log) {
+    void baseres(Reloc loc, SmartState log) {
         // resize only
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != SizeReq) EXIT
         safe.post();
         recall(ploc[loc],log);
     }
-    VkFence basesup(ResrcLoc loc, SmartState log) {
+    VkFence basesup(Reloc loc, SmartState log) {
         // setup only
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != LockReq) EXIT
         safe.post();
         return setup(ploc[loc],log);
     }
-    VkFence basexor(ResrcLoc loc, SmartState log) {
+    VkFence basexor(Reloc loc, SmartState log) {
         // resize and maybe setup
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != ExclReq) EXIT
@@ -421,7 +421,7 @@ struct BaseState {
         if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
         return setup(ploc[loc],log);        
     }
-    VkFence baseone(ResrcLoc loc, SmartState log) {
+    VkFence baseone(Reloc loc, SmartState log) {
         // resize from initial and setup
         safe.wait();
         if (plock <= 0 || ploc[loc].req.tag != OnceReq) EXIT
@@ -431,7 +431,7 @@ struct BaseState {
     }
     void unlock(Loc &loc, SmartState log);
     void advance(Adv &adv, SmartState log);
-    void baseups(ResrcLoc loc, SmartState log) {
+    void baseups(Reloc loc, SmartState log) {
         // after fence triggered
         log << "baseups " << debug << '\n';
         upset(ploc[loc],log);
@@ -459,8 +459,8 @@ struct BaseState {
         (elock ? wlock : rlock) -= 1;
         safe.post();
     }
-    Lnk *link(ResrcLoc loc, BaseState *ptr, ResrcLoc lst, Lnk *lnk) {
-        if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
+    Lnk *link(Reloc loc, BaseState *ptr, Reloc lst, Lnk *lnk) {
+        if ((int)loc < 0 || (int)loc >= Relocs) EXIT
         Loc &ref = ploc[loc];
         SizeState max = SizeState(ref.req.ext,ref.req.base,ref.req.size);
         SizeState ini = SizeState(InitExt);
@@ -473,11 +473,11 @@ struct BaseState {
         break; case(OnceReq):;}
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ref.lst.ptr = ptr; ref.lst.loc = lst;
-        ref.nxt.ptr = 0; ref.nxt.loc = ResrcLocs;
+        ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
         return &ref.nxt;
     }
-    Loc &get(ResrcLoc loc) {
-        if ((int)loc < 0 || (int)loc >= ResrcLocs) EXIT
+    Loc &get(Reloc loc) {
+        if ((int)loc < 0 || (int)loc >= Relocs) EXIT
         return ploc[loc];
     }
     BaseState *res(Resrc typ, int hdl);
@@ -688,7 +688,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
     }
-    ArrayState(Quality key, Retyp val) : safe(1), idx(0) {
+    ArrayState(Quality key, Reuse val) : safe(1), idx(0) {
         tag.qualify(0,key,val);
     }
     ArrayState() : safe(1), idx(0) {
@@ -831,33 +831,33 @@ int BaseState::tag(Quality tag)
 
 struct ConstState {
     decltype(MemoryIns__Memory__Int__Instr) *memins;
-    decltype(MemoryIns__Memory__Int__ResrcLoc) *memloc;
+    decltype(MemoryIns__Memory__Int__Reloc) *memloc;
     decltype(MemoryIns__Memory__Int__Format) *memfmt;
     decltype(MemoryIns__Memory__Int__Resrc) *memres;
     decltype(MemoryIns__Memory__Int__Memory) *memmem;
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
     decltype(MemoryIns__Memory__Int__Quality) *memkey;
-    decltype(MemoryIns__Memory__Int__Retyp) *memret;
+    decltype(MemoryIns__Memory__Int__Reuse) *memret;
     decltype(MemoryIns__Memory__Int__Default) *memdef;
     decltype(MemoryIns__Memory__Int__Int) *memval;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
-    decltype(ResrcIns__Resrc__Int__ResrcLoc) *resloc;
+    decltype(ResrcIns__Resrc__Int__Reloc) *resloc;
     decltype(ResrcIns__Resrc__Int__Format) *resfmt;
     decltype(ResrcIns__Resrc__Int__Resrc) *resres;
     decltype(ResrcIns__Resrc__Int__Memory) *resmem;
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
     decltype(ResrcIns__Resrc__Int__Quality) *reskey;
-    decltype(ResrcIns__Resrc__Int__Retyp) *resret;
+    decltype(ResrcIns__Resrc__Int__Reuse) *resret;
     decltype(ResrcIns__Resrc__Int__Default) *resdef;
     decltype(ResrcIns__Resrc__Int__Int) *resval;
     decltype(MicroIns__Micro__Int__Instr) *micins;
-    decltype(MicroIns__Micro__Int__ResrcLoc) *micloc;
+    decltype(MicroIns__Micro__Int__Reloc) *micloc;
     decltype(MicroIns__Micro__Int__Format) *micfmt;
     decltype(MicroIns__Micro__Int__Resrc) *micres;
     decltype(MicroIns__Micro__Int__Memory) *micmem;
     decltype(MicroIns__Micro__Int__Micro) *micmic;
     decltype(MicroIns__Micro__Int__Quality) *mickey;
-    decltype(MicroIns__Micro__Int__Retyp) *micret;
+    decltype(MicroIns__Micro__Int__Reuse) *micret;
     decltype(MicroIns__Micro__Int__Default) *micdef;
     decltype(MicroIns__Micro__Int__Int) *micval;
 };
@@ -939,7 +939,7 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return bind[typ][hdl].sav;
     }
-    bool push(Resrc typ, ResrcLoc loc, Retyp ret, Requ req, Unl unl, SmartState log) {
+    bool push(Resrc typ, Reloc loc, Reuse ret, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -1061,7 +1061,7 @@ void BaseState::unlock(Loc &loc, SmartState log) {
 
 struct Push {
     SmartState log;
-    BaseState *base; ResrcLoc loc;
+    BaseState *base; Reloc loc;
     Center *ptr; int sub;
     VkFence fence;
 };
@@ -1093,13 +1093,13 @@ struct ThreadState : public DoneState {
         safe.post();
         wake.post();
     }
-    void push(SmartState log, BaseState *base, ResrcLoc loc) {
+    void push(SmartState log, BaseState *base, Reloc loc) {
         // enque resource to process on thread
         push({log,base,loc,0,0});
     }
     void push(SmartState log, Center *ptr, int sub) {
         // enque response for after enqued resource fences
-        push({log,0,ResrcLocs,ptr,sub});
+        push({log,0,Relocs,ptr,sub});
     }
     bool stage() {
         while (1) {while (1) {
@@ -1161,7 +1161,7 @@ struct EnumState {
 };
 struct Arg {
     Instr ins = Instrs;
-    ResrcLoc loc; Format fmt = Formats; Quality key = Qualitys; Retyp ret = Retyps;
+    Reloc loc; Format fmt = Formats; Quality key = Qualitys; Reuse ret = Reuses;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
 };
 struct CopyState {
@@ -1284,7 +1284,7 @@ struct CopyState {
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
             break; case(WrlDeeIns): case(RdlDeeIns):
             case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): resps += 1; unl.siz += 1;}
-            if (!bind->push(ins[i].res,ins[i].req.loc,(Retyp)ins[i].val,ins[i].req,unl,log)) lim = i;
+            if (!bind->push(ins[i].res,ins[i].req.loc,(Reuse)ins[i].val,ins[i].req,unl,log)) lim = i;
             if (sav->fin == i && lim == num) {Adv adv = {.adv=PushAdv,.hdl=ins[i].idx,.key=ins[i].key,.val=ins[i].val};
             switch (ins[i].ins) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->sav->push(adv,log);}}
@@ -1296,7 +1296,7 @@ struct CopyState {
             if (!bind->rinc(ins[i].res,sav->buf,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
-        Lnk *lnk = 0; ResrcLoc lst = ResrcLocs; BaseState *bas = 0;
+        Lnk *lnk = 0; Reloc lst = Relocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
             switch(ins[i].ins) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
@@ -1360,7 +1360,7 @@ struct CopyState {
         break; case (MltRsp): ptr->slf = -1;
         break; case (RetRsp): ptr->slf = -1; thread->push(log,ptr,sub);}}}
     }
-    Requ request(Format frm, ResrcLoc loc, void *val, int *arg, int siz, int &idx, SmartState log) {
+    Requ request(Format frm, Reloc loc, void *val, int *arg, int siz, int &idx, SmartState log) {
         Requ req = {Requests,0,0,0,Extents,0,0,loc};
         switch (frm) {default: EXIT
         break; case (ImageFrm): // initial to texture,shadow
@@ -1439,55 +1439,55 @@ struct CopyState {
         }
         return req;
     }
-    void quality(int &hdl, Quality &key, Retyp &val, const char *str, int *arg, int siz, int &idx, SmartState log) {
+    void quality(int &hdl, Quality &key, int &val, const char *str, int *arg, int siz, int &idx, SmartState log) {
         char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
         char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
         if (key != Qualitys && key != RuseQua) {
-        val = (Retyp)get(arg,siz,idx,log,vst);
+        val = get(arg,siz,idx,log,vst);
         hdl = get(arg,siz,idx,log,ist);}
         free(vst); free(ist);
     }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
-        char *st1 = 0; showResrcLoc(dot[i].loc,&st1);
+        char *st1 = 0; showReloc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
-        char *st3 = 0; showRetyp(dot[i].ret,&st3);
+        char *st3 = 0; showReuse(dot[i].ret,&st3);
         log << "instruct " << st0 << " " << st1 << " " << st3 << " " << st2 << '\n';
         free(st0); free(st1); free(st2); free(st3);}
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
-        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
-        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
         quality(pre,key,vlu,"DerIns",arg,siz,idx,log);
         log << "instruct " << vlu << "/" << dot[i].ret << '\n';
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDerIns): {
-        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
         pre = get(arg,siz,idx,log,"IdxDerIns.idx");
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(WrlDeeIns): case(RdlDeeIns): {
-        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(WidDeeIns): case(RidDeeIns): {
-        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
         quality(pre,key,vlu,"DeeIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDeeIns): {
-        int pre = 0; Quality key = Qualitys; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
         pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(SetTagIns): {
-        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
         quality(pre,key,vlu,"SetTagIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(MovTagIns): {
-        int pre = 0; Quality key = dot[i].key; Retyp vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
         quality(pre,key,vlu,"MovTagIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}}
         return Inst{.ins=Instrs};
@@ -1500,12 +1500,12 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Retyps,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Reuses,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->memkey,typ,sub,Qualitys,log)) done = false;
-        if (builtin(sav.ret,dot.ret,ary->memret,typ,sub,Retyps,log)) done = false;
+        if (builtin(sav.ret,dot.ret,ary->memret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->memmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->memmic,typ,sub,Micros,log)) done = false;
@@ -1513,12 +1513,12 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Retyps,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Reuses,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->reskey,typ,sub,Qualitys,log)) done = false;
-        if (builtin(sav.ret,dot.ret,ary->resret,typ,sub,Retyps,log)) done = false;
+        if (builtin(sav.ret,dot.ret,ary->resret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->resmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->resmic,typ,sub,Micros,log)) done = false;
@@ -1526,12 +1526,12 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Retyps,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Reuses,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
-        if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,ResrcLocs,log)) done = false;
+        if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->mickey,typ,sub,Qualitys,log)) done = false;
-        if (builtin(sav.ret,dot.ret,ary->micret,typ,sub,Retyps,log)) done = false;
+        if (builtin(sav.ret,dot.ret,ary->micret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->micmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->micmic,typ,sub,Micros,log)) done = false;
@@ -1539,7 +1539,7 @@ struct CopyState {
         char *db0 = 0; showResrc(dot.res,&db0);
         char *db1 = 0; showInstr(dot.ins,&db1);
         char *db2 = 0; showMicro(typ,&db2);
-        char *db3 = 0; showResrcLoc(dot.loc,&db3);
+        char *db3 = 0; showReloc(dot.loc,&db3);
         std::cerr << "iterate " << db2 << " " << db3 << " " << db1 << " " << db0 << std::endl;
         free(db0); db0 = 0; free(db1); db1 = 0; free(db2); db2 = 0; free(db3); db3 = 0;
         */
@@ -2001,7 +2001,7 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static Render vulkanRender(Retyp i) {
+    static Render vulkanRender(Reuse i) {
         switch (i) {default: EXIT
         break; case (TexRet): return SrgbFrm;
         break; case (FdbRet): case (PieRet): return UintFrm;
@@ -2153,7 +2153,7 @@ struct ChainState : public BaseState {
     const VkQueue present;
     ChangeState<Configure,Configures> *change;
     uint32_t imageIndex;
-    ResrcLoc imageLoc;
+    Reloc imageLoc;
     VkFramebuffer framebuffer;
     VkSemaphore acquire;
     ChainState() :
@@ -2170,13 +2170,13 @@ struct ChainState : public BaseState {
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << '\n';
         if (*loc == BeforeLoc) {
-        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device); // TODO as needed
+        for (int i = 0; i < Relocs; i++) get((Reloc)i).syn.sem = createSemaphore(device); // TODO as needed
         acquire = createSemaphore(device);}
     }
     void unsize(Loc &loc, SmartState log) override {
         if (*loc == BeforeLoc) {
         vkDestroySemaphore(device, acquire, nullptr);
-        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr);} // TODO as needed
+        for (int i = 0; i < Relocs; i++) vkDestroySemaphore(device, get((Reloc)i).syn.sem, nullptr);} // TODO as needed
         log << "usize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
@@ -2185,8 +2185,8 @@ struct ChainState : public BaseState {
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
         swp->getSwapchain(), UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
-        imageLoc = (ResrcLoc)imageIndex;
-        if (imageLoc < 0 || imageLoc >= ResrcLocs) EXIT
+        imageLoc = (Reloc)imageIndex;
+        if (imageLoc < 0 || imageLoc >= Relocs) EXIT
         if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterWake,1<<SizeMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
         framebuffer = swp->getFramebuffer(imageIndex);}
@@ -2218,10 +2218,10 @@ struct DrawState : public BaseState {
         graphics(StackState::graphics),
         commandPool(StackState::commandPool),
         frames(StackState::frames) {
-        for (int i = 0; i < ResrcLocs; i++) get((ResrcLoc)i).syn.sem = createSemaphore(device); // TODO as needed
+        for (int i = 0; i < Relocs; i++) get((Reloc)i).syn.sem = createSemaphore(device); // TODO as needed
     }
     ~DrawState() {
-        for (int i = 0; i < ResrcLocs; i++) vkDestroySemaphore(device, get((ResrcLoc)i).syn.sem, nullptr); // TODO as needed
+        for (int i = 0; i < Relocs; i++) vkDestroySemaphore(device, get((Reloc)i).syn.sem, nullptr); // TODO as needed
         reset(SmartState());
     }
     int vulkanHandle(Phase phs) {
@@ -2352,63 +2352,63 @@ struct MainState {
             {Resrcs,0}},
         constState{{
             MemoryIns__Memory__Int__Instr,
-            MemoryIns__Memory__Int__ResrcLoc,
+            MemoryIns__Memory__Int__Reloc,
             MemoryIns__Memory__Int__Format,
             MemoryIns__Memory__Int__Resrc,
             MemoryIns__Memory__Int__Memory,
             MemoryIns__Memory__Int__Micro,
             MemoryIns__Memory__Int__Quality,
-            MemoryIns__Memory__Int__Retyp,
+            MemoryIns__Memory__Int__Reuse,
             MemoryIns__Memory__Int__Default,
             MemoryIns__Memory__Int__Int,
             ResrcIns__Resrc__Int__Instr,
-            ResrcIns__Resrc__Int__ResrcLoc,
+            ResrcIns__Resrc__Int__Reloc,
             ResrcIns__Resrc__Int__Format,
             ResrcIns__Resrc__Int__Resrc,
             ResrcIns__Resrc__Int__Memory,
             ResrcIns__Resrc__Int__Micro,
             ResrcIns__Resrc__Int__Quality,
-            ResrcIns__Resrc__Int__Retyp,
+            ResrcIns__Resrc__Int__Reuse,
             ResrcIns__Resrc__Int__Default,
             ResrcIns__Resrc__Int__Int,
             MicroIns__Micro__Int__Instr,
-            MicroIns__Micro__Int__ResrcLoc,
+            MicroIns__Micro__Int__Reloc,
             MicroIns__Micro__Int__Format,
             MicroIns__Micro__Int__Resrc,
             MicroIns__Micro__Int__Memory,
             MicroIns__Micro__Int__Micro,
             MicroIns__Micro__Int__Quality,
-            MicroIns__Micro__Int__Retyp,
+            MicroIns__Micro__Int__Reuse,
             MicroIns__Micro__Int__Default,
             MicroIns__Micro__Int__Int},{
             MemoryAlt__Memory__Int__Instr,
-            MemoryAlt__Memory__Int__ResrcLoc,
+            MemoryAlt__Memory__Int__Reloc,
             MemoryAlt__Memory__Int__Format,
             MemoryAlt__Memory__Int__Resrc,
             MemoryAlt__Memory__Int__Memory,
             MemoryAlt__Memory__Int__Micro,
             MemoryAlt__Memory__Int__Quality,
-            MemoryAlt__Memory__Int__Retyp,
+            MemoryAlt__Memory__Int__Reuse,
             MemoryAlt__Memory__Int__Default,
             MemoryAlt__Memory__Int__Int,
             ResrcAlt__Resrc__Int__Instr,
-            ResrcAlt__Resrc__Int__ResrcLoc,
+            ResrcAlt__Resrc__Int__Reloc,
             ResrcAlt__Resrc__Int__Format,
             ResrcAlt__Resrc__Int__Resrc,
             ResrcAlt__Resrc__Int__Memory,
             ResrcAlt__Resrc__Int__Micro,
             ResrcAlt__Resrc__Int__Quality,
-            ResrcAlt__Resrc__Int__Retyp,
+            ResrcAlt__Resrc__Int__Reuse,
             ResrcAlt__Resrc__Int__Default,
             ResrcAlt__Resrc__Int__Int,
             MicroAlt__Micro__Int__Instr,
-            MicroAlt__Micro__Int__ResrcLoc,
+            MicroAlt__Micro__Int__Reloc,
             MicroAlt__Micro__Int__Format,
             MicroAlt__Micro__Int__Resrc,
             MicroAlt__Micro__Int__Memory,
             MicroAlt__Micro__Int__Micro,
             MicroAlt__Micro__Int__Quality,
-            MicroAlt__Micro__Int__Retyp,
+            MicroAlt__Micro__Int__Reuse,
             MicroAlt__Micro__Int__Default,
             MicroAlt__Micro__Int__Int}},
         vulkanState(windowState.window),

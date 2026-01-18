@@ -116,7 +116,7 @@ Constant = {
 	"MemoryCon",
 	"ResrcCon",
 }
-ResrcLoc = {
+Reloc = {
 	"ResizeLoc",
 	"ReformLoc",
 	"BeforeLoc", -- like Acquire
@@ -214,7 +214,7 @@ Quality = { -- quality of service tags for *TagIns
 	"RbutQua", -- radio button to use resource only after extracted processed or consumed
 	"RuseQua", -- resource use qualifier
 }
-Retyp = { -- RuseQua per variation of Resrc
+Reuse = { -- RuseQua per variation of Resrc
 	"TexRet", -- texture from cpu to gpu
 	"FdbRet", -- feedback from gpu to gpu
 	"GetRet", -- from debug gpu to cpu
@@ -634,7 +634,7 @@ FragmentFile = {
 -- Micro queue blobs are decoupled from bindings per Micro,
 -- because there can be different queue blobs with same Micro
 MemoryIns = {
-	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys,Retyps
+	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys,Reuses
 	-- n>0: departures from n-1
 	{"%(mem={\"Imagez\",\"Setoldz\",\"Getoldz\"}"..
 	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\"}"..
@@ -650,19 +650,19 @@ MemoryIns = {
 	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","SetTagIns"},
 	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
 	{"Memory","%(return fnc(mem))","Int","0","Quality","RuseQua"},
-	{"Memory","%(return fnc(mem))","Int","0","Retyp","%(return fnc(ret))"},
+	{"Memory","%(return fnc(mem))","Int","0","Reuse","%(return fnc(ret))"},
 	{"Memory","%(return fnc(mem))","Int","1","Instr","OldDerIns"},
 	{"Memory","%(return fnc(mem))","Int","1","Memory","Memorys"},
 	{"Memory","%(return fnc(mem))","Int","1","Micro","Micros"},
-	{"Memory","%(return fnc(mem))","Int","1","ResrcLoc","ResizeLoc"},
+	{"Memory","%(return fnc(mem))","Int","1","Reloc","ResizeLoc"},
 	{"Memory","%(return fnc(mem))","Int","1","Format","%(return fnc(siz))"},
-	{"Memory","%(return fnc(mem))","Int","2","ResrcLoc","ReformLoc"},
+	{"Memory","%(return fnc(mem))","Int","2","Reloc","ReformLoc"},
 	{"Memory","%(return fnc(mem))","Int","2","Format","%(return fnc(ref))"},
-	{"Memory","%(return fnc(mem))","Int","3","ResrcLoc","BeforeLoc"},
+	{"Memory","%(return fnc(mem))","Int","3","Reloc","BeforeLoc"},
 	{"Memory","%(return fnc(mem))","Int","3","Format","%(return fnc(bef))"},
-	{"Memory","%(return fnc(mem))","Int","4","ResrcLoc","MiddleLoc"},
+	{"Memory","%(return fnc(mem))","Int","4","Reloc","MiddleLoc"},
 	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(mid))"},
-	{"Memory","%(return fnc(mem))","Int","5","ResrcLoc","AfterLoc"},
+	{"Memory","%(return fnc(mem))","Int","5","Reloc","AfterLoc"},
 	{"Memory","%(return fnc(mem))","Int","5","Format","%(return fnc(aft))"},
 	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Default","GiveDef"},
 	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
@@ -677,10 +677,10 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Matrixz","Int","0","Memory","Memorys"},
 	{"Memory","Matrixz","Int","0","Micro","Micros"},
-	{"Memory","Matrixz","Int","0","ResrcLoc","MiddleLoc"},
+	{"Memory","Matrixz","Int","0","Reloc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","Format","LockFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
-	{"Memory","Matrixz","Int","0","Retyp","Retyps"},
+	{"Memory","Matrixz","Int","0","Reuse","Reuses"},
 	{"Memory","Matrixz","Int","0","Default","GiveDef"},
 	{"Memory","Matrixz","Int","0","Int","0"},
 	{"Memory","Matrixz","Int","1","Default","GiveDef"},
@@ -689,30 +689,30 @@ MemoryAlt = {
 	{"Memory","Getoldz","Int","0","Instr","SetTagIns"},
 	{"Memory","Getoldz","Int","0","Resrc","PierceRes"},
 	{"Memory","Getoldz","Int","0","Quality","RuseQua"},
-	{"Memory","Getoldz","Int","0","Retyp","SetRet"},
+	{"Memory","Getoldz","Int","0","Reuse","SetRet"},
 	{"Memory","Getoldz","Int","1","Instr","OldDerIns"},
-	{"Memory","Getoldz","Int","1","ResrcLoc","ResizeLoc"},
+	{"Memory","Getoldz","Int","1","Reloc","ResizeLoc"},
 	{"Memory","Getoldz","Int","1","Format","ExtentFrm"},
-	{"Memory","Getoldz","Int","2","ResrcLoc","ReformLoc"},
+	{"Memory","Getoldz","Int","2","Reloc","ReformLoc"},
 	{"Memory","Getoldz","Int","2","Format","PierceFrm"},
-	{"Memory","Getoldz","Int","3","ResrcLoc","BeforeLoc"},
+	{"Memory","Getoldz","Int","3","Reloc","BeforeLoc"},
 	{"Memory","Getoldz","Int","3","Format","PokeFrm"},
-	{"Memory","Getoldz","Int","4","ResrcLoc","MiddleLoc"},
+	{"Memory","Getoldz","Int","4","Reloc","MiddleLoc"},
 	{"Memory","Getoldz","Int","4","Format","HighFrm"},
-	{"Memory","Getoldz","Int","5","ResrcLoc","AfterLoc"},
+	{"Memory","Getoldz","Int","5","Reloc","AfterLoc"},
 	{"Memory","Getoldz","Int","5","Format","DestFrm"},
 	{"Memory","Getoldz","Int","6","Instr","MovTagIns"},
 	{"Memory","Getoldz","Int","6","Quality","RuseQua"},
-	{"Memory","Getoldz","Int","6","Retyp","GetRet"},
+	{"Memory","Getoldz","Int","6","Reuse","GetRet"},
 	{"Memory","Getoldz","Int","7","Instr","OldDerIns"},
 	{"Memory","Getoldz","Int","7","Resrc","WrapRes"},
-	{"Memory","Getoldz","Int","7","ResrcLoc","ResizeLoc"},
+	{"Memory","Getoldz","Int","7","Reloc","ResizeLoc"},
 	{"Memory","Getoldz","Int","7","Format","ResrcFrm"},
-	{"Memory","Getoldz","Int","8","ResrcLoc","BeforeLoc"},
+	{"Memory","Getoldz","Int","8","Reloc","BeforeLoc"},
 	{"Memory","Getoldz","Int","8","Format","PeekFrm"},
-	{"Memory","Getoldz","Int","9","ResrcLoc","MiddleLoc"},
+	{"Memory","Getoldz","Int","9","Reloc","MiddleLoc"},
 	{"Memory","Getoldz","Int","9","Format","HighFrm"},
-	{"Memory","Getoldz","Int","10","ResrcLoc","AfterLoc"},
+	{"Memory","Getoldz","Int","10","Reloc","AfterLoc"},
 	{"Memory","Getoldz","Int","10","Format","SourceFrm"},
 	{"%(function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
 	"return \"Memory\")","Getoldz","Int","%(return rng(0,5))","Default","GiveDef"},
@@ -723,15 +723,15 @@ MemoryAlt = {
 	{"Memory","Getoldz","Int","%(return rng(7,10))","Int","%(return rng(2,5))"},
 }
 ResrcIns = {
-	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Retyps
+	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
 	-- n>0: departures from n-1
 	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
 	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
-	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
+	 {"Resrc","SwapRes","Int","0","Reloc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
-	 {"Resrc","SwapRes","Int","0","Retyp","Retyps"},
+	 {"Resrc","SwapRes","Int","0","Reuse","Reuses"},
 	{"Resrc","PipeRes","Int","0","Instr","IdxDerIns"},
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
 	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
@@ -741,13 +741,13 @@ ResrcIns = {
 	 {"Resrc","PipeRes","Int","1","Int","0"}, -- Micro
 	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
 	 {"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
-	 {"Resrc","PierceRes","Int","1","ResrcLoc","ReformLoc"},
+	 {"Resrc","PierceRes","Int","1","Reloc","ReformLoc"},
 	 {"Resrc","PierceRes","Int","1","Format","RelateFrm"},
-	 {"Resrc","PierceRes","Int","2","ResrcLoc","BeforeLoc"},
+	 {"Resrc","PierceRes","Int","2","Reloc","BeforeLoc"},
 	 {"Resrc","PierceRes","Int","2","Format","RdwrFrm"},
-	 {"Resrc","PierceRes","Int","3","ResrcLoc","MiddleLoc"},
+	 {"Resrc","PierceRes","Int","3","Reloc","MiddleLoc"},
 	 {"Resrc","PierceRes","Int","3","Format","FillFrm"},
-	 {"Resrc","PierceRes","Int","4","ResrcLoc","AfterLoc"},
+	 {"Resrc","PierceRes","Int","4","Reloc","AfterLoc"},
 	 {"Resrc","PierceRes","Int","4","Format","WrrdFrm"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
 	 {"Resrc","ChainRes","Int","0","Format","TrueFrm"},
@@ -757,15 +757,15 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
 	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
-	 {"Resrc","SwapRes","Int","0","ResrcLoc","ResizeLoc"},
+	 {"Resrc","SwapRes","Int","0","Reloc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
-	 {"Resrc","SwapRes","Int","0","Retyp","Retyps"},
+	 {"Resrc","SwapRes","Int","0","Reuse","Reuses"},
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
 MicroIns = {
-	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Retyps
+	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
 	-- n>0: departures from n-1
 	{"%(mic = {\"MicroTest\"}\
 	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
@@ -795,15 +795,15 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","0","Resrc","ChainRes"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Memory","Memorys"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Micro","Micros"},
-		{"Micro","%(return gnc(mic,dee))","Int","0","ResrcLoc","BeforeLoc"},
+		{"Micro","%(return gnc(mic,dee))","Int","0","Reloc","BeforeLoc"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Format","NullFrm"},
 		{"Micro","%(return gnc(mic,dee))","Int","0","Quality","Qualitys"},
-		{"Micro","%(return gnc(mic,dee))","Int","0","Retyp","Retyps"},
+		{"Micro","%(return gnc(mic,dee))","Int","0","Reuse","Reuses"},
 	{"Micro","%(return gnc(mic,dee))","Int","1","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","1","Resrc","SwapRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","2","Instr","NewDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","2","Resrc","DrawRes"},
-		{"Micro","%(return gnc(mic,dee))","Int","2","ResrcLoc","MiddleLoc"},
+		{"Micro","%(return gnc(mic,dee))","Int","2","Reloc","MiddleLoc"},
 		{"Micro","%(return gnc(mic,dee))","Int","2","Format","MicroFrm"},
 	{"Micro","%(return gnc(mic,dee))","Int","3","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return hnc(dee,3))","Resrc","%(return fnc(dee))"},
@@ -811,7 +811,7 @@ MicroIns = {
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 3+#dee)","Resrc","PipeRes"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Instr","NewDerIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Resrc","ChainRes"},
-		{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","ResrcLoc","AfterLoc"},
+		{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Reloc","AfterLoc"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 4+#dee)","Format","NullFrm"},
 	{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return 5+#dee)","Resrc","SwapRes"},
@@ -824,7 +824,7 @@ MicroIns = {
 
 	{"Micro","%(return fnc(mib))","Int","0","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
-		{"Micro","%(return fnc(mib))","Int","0","ResrcLoc","MiddleLoc"},
+		{"Micro","%(return fnc(mib))","Int","0","Reloc","MiddleLoc"},
 		{"Micro","%(return fnc(mib))","Int","0","Format","MicroFrm"},
 	{"Micro","%(return fnc(mib))","Int","1","Instr","WrlDeeIns"},
 		{"Micro","%(return fnc(mib))","Int","1","Resrc","PierceRes"},
@@ -842,10 +842,10 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","Resrc","ChainRes"},
 		{"Micro","MicroTest","Int","0","Memory","Memorys"},
 		{"Micro","MicroTest","Int","0","Micro","Micros"},
-		{"Micro","MicroTest","Int","0","ResrcLoc","BeforeLoc"},
+		{"Micro","MicroTest","Int","0","Reloc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
-		{"Micro","MicroTest","Int","0","Retyp","Retyps"},
+		{"Micro","MicroTest","Int","0","Reuse","Reuses"},
 		{"Micro","MicroTest","Int","0","Default","TrivDef"},
 		{"Micro","MicroTest","Int","0","Int","0"},
 }
@@ -1212,7 +1212,7 @@ Requ = {
 	{"ext","Extent",{},{}},
 	{"base","Int",{},{}},
 	{"size","Int",{},{}},
-	{"loc","ResrcLoc",{},{}},
+	{"loc","Reloc",{},{}},
 }
 Inst = {
 	{"ins","Instr",{},""},
