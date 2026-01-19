@@ -2003,9 +2003,9 @@ struct ImageState : public BaseState {
     }
     static Render vulkanRender(Reuse i) {
         switch (i) {default: EXIT
-        break; case (TexRet): return SrgbFrm;
-        break; case (FdbRet): case (PieRet): return UintFrm;
-        break; case (GetRet): case (SetRet): case (DptRet): return SfloatFrm;}
+        break; case (TexUse): return SrgbFrm;
+        break; case (FdbUse): case (PieUse): return UintFrm;
+        break; case (GetUse): case (SetUse): case (DptUse): return SfloatFrm;}
         return Renders;
     }
     void resize(Loc &loc, SmartState log) override {
@@ -2016,15 +2016,15 @@ struct ImageState : public BaseState {
         extent = loc.max.extent;
         VkImageUsageFlagBits flags;
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.ret));
-        if (loc.ret == TexRet) {
+        if (loc.ret == TexUse) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
-        if (loc.ret != TexRet) {
+        if (loc.ret != TexUse) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (loc.ret == TexRet) {
+        if (loc.ret == TexUse) {
         textureSampler = createTextureSampler(device,properties);}
-        if (loc.ret != TexRet) {
+        if (loc.ret != TexUse) {
         createImage(device, physical, loc.max.extent.width, loc.max.extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
         createFramebuffer(device,loc.max.extent,renderPass[vulkanRender(loc.ret)],imageView,depthImageView,framebuffer);}}
@@ -2045,12 +2045,12 @@ struct ImageState : public BaseState {
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ResizeLoc) {
         get(ReformLoc).max.vld = false;
-        if (loc.ret != TexRet) {
+        if (loc.ret != TexUse) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (loc.ret == TexRet) {
+        if (loc.ret == TexUse) {
         vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
@@ -2078,17 +2078,17 @@ struct ImageState : public BaseState {
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
         // TODO to save memory, make access to Loc virtual and make base class for Loc
-        createBuffer(device, physical, imageSize, (loc.ret == GetRet ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
-        void* data; if (loc.ret == TexRet || loc.ret == SetRet) {
+        createBuffer(device, physical, imageSize, (loc.ret == GetUse ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        void* data; if (loc.ret == TexUse || loc.ret == SetUse) {
         vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
-        if (loc.ret == TexRet) {
+        if (loc.ret == TexUse) {
         // TODO start at loc.req.idx in data
         memcpy(data, loc.req.ptr, loc.req.siz);}
-        if (loc.ret == SetRet) {
+        if (loc.ret == SetUse) {
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, loc.ret == GetRet);}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, loc.ret == GetUse);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2098,7 +2098,7 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        if (loc.ret == GetRet) {
+        if (loc.ret == GetUse) {
         void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
@@ -2426,9 +2426,9 @@ struct MainState {
             logicalState.graphics,logicalState.present),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        imageState(RuseQua,TexRet),
-        pierceState(RuseQua,PieRet),
-        relateState(RuseQua,FdbRet),
+        imageState(RuseQua,TexUse),
+        pierceState(RuseQua,PieUse),
+        relateState(RuseQua,FdbUse),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&changeState),
         copyState(&changeState,&threadState,enumState,constState) {
