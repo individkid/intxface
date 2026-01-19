@@ -951,9 +951,6 @@ struct BindState : public BaseState {
         log << "push " << debug << " " << ref.buf->debug << " lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         if (ref.sav != 0 && ref.sav != ref.buf) EXIT
-        {char *st0 = 0; showResrc(typ,&st0);
-        log << "save " << debug << " " << st0 << " " << hdl << " " << ref.buf << '\n';
-        free(st0);} 
         ref.sav = ref.buf;
         ref.psav += 1;
         return true;
@@ -1270,7 +1267,7 @@ struct CopyState {
             sav->buf = buf; sav->fst = i; sav->onl = onl;}
             else sav = bind->get(ins[i].res);
             sav->fin = i;
-            log << "DepIns idx:" << ins[i].idx << " " << sav->buf->debug << '\n';}}}
+            log << "DepIns " << sav->buf->debug << '\n';}}}
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
@@ -1396,7 +1393,7 @@ struct CopyState {
         break; case (WrrdFrm): // write,fill to read
         req.tag = BothReq; req.ext = FormExt; // AfterLoc
         req.base = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; req.size = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        break; case (ExtentFrm): // ResizeLoc
+        break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx,log,"ExtentFrm.base"); req.size = get(arg,siz,idx,log,"ExtentFrm.size");
         break; case (SizeFrm):
@@ -1416,9 +1413,9 @@ struct CopyState {
         break; case (ResrcFrm):
         req.tag = SizeReq; req.ext = ResrcExt;
         req.base = get(arg,siz,idx,log,"ResrcFrm.base");
-        break; case (IndexFrm):
+        break; case (PipeFrm):
         req.tag = SizeReq; req.ext = MicroExt;
-        req.base = get(arg,siz,idx,log,"IndexFrm.base");
+        req.base = get(arg,siz,idx,log,"PipeFrm.base");
         break; case (MicroFrm):
         req.tag = BothReq; req.ext = MicroExt;
         req.idx = get(arg,siz,idx,log,"MicroFrm.idx"); req.siz = get(arg,siz,idx,log,"MicroFrm.siz");

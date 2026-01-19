@@ -175,13 +175,13 @@ Format = {
 	"RelateFrm", -- ExclReq FormExt base(implied:src) size(implied:dst) (undefined to src)
 	"RdwrFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (src to dst)
 	"WrrdFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to src)
-	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
-	"SizeFrm", -- SizeReq IntExt base size
-	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
-	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
-	"LockFrm", -- LockReq IntExt ptr(raw data) idx(from center) siz(from center)
+	"ExtentFrm", -- SizeReq ExtentExt base(given:width) size(given:height)
+	"SizeFrm", -- SizeReq IntExt base(from center) size(from center)
+	"WholeFrm", -- BothReq IntExt ptr(from center) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
+	"OnceFrm", -- OnceReq IntExt ptr(from center) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
+	"LockFrm", -- LockReq IntExt ptr(from center) idx(from center) siz(from center)
 	"ResrcFrm", -- SizeReq ResrcExt resrc
-	"IndexFrm", -- SizeReq MicroExt base(same as resource index)
+	"PipeFrm", -- SizeReq MicroExt base(same as resource index)
 	"MicroFrm", -- BothReq MicroExt idx(first vertex shader index) siz(number of vertex shader indices) base(which shader set)
 	"NullFrm", -- NullReq TrueExt
 	"FalseFrm", -- SizeReq FalseExt(always resize)
@@ -731,7 +731,7 @@ ResrcIns = {
 	 {"Resrc","SwapRes","Int","0","Reuse","Reuses"},
 	{"Resrc","PipeRes","Int","0","Instr","IdxDerIns"},
 	 {"Resrc","PipeRes","Int","0","Resrc","PipeRes"},
-	 {"Resrc","PipeRes","Int","0","Format","IndexFrm"},
+	 {"Resrc","PipeRes","Int","0","Format","PipeFrm"},
 	 {"Resrc","PipeRes","Int","0","Default","GiveDef"},
 	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IdxDerIns
 	 {"Resrc","PipeRes","Int","1","Default","BackDef"},
@@ -809,7 +809,7 @@ MicroIns = {
 	{"Micro","%(return fnc(mic))","Int","2","Int","%(return fnc(mic))"},
 	{"Micro","%(return gnc(mic,dv1))","Int","%(return hnc(dv1,3))","Int","%(return fnc(dv1))"},
 
-	-- TODO resize PierceRes
+	-- TODO workaround valid and ready to put resize of PierceRes here
 	{"Micro","%(return fnc(mib))","Int","0","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mib))","Int","0","Reloc","MiddleLoc"},
