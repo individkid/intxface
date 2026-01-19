@@ -176,10 +176,7 @@ Format = {
 	"RdwrFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (src to dst)
 	"WrrdFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to src)
 	"ExtentFrm", -- SizeReq ExtentExt base(width) size(height)
-	"FillFrm", -- LockReq FillExt base(value)
 	"SizeFrm", -- SizeReq IntExt base size
-	"HighFrm", -- BothReq FormExt ptr(raw data) idx() siz() base(width) size(height)
-	"PartFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(from configure) size(from configure)
 	"WholeFrm", -- BothReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"OnceFrm", -- OnceReq IntExt ptr(raw data) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"LockFrm", -- LockReq IntExt ptr(raw data) idx(from center) siz(from center)
@@ -642,7 +639,7 @@ MemoryIns = {
 	"siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
 	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\"}"..
-	"mid={\"HighFrm\",\"HighFrm\",\"HighFrm\"}"..
+	"mid={\"WholeFrm\",\"WholeFrm\",\"WholeFrm\"}"..
 	"aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
@@ -664,8 +661,8 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(mid))"},
 	{"Memory","%(return fnc(mem))","Int","5","Reloc","AfterLoc"},
 	{"Memory","%(return fnc(mem))","Int","5","Format","%(return fnc(aft))"},
-	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Default","GiveDef"},
-	{"Memory","%(return rnc(mem,0,5))","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
+	{"Memory","%(return rnc(mem,0,3))","Int","%(return rng(0,3))","Default","GiveDef"},
+	{"Memory","%(return rnc(mem,0,3))","Int","%(return rng(0,3))","Int","%(return rng(0,3))"},
 	{"%(nem = {\"Bringupz\",\"Indexz\",\"Uniformz\",\"Matrixz\",\"Trianglez\",\"Numericz\",\"Vertexz\",\"Basisz\"}\
 	ses={\"BringupRes\",\"IndexRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
 	return \"Memory\")","%(return fnc(nem))","Int","0","Resrc","%(return fnc(ses))"},
@@ -698,7 +695,7 @@ MemoryAlt = {
 	{"Memory","Getoldz","Int","3","Reloc","BeforeLoc"},
 	{"Memory","Getoldz","Int","3","Format","PokeFrm"},
 	{"Memory","Getoldz","Int","4","Reloc","MiddleLoc"},
-	{"Memory","Getoldz","Int","4","Format","HighFrm"},
+	{"Memory","Getoldz","Int","4","Format","WholeFrm"},
 	{"Memory","Getoldz","Int","5","Reloc","AfterLoc"},
 	{"Memory","Getoldz","Int","5","Format","DestFrm"},
 	{"Memory","Getoldz","Int","6","Instr","MovTagIns"},
@@ -711,16 +708,16 @@ MemoryAlt = {
 	{"Memory","Getoldz","Int","8","Reloc","BeforeLoc"},
 	{"Memory","Getoldz","Int","8","Format","PeekFrm"},
 	{"Memory","Getoldz","Int","9","Reloc","MiddleLoc"},
-	{"Memory","Getoldz","Int","9","Format","HighFrm"},
+	{"Memory","Getoldz","Int","9","Format","WholeFrm"},
 	{"Memory","Getoldz","Int","10","Reloc","AfterLoc"},
 	{"Memory","Getoldz","Int","10","Format","SourceFrm"},
 	{"%(function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
-	"return \"Memory\")","Getoldz","Int","%(return rng(0,5))","Default","GiveDef"},
-	{"Memory","Getoldz","Int","%(return rng(0,5))","Int","%(return rng(0,5))"},
-	{"Memory","Getoldz","Int","6","Default","TrivDef"},
-	{"Memory","Getoldz","Int","6","Int","%(return castResrc(\"PierceRes\"))"},
-	{"Memory","Getoldz","Int","%(return rng(7,10))","Default","BackDef"},
-	{"Memory","Getoldz","Int","%(return rng(7,10))","Int","%(return rng(2,5))"},
+	"return \"Memory\")","Getoldz","Int","%(return rng(0,3))","Default","GiveDef"},
+	{"Memory","Getoldz","Int","%(return rng(0,3))","Int","%(return rng(0,3))"},
+	{"Memory","Getoldz","Int","4","Default","TrivDef"},
+	{"Memory","Getoldz","Int","4","Int","%(return castResrc(\"PierceRes\"))"},
+	{"Memory","Getoldz","Int","%(return rng(5,6))","Default","BackDef"},
+	{"Memory","Getoldz","Int","%(return rng(5,6))","Int","%(return rng(2,3))"},
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
@@ -739,16 +736,6 @@ ResrcIns = {
 	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IdxDerIns
 	 {"Resrc","PipeRes","Int","1","Default","BackDef"},
 	 {"Resrc","PipeRes","Int","1","Int","0"}, -- Micro
-	{"Resrc","PierceRes","Int","0","Resrc","PierceRes"},
-	 {"Resrc","PierceRes","Int","0","Format","ExtentFrm"},
-	 {"Resrc","PierceRes","Int","1","Reloc","ReformLoc"},
-	 {"Resrc","PierceRes","Int","1","Format","RelateFrm"},
-	 {"Resrc","PierceRes","Int","2","Reloc","BeforeLoc"},
-	 {"Resrc","PierceRes","Int","2","Format","RdwrFrm"},
-	 {"Resrc","PierceRes","Int","3","Reloc","MiddleLoc"},
-	 {"Resrc","PierceRes","Int","3","Format","FillFrm"},
-	 {"Resrc","PierceRes","Int","4","Reloc","AfterLoc"},
-	 {"Resrc","PierceRes","Int","4","Format","WrrdFrm"},
 	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
 	 {"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 }

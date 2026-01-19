@@ -1402,13 +1402,6 @@ struct CopyState {
         break; case (SizeFrm):
         req.tag = SizeReq; req.ext = IntExt;
         req.base = get(arg,siz,idx,log,"SizeFrm.base"); req.size = get(arg,siz,idx,log,"SizeFrm.size");
-        break; case (HighFrm):
-        req.tag = BothReq; req.ext = ExtentExt; req.ptr = val;
-        req.idx = get(arg,siz,idx,log,"HighFrm.idx"); req.siz = get(arg,siz,idx,log,"HighFrm.siz");
-        req.base = get(arg,siz,idx,log,"HighFrm.base"); req.size = get(arg,siz,idx,log,"HighFrm.size");;
-        break; case (FillFrm):
-        req.tag = BothReq; req.ext = FillExt;
-        req.base = get(arg,siz,idx,log,"FillFrm.base");
         break; case (WholeFrm):
         req.tag = BothReq; req.ext = IntExt; req.ptr = val;
         req.idx = get(arg,siz,idx,log,"WholeFrm.idx"); req.siz = get(arg,siz,idx,log,"WholeFrm.siz");
@@ -1643,10 +1636,10 @@ struct CopyState {
         break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
         break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);}
     }
-    void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, int width, int height, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         int mval[] = {
-        width,height, // OldDerIns ExtentFrm
-        idx,siz,wid,hei}; // OldDerIns HighFrm
+        wid,hei, // OldDerIns ExtentFrm
+        idx,siz}; // OldDerIns WholeFrm
         int msiz = sizeof(mval)/sizeof(int); int midx = 0;
         push(mem,dat,mval,0,msiz,0,midx,ptr,sub,rsp,ary,log);
     }
@@ -1674,28 +1667,16 @@ struct CopyState {
             push(ins,ptr,sub,rsp,log);}
         break; case (Configurez): {
             for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);}
-        break; case (Imagez): {int mask = 0;
-            for (int i = 0; i < ptr->siz; i++) { // ptr->idx/ptr->siz is a range of resources
-            int idx = ptr->idx+i; int wid = ptr->img[i].wid; int hei = ptr->img[i].hei;
-            int tot = datxVoids(ptr->img[i].dat);
-            push(ptr->mem,(void*)datxVoidz(0,ptr->img[i].dat),idx,tot,wid,hei,wid,hei,ptr,sub,rsp,ary,log);
-            if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
-        break; case (Getintz): {
-            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
-            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
-        break; case (Getoldz): {
-            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
-            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
-        break; case (Setintz): {
-            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
-            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,(void*)ptr->uns,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
-        break; case (Setoldz): {
-            VkExtent2D ext = src(SwapRes)->newbuf(0,Qualitys,0).resrc->getExtent(); // TODO unsafe if SwapRes is changing
-            int idx = ptr->idx; int siz = ptr->siz; int wid = ext.width; int hei = ext.height;
-            push(ptr->mem,(void*)ptr->old,idx,siz,wid,hei,change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);}
+        break; case (Imagez): push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
+            datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
+        break; case (Getintz): push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
+            change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);
+        break; case (Getoldz): push(ptr->mem,(void*)ptr->old,ptr->idx,ptr->siz,
+            change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);
+        break; case (Setintz): push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
+            change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);
+        break; case (Setoldz): push(ptr->mem,(void*)ptr->old,ptr->idx,ptr->siz,
+            change->read(WindowWidth),change->read(WindowHeight),ptr,sub,rsp,ary,log);
         }
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
