@@ -142,7 +142,6 @@ Request = {
 	"SizeReq", -- call resize if changed
 	"NullReq", -- call resize if changed, call and ignore setup
 	"ExclReq", -- call resize and setup if changed
-	"OnceReq", -- call resize if changed from initial, and call setup regardless
 }
 Phase = {
 	"IndexPhs", -- fetch indirection
@@ -178,7 +177,6 @@ Format = {
 	"ExtentFrm", -- SizeReq ExtentExt base(given:width) size(given:height)
 	"SizeFrm", -- SizeReq IntExt base(from center) size(from center)
 	"WholeFrm", -- BothReq IntExt ptr(from center) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
-	"OnceFrm", -- OnceReq IntExt ptr(from center) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"LockFrm", -- LockReq IntExt ptr(from center) idx(from center) siz(from center)
 	"ResrcFrm", -- SizeReq ResrcExt resrc
 	"PipeFrm", -- SizeReq MicroExt base(same as resource index)

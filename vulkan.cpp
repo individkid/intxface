@@ -287,7 +287,7 @@ struct BaseState {
     StackState *item;
     int indx;
     SafeState safe;
-    bool valid, ready;
+    bool valid;
     int plock, rlock, wlock;
     BindState *lock;
     Loc ploc[Relocs];
@@ -302,7 +302,6 @@ struct BaseState {
         indx(index()),
         safe(1),
         valid(false),
-        ready(false),
         plock(0),
         rlock(0),
         wlock(0),
@@ -351,37 +350,26 @@ struct BaseState {
     }
     void finish() {
         safe.wait();
-        ready = false;
+        valid = false;
         safe.post();
     }
     bool recall(Loc &loc, SmartState log) {
         SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
         SizeState ini = SizeState(InitExt);
         int msk = 1<<*loc;
-        if (loc.max == max); else {
+        safe.wait(); bool temp = valid; safe.post();
+        if (temp && loc.max == max); else {
         if (loc.max == ini); else {
         mask &= ~msk;
-        if (mask == 0) {
-        safe.wait(); valid = ready = false; safe.post();}
+        if (mask == 0) {safe.wait(); valid = false; safe.post();}
         unsize(loc,log);}
         loc.max = max;
-        if (loc.max == ini); else {resize(loc,log);
-        if (mask == 0) {
-        safe.wait(); valid = ready = true; safe.post();}
+        if (loc.max == ini); else {
+        resize(loc,log);
+        if (mask == 0) {safe.wait(); valid = true; safe.post();}
         mask |= msk;
         return true;}}
         return false;
-    }
-    void precall(Loc &loc, SmartState log) {
-        SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
-        SizeState ini = SizeState(InitExt);
-        int msk = 1<<*loc;
-        if (loc.max == ini) {
-        loc.max = max;
-        if (loc.max == ini); else {resize(loc,log);
-        if (mask == 0) {
-        safe.wait(); valid = ready = true; safe.post();}
-        mask |= msk;}}
     }
     VkFence basesiz(Reloc loc, SmartState log) {
         // resize and setup
@@ -421,14 +409,6 @@ struct BaseState {
         if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
         return setup(ploc[loc],log);        
     }
-    VkFence baseone(Reloc loc, SmartState log) {
-        // resize from initial and setup
-        safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != OnceReq) EXIT
-        safe.post();
-        precall(ploc[loc],log);
-        return setup(ploc[loc],log);
-    }
     void unlock(Loc &loc, SmartState log);
     void advance(Adv &adv, SmartState log);
     void baseups(Reloc loc, SmartState log) {
@@ -447,7 +427,7 @@ struct BaseState {
     bool incr(bool elock, int psav, int rsav, int wsav) {
         safe.wait();
         if (plock < psav || wlock < wsav || rlock < rsav) EXIT
-        if (!valid || !ready || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
+        if (!(valid || psav) || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
         safe.post(); return false;}
         (elock ? wlock : rlock) += 1;
         safe.post();
@@ -469,8 +449,7 @@ struct BaseState {
         break; case(LockReq):
         break; case(BothReq):
         break; case(NullReq): return 0;
-        break; case(ExclReq): if (ref.max == max || max == ini) return 0;
-        break; case(OnceReq):;}
+        break; case(ExclReq): if (ref.max == max || max == ini) return 0;}
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ref.lst.ptr = ptr; ref.lst.loc = lst;
         ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
@@ -1111,8 +1090,7 @@ struct ThreadState : public DoneState {
         break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
         break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);
         break; case(NullReq): push.fence = VK_NULL_HANDLE; push.base->basenul(push.loc,push.log);
-        break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);
-        break; case(OnceReq): push.fence = push.base->baseone(push.loc,push.log);}}
+        break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);}}
         after << push;}
         if (after.size() != 0) break;
         safe.wait();
@@ -1402,10 +1380,6 @@ struct CopyState {
         break; case (WholeFrm):
         req.tag = BothReq; req.ext = IntExt; req.ptr = val;
         req.idx = get(arg,siz,idx,log,"WholeFrm.idx"); req.siz = get(arg,siz,idx,log,"WholeFrm.siz");
-        req.base = req.idx; req.size = req.siz;
-        break; case (OnceFrm):
-        req.tag = OnceReq; req.ext = IntExt; req.ptr = val;
-        req.idx = get(arg,siz,idx,log,"OnceFrm.idx"); req.siz = get(arg,siz,idx,log,"OnceFrm.siz");
         req.base = req.idx; req.size = req.siz;
         break; case (LockFrm):
         req.tag = LockReq; req.ext = IntExt; req.ptr = val;
