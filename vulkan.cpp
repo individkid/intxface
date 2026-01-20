@@ -265,7 +265,7 @@ struct Unl {
 };
 struct Loc {
     Reloc loc;
-    Reuse ret;
+    Reuse use;
     SizeState max;
     Requ req;
     Unl unl;
@@ -312,13 +312,13 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, Reloc loc, Reuse ret, Requ req, Unl unl, SmartState log) {
+    bool push(int pdec, int rdec, int wdec, BindState *ptr, Reloc loc, Reuse use, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
         log << "push fail" << " plock-pdec:" << plock-pdec << " rlock-rdec:" << rlock-rdec << " wlock-wdec:" << wlock-wdec << " " << debug << '\n';
         safe.post(); return false;}
-        log << "push pass " << debug << " loc:" << loc << " ret:" << ret << '\n';
+        log << "push pass " << debug << " loc:" << loc << " use:" << use << '\n';
         plock += 1;
         safe.post();
         if (lock != 0 && lock != ptr) EXIT
@@ -326,7 +326,7 @@ struct BaseState {
         ploc[loc].req = req;
         ploc[loc].unl = unl;
         ploc[loc].loc = loc;
-        ploc[loc].ret = ret;
+        ploc[loc].use = use;
         return true;
     }
     void push(Adv adv, SmartState log) {
@@ -1134,7 +1134,7 @@ struct EnumState {
 };
 struct Arg {
     Instr ins = Instrs;
-    Reloc loc; Format fmt = Formats; Quality key = Qualitys; Reuse ret = Reuses;
+    Reloc loc; Reuse use = Reuses; Format fmt = Formats; Quality key = Qualitys;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
 };
 struct CopyState {
@@ -1413,43 +1413,43 @@ struct CopyState {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st1 = 0; showReloc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
-        char *st3 = 0; showReuse(dot[i].ret,&st3);
+        char *st3 = 0; showReuse(dot[i].use,&st3);
         log << "instruct " << st0 << " " << st1 << " " << st3 << " " << st2 << '\n';
         free(st0); free(st1); free(st2); free(st3);}
         Instr ins = dot[i].ins;
         switch (ins) {default: EXIT
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
-        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
-        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"DerIns",arg,siz,idx,log);
-        log << "instruct " << vlu << "/" << dot[i].ret << '\n';
+        log << "instruct " << vlu << "/" << dot[i].use << '\n';
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDerIns): {
-        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         pre = get(arg,siz,idx,log,"IdxDerIns.idx");
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(WrlDeeIns): case(RdlDeeIns): {
-        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(WidDeeIns): case(RidDeeIns): {
-        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"DeeIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDeeIns): {
-        int pre = 0; Quality key = Qualitys; int vlu = dot[i].ret;
+        int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(SetTagIns): {
-        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"SetTagIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
         break; case(MovTagIns): {
-        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].ret;
+        int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"MovTagIns",arg,siz,idx,log);
         return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}}
         return Inst{.ins=Instrs};
@@ -1462,12 +1462,12 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Reuses,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,Reuses,WholeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,Relocs,log)) done = false;
+        if (builtin(sav.use,dot.use,ary->memret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->memkey,typ,sub,Qualitys,log)) done = false;
-        if (builtin(sav.ret,dot.ret,ary->memret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->memmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->memmic,typ,sub,Micros,log)) done = false;
@@ -1475,12 +1475,12 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Reuses,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,Relocs,log)) done = false;
+        if (builtin(sav.use,dot.use,ary->resret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->reskey,typ,sub,Qualitys,log)) done = false;
-        if (builtin(sav.ret,dot.ret,ary->resret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->resmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->resmic,typ,sub,Micros,log)) done = false;
@@ -1488,12 +1488,12 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Reuses,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,Relocs,log)) done = false;
+        if (builtin(sav.use,dot.use,ary->micret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->mickey,typ,sub,Qualitys,log)) done = false;
-        if (builtin(sav.ret,dot.ret,ary->micret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->micmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->micmic,typ,sub,Micros,log)) done = false;
@@ -1959,25 +1959,26 @@ struct ImageState : public BaseState {
         return Renders;
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.ret << '\n';
+        log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << '\n';
         if (*loc == ResizeLoc) {
+        if (&loc != &ploc[*loc]) EXIT
         int texWidth = loc.max.extent.width;
         int texHeight = loc.max.extent.height;
         extent = loc.max.extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.ret));
-        if (loc.ret == TexUse) {
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.use));
+        if (loc.use == TexUse) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
-        if (loc.ret != TexUse) {
+        if (loc.use != TexUse) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (loc.ret == TexUse) {
+        if (loc.use == TexUse) {
         textureSampler = createTextureSampler(device,properties);}
-        if (loc.ret != TexUse) {
+        if (loc.use != TexUse) {
         createImage(device, physical, loc.max.extent.width, loc.max.extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender(loc.ret)],imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender(loc.use)],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) loc.commandBuffer = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
@@ -1994,23 +1995,24 @@ struct ImageState : public BaseState {
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ResizeLoc) {
-        if (loc.ret != TexUse) {
+        if (&loc != &ploc[*loc]) EXIT
+        if (loc.use != TexUse) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (loc.ret == TexUse) {
+        if (loc.use == TexUse) {
         vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);}
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.ret << '\n';
+        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << '\n';
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.ret));
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.use));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2027,17 +2029,17 @@ struct ImageState : public BaseState {
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
         // TODO to save memory, make access to Loc virtual and make base class for Loc
-        createBuffer(device, physical, imageSize, (loc.ret == GetUse ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
-        void* data; if (loc.ret == TexUse || loc.ret == SetUse) {
+        createBuffer(device, physical, imageSize, (loc.use == GetUse ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        void* data; if (loc.use == TexUse || loc.use == SetUse) {
         vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
-        if (loc.ret == TexUse) {
+        if (loc.use == TexUse) {
         // TODO start at loc.req.idx in data
         memcpy(data, loc.req.ptr, loc.req.siz);}
-        if (loc.ret == SetUse) {
+        if (loc.use == SetUse) {
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, loc.ret == GetUse);}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, loc.use == GetUse);}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2047,7 +2049,7 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        if (loc.ret == GetUse) {
+        if (loc.use == GetUse) {
         void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
@@ -2075,18 +2077,15 @@ struct WrapState : public BaseState {
     VkFramebuffer getFramebuffer() override {return ptr->getFramebuffer();}
     // TODO add other accessors as needed
     void resize(Loc &loc, SmartState log) override {
-        // loc.syn.sem = createSemaphore(device); // TODO as needed
-        // loc.syn.fen = createFence(device); // TODO as needed
         if (*loc==ResizeLoc && loc.max.tag != ResrcExt) EXIT
+        if (*loc==ResizeLoc && loc.max.resrc != PierceRes) EXIT
         if (*loc==ResizeLoc) ptr = res(loc.max.resrc,0);
         // TODO perhaps get index of resrc and use it instead of pointer
         else ptr->resize(loc,log);
     }
     void unsize(Loc &loc, SmartState log) override {
-        if (*loc==ResizeLoc); // TODO depends on how wrapee is allocated ptr = 0;
+        if (*loc==ResizeLoc);
         else ptr->unsize(loc,log);
-        // vkDestroyFence(device, loc.syn.fen, nullptr); // TODO as needed
-        // vkDestroySemaphore(device, loc.syn.sem, nullptr); // TODO as needed
     }
     VkFence setup(Loc &loc, SmartState log) override {
         if (*loc!=ResizeLoc) return ptr->setup(loc,log);
