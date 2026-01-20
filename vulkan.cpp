@@ -152,7 +152,6 @@ struct LogicalState {
 
 struct SizeState {
     Extent tag;
-    bool vld;
     union {
     struct {int base,size;};
     struct {VkImageLayout src,dst;};
@@ -161,10 +160,10 @@ struct SizeState {
     Micro micro;
     Resrc resrc;};
     SizeState() {
-        tag = InitExt; vld = true;
+        tag = InitExt;
     }
     SizeState(Extent ext, int base, int size) {
-        tag = ext; vld = true; switch (ext) {
+        tag = ext; switch (ext) {
         default: EXIT
         break; case (InitExt):
         break; case (IntExt): this->base = base; this->size = size;
@@ -177,36 +176,35 @@ struct SizeState {
         break; case (FalseExt):;}
     }
     SizeState(int base, int size) {
-        tag = IntExt; vld = true;
+        tag = IntExt;
         this->base = base;
         this->size = size;
     }
     SizeState(VkImageLayout src, VkImageLayout dst) {
-        tag = FormExt; vld = true;
+        tag = FormExt;
         this->src = src;
         this->dst = dst;
     }
     SizeState(VkExtent2D extent) {
-        tag = ExtentExt; vld = true;
+        tag = ExtentExt;
         this->extent = extent;
     }
     SizeState(int value) {
-        tag = FillExt; vld = true;
+        tag = FillExt;
         this->value = value;
     }
     SizeState(Micro micro) {
-        tag = MicroExt; vld = true;
+        tag = MicroExt;
         this->micro = micro;
     }
     SizeState(Resrc resrc) {
-        tag = ResrcExt; vld = true;
+        tag = ResrcExt;
         this->resrc = resrc;
     }
     SizeState(Extent tag) {
-        this->tag = tag; vld = true;
+        this->tag = tag;
     }
     bool operator==(const SizeState &other) const {
-        if (!vld || !other.vld) return false;
         if (tag == InitExt && other.tag == InitExt) return true;
         if (tag == IntExt && other.tag == IntExt &&
         base == other.base && size == other.size) return true;
@@ -505,7 +503,7 @@ struct StackState {
     static const int micros = Micros;
     static const int frames = 2; // prevent blocking on resources
     static const int images = 10; // fragment shader textures
-    static const int piercs = 2; // fragment shader feedback
+    static const int piercs = 1; // fragment shader feedback
     static const int instrs = 20; // maximum steps in a binded submit
     static const int resrcs = 2; // resource classification greediness
     static const int handls = 4; // maximum number of classifications
@@ -1996,7 +1994,6 @@ struct ImageState : public BaseState {
         if (*loc == BeforeLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ResizeLoc) {
-        get(ReformLoc).max.vld = false;
         if (loc.ret != TexUse) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);

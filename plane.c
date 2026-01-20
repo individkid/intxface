@@ -865,7 +865,7 @@ void planeTest(enum Thread tag, int idx)
     tested = count;}}
     break; case (1): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
-    int hiv[] = {0,12}; // idx,siz
+    int hiv[] = {callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg),0,12}; // width,height,idx,siz
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -1252,10 +1252,6 @@ void initTest()
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
 
-    struct Center *oke = centerPull(Setoldz); freeCenter(oke);
-    oke->mem = Setoldz; oke->idx = (int)(0.3*width)+(int)(0.3*height)*width; oke->siz = 1;
-    allocOld(&oke->old,oke->siz); oke->old[0] = 2.0;
-    callCopy(oke,Setoldz,RptRsp,0,(debug?"poke":0));
     struct Center *eek = centerPull(Getoldz); freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
