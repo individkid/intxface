@@ -286,7 +286,6 @@ Transfer = {
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
 	"Argv", -- hide and process
-	"Comb", -- combine src to dst
 	-- identity I
 	-- current manipulation C
 	-- Kernel.saved T
@@ -299,7 +298,6 @@ Transfer = {
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
-	"Test", -- time to matrix
 	"Bopy", -- memory to memory
 	"Copy", -- center to resource
 	"Dopy", -- center to center
@@ -311,10 +309,6 @@ Transfer = {
 }
 ArgvArg = {
 	"ArgvSrc",
-}
-CombArg = {
-	"CombSrc",
-	"CombDst",
 }
 CompArg = {
 	"CompSrc",
@@ -343,10 +337,6 @@ GlobArg = {
 	"GlobSrcSub",
 	"GlobDst",
 	"GlobDstSub",
-}
-TestArg = {
-	"TestDst",
-	"TestDstSub",
 }
 BopyArg = {
 	"BopySrc",
@@ -1117,10 +1107,12 @@ Machine = {
 	{"val","Express",{["xfr"]={["Force"]=true}},"num"},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
-	{"sig","Int",{["xfr"]={["Comb"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
-	{"arg","Express",{["xfr"]={["Comb"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Test"]=true,["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
+	{"sig","Int",{["xfr"]={["Argv"]=true,
+		["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
+	{"arg","Express",{["xfr"]={["Argv"]=true,
+		["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }

@@ -507,13 +507,6 @@ void machineArgv(int sig, int *arg)
     planeArgv(ptr->siz,ptr->str,0);
     centerPlace(ptr,src);
 }
-void machineComb(int sig, int *arg)
-{
-    struct Center *src = machineCenter(sig,arg,CombArgs,CombSrc,0);
-    struct Center *dst = machineCenter(sig,arg,CombArgs,CombDst,0);
-    if (src->mem != dst->mem) ERROR();
-    // TODO merge memory from Src to Dst according to idx and siz
-}
 // manipulation C
 // Kernel.saved T
 // Kernel.local L
@@ -566,14 +559,6 @@ void machineGlob(int sig, int *arg)
     // TODO absorb discontinuous change -- G = GM
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
-}
-void machineTest(int sig, int *arg)
-{
-    struct Center *center = machineCenter(sig,arg,TestArgs,TestDst,TestDstSub);
-    struct Matrix *matrix = machineMatrix(center,sig,arg,TestArgs,TestDst,TestDstSub);
-    float debug[16]; planeDebug(debug);
-    copymat(matrix->mat,debug,4);
-    machinePlace(center,sig,arg,TestArgs,TestDst,TestDstSub);
 }
 void machineBopy(int sig, int *arg)
 {
@@ -735,13 +720,11 @@ void machineSwitch(struct Machine *mptr)
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break;
     case (Void): machineVoid(&mptr->exp[0]); break;
     case (Argv): MACHINE(Argv) break;
-    case (Comb): MACHINE(Comb) break;
     case (Comp): MACHINE(Comp) break;
     case (Form): MACHINE(Form) break;
     case (Send): MACHINE(Send) break;
     case (Self): MACHINE(Self) break;
     case (Glob): MACHINE(Glob) break;
-    case (Test): MACHINE(Test) break;
     case (Bopy): MACHINE(Bopy) break;
     case (Copy): MACHINE(Copy) break;
     case (Dopy): MACHINE(Dopy) break;
