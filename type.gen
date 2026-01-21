@@ -285,6 +285,7 @@ Transfer = {
 	"Force", -- machine to configure
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
+	"Argv", -- hide and process
 	"Comb", -- combine src to dst
 	-- identity I
 	-- current manipulation C
@@ -307,6 +308,9 @@ Transfer = {
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
+}
+ArgvArg = {
+	"ArgvSrc",
 }
 CombArg = {
 	"CombSrc",

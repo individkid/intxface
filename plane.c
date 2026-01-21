@@ -498,6 +498,15 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
     if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
     centerPlace(ptr,src);
 }
+void planeArgv(int argc, char **argv, int cmnds);
+void machineArgv(int sig, int *arg)
+{
+    if (sig != ArgvArgs) ERROR();
+    int src = arg[ArgvSrc];
+    struct Center *ptr = centerPull(src);
+    planeArgv(ptr->siz,ptr->str,0);
+    centerPlace(ptr,src);
+}
 void machineComb(int sig, int *arg)
 {
     struct Center *src = machineCenter(sig,arg,CombArgs,CombSrc,0);
@@ -716,6 +725,7 @@ void machineSwitch(struct Machine *mptr)
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break;
     case (Void): machineVoid(&mptr->exp[0]); break;
+    case (Argv): MACHINE(Argv) break;
     case (Comb): MACHINE(Comb) break;
     case (Comp): MACHINE(Comp) break;
     case (Form): MACHINE(Form) break;
@@ -1092,6 +1102,34 @@ int planeSugval(const char *str)
     free(exp);
     return ret;
 }
+void planeArgv(int argc, char **argv, int cmnds)
+{
+    for (int i = 0; i < argc; i++) {
+    sugarRepl(&argv[i],'$'); // replace $() by Express
+    sugarEval(planeSugar,argv[i],'!'); // evaluate !() in the embedding
+    sugarFilt(&argv[i],'!');} // filter out !() before hide and process below
+    for (int i = 0; i < argc; i++) {
+    // fprintf(stderr,"argv--%s--\n",argv[i]);
+    int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
+    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
+    struct Express expr = {0}; char *str = 0;
+    if (hideArgument(&arg, argv[i], &asiz)) {
+    copyArgument(&argument,&arg); freeArgument(&arg);
+    if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
+    else if (hideCenter(&cntr, argv[i], &csiz)) {struct Center *ptr = 0;
+    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);
+    if (i < cmnds) callInfo(RegisterShow,2,planeWots);}
+    else if (hideMachine(&mchn, argv[i], &msiz)) {
+    machineSwitch(&mchn); freeMachine(&mchn);
+    if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
+    else if (hideExpress(&expr, argv[i], &esiz)) {
+    machineVoid(&expr); freeExpress(&expr);
+    if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
+    else if (hideStr(&str,argv[i],&ssiz)) {
+    planePutstr(str); freeStr(&str,1);
+    if (i < cmnds) callInfo(RegisterShow,16,planeWots);}
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,argv[i]); exit(-1);}}
+}
 
 void initSafe()
 {
@@ -1127,31 +1165,9 @@ void initBoot()
     for (int i = 0; i < size; i++) {
     int len = strlen(temp[i]);
     boot[i] = malloc(len+1);
-    strncpy(boot[i],temp[i],len); boot[i][len] = 0;
-    sugarRepl(&boot[i],'$');
-    sugarEval(planeSugar,boot[i],'!');
-    sugarFilt(&boot[i],'!');}
-    for (int i = 0; i < size; i++) {
-    // fprintf(stderr,"boot--%s--\n",boot[i]);
-    int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
-    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
-    struct Express expr = {0}; char *str = 0;
-    if (hideArgument(&arg, boot[i], &asiz)) {
-    copyArgument(&argument,&arg); freeArgument(&arg);
-    if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
-    else if (hideCenter(&cntr, boot[i], &csiz)) {struct Center *ptr = 0;
-    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);
-    if (i < cmnds) callInfo(RegisterShow,2,planeWots);}
-    else if (hideMachine(&mchn, boot[i], &msiz)) {
-    machineSwitch(&mchn); freeMachine(&mchn);
-    if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
-    else if (hideExpress(&expr, boot[i], &esiz)) {
-    machineVoid(&expr); freeExpress(&expr);
-    if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
-    else if (hideStr(&str,boot[i],&ssiz)) {
-    planePutstr(str); freeStr(&str,1);
-    if (i < cmnds) callInfo(RegisterShow,16,planeWots);}
-    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,boot[i]); exit(-1);}}
+    strncpy(boot[i],temp[i],len); boot[i][len] = 0;}
+    planeArgv(size,boot,cmnds);
+    for (int i = 0; i < size; i++) free(boot[i]); free(boot);
 }
 void initPlan()
 {
