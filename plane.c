@@ -588,17 +588,26 @@ void machineBopy(int sig, int *arg)
     if (srcPtr->mem != dstPtr->mem) ERROR();
     for (int i = 0; i < count; i++) switch (srcPtr->mem) {default: ERROR();
     case (Indexz): dstPtr->ind[dstSub+i] = srcPtr->ind[srcSub+i]; break;
+    case (Bringupz): copyVertex(&dstPtr->ver[dstSub+i],&srcPtr->ver[srcSub+i]); break;
+    case (Imagez): copyImage(&dstPtr->img[dstSub+i],&srcPtr->img[srcSub+i]); break;
+    case (Getintz): dstPtr->uns[dstSub+i] = srcPtr->uns[srcSub+i]; break;
+    case (Setintz): dstPtr->uns[dstSub+i] = srcPtr->uns[srcSub+i]; break;
+    case (Getoldz): dstPtr->old[dstSub+i] = srcPtr->old[srcSub+i]; break;
+    case (Setoldz): dstPtr->old[dstSub+i] = srcPtr->old[srcSub+i]; break;
+    case (Uniformz): copyUniform(&dstPtr->uni[dstSub+i],&srcPtr->uni[srcSub+i]); break;
+    case (Matrixz): copyMatrix(&dstPtr->mat[dstSub+i],&srcPtr->mat[srcSub+i]); break;
     case (Trianglez): copyTriangle(&dstPtr->tri[dstSub+i],&srcPtr->tri[srcSub+i]); break;
     case (Numericz): copyNumeric(&dstPtr->num[dstSub+i],&srcPtr->num[srcSub+i]); break;
     case (Vertexz): copyVertex(&dstPtr->vtx[dstSub+i],&srcPtr->vtx[srcSub+i]); break;
     case (Basisz): copyBasis(&dstPtr->bas[dstSub+i],&srcPtr->bas[srcSub+i]); break;
-    case (Matrixz): copyMatrix(&dstPtr->mat[dstSub+i],&srcPtr->mat[srcSub+i]); break;
-    case (Imagez): copyImage(&dstPtr->img[dstSub+i],&srcPtr->img[srcSub+i]); break;
-    // TODO Pokez Peekz
     case (Drawz): copyDraw(&dstPtr->drw[dstSub+i],&srcPtr->drw[srcSub+i]); break;
+    case (Instrz): copyInst(&dstPtr->ins[dstSub+i],&srcPtr->ins[srcSub+i]); break;
     case (Stringz): assignStr(&dstPtr->str[dstSub+i],srcPtr->str[srcSub+i]); break;
     case (Machinez): copyMachine(&dstPtr->mch[dstSub+i],&srcPtr->mch[srcSub+i]); break;
-    case (Kernelz): copyKernel(&dstPtr->ker[dstSub+i],&srcPtr->ker[srcSub+i]); break;}
+    case (Expressz): copyExpress(&dstPtr->exp[dstSub+i],&srcPtr->exp[srcSub+i]); break;
+    case (Kernelz): copyKernel(&dstPtr->ker[dstSub+i],&srcPtr->ker[srcSub+i]); break;
+    case (Configurez): dstPtr->cfg[dstSub+i] = srcPtr->cfg[srcSub+i];
+    dstPtr->val[dstSub+i] = srcPtr->val[srcSub+i]; break;}
     machinePlace(srcPtr,sig,arg,BopyArgs,BopySrc,BopySrcSub);
     machinePlace(dstPtr,sig,arg,BopyArgs,BopyDst,BopyDstSub);
 }
