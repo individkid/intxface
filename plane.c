@@ -312,7 +312,11 @@ float *planeMatrix(float *mat)
 float *planeWindow(float *mat)
 {
     identmat(mat,4);
-    // TODO use to compensate for size change after SizeMsk event.
+    float width = callInfo(WindowWidth,0,planeRcfg);
+    float height = callInfo(WindowHeight,0,planeRcfg);
+    *matrc(mat,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
+    *matrc(mat,3,3,4) = 0.58; // a; // w = a + bz
+    *matrc(mat,0,0,4) = height/width; // y'=y x'=x*height/width
     return mat;
 }
 void planeDebug(float *debug)
@@ -797,9 +801,11 @@ void planeTest(enum Thread tag, int idx)
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     struct Center *mat = centerPull(Memorys+0); if (!mat) {callWait(); continue;}
     freeCenter(mat);
-    mat->mem = Matrixz; mat->idx = 3; mat->siz = 1; allocMatrix(&mat->mat,mat->siz);
+    mat->mem = Matrixz; mat->idx = 2; mat->siz = 2; allocMatrix(&mat->mat,mat->siz);
+    float proj[16]; planeWindow(proj);
     float dbg[16]; planeDebug(dbg);
-    memcpy(&mat->mat[0],dbg,sizeof(struct Matrix));
+    memcpy(&mat->mat[0],proj,sizeof(struct Matrix));
+    memcpy(&mat->mat[1],dbg,sizeof(struct Matrix));
     callCopy(mat,Memorys+0,RptRsp,1,(debug?"matrix":0));
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -1218,12 +1224,12 @@ void initTest()
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     float ident[16]; identmat(ident,4);
-    float proj[16]; identmat(proj,4);
+    float proj[16]; planeWindow(proj); /* identmat(proj,4);
     float width = callInfo(WindowWidth,0,planeRcfg);
     float height = callInfo(WindowHeight,0,planeRcfg);
     *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
-    *matrc(proj,0,0,4) = height/width; // y'=y x'=x*height/width
+    *matrc(proj,0,0,4) = height/width; // y'=y x'=x*height/width*/
     memcpy(&mat->mat[0],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));

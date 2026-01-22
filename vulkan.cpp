@@ -2393,7 +2393,9 @@ void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
 }
 void glfwResize(GLFWwindow* window, int width, int height) {
-    // TODO trigger SizeMsk to change matrix
+    mptr->changeState.write(WindowWidth,width);
+    mptr->changeState.write(WindowHeight,height);
+    mptr->changeState.wots(RegisterWake,1<<SizeMsk);
 }
 // copy request
 void vulkanCopy(Center *ptr, int sub, Rsp rsp, int ary, const char *dbg) {
