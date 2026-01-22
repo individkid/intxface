@@ -2392,6 +2392,9 @@ MainState *mptr = 0;
 void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
 }
+void glfwResize(GLFWwindow* window, int width, int height) {
+    // TODO trigger SizeMsk to change matrix
+}
 // copy request
 void vulkanCopy(Center *ptr, int sub, Rsp rsp, int ary, const char *dbg) {
     if (dbg) mptr->copyState.push(ptr,sub,rsp,ary,SmartState(dbg));
@@ -2476,6 +2479,7 @@ int main(int argc, const char **argv) {
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait);
     // TODO move glfw functions to WindowState
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
+    glfwSetWindowSizeCallback(main.windowState.window,glfwResize);
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.changeState.read(RegisterPoll) == 0) glfwWaitEvents();

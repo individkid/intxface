@@ -226,34 +226,6 @@ float *vectorTwo(float *vec, enum Configure left, enum Configure base)
     vec[1] = callInfo(base,0,planeRcfg);
     return vec;
 }
-void physicalToScreen(float *xptr, float *yptr)
-{
-    int width, height, xphys, yphys;
-    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
-    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
-    *xptr *= width/xphys; *yptr *= height/yphys;
-}
-void physicalFromScreen(float *xptr, float *yptr)
-{
-    int width, height, xphys, yphys;
-    width = callInfo(MonitorWidth,0,planeRcfg); height = callInfo(MonitorHeight,0,planeRcfg);
-    xphys = callInfo(PhysicalWidth,0,planeRcfg); yphys = callInfo(PhysicalHeight,0,planeRcfg);
-    *xptr *= xphys/width; *yptr *= yphys/height;
-}
-void screenToWindow(float *xptr, float *yptr)
-{
-    int width, height, left, base;
-    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
-    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
-    *xptr -= left; *yptr -= base; *xptr /= width; *yptr /= height;
-}
-void screenFromWindow(float *xptr, float *yptr)
-{
-    int width, height, left, base;
-    width = callInfo(WindowWidth,0,planeRcfg); height = callInfo(WindowHeight,0,planeRcfg);
-    left = callInfo(WindowLeft,0,planeRcfg); base = callInfo(WindowBase,0,planeRcfg);
-    *xptr *= width; *yptr *= height; *xptr += left; *yptr += base;
-}
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
@@ -340,31 +312,8 @@ float *planeMatrix(float *mat)
 float *planeWindow(float *mat)
 {
     identmat(mat,4);
+    // TODO use to compensate for size change after SizeMsk event.
     return mat;
-    // TODO
-    float domain[16]; float range[16];
-    float focal = callInfo(FocalLength,0,planeRcfg); float depth = callInfo(FocalDepth,0,planeRcfg);
-    *matrc(domain,0,0,4) = callInfo(WindowLeft,0,planeRcfg);
-    *matrc(domain,1,0,4) = callInfo(WindowBase,0,planeRcfg);
-    *matrc(domain,2,0,4) = 0.0;
-    *matrc(domain,3,0,4) = 1.0;
-    *matrc(domain,0,1,4) = callInfo(WindowLeft,0,planeRcfg)+callInfo(WindowWidth,0,planeRcfg);
-    *matrc(domain,1,1,4) = callInfo(WindowBase,0,planeRcfg)+callInfo(WindowHeight,0,planeRcfg);
-    *matrc(domain,2,1,4) = 0.0;
-    *matrc(domain,3,1,4) = 1.0;
-    *matrc(domain,0,2,4) = callInfo(WindowLeft,0,planeRcfg);
-    *matrc(domain,1,2,4) = callInfo(WindowBase,0,planeRcfg)+callInfo(WindowHeight,0,planeRcfg);
-    *matrc(domain,2,2,4) = depth;
-    *matrc(domain,3,2,4) = 1.0;
-    *matrc(domain,0,3,4) = callInfo(WindowLeft,0,planeRcfg)+callInfo(WindowWidth,0,planeRcfg);
-    *matrc(domain,1,3,4) = callInfo(WindowBase,0,planeRcfg);
-    *matrc(domain,2,3,4) = depth;
-    *matrc(domain,3,3,4) = 1.0;
-    *matrc(range,0,0,4) = -1.0; *matrc(range,1,0,4) = -1.0; *matrc(range,2,0,4) = 0.0; *matrc(range,3,0,4) = 1.0;
-    *matrc(range,0,1,4) = 1.0; *matrc(range,1,1,4) = 1.0; *matrc(range,2,1,4) = 0.0; *matrc(range,3,1,4) = 1.0;
-    *matrc(range,0,2,4) = -1.0; *matrc(range,1,2,4) = 1.0; *matrc(range,2,2,4) = depth; *matrc(range,3,2,4) = (focal+depth)/focal;
-    *matrc(range,0,3,4) = 1.0; *matrc(range,1,3,4) = -1.0; *matrc(range,2,3,4) = depth; *matrc(range,3,3,4) = (focal+depth)/focal;
-    return planeSolve(mat,domain,range,4);
 }
 void planeDebug(float *debug)
 {
@@ -1270,13 +1219,17 @@ void initTest()
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; identmat(proj,4);
+    float width = callInfo(WindowWidth,0,planeRcfg);
+    float height = callInfo(WindowHeight,0,planeRcfg);
     *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
+    *matrc(proj,0,0,4) = height/width; // y'=y x'=x*height/width
     memcpy(&mat->mat[0],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
+
     while (!centerCheck(Matrixz)) callWait();}
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}
