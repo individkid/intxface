@@ -1108,8 +1108,8 @@ void initSafe()
     callBack(UniformMat,registerUniform);
     callBack(UniformBas,registerUniform);
     callBack(UniformMod,registerUniform);
-    // callBack(UniformWid,registerUniform);
-    // callBack(UniformHei,registerUniform);
+    callBack(UniformWid,registerUniform);
+    callBack(UniformHei,registerUniform);
     datxFnptr(planeRetcfg,planeTopcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
