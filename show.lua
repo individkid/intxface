@@ -1126,7 +1126,7 @@ function showForeach(list)
 	for k,v in ipairs(list) do
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then
-		elseif (v == "Dat") or (v == "Str") then
+		elseif (v == "Dat") or (v == "Str") or (v == "Chr") then
 		else
 			result = result.." \\\n"
 			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"

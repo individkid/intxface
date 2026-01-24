@@ -396,6 +396,7 @@ int datxHide(void **dat, const char *str)
 	// TODO should hideChar be in FOREACH_POINTER instead of FOREACH_BASIC
 	// FOREACH_POINTER(HIDE_POINTER) // Dat and Str never happen
 	writeStr(str,datxClr(0)); typ = TYPEStr; break;}
+	datxGet(0,dat);
 	return typ;
 }
 int datxBitwise(int lft, int rgt, enum Bitwise bit)

@@ -1709,7 +1709,7 @@ struct SwapState : public BaseState {
     VkExtent2D getExtent() override {return capabilities.currentExtent;}
     void resize(Loc &loc, SmartState log) override {
         capabilities = findCapabilities(window,surface,physical);
-        change->write(UniformWid,getExtent().width); change->write(UniformHei,getExtent().height);
+        change->poke(UniformWid,getExtent().width); change->write(UniformHei,getExtent().height);
         // std::cout << "extent " << getExtent().width << "/" << getExtent().height << std::endl;
         swapChain = createSwapChain(surface,device,getExtent(),surfaceFormat,presentMode, capabilities,graphicsFamily,presentFamily);
         createSwapChainImages(device,swapChain,swapChainImages);
@@ -2393,7 +2393,7 @@ void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
 }
 void glfwResize(GLFWwindow* window, int width, int height) {
-    mptr->changeState.write(UniformWid,width);
+    mptr->changeState.poke(UniformWid,width);
     mptr->changeState.write(UniformHei,height);
     mptr->changeState.wots(RegisterWake,1<<SizeMsk);
 }

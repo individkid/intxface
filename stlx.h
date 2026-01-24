@@ -192,6 +192,7 @@ template <class Conf, int Size> struct ChangeState {
     int read(Conf cfg) {return info(cfg,0,readFn);}
     static int writeFn(int *ref, int val) {*ref = val; return 0;}
     void write(Conf cfg, int val) {jnfo(cfg,val,writeFn);}
+    void poke(Conf cfg, int val) {info(cfg,val,writeFn);}
     static int wotsFn(int *ref, int val) {*ref = *ref|val; return 0;}
     void wots(Conf cfg, int val) {jnfo(cfg,val,wotsFn);}
     static int wotcFn(int *ref, int val) {*ref = *ref&~val; return 0;}

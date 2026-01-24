@@ -972,7 +972,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrUnifMsk Op , Imm TimOp Op , Str width:Op Imm RetUniformWidOp Op , Str height:Op Imm RetUniformHeiOp Op , EndOp Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@uniform)fnc[0]:$(Non Put StrUnifMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
