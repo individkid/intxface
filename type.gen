@@ -246,6 +246,19 @@ Configure = {
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterEval", -- expression center index
+	"UniformAll", -- which subject to use
+	"UniformOne", -- which element to use
+	"UniformIdx", -- which plane to manipulate
+	"UniformUse", -- which basis to use
+	"UniformTri", -- base of triangles
+	"UniformNum", -- base of numerics
+	"UniformVtx", -- base of vertices
+	"UniformMat", -- base of matrices
+	"UniformBas", -- base of basises
+	"UniformMod", -- value to fill
+	"UniformWid", -- width of image
+	"UniformHei", -- height of image
+	"PressKey",
 	"ManipFixed",
 	"ManipLeft",
 	"ManipBase",
@@ -403,7 +416,6 @@ Thread = { -- separate threads
 }
 Mask = { -- signals between threads
 	"FnceMsk", -- fence thread wakeup
-	"SizeMsk", -- glfw window resized
 	"SlctMsk", -- pipe thread wakeup
 	"CnslMsk", -- stdio thread wakeup
 	"TimeMsk", -- time thread wakeup
@@ -411,6 +423,12 @@ Mask = { -- signals between threads
 	"FailMsk", -- failing copy callback
 	"DropMsk", -- response without request
 	"PollMsk", -- every glfw wakeup
+	"PrssMsk", -- glfw key pressed
+	"SizeMsk", -- glfw window resized
+	"MoveMsk",
+	"ClckMsk",
+	"RollMsk",
+	"UnifMsk",
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary
@@ -444,6 +462,7 @@ Operate = { -- little language expressions
 	"CndOp", -- touring machine
 	"NonOp", -- discard list of values
 	"RetOp", -- config from callback
+	"TopOp", -- blocking ret callback
 	"SetOp", -- callback with config
 	"WosOp", -- callback setbits config
 	"WocOp", -- callback clearbits config
@@ -862,7 +881,7 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = ?RegisterWake ; tmp = #0 Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = Top RegisterWake Op ; tmp = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:9)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
@@ -1076,7 +1095,7 @@ Express = {
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"num","Int",{["opr"]={["NonOp"]=true,["PutOp"]=true}},{}},
 	{"non","Express",{["opr"]={["NonOp"]=true,["PutOp"]=true}},"num"},
-	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
+	{"cfg","Configure",{["opr"]={["RetOp"]=true,["TopOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},1},
 	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["StrOp"]=true}},{}},

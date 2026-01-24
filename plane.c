@@ -981,11 +981,9 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     machineVoid(&ptr->exp[lwr]);}
     centerPlace(ptr,upr);
 }
-void registerSave(enum Configure cfg, int sav, int val, int act)
+void registerUniform(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != RegisterPass && cfg != RegisterFail) ERROR();
-    callKnfo(RegisterSave,act&~sav,planeWots);
-    callKnfo(RegisterSave,~act&sav,planeWotc);
+    callKnfo(RegisterWake,(1<<UnifMsk),planeWots);
 }
 
 // expression callbacks
@@ -1028,6 +1026,10 @@ int planeRawcfg(int val, int sub)
 int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
+}
+int planeTopcfg(int sub)
+{
+    return callJnfo((enum Configure)sub,0,planeRcfg);
 }
 void planeSugar(const char *str)
 {
@@ -1096,7 +1098,19 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterEval,registerEval);
-    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
+    callBack(UniformAll,registerUniform);
+    callBack(UniformOne,registerUniform);
+    callBack(UniformIdx,registerUniform);
+    callBack(UniformUse,registerUniform);
+    callBack(UniformTri,registerUniform);
+    callBack(UniformNum,registerUniform);
+    callBack(UniformVtx,registerUniform);
+    callBack(UniformMat,registerUniform);
+    callBack(UniformBas,registerUniform);
+    callBack(UniformMod,registerUniform);
+    callBack(UniformWid,registerUniform);
+    callBack(UniformHei,registerUniform);
+    datxFnptr(planeRetcfg,planeTopcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
 void initBoot()
@@ -1224,12 +1238,7 @@ void initTest()
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
     float ident[16]; identmat(ident,4);
-    float proj[16]; planeWindow(proj); /* identmat(proj,4);
-    float width = callInfo(WindowWidth,0,planeRcfg);
-    float height = callInfo(WindowHeight,0,planeRcfg);
-    *matrc(proj,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
-    *matrc(proj,3,3,4) = 0.58; // a; // w = a + bz
-    *matrc(proj,0,0,4) = height/width; // y'=y x'=x*height/width*/
+    float proj[16]; planeWindow(proj);
     memcpy(&mat->mat[0],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));

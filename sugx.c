@@ -621,6 +621,14 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		sugarGetcfg(lst,RetOp,cfg,str,idx);
 		sav = *idx;
 		continue;}
+	if (strncmp(str+*idx,"Top",3)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 3;
+		enum Configure cfg; hideConfigure(&cfg,str,idx);
+		sugarGetcfg(lst,TopOp,cfg,str,idx);
+		skipSugar("Op",str,idx);
+		sav = *idx;
+		continue;}
 	if (strncmp(str+*idx,"Set",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;

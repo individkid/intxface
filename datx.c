@@ -12,6 +12,7 @@
 void *prefix = 0;
 rktype datxNoteFp = 0;
 retfp retptr = 0;
+retfp topptr = 0;
 setfp setptr = 0;
 setfp wosptr = 0;
 setfp wocptr = 0;
@@ -684,6 +685,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (!retptr) ERROR();
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
 		datxInt(dat,retptr(exp->cfg));} break;
+	case (TopOp): {
+		if (!topptr) ERROR();
+		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
+		datxInt(dat,topptr(exp->cfg));} break;
 	case (SetOp): {
 		if (!setptr) ERROR();
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
@@ -801,10 +806,12 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw,
+void datxFnptr(retfp ret, retfp top,
+	setfp set, setfp wos, setfp woc, rawfp raw,
 	getfp get, putfp put)
 {
 	retptr = ret;
+	topptr = top;
 	setptr = set;
 	wosptr = wos;
 	wocptr = woc;
