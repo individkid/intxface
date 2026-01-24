@@ -272,10 +272,8 @@ Configure = {
 	"NormalLeft",
 	"NormalBase",
 	"NormalDeep",
-	"WindowWidth",
-	"WindowHeight",
-	"FocalLength",
 	"FocalDepth",
+	"FocalSlope",
 	-- following are scratch registers
 	"ConstantDescrs",
 	"ConstantMicros",

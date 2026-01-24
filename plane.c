@@ -312,8 +312,8 @@ float *planeMatrix(float *mat)
 float *planeWindow(float *mat)
 {
     identmat(mat,4);
-    float width = callInfo(WindowWidth,0,planeRcfg);
-    float height = callInfo(WindowHeight,0,planeRcfg);
+    float width = callInfo(UniformWid,0,planeRcfg);
+    float height = callInfo(UniformHei,0,planeRcfg);
     *matrc(mat,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(mat,3,3,4) = 0.58; // a; // w = a + bz
     *matrc(mat,0,0,4) = height/width; // y'=y x'=x*height/width
@@ -822,7 +822,7 @@ void planeTest(enum Thread tag, int idx)
     tested = count;}}
     break; case (1): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
-    int hiv[] = {callInfo(WindowWidth,0,planeRcfg),callInfo(WindowHeight,0,planeRcfg),0,12}; // width,height,idx,siz
+    int hiv[] = {callInfo(UniformWid,0,planeRcfg),callInfo(UniformHei,0,planeRcfg),0,12}; // width,height,idx,siz
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -838,8 +838,8 @@ void planeTest(enum Thread tag, int idx)
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
     callCopy(drw,Memorys+2,RptRsp,0,(debug?"debug":0));}
     else if (count%8 == 2 || count%8 == 6) {
-    int width = callInfo(WindowWidth,0,planeRcfg);
-    int height = callInfo(WindowHeight,0,planeRcfg);
+    int width = callInfo(UniformWid,0,planeRcfg);
+    int height = callInfo(UniformHei,0,planeRcfg);
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
@@ -1108,8 +1108,8 @@ void initSafe()
     callBack(UniformMat,registerUniform);
     callBack(UniformBas,registerUniform);
     callBack(UniformMod,registerUniform);
-    callBack(UniformWid,registerUniform);
-    callBack(UniformHei,registerUniform);
+    // callBack(UniformWid,registerUniform);
+    // callBack(UniformHei,registerUniform);
     datxFnptr(planeRetcfg,planeTopcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
@@ -1210,8 +1210,8 @@ void initTest()
     while (!centerCheck(Drawz)) usleep(1000);}
     // write to PierceRes with Setintz and read back the same with Getintz
     // Getintz should use OldDerIns instead of GetDerIns
-    int width = callInfo(WindowWidth,0,planeRcfg);
-    int height = callInfo(WindowHeight,0,planeRcfg);
+    int width = callInfo(UniformWid,0,planeRcfg);
+    int height = callInfo(UniformHei,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);
     uni->mem = Uniformz; uni->siz = 1; allocUniform(&uni->uni,uni->siz);
     uni->uni[0].wid = width; uni->uni[0].hei = height;
