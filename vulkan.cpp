@@ -2012,7 +2012,6 @@ struct ImageState : public BaseState {
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        log << "setup " << debug << " location:" << *loc << " fence:" << fence << " before:" << before << " after:" << after << '\n'; slog.clr();
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.use));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
@@ -2194,6 +2193,9 @@ struct DrawState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << '\n';
         if (loc.req.ptr != 0 || loc.req.idx != 0) EXIT
+        VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
+        VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
+        VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         vkResetFences(device, 1, &loc.syn.fen);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         BaseState *pipePtr = 0;
@@ -2229,12 +2231,10 @@ struct DrawState : public BaseState {
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
         recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
-        VkSemaphore after = VK_NULL_HANDLE; // (loc.nxt.ptr ? loc.syn.sem : VK_NULL_HANDLE);
-        VkSemaphore before = VK_NULL_HANDLE; // (loc.lst.ptr ? loc.lst.ptr->get(loc.lst.loc).syn.sem : VK_NULL_HANDLE);
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
         VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
-        drawFrame(loc.commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,acquire,release,loc.syn.fen,before,after);
-        return loc.syn.fen;
+        drawFrame(loc.commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,acquire,release,fence,before,after);
+        return fence;
     }
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << '\n';
