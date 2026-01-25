@@ -1234,6 +1234,16 @@ void initTest()
     allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
     callCopy(eek,Getoldz,RptRsp,1,(debug?"peek":0));
 
+    /*struct Center *drw = centerPull(Memorys); freeCenter(drw);
+    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
+    drw->drw[0].con.tag = MicroCon;
+    drw->drw[0].con.mic = MicroFill;
+    int giv[] = {width,height};
+    drw->drw[0].siz = sizeof(giv)/sizeof(int);
+    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
+    callCopy(drw,Memorys,RptRsp,0,(1?"fill":0));*/
+
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);

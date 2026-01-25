@@ -1277,14 +1277,14 @@ struct CopyState {
             SaveState *sav = bind->get(ins[i].res,i);
             Lnk *tmp = sav->buf->link(ins[i].req.loc,bas,lst,lnk);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = ins[i].req.loc;}}}}
-        /*for (int i = 0; i < num; i++) {
+        for (int i = 0; i < num; i++) {
             switch(ins[i].ins) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
             SaveState *sav = bind->get(ins[i].res,i);
             Lnk *nxt = &sav->buf->ploc[ins[i].req.loc].nxt;
             Lnk *lst = &sav->buf->ploc[ins[i].req.loc].lst;
-            log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << ins[i].req.loc << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}*/
+            log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << ins[i].req.loc << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
             switch (ins[i].ins) {default:
@@ -1402,12 +1402,12 @@ struct CopyState {
         return req;
     }
     void quality(int &hdl, Quality &key, int &val, const char *str, int *arg, int siz, int &idx, SmartState log) {
-        char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
-        char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
         if (key != Qualitys && key != RuseQua) {
+        char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
+        char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
+        hdl = get(arg,siz,idx,log,ist);
         val = get(arg,siz,idx,log,vst);
-        hdl = get(arg,siz,idx,log,ist);}
-        free(vst); free(ist);
+        free(ist); free(vst);}
     }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
@@ -2008,10 +2008,11 @@ struct ImageState : public BaseState {
         vkFreeMemory(device, imageMemory, nullptr);}
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << '\n';
+        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << '\n'; slog.clr();
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
+        log << "setup " << debug << " location:" << *loc << " fence:" << fence << " before:" << before << " after:" << after << '\n'; slog.clr();
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.use));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
@@ -2226,13 +2227,13 @@ struct DrawState : public BaseState {
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
         break; case (SamplePhs): {
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
-        if (!pipePtr || !swapPtr || !framePtr || !indexPtr || !fetchPtr) EXIT
-        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.max.micro,loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchPtr->getBuffer(),indexPtr->getBuffer());
+        if (!pipePtr || !swapPtr || !framePtr) EXIT
+        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
         VkSemaphore after = VK_NULL_HANDLE; // (loc.nxt.ptr ? loc.syn.sem : VK_NULL_HANDLE);
         VkSemaphore before = VK_NULL_HANDLE; // (loc.lst.ptr ? loc.lst.ptr->get(loc.lst.loc).syn.sem : VK_NULL_HANDLE);
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
         VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
-        drawFrame(loc.commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,loc.max.micro,acquire,release,loc.syn.fen,before,after);
+        drawFrame(loc.commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,acquire,release,loc.syn.fen,before,after);
         return loc.syn.fen;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2246,8 +2247,8 @@ struct DrawState : public BaseState {
     static void updateTextureDescriptor(VkDevice device,
         VkImageView textureImageView, VkSampler textureSampler,
         int index, VkDescriptorSet descriptorSet);
-    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, Micro micro, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkBuffer vertexBuffer, VkBuffer indexBuffer);
-    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
+    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkBuffer vertexBuffer, VkBuffer indexBuffer);
+    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
 struct MainState {
@@ -3397,7 +3398,7 @@ void DrawState::updateTextureDescriptor(VkDevice device,
     vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
 }
 void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
-    VkDescriptorSet descriptorSet, VkExtent2D renderArea, Micro micro, uint32_t indices,
+    VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices,
     VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
     VkBuffer vertexBuffer, VkBuffer indexBuffer) {
     VkCommandBufferBeginInfo beginInfo{};
@@ -3431,15 +3432,15 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     VkBuffer buffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets); // TODO depends on micro
-    vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16); // TODO depends on micro
+    if (vertexBuffer!=VK_NULL_HANDLE) vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+    if (indexBuffer!=VK_NULL_HANDLE) vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
     vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
     vkCmdEndRenderPass(commandBuffer);
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     EXIT
 }
-void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, Micro micro,
+void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz,
     VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after) {
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

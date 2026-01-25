@@ -160,7 +160,7 @@ layout (binding = 1) readonly uniform Matrixs {
 } inMat;
 #endif
 
-#if defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexFill) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
@@ -188,6 +188,9 @@ void display(uint tri, uint idx, uint num, uint tex, uint one, uint pol, uint al
     fragIdx = tri;
     fragTex = tex;
 }
+#endif
+
+#if defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 void vertex()
 {
     uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
@@ -197,7 +200,7 @@ void vertex()
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexFill) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth)
 layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
 } inBas;
@@ -222,21 +225,6 @@ void coplane()
     vec4 vec = intersect(exp[0],exp[1],exp[2]);
     display(tri,idx,num,tex,one,pol,all,vtx,vec);
 }
-#endif
-
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill)
-layout (location = 0) in vec4 inPosition;
-layout (location = 1) in vec4 inOrdClr;
-layout (location = 2) in uvec4 inRefer;
-void debug()
-{
-    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
-    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
-    else fragColor = vec3(1.0,0.0,0.0); // red
-    fragTexCoord = inOrdClr.xy;
-    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
-}
 void fullscreen()
 {
     switch (fragIdx = ((gl_VertexIndex / 3) % 2)) {
@@ -253,6 +241,21 @@ void fullscreen()
 }
 #endif
 
+#if defined(vertexTest) || defined(vertexDebug)
+layout (location = 0) in vec4 inPosition;
+layout (location = 1) in vec4 inOrdClr;
+layout (location = 2) in uvec4 inRefer;
+void debug()
+{
+    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
+    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
+    else fragColor = vec3(1.0,0.0,0.0); // red
+    fragTexCoord = inOrdClr.xy;
+    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
+}
+#endif
+
 // builitn
 #if defined(vertexTest)
 void vertexTest()
@@ -266,14 +269,14 @@ void vertexDebug()
     debug();
 }
 #endif
+
+// production
 #if defined(vertexFill)
 void vertexFill()
 {
     fullscreen();
 }
 #endif
-
-// production
 #if defined(vertexDisplay)
 void vertexDisplay()
 {
