@@ -1958,6 +1958,15 @@ struct ImageState : public BaseState {
         break; case (GetUse): case (SetUse): case (DptUse): return SfloatFrm;}
         return Renders;
     }
+    static const char *vulkanDebug(VkImageLayout img) {
+        switch (img) {default: EXIT
+        break; case (VK_IMAGE_LAYOUT_UNDEFINED): return "VK_IMAGE_LAYOUT_UNDEFINED";
+        break; case (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL): return "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
+        break; case (VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL): return "VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL";
+        break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL): return "VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL";VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        break; case (VK_IMAGE_LAYOUT_PRESENT_SRC_KHR): return "VK_IMAGE_LAYOUT_PRESENT_SRC_KHR";VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;}
+        return 0;
+    }
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << '\n';
         if (*loc == ResizeLoc) {
@@ -2016,12 +2025,15 @@ struct ImageState : public BaseState {
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        log << "setup ReformLoc " << vulkanDebug(loc.max.src) << "->" << vulkanDebug(loc.max.dst) << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        log << "setup BeforeLoc " << vulkanDebug(loc.max.src) << "->" << vulkanDebug(loc.max.dst) << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
+        log << "setup AfterLoc " << vulkanDebug(loc.max.src) << "->" << vulkanDebug(loc.max.dst) << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == MiddleLoc) {
         Loc &got = get(ResizeLoc);
@@ -3435,7 +3447,8 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     if (vertexBuffer!=VK_NULL_HANDLE) vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
     if (indexBuffer!=VK_NULL_HANDLE) vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-    vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
+    if (vertexBuffer!=VK_NULL_HANDLE && indexBuffer!=VK_NULL_HANDLE) vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
+    else vkCmdDraw(commandBuffer,indices,indices/3,0,0);
     vkCmdEndRenderPass(commandBuffer);
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     EXIT

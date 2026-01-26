@@ -1214,7 +1214,7 @@ void initTest()
     int height = callInfo(UniformHei,0,planeRcfg); callJnfo(UniformHei,height,planeWcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);
     uni->mem = Uniformz; uni->siz = 1; allocUniform(&uni->uni,uni->siz);
-    uni->uni[0].wid = width; uni->uni[0].hei = height;
+    uni->uni[0].wid = width; uni->uni[0].hei = height; uni->uni[0].mod = 123;
     callCopy(uni,Uniformz,RptRsp,0,(debug?"uniform":0));
     struct Center *vtx = centerPull(Bringupz); freeCenter(vtx);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
@@ -1234,7 +1234,7 @@ void initTest()
     allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
     callCopy(eek,Getoldz,RptRsp,1,(debug?"peek":0));
 
-    /*struct Center *drw = centerPull(Memorys); freeCenter(drw);
+    struct Center *drw = centerPull(Memorys); freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
     drw->drw[0].con.mic = MicroFill;
@@ -1242,7 +1242,8 @@ void initTest()
     drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
-    callCopy(drw,Memorys,RptRsp,0,(1?"fill":0));*/
+    callCopy(drw,Memorys,RptRsp,0,(debug?"fill":0));
+    while (!(drw = centerPull(Memorys))) {callWait(); continue;} centerPlace(drw,Memorys);
 
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
