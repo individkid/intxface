@@ -3,11 +3,8 @@
 #define _GLFW_WAYLAND
 #include <GLFW/glfw3.h>
 
-#include <iostream>
 #include <fstream>
-#include <algorithm>
 #include <cstring>
-#include <execinfo.h>
 #include <signal.h>
 extern "C" {
 #include "face.h"
@@ -2454,9 +2451,9 @@ void vulkanWait() {
 }
 // c debug
 void vulkanExit() {
-    void *buffer[100];
+    /*void *buffer[100];
     int size = backtrace(buffer,100);
-    backtrace_symbols_fd(buffer,size,2);
+    backtrace_symbols_fd(buffer,size,2);*/
 }
 void whereIsExit(int val, void *arg) {
     if (val < 0) *(int*)0=0;
@@ -2913,8 +2910,12 @@ VkExtent2D SwapState::chooseSwapExtent(GLFWwindow* window, const VkSurfaceCapabi
         static_cast<uint32_t>(width),
         static_cast<uint32_t>(height)
     };
-    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+    actualExtent.width = actualExtent.width;
+    if (actualExtent.width < capabilities.minImageExtent.width) actualExtent.width = capabilities.minImageExtent.width;
+    if (actualExtent.width > capabilities.maxImageExtent.width) actualExtent.width = capabilities.maxImageExtent.width;
+    actualExtent.height = actualExtent.height;
+    if (actualExtent.height < capabilities.minImageExtent.height) actualExtent.height = capabilities.minImageExtent.height;
+    if (actualExtent.height > capabilities.maxImageExtent.height) actualExtent.height = capabilities.maxImageExtent.height;
     return actualExtent;}
 }
 VkSwapchainKHR SwapState::createSwapChain(VkSurfaceKHR surface, VkDevice device, VkExtent2D swapChainExtent,
