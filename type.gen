@@ -694,6 +694,7 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Default","GiveDef"},
 	{"Memory","Matrixz","Int","0","Int","0"},
 	{"Memory","Matrixz","Int","1","Default","GiveDef"},
+
 	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end "..
 	"function gnc(sub,sup) for i = 1,(#sup//#sub) do count = count + 1; for j = 1,#sub do if (i<(#sup//#sub)) or (j<#sub) then coroutine.yield(count-1) else return (count-1) end end end end "..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end "..
@@ -727,25 +728,15 @@ MemoryAlt = {
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getintz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getintz","Int","0","Micro","MicroFill"},
+	{"%(def={\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicIncIns.ary SetTagIns.idx SetTagIns.val
+	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\"};".. -- IdxDeeIns.idx
+	"arg={0,0,castResrc(\"PierceRes\"),0,1,0,6,castMicro(\"MicroFill\"),castMicro(\"MicroFill\")};"..
+	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
+	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
 	-- Getintz: do MicroFill IncIns on a RelateRes; then do GetUse on the same RelateRes
-	{"Memory","Getintz","Int","0","Default","TrivDef"},
-		{"Memory","Getintz","Int","0","Int","0"}, -- MicIncIns.ary
-	{"Memory","Getintz","Int","1","Default","TrivDef"},
-		{"Memory","Getintz","Int","1","Int","0"}, -- SetTagIns.idx
-	{"Memory","Getintz","Int","2","Default","TrivDef"},
-		{"Memory","Getintz","Int","2","Int","%(return castMicro(\"MicroFill\"))"}, -- SetTagIns.val
-	{"Memory","Getintz","Int","3","Default","GiveDef"},
-		{"Memory","Getintz","Int","3","Int","0"},
-	{"Memory","Getintz","Int","4","Default","GiveDef"},
-		{"Memory","Getintz","Int","4","Int","1"},
-	{"Memory","Getintz","Int","5","Default","TrivDef"},
-		{"Memory","Getintz","Int","5","Int","0"}, -- MicroFrm.idx
-	{"Memory","Getintz","Int","6","Default","TrivDef"},
-		{"Memory","Getintz","Int","6","Int","6"}, -- MicroFrm.siz
-	{"Memory","Getintz","Int","7","Default","TrivDef"},
-		{"Memory","Getintz","Int","7","Int","%(return castMicro(\"MicroFill\"))"}, -- MicroFrm.base
-	{"Memory","Getintz","Int","8","Default","TrivDef"},
-		{"Memory","Getintz","Int","8","Int","%(return castMicro(\"MicroFill\"))"}, -- IdxDeeIns.idx
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
