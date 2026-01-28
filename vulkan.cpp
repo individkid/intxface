@@ -1513,9 +1513,9 @@ struct CopyState {
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
         switch (ins.ins) {default: lst << ins;
-        break; case (ResIncIns): push(lst,ins.res,val,arg,siz,idx,ary,log);
-        break; case (MemIncIns): push(lst,ins.mem,val,arg,siz,idx,ary,log);
-        break; case (MicIncIns): push(lst,ins.mic,val,arg,siz,idx,ary,log);}}
+        break; case (ResIncIns): push(lst,ins.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),log);
+        break; case (MemIncIns): push(lst,ins.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),log);
+        break; case (MicIncIns): push(lst,ins.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),log);}}
     }
     int size(Micro typ, int ary) {
         int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;

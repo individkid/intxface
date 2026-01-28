@@ -729,21 +729,23 @@ MemoryAlt = {
 	{"Memory","Getintz","Int","0","Micro","MicroFill"},
 	-- Getintz: do MicroFill IncIns on a RelateRes; then do GetUse on the same RelateRes
 	{"Memory","Getintz","Int","0","Default","TrivDef"},
-		{"Memory","Getintz","Int","0","Int","0"}, -- SetTagIns.idx
+		{"Memory","Getintz","Int","0","Int","0"}, -- MicIncIns.ary
 	{"Memory","Getintz","Int","1","Default","TrivDef"},
-		{"Memory","Getintz","Int","1","Int","%(return castMicro(\"MicroFill\"))"}, -- SetTagIns.val
-	{"Memory","Getintz","Int","2","Default","GiveDef"},
-		{"Memory","Getintz","Int","2","Int","0"},
+		{"Memory","Getintz","Int","1","Int","0"}, -- SetTagIns.idx
+	{"Memory","Getintz","Int","2","Default","TrivDef"},
+		{"Memory","Getintz","Int","2","Int","%(return castMicro(\"MicroFill\"))"}, -- SetTagIns.val
 	{"Memory","Getintz","Int","3","Default","GiveDef"},
-		{"Memory","Getintz","Int","3","Int","1"},
-	{"Memory","Getintz","Int","4","Default","TrivDef"},
-		{"Memory","Getintz","Int","4","Int","0"}, -- MicroFrm.idx
+		{"Memory","Getintz","Int","3","Int","0"},
+	{"Memory","Getintz","Int","4","Default","GiveDef"},
+		{"Memory","Getintz","Int","4","Int","1"},
 	{"Memory","Getintz","Int","5","Default","TrivDef"},
-		{"Memory","Getintz","Int","5","Int","6"}, -- MicroFrm.siz
+		{"Memory","Getintz","Int","5","Int","0"}, -- MicroFrm.idx
 	{"Memory","Getintz","Int","6","Default","TrivDef"},
-		{"Memory","Getintz","Int","6","Int","%(return castMicro(\"MicroFill\"))"}, -- MicroFrm.base
+		{"Memory","Getintz","Int","6","Int","6"}, -- MicroFrm.siz
 	{"Memory","Getintz","Int","7","Default","TrivDef"},
-		{"Memory","Getintz","Int","7","Int","%(return castMicro(\"MicroFill\"))"}, -- IdxDeeIns.idx
+		{"Memory","Getintz","Int","7","Int","%(return castMicro(\"MicroFill\"))"}, -- MicroFrm.base
+	{"Memory","Getintz","Int","8","Default","TrivDef"},
+		{"Memory","Getintz","Int","8","Int","%(return castMicro(\"MicroFill\"))"}, -- IdxDeeIns.idx
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
