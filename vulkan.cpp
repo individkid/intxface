@@ -1448,7 +1448,10 @@ struct CopyState {
         break; case(MovTagIns): {
         int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"MovTagIns",arg,siz,idx,log);
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}}
+        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        break; case(ResIncIns): return Inst{.ins=ins,.res=dot[i].res};
+        break; case(MemIncIns): return Inst{.ins=ins,.mem=dot[i].mem};
+        break; case(MicIncIns): return Inst{.ins=ins,.mic=dot[i].mic};}
         return Inst{.ins=Instrs};
     }
     template <class Type, class Fnc, class Arg> bool builtin(Type &sav, Type &arg, Fnc fnc, Arg typ, int i, Type inv, SmartState log) {

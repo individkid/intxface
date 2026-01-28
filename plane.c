@@ -1244,11 +1244,12 @@ void initTest()
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
     callCopy(drw,Memorys,RptRsp,0,(debug?"fill":0));
     while (!(drw = centerPull(Memorys))) {callWait(); continue;} centerPlace(drw,Memorys);
-    eek = centerPull(Getintz); freeCenter(eek);
-    eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
-    allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
-    callCopy(eek,Getintz,RptRsp,0,(debug?"getint":0));
-    while (!(eek = centerPull(Getintz))) {callWait(); continue;} centerPlace(eek,Getintz);
+
+    /*struct Center *get = centerPull(Getintz); freeCenter(get);
+    get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
+    allocOld(&get->old,get->siz); get->old[0] = 1.0;
+    callCopy(get,Getintz,RptRsp,1,(1?"getint":0));
+    while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);*/
 
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
