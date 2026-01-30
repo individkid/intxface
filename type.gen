@@ -724,18 +724,37 @@ MemoryAlt = {
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
 
-	{"%("..
-	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getintz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getintz","Int","0","Micro","MicroFill"},
-	{"%(def={\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicIncIns.ary SetTagIns.idx SetTagIns.val
+	-- TODO use WrapRes
+	{"%(key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"};"..
+	"kez={\"Reloc\",\"Format\"};"..
+	"val={\"OldDerIns\",\"RelateRes\",\"ResizeLoc\",\"GetUse\",\"ExtentFrm\"};"..
+	"wal={\"ReformLoc\",\"PierceFrm\","..
+	"\"BeforeLoc\",\"PeekFrm\","..
+	"\"MiddleLoc\",\"WholeFrm\","..
+	"\"AfterLoc\",\"SourceFrm\"};"..
+	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Getintz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
+	{"Memory","Getintz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
+
+	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
+	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\"};".. -- IdxDeeIns.idx
-	"arg={0,0,castResrc(\"PierceRes\"),0,1,0,6,castMicro(\"MicroFill\"),castMicro(\"MicroFill\")};"..
+	"\"TrivDef\",".. -- IdxDeeIns.idx
+
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
+
+	"arg={0,0,castMicro(\"MicroFill\"),0,1,0,6,castMicro(\"MicroFill\"),castMicro(\"MicroFill\"),"..
+	"2,3,4,5};"..
+
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
+	{"Memory","Getintz","Int","%(return #def)"},
+	{"Memory","Getintz","Default","%(return def[1])"},
 	-- Getintz: do MicroFill IncIns on a RelateRes; then do GetUse on the same RelateRes
 }
 ResrcIns = {

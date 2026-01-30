@@ -1407,13 +1407,29 @@ struct CopyState {
         free(ist); free(vst);}
     }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+        Instr ins = dot[i].ins;
+        switch (ins) {default:
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st1 = 0; showReloc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
         char *st3 = 0; showReuse(dot[i].use,&st3);
         log << "instruct " << st0 << " " << st1 << " " << st3 << " " << st2 << '\n';
         free(st0); free(st1); free(st2); free(st3);}
-        Instr ins = dot[i].ins;
+        break; case(ResIncIns):
+        {char *st0 = 0; showResrc(dot[i].res,&st0);
+        char *st2 = 0; showInstr(dot[i].ins,&st2);
+        log << "instruct " << st0 << " " << st2 << '\n';
+        free(st0); free(st2);}
+        break; case(MemIncIns):
+        {char *st0 = 0; showMemory(dot[i].mem,&st0);
+        char *st2 = 0; showInstr(dot[i].ins,&st2);
+        log << "instruct " << st0 << " " << st2 << '\n';
+        free(st0); free(st2);}
+        break; case(MicIncIns):
+        {char *st0 = 0; showMicro(dot[i].mic,&st0);
+        char *st2 = 0; showInstr(dot[i].ins,&st2);
+        log << "instruct " << st0 << " " << st2 << '\n';
+        free(st0); free(st2);}}
         switch (ins) {default: EXIT
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
         int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
@@ -1571,6 +1587,8 @@ struct CopyState {
             if (i < lim && dflt(typ,i,ary) == TrivDef) vlu[i] = fill(typ,i,ary);
             else vlu[i] = 0;}
         // copy from given
+        if (siz) for (int i = 0; i < tot; i++)
+            {char *st0 = 0; showDefault(dflt(typ,i,ary),&st0); log << "dflt:" << i << " " << st0 << '\n'; free(st0);}
         if (siz) for (int i = 0; i < tot; i++)
             // ignore GiveDef if there is nothing proferred
             if (i < lim && dflt(typ,i,ary) == GiveDef) {
@@ -2017,23 +2035,23 @@ struct ImageState : public BaseState {
         vkFreeMemory(device, imageMemory, nullptr);}
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << '\n'; slog.clr();
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
+        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc.use << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc.use));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        log << "setup ReformLoc " << vulkanDebug(loc.max.src) << "->" << vulkanDebug(loc.max.dst) << '\n';
+        log << "setup ReformLoc " << vulkanDebug(loc.max.src) << "/" << before << "->" << vulkanDebug(loc.max.dst) << "/" << after << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        log << "setup BeforeLoc " << vulkanDebug(loc.max.src) << "->" << vulkanDebug(loc.max.dst) << '\n';
+        log << "setup BeforeLoc " << vulkanDebug(loc.max.src) << "/" << before << "->" << vulkanDebug(loc.max.dst) << "/" << after << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        log << "setup AfterLoc " << vulkanDebug(loc.max.src) << "->" << vulkanDebug(loc.max.dst) << '\n';
+        log << "setup AfterLoc " << vulkanDebug(loc.max.src) << "/" << before << "->" << vulkanDebug(loc.max.dst) << "/" << after << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == MiddleLoc) {
         Loc &got = get(ResizeLoc);
