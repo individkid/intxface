@@ -141,7 +141,7 @@ layout (location = 4) flat in uint fragTex;
 layout (location = 5) in vec3 fragColor;
 layout (location = 6) in vec2 fragTexCoord;
 #endif
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexFloat) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 layout (location = 0) out vec4 fragOrd; // interpolated vertex
 layout (location = 1) out vec4 fragVec; // calculated normal
 layout (location = 2) out uvec4 fragRef; // facet identifiers
@@ -242,17 +242,58 @@ void fullscreen()
 #endif
 
 #if defined(vertexTest) || defined(vertexDebug)
+void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
+{
+    if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
+    fragTexCoord = myCoordinate.xy;
+    if (gl_VertexIndex >= lim) fragColor = vec3(0.0,0.0,1.0); // blue
+    else fragColor = vec3(1.0,0.0,0.0); // red
+    fragIdx = (gl_VertexIndex >= lim ? 1 : 0);
+}
+#endif
+
+#if defined(vertexTest)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uvec4 inRefer;
 void debug()
 {
-    if (gl_VertexIndex >= 4) gl_Position = inMat.buf[2].buf * inPosition;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * inPosition;
-    if (gl_VertexIndex >= 4) fragColor = vec3(0.0,0.0,1.0); // blue
-    else fragColor = vec3(1.0,0.0,0.0); // red
-    fragTexCoord = inOrdClr.xy;
-    fragIdx = (gl_VertexIndex >= 4 ? 1 : 0);
+    share(inPosition,inOrdClr,inRefer,4);
+}
+#endif
+
+#if defined(vertexDebug)
+    const vec4 vertices[] = {
+        {-0.5f, -0.5f, 0.20f, 1.0f},
+        {0.5f, -0.5f, 0.40f, 1.0f},
+        {0.5f, 0.5f, 0.60f, 1.0f},
+        {-0.5f, 0.5f, 0.40f, 1.0f},
+        
+        {-0.5f, -0.5f, 0.50f, 1.0f},
+        {0.5f, -0.5f, 0.50f, 1.0f},
+        {0.5f, 0.5f, 0.50f, 1.0f},
+        {-0.5f, 0.5f, 0.50f, 1.0f},
+    };
+    const vec4 coord[] = {
+        {1.0f, 0.0f, 0.0f, 0.0f},
+        {0.0f, 0.0f, 0.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f, 0.0f},
+        {1.0f, 1.0f, 0.0f, 0.0f},
+        //
+        {1.0f, 0.0f, 0.0f, 0.0f},
+        {0.0f, 0.0f, 0.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f, 0.0f},
+        {1.0f, 1.0f, 0.0f, 0.0f},
+        //
+    };
+    const uint indices[] = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+    };
+void backoff()
+{
+    share(vertices[indices[gl_VertexIndex]],coord[indices[gl_VertexIndex]],uvec4(0,0,0,0),6);
 }
 #endif
 
@@ -266,7 +307,7 @@ void vertexTest()
 #if defined(vertexDebug)
 void vertexDebug()
 {
-    debug();
+    backoff();
 }
 #endif
 

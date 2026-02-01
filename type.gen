@@ -562,13 +562,16 @@ MicroBinding = {
 	mid = {\"MicroCompute\",\"MicroPierce\",\"MicroDepth\"}\
 	mie = {\"MicroDisp\"}\
 	mif = {\"MicroComp\",\"MicroPrce\",\"MicroDpth\"}\
-	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
+	res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}\
+	phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
+	bns = {\"0\",         \"1\",         \"0\"      }\
+	ret = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
+	pht = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
+	bnt = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
 	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"}\
 	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
 	bnp = {\"0\",      \"0\",       \"7\"        } bnq = {\"0\"        }\
-	rea = cat(rep,res) pha = cat(php,phs) bna = cat(bnp,bns)\
+	rea = cat(rep,ret) pha = cat(php,pht) bna = cat(bnp,bnt)\
 	reb = cat(req,res) phb = cat(phq,phs) bnb = cat(bnq,bns)\
 	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
@@ -795,7 +798,7 @@ MicroIns = {
 	{"%(mic = {\"MicroTest\"}\
 	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\"}\
-	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
+	deb = {\"UniformRes\",\"MatrixRes\",\"ImageRes\"}\
 	\
 	def = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
