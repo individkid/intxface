@@ -1201,13 +1201,12 @@ void initTest()
     callCopy(ptr,Drawz,MptRsp,0,(debug?"pipe":0));
     while (!centerCheck(Drawz)) usleep(1000);
     for (int i = 0; i < frames; i++) {
-    ptr = centerPull(Drawz); freeCenter(ptr);
-    ptr->mem = Drawz; ptr->siz = 1;
+    while ((ptr = centerPull(Drawz)) == 0) usleep(1000);
+    freeCenter(ptr); ptr->mem = Drawz; ptr->siz = 1;
     allocDraw(&ptr->drw,ptr->siz);
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = ChainRes;
-    callCopy(ptr,Drawz,MptRsp,0,(debug?"chain":0));
-    while (!centerCheck(Drawz)) usleep(1000);}
+    callCopy(ptr,Drawz,MptRsp,0,(debug?"chain":0));}
     // write to PierceRes with Setintz and read back the same with Getintz
     // Getintz should use OldDerIns instead of GetDerIns
     int width = callInfo(UniformWid,0,planeRcfg);
