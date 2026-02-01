@@ -795,6 +795,8 @@ MicroIns = {
 	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
 	mib = {\"MicroDebug\"}\
 	deb = {\"UniformRes\",\"MatrixRes\"}\
+	mia = {\"MicroFill\"}\
+	dea = {\"UniformRes\"}\
 	\
 	def = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
@@ -809,6 +811,13 @@ MicroIns = {
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
 	dw0 = {\"0\"}\
 	dw1 = {\"0\",\"1\",\"2\",\"3\",\"1\",\"1\"}\
+	\
+	deh = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
+	\"GiveDef\",\"GiveDef\"--[[ExtentFrm SizeReq ExtentExt:base/size]],\
+	\"TrivDef\",\"TrivDef\",\"BackDef\"--[[MicroFrm BothReq:idx/siz MicroExt:base]],\
+	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
+	du0 = {\"0\"}\
+	du1 = {\"0\",\"1\",\"0\",\"6\",\"1\",\"1\"}\
 	\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
@@ -854,7 +863,7 @@ MicroIns = {
 	{"Micro","%(return fnc(mib))","Int","1","Instr","OldDerIns"},
 		{"Micro","%(return fnc(mib))","Int","1","Resrc","PierceRes"},
 		{"Micro","%(return fnc(mib))","Int","1","Reloc","ResizeLoc"},
-		{"Micro","%(return fnc(mib))","Int","1","Reuse","SetUse"}, -- FdbUse should work too
+		{"Micro","%(return fnc(mib))","Int","1","Reuse","SetUse"},
 		{"Micro","%(return fnc(mib))","Int","1","Format","ExtentFrm"},
 	{"Micro","%(return fnc(mib))","Int","2","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mib))","Int","2","Resrc","DrawRes"},
@@ -871,52 +880,28 @@ MicroIns = {
 	{"Micro","%(return fnc(mib))","Int","1","Int","%(return fnc(mib))"},
 	{"Micro","%(return gnc(mib,dw1))","Int","%(return hnc(dw1,2))","Int","%(return fnc(dw1))"},
 
-	{"Micro","MicroFill","Int","0","Instr","SetTagIns"},
-		{"Micro","MicroFill","Int","0","Resrc","DrawRes"},
-		{"Micro","MicroFill","Int","0","Quality","RsizQua"},
-	{"Micro","MicroFill","Int","1","Instr","OldDerIns"},
-		{"Micro","MicroFill","Int","1","Resrc","RelateRes"},
-		{"Micro","MicroFill","Int","1","Reloc","ResizeLoc"},
-		{"Micro","MicroFill","Int","1","Reuse","FdbUse"},
-		{"Micro","MicroFill","Int","1","Format","ExtentFrm"},
-	{"Micro","MicroFill","Int","2","Instr","OldDerIns"},
-		{"Micro","MicroFill","Int","2","Resrc","RelateRes"},
-		{"Micro","MicroFill","Int","2","Reloc","ReformLoc"},
-		{"Micro","MicroFill","Int","2","Format","PierceFrm"},
-	-- {"Micro","MicroFill","Int","3","Instr","OldDerIns"},
-	-- 	{"Micro","MicroFill","Int","3","Resrc","RelateRes"},
-	-- 	{"Micro","MicroFill","Int","3","Reloc","BeforeLoc"},
-	-- 	{"Micro","MicroFill","Int","3","Format","PokeFrm"},
-	{"Micro","MicroFill","Int","3","Instr","NewDerIns"},
-		{"Micro","MicroFill","Int","3","Resrc","DrawRes"},
-		{"Micro","MicroFill","Int","3","Reloc","MiddleLoc"},
-		{"Micro","MicroFill","Int","3","Format","MicroFrm"},
-	{"Micro","MicroFill","Int","4","Instr","IdxDeeIns"},
-		{"Micro","MicroFill","Int","4","Resrc","PipeRes"},
-	{"Micro","MicroFill","Int","5","Instr","RdlDeeIns"},
-		{"Micro","MicroFill","Int","5","Resrc","UniformRes"},
-	{"Micro","MicroFill","Int","6","Instr","WrlDeeIns"},
-		{"Micro","MicroFill","Int","6","Resrc","RelateRes"},
-	-- {"Micro","MicroFill","Int","8","Instr","OldDerIns"},
-	-- 	{"Micro","MicroFill","Int","8","Resrc","RelateRes"},
-	-- 	{"Micro","MicroFill","Int","8","Reloc","AfterLoc"},
-	-- 	{"Micro","MicroFill","Int","8","Format","DestFrm"},
-	{"Micro","MicroFill","Int","0","Default","TrivDef"},
-		{"Micro","MicroFill","Int","0","Int","0"}, -- SetTagIns.idx
-	{"Micro","MicroFill","Int","1","Default","TrivDef"},
-		{"Micro","MicroFill","Int","1","Int","%(return castMicro(\"MicroFill\"))"}, -- SetTagIns.val
-	{"Micro","MicroFill","Int","2","Default","GiveDef"},
-		{"Micro","MicroFill","Int","2","Int","0"},
-	{"Micro","MicroFill","Int","3","Default","GiveDef"},
-		{"Micro","MicroFill","Int","3","Int","1"},
-	{"Micro","MicroFill","Int","4","Default","TrivDef"},
-		{"Micro","MicroFill","Int","4","Int","0"}, -- MicroFrm.idx
-	{"Micro","MicroFill","Int","5","Default","TrivDef"},
-		{"Micro","MicroFill","Int","5","Int","6"}, -- MicroFrm.siz
-	{"Micro","MicroFill","Int","6","Default","TrivDef"},
-		{"Micro","MicroFill","Int","6","Int","%(return castMicro(\"MicroFill\"))"}, -- MicroFrm.base
-	{"Micro","MicroFill","Int","7","Default","TrivDef"},
-		{"Micro","MicroFill","Int","7","Int","%(return castMicro(\"MicroFill\"))"}, -- IdxDeeIns.idx
+	{"Micro","%(return fnc(mia))","Int","0","Instr","SetTagIns"},
+		{"Micro","%(return fnc(mia))","Int","0","Resrc","DrawRes"},
+		{"Micro","%(return fnc(mia))","Int","0","Quality","RsizQua"},
+	{"Micro","%(return fnc(mia))","Int","1","Instr","OldDerIns"},
+		{"Micro","%(return fnc(mia))","Int","1","Resrc","RelateRes"},
+		{"Micro","%(return fnc(mia))","Int","1","Reloc","ResizeLoc"},
+		{"Micro","%(return fnc(mia))","Int","1","Reuse","FdbUse"},
+		{"Micro","%(return fnc(mia))","Int","1","Format","ExtentFrm"},
+	{"Micro","%(return fnc(mia))","Int","2","Instr","NewDerIns"},
+		{"Micro","%(return fnc(mia))","Int","2","Resrc","DrawRes"},
+		{"Micro","%(return fnc(mia))","Int","2","Reloc","MiddleLoc"},
+		{"Micro","%(return fnc(mia))","Int","2","Format","MicroFrm"},
+	{"Micro","%(return fnc(mia))","Int","3","Instr","WrlDeeIns"},
+		{"Micro","%(return fnc(mia))","Int","3","Resrc","RelateRes"},
+	{"Micro","%(return fnc(mia))","Int","4","Instr","RdlDeeIns"},
+		{"Micro","%(return gnc(mia,dea))","Int","%(return hnc(dea,4))","Resrc","%(return fnc(dea))"},
+	{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Instr","IdxDeeIns"},
+		{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Resrc","PipeRes"},
+	{"Micro","%(return gnc(mia,deh))","Int","%(return hnc(deh,0))","Default","%(return fnc(deh))"},
+	{"Micro","%(return gnc(mia,du0))","Int","%(return hnc(du0,0))","Int","%(return fnc(du0))"},
+	{"Micro","%(return fnc(mia))","Int","1","Int","%(return fnc(mia))"},
+	{"Micro","%(return gnc(mia,du1))","Int","%(return hnc(du1,2))","Int","%(return fnc(du1))"},
 }
 MicroAlt = {
 	{"Micro","MicroTest","Int","0","Instr","NewDerIns"},

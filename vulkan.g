@@ -155,12 +155,15 @@ layout (location = 6) out vec2 fragTexCoord; // primitive space
 layout (binding = 0) readonly uniform Uniforms {
     Uniform buf;
 } inUni;
+#endif
+
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 1) readonly uniform Matrixs {
     Matrix buf[4]; // uniforms cannot be variable size
 } inMat;
 #endif
 
-#if defined(vertexFill) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexComp) || defined(vertexPrce) || defined(vertexDpth)
 layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
@@ -200,7 +203,7 @@ void vertex()
 }
 #endif
 
-#if defined(vertexFill) || defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexCompute) || defined(vertexPierce) || defined(vertexDepth)
 layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
 } inBas;
@@ -225,6 +228,9 @@ void coplane()
     vec4 vec = intersect(exp[0],exp[1],exp[2]);
     display(tri,idx,num,tex,one,pol,all,vtx,vec);
 }
+#endif
+
+#if defined(vertexFill)
 void fullscreen()
 {
     switch (fragIdx = ((gl_VertexIndex / 3) % 2)) {

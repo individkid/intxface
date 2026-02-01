@@ -365,7 +365,6 @@ void centerPlace(struct Center *ptr, int idx)
     freeCenter(center[idx]); allocCenter(&center[idx],0); center[idx] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
-// int _debug_ = 0;
 void centerDone(struct Center *ptr, int idx)
 {
     if ((callJnfo(RegisterSave,0,planeRcfg) & (1<<idx)) != 0) {
@@ -374,9 +373,9 @@ void centerDone(struct Center *ptr, int idx)
     centerPlace(ptr,idx);
     if (ptr && ptr->slf == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    /*if ((1<<idx)&~_debug_) {_debug_ |= (1<<idx);
-    char *st0 = 0; showMemory((enum Memory)idx,&st0);
-    fprintf(stderr,"centerDone 0x%x %s\n",_debug_,st0); free(st0);}*/
+    /*if (idx==Uniformz) {
+    char *st0 = 0; showCenter(ptr,&st0);
+    fprintf(stderr,"centerDone %s\n",st0); free(st0);}*/
     callJnfo(RegisterPass,(1<<idx),planeWots);}
     else if (ptr) {
     callJnfo(RegisterWake,(1<<FailMsk),planeWots);
@@ -1246,7 +1245,7 @@ void initTest()
 
     /*struct Center *get = centerPull(Getintz); freeCenter(get);
     get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
-    allocOld(&get->old,get->siz); get->old[0] = 1.0;
+    allocOld(&get->old,get->siz); get->uns[0] = 1;
     callCopy(get,Getintz,RptRsp,1,(1?"getint":0));
     while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);*/
 
