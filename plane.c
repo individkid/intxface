@@ -1209,11 +1209,12 @@ void initTest()
     // write to PierceRes with Setintz and read back the same with Getintz
     // Getintz should use OldDerIns instead of GetDerIns
     int width = callInfo(UniformWid,0,planeRcfg);
-    int height = callInfo(UniformHei,0,planeRcfg); callJnfo(UniformHei,height,planeWcfg);
+    int height = callInfo(UniformHei,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);
     uni->mem = Uniformz; uni->siz = 1; allocUniform(&uni->uni,uni->siz);
     uni->uni[0].wid = width; uni->uni[0].hei = height; uni->uni[0].mod = 123;
     callCopy(uni,Uniformz,RptRsp,0,(debug?"uniform":0));
+    callJnfo(UniformHei,height,planeWcfg);
     struct Center *vtx = centerPull(Bringupz); freeCenter(vtx);
     vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
