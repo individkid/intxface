@@ -694,44 +694,47 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Int","0"},
 	{"Memory","Matrixz","Int","1","Default","GiveDef"},
 
+
 	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end "..
 	"function gnc(sub,sup) for i = 1,(#sup//#sub) do count = count + 1; for j = 1,#sub do if (i<(#sup//#sub)) or (j<#sub) then coroutine.yield(count-1) else return (count-1) end end end end "..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end "..
-	"key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"};"..
-	"kez={\"Reloc\",\"Format\"};"..
-	"val={\"OldDerIns\",\"PierceRes\",\"ResizeLoc\",\"SetUse\",\"ExtentFrm\"};"..
-	"wal={\"ReformLoc\",\"PierceFrm\","..
-	"\"BeforeLoc\",\"PokeFrm\","..
-	"\"MiddleLoc\",\"WholeFrm\","..
-	"\"AfterLoc\",\"DestFrm\"};"..
-	"vam={\"OldDerIns\",\"WrapRes\",\"ResizeLoc\",\"GetUse\",\"ResrcFrm\"};"..
-	"wam={\"ReformLoc\",\"PierceFrm\","..
-	"\"BeforeLoc\",\"PeekFrm\","..
-	"\"MiddleLoc\",\"WholeFrm\","..
-	"\"AfterLoc\",\"SourceFrm\"};"..
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+
+	{"Memory","Getoldz","Int","0","Instr","MicIncIns"},
+	{"Memory","Getoldz","Int","0","Micro","MicroDebug"},
+	{"%(key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"};"..
+	"val={\"OldDerIns\",\"PierceRes\",\"BeforeLoc\",\"GetUse\",\"PeekFrm\"};"..
+	"kez={\"Reloc\",\"Format\"};"..
+	"wal={\"MiddleLoc\",\"WholeFrm\","..
+	"\"AfterLoc\",\"SourceFrm\"};"..
+	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getoldz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 	{"Memory","Getoldz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
-	{"Memory","Getoldz","Int","%(return gnc(key,vam))","%(return fnc(key))","%(return fnc(vam))"},
-	{"Memory","Getoldz","Int","%(return gnc(kez,wam))","%(return fnc(kez))","%(return fnc(wam))"},
-	{"%(def={\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
-	"\"TrivDef\",".. -- ResrcFrm.base
-	"\"BackDef\",\"BackDef\"};".. -- WholeFrm.idx WholeFrm.siz
-	"arg={0,1,2,3,castResrc(\"PierceRes\"),2,3};"..
+
+	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
+	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",".. -- IdxDeeIns.idx
+
+	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
+
+	"arg={0,0,castMicro(\"MicroDebug\"),0,1,0,12,castMicro(\"MicroDebug\"),castMicro(\"MicroDebug\"),"..
+	"2,3};"..
+
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
+	{"Memory","Getoldz","Int","%(return #def)"},
+	{"Memory","Getoldz","Default","%(return def[1])"},
+
 
 	{"Memory","Getintz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getintz","Int","0","Micro","MicroFill"},
-	-- TODO use WrapRes
 	{"%(key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"};"..
+	"val={\"OldDerIns\",\"RelateRes\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"};"..
 	"kez={\"Reloc\",\"Format\"};"..
-	"val={\"OldDerIns\",\"RelateRes\",\"ResizeLoc\",\"GetUse\",\"ExtentFrm\"};"..
-	"wal={\"ReformLoc\",\"PierceFrm\","..
-	"\"BeforeLoc\",\"PeekFrm\","..
-	"\"MiddleLoc\",\"WholeFrm\","..
+	"wal={\"MiddleLoc\",\"WholeFrm\","..
 	"\"AfterLoc\",\"SourceFrm\"};"..
 	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getintz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
@@ -739,22 +742,20 @@ MemoryAlt = {
 
 	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
 	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
-	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",".. -- IdxDeeIns.idx
 
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
 	"arg={0,0,castMicro(\"MicroFill\"),0,1,0,6,castMicro(\"MicroFill\"),castMicro(\"MicroFill\"),"..
-	"2,3,4,5};"..
+	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
 	{"Memory","Getintz","Int","%(return #def)"},
 	{"Memory","Getintz","Default","%(return def[1])"},
-	-- Getintz: do MicroFill IncIns on a RelateRes; then do GetUse on the same RelateRes
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses

@@ -1976,6 +1976,12 @@ struct ImageState : public BaseState {
         break; case (GetUse): case (SetUse): case (DptUse): return SfloatFrm;}
         return Renders;
     }
+    static bool isr(Reuse i) {
+        switch (i) {default: EXIT
+        break; case (TexUse): case (FdbUse): case (SetUse): return false;
+        break; case (GetUse): case (PieUse): case (DptUse): return true;}
+        return false;
+    }
     static const char *vulkanDebug(VkImageLayout img) {
         switch (img) {default: EXIT
         break; case (VK_IMAGE_LAYOUT_UNDEFINED): return "VK_IMAGE_LAYOUT_UNDEFINED";
@@ -2058,18 +2064,16 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        // TODO to save memory, make access to Loc virtual and make base class for Loc
         createBuffer(device, physical, imageSize, (loc.use == GetUse ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
-        void* data; if (loc.use == TexUse || loc.use == SetUse) {
-        vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);} // TODO stage only the altered range?
+        void* data; if (!isr(loc.use)) {
+        vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);}
         if (loc.use == TexUse) {
-        // TODO start at loc.req.idx in data
         memcpy(data, loc.req.ptr, loc.req.siz);}
-        if (loc.use == SetUse) {
+        else if (!isr(loc.use)) {
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, loc.use == GetUse);}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, isr(loc.use));}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2079,8 +2083,8 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        if (loc.use == GetUse) {
-        void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data); // TODO stage only the accessed range?
+        if (isr(loc.use)) {
+        void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
         vkUnmapMemory(device, loc.stagingBufferMemory);

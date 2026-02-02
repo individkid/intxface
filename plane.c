@@ -1228,28 +1228,6 @@ void initTest()
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
 
-    struct Center *eek = centerPull(Getoldz); freeCenter(eek);
-    eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
-    allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
-    callCopy(eek,Getoldz,RptRsp,1,(debug?"peek":0));
-
-    struct Center *drw = centerPull(Memorys); freeCenter(drw);
-    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
-    drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroFill;
-    int giv[] = {width,height};
-    drw->drw[0].siz = sizeof(giv)/sizeof(int);
-    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
-    callCopy(drw,Memorys,RptRsp,0,(debug?"fill":0));
-    while (!(drw = centerPull(Memorys))) {callWait(); continue;} centerPlace(drw,Memorys);
-
-    /*struct Center *get = centerPull(Getintz); freeCenter(get);
-    get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
-    allocOld(&get->old,get->siz); get->uns[0] = 1;
-    callCopy(get,Getintz,RptRsp,1,(1?"getint":0));
-    while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);*/
-
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
@@ -1260,8 +1238,19 @@ void initTest()
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
-
     while (!centerCheck(Matrixz)) callWait();}
+
+    /*struct Center *get = centerPull(Getintz); freeCenter(get);
+    get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
+    allocOld(&get->old,get->siz); get->uns[0] = 1;
+    callCopy(get,Getintz,RptRsp,1,(debug?"getint":0));
+    while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);*/
+
+    struct Center *eek = centerPull(Getoldz); freeCenter(eek);
+    eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
+    allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
+    callCopy(eek,Getoldz,RptRsp,1,(debug?"getold":0));
+
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}
 }
