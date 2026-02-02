@@ -1240,11 +1240,11 @@ void initTest()
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
-    /*struct Center *get = centerPull(Getintz); freeCenter(get);
+    struct Center *get = centerPull(Getintz); freeCenter(get);
     get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
     allocOld(&get->old,get->siz); get->uns[0] = 1;
     callCopy(get,Getintz,RptRsp,1,(debug?"getint":0));
-    while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);*/
+    while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);
 
     struct Center *eek = centerPull(Getoldz); freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;

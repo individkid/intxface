@@ -230,46 +230,7 @@ void coplane()
 }
 #endif
 
-#if defined(vertexFill)
-void fullscreen()
-{
-    switch (fragIdx = ((gl_VertexIndex / 3) % 2)) {
-    case (0): fragColor = vec3(0.0,0.0,1.0);
-    switch (gl_VertexIndex % 3) {
-    case (0): gl_Position = vec4(0.0,0.0,0.5,1.0);
-    case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
-    case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}
-    case (1): fragColor = vec3(0.0,0.0,1.0);
-    switch (gl_VertexIndex % 3) {
-    case (0): gl_Position = vec4(1.0,1.0,0.5,1.0);
-    case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
-    case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}}
-}
-#endif
-
-#if defined(vertexTest) || defined(vertexDebug)
-void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
-{
-    if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
-    fragTexCoord = myCoordinate.xy;
-    if (gl_VertexIndex >= lim) fragColor = vec3(0.0,0.0,1.0); // blue
-    else fragColor = vec3(1.0,0.0,0.0); // red
-    fragIdx = (gl_VertexIndex >= lim ? 1 : 0);
-}
-#endif
-
-#if defined(vertexTest)
-layout (location = 0) in vec4 inPosition;
-layout (location = 1) in vec4 inOrdClr;
-layout (location = 2) in uvec4 inRefer;
-void debug()
-{
-    share(inPosition,inOrdClr,inRefer,4);
-}
-#endif
-
-#if defined(vertexDebug)
+#if defined(vertexDebug) || defined(vertexFill)
     const vec4 vertices[] = {
         {-0.5f, -0.5f, 0.20f, 1.0f},
         {0.5f, -0.5f, 0.40f, 1.0f},
@@ -297,6 +258,49 @@ void debug()
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
     };
+#endif
+
+#if defined(vertexFill)
+void fullscreen()
+{
+    /*switch (fragIdx = ((gl_VertexIndex / 3) % 2)) {
+    case (0): fragColor = vec3(0.0,0.0,1.0);
+    switch (gl_VertexIndex % 3) {
+    case (0): gl_Position = vec4(0.0,0.0,0.5,1.0);
+    case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
+    case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}
+    case (1): fragColor = vec3(0.0,0.0,1.0);
+    switch (gl_VertexIndex % 3) {
+    case (0): gl_Position = vec4(1.0,1.0,0.5,1.0);
+    case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
+    case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}}*/
+    gl_Position = vertices[indices[gl_VertexIndex]];
+}
+#endif
+
+#if defined(vertexTest) || defined(vertexDebug)
+void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
+{
+    if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
+    fragTexCoord = myCoordinate.xy;
+    if (gl_VertexIndex >= lim) fragColor = vec3(0.0,0.0,1.0); // blue
+    else fragColor = vec3(1.0,0.0,0.0); // red
+    fragIdx = (gl_VertexIndex >= lim ? 1 : 0);
+}
+#endif
+
+#if defined(vertexTest)
+layout (location = 0) in vec4 inPosition;
+layout (location = 1) in vec4 inOrdClr;
+layout (location = 2) in uvec4 inRefer;
+void debug()
+{
+    share(inPosition,inOrdClr,inRefer,4);
+}
+#endif
+
+#if defined(vertexDebug)
 void backoff()
 {
     share(vertices[indices[gl_VertexIndex]],coord[indices[gl_VertexIndex]],uvec4(0,0,0,0),6);

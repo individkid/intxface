@@ -748,7 +748,7 @@ MemoryAlt = {
 
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,0,castMicro(\"MicroFill\"),0,1,0,6,castMicro(\"MicroFill\"),castMicro(\"MicroFill\"),"..
+	"arg={0,0,castMicro(\"MicroFill\"),0,1,0,12,castMicro(\"MicroFill\"),castMicro(\"MicroFill\"),"..
 	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},

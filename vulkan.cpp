@@ -1978,8 +1978,8 @@ struct ImageState : public BaseState {
     }
     static bool isr(Reuse i) {
         switch (i) {default: EXIT
-        break; case (TexUse): case (FdbUse): case (SetUse): return false;
-        break; case (GetUse): case (PieUse): case (DptUse): return true;}
+        break; case (TexUse): case (SetUse): return false;
+        break; case (FdbUse): case (GetUse): case (PieUse): case (DptUse): return true;}
         return false;
     }
     static const char *vulkanDebug(VkImageLayout img) {
@@ -2064,7 +2064,7 @@ struct ImageState : public BaseState {
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
         VkDeviceSize imageSize = texWidth*texHeight*4;
-        createBuffer(device, physical, imageSize, (loc.use == GetUse ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        createBuffer(device, physical, imageSize, (isr(loc.use) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
         void* data; if (!isr(loc.use)) {
         vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);}
         if (loc.use == TexUse) {
