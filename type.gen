@@ -1059,6 +1059,8 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
+	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
+	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","!(pass = #0 fail = #0 wake = #0)"..
 		"Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)

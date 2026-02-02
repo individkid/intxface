@@ -822,6 +822,7 @@ void planeTest(enum Thread tag, int idx)
     break; case (1): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
     int hiv[] = {callInfo(UniformWid,0,planeRcfg),callInfo(UniformHei,0,planeRcfg),0,12}; // width,height,idx,siz
+    int fiv[] = {callInfo(UniformWid,0,planeRcfg),callInfo(UniformHei,0,planeRcfg)}; // width,height
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -844,6 +845,24 @@ void planeTest(enum Thread tag, int idx)
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz);
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
+    else if (count%8 == 3 || count%8 == 7) {
+    struct Center *drw = centerPull(Memorys+4); if (!drw) {callWait(); continue;}
+    freeCenter(drw);
+    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
+    drw->drw[0].con.tag = MicroCon;
+    drw->drw[0].con.mic = MicroFill;
+    drw->drw[0].siz = sizeof(fiv)/sizeof(int);
+    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
+    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = fiv[i];
+    callCopy(drw,Memorys+4,RptRsp,0,(debug?"fill":0));}
+    else if (count%8 == 4 || count%8 == 0) {
+    int width = callInfo(UniformWid,0,planeRcfg);
+    int height = callInfo(UniformHei,0,planeRcfg);
+    struct Center *eek = centerPull(Memorys+5); if (!eek) {callWait(); continue;}
+    freeCenter(eek);
+    eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
+    allocInt(&eek->uns,eek->siz);
+    callCopy(eek,Memorys+5,RptRsp,0,(debug?"ident":0));}
     tested = count;}}}
 }
 
