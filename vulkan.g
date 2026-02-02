@@ -258,6 +258,12 @@ void coplane()
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
     };
+    const vec4 extremes[] = {
+        {-1.0f, -1.0f, 0.50f, 1.0f},
+        {1.0f, -1.0f, 0.50f, 1.0f},
+        {1.0f, 1.0f, 0.50f, 1.0f},
+        {-1.0f, 1.0f, 0.50f, 1.0f},
+    };
 #endif
 
 #if defined(vertexFill)
@@ -274,7 +280,7 @@ void fullscreen()
     case (0): gl_Position = vec4(1.0,1.0,0.5,1.0);
     case (1): gl_Position = vec4(1.0,0.0,0.5,1.0);
     case (2): gl_Position = vec4(0.0,1.0,0.5,1.0);}}*/
-    gl_Position = vertices[indices[gl_VertexIndex]];
+    gl_Position = extremes[indices[gl_VertexIndex]];
 }
 #endif
 
