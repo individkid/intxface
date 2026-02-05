@@ -38,6 +38,7 @@ Memory = {
 	"Getoldz", -- per fragment read
 	"Setintz", -- per fragment write
 	"Setoldz", -- per fragment write
+	"Vectorz", -- displayed framebuffer
 	"Uniformz", -- references into arrays
 	"Matrixz", -- transformations
 	"Trianglez", -- indices of vertices of facet
@@ -76,13 +77,14 @@ Micro = { -- what runs on gpu
 	"MicroDebug", -- uint per pixel
 	"MicroFill", -- fill with uniform
 	"MicroDisplay", -- decorate vec4
-	"MicroCompute", -- decorate uvec4
 	"MicroPierce", -- pierced triangle
 	"MicroDepth", -- fixed point
 	"MicroDisp", -- indexed vertices
-	"MicroComp", -- decorate uvec4
 	"MicroPrce", -- pierced triangle
 	"MicroDpth", -- fixed point
+	"MicroDsp", -- indexed vertices
+	"MicroPie", -- pierced triangle
+	"MicroDep", -- fixed point
 }
 Decor = { -- fragment shader graph operation
 	"MoveDec", -- move only
@@ -556,41 +558,56 @@ MicroBinding = {
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
 	function cat (one,oth,max) for i,v in ipairs(one) do max[#max+1] = v end for i,v in ipairs(oth) do max[#max+1] = v end return max end\
-	mia = {\"MicroTest\"}\
-	mib = {\"MicroDebug\"}\
-	mic = {\"MicroDisplay\"}\
-	mid = {\"MicroCompute\",\"MicroPierce\",\"MicroDepth\"}\
-	mie = {\"MicroDisp\"}\
-	mif = {\"MicroComp\",\"MicroPrce\",\"MicroDpth\"}\
-	mig = {\"MicroFill\"}\
+	\
 	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"} rer = {\"RelateRes\"}\
-	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"} phr = {\"RenderPhs\"}\
-	bnp = {\"0\",      \"0\",       \"7\"        } bnq = {\"0\"        } bnr = {\"0\"        }\
-	rea = cat(rep,res,{}) pha = cat(php,phs,{}) bna = cat(bnp,bns,{})\
+	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"}\
+	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
+	bnp = {\"0\",      \"0\",       \"7\"        } bnq = {\"0\",       }\
+	mia = {\"MicroTest\"} rea = cat(rep,res,{}) pha = cat(php,phs,{}) bna = cat(bnp,bns,{})\
+	\
 	res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"0\"      }\
-	reb = cat(req,res,{}) phb = cat(phq,phs,{}) bnb = cat(bnq,bns,{})\
+	mib = {\"MicroDebug\"} reb = cat(req,res,{}) phb = cat(phq,phs,{}) bnb = cat(bnq,bns,{})\
+	\
 	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"}\
-	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        }\
-	rec = cat(rep,res,{}) phc = cat(php,phs,{}) bnc = cat(bnp,bns,{})\
-	red = cat(req,res,{}) phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
+	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"PierceRes\"}\
+	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
+	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
+	mic = {\"MicroDisplay\"} rec = cat(rep,res,{}) phc = cat(php,phs,{}) bnc = cat(bnp,bns,{})\
+	mid = {\"MicroPierce\",\"MicroDepth\"} red = cat(req,res,{}) phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
+	\
 	res = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
-	ree = cat(rep,res,{}) phe = cat(php,phs,{}) bne = cat(bnp,bns,{})\
-	ref = cat(req,res,{}) phf = cat(phq,phs,{}) bnf = cat(bnq,bns,{})\
-	res = {\"UniformRes\",\"PipeRes\"}\
-	phs = {\"UniformPhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"0\"      }\
-	reg = cat(rer,res,{}) phg = cat(phr,phs,{}) bng = cat(bnr,bns,{})\
+	mie = {\"MicroDisp\"} ree = cat(rep,res,{}) phe = cat(php,phs,{}) bne = cat(bnp,bns,{})\
+	mif = {\"MicroPrce\",\"MicroDpth\"} ref = cat(req,res,{}) phf = cat(phq,phs,{}) bnf = cat(bnq,bns,{})\
+	\
+	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
+	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
+	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
+	--[[TODO use MicroPie to render to PierceRes or RelateRes by eliminating Resrc from MicroBinding]]\
+	--[[TODO add Phase to Instr for use in DrawState::setup]]\
+	--[[TODO have Stride/Offset/Format/Element key off of Micro instead of Resrc]]\
+	--[[TODO need to add MicroBuf to render to buffer instead of to display]]\
+	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"RelateRes\"}\
+	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
+	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\",       }\
+	mig = {\"MicroDsp\"} reg = cat(rep,res,{}) phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
+	mih = {\"MicroPie\",\"MicroDep\"} reh = cat(req,res,{}) phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
+	\
+	res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}\
+	phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
+	bns = {\"0\",         \"1\",         \"0\"      }\
+	res = {\"UniformRes\",\"PipeRes\"} rer = {\"RelateRes\"}\
+	phs = {\"UniformPhs\",\"PipePhs\"} phr = {\"RenderPhs\"}\
+	bns = {\"0\",         \"0\"      } bnr = {\"0\"        }\
+	mii = {\"MicroFill\"} rei = cat(rer,res,{}) phi = cat(phr,phs,{}) bni = cat(bnr,bns,{})\
+	\
 	return \"Micro\")","%(return gnc(mia,rea))","Int","%(return hnc(rea,0))","Resrc","%(return fnc(rea))"},
 	{"Micro","%(return gnc(mia,pha))","Int","%(return hnc(pha,0))","Phase","%(return fnc(pha))"},
 	{"Micro","%(return gnc(mia,bna))","Int","%(return hnc(bna,0))","Int","%(return fnc(bna))"},
@@ -612,32 +629,40 @@ MicroBinding = {
 	{"Micro","%(return gnc(mig,reg))","Int","%(return hnc(reg,0))","Resrc","%(return fnc(reg))"},
 	{"Micro","%(return gnc(mig,phg))","Int","%(return hnc(phg,0))","Phase","%(return fnc(phg))"},
 	{"Micro","%(return gnc(mig,bng))","Int","%(return hnc(bng,0))","Int","%(return fnc(bng))"},
+	{"Micro","%(return gnc(mih,reh))","Int","%(return hnc(reh,0))","Resrc","%(return fnc(reh))"},
+	{"Micro","%(return gnc(mih,phh))","Int","%(return hnc(phh,0))","Phase","%(return fnc(phh))"},
+	{"Micro","%(return gnc(mih,bnh))","Int","%(return hnc(bnh,0))","Int","%(return fnc(bnh))"},
+	{"Micro","%(return gnc(mii,rei))","Int","%(return hnc(rei,0))","Resrc","%(return fnc(rei))"},
+	{"Micro","%(return gnc(mii,phi))","Int","%(return hnc(phi,0))","Phase","%(return fnc(phi))"},
+	{"Micro","%(return gnc(mii,bni))","Int","%(return hnc(bni,0))","Int","%(return fnc(bni))"},
 }
 VertexFile = {
 	{"Micro","MicroTest","Str","vertexTestG"},
 	{"Micro","MicroDebug","Str","vertexDebugG"},
 	{"Micro","MicroFill","Str","vertexFillG"},
 	{"Micro","MicroDisplay","Str","vertexDisplayG"},
-	{"Micro","MicroCompute","Str","vertexComputeG"},
 	{"Micro","MicroPierce","Str","vertexPierceG"},
 	{"Micro","MicroDepth","Str","vertexDepthG"},
 	{"Micro","MicroDisp","Str","vertexDispG"},
-	{"Micro","MicroComp","Str","vertexCompG"},
 	{"Micro","MicroPrce","Str","vertexPrceG"},
 	{"Micro","MicroDpth","Str","vertexDpthG"},
+	{"Micro","MicroDsp","Str","vertexDspG"},
+	{"Micro","MicroPie","Str","vertexPieG"},
+	{"Micro","MicroDep","Str","vertexDepG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentTestG"},
 	{"Micro","MicroDebug","Str","fragmentDebugG"},
 	{"Micro","MicroFill","Str","fragmentFillG"},
 	{"Micro","MicroDisplay","Str","fragmentDisplayG"},
-	{"Micro","MicroCompute","Str","fragmentComputeG"},
 	{"Micro","MicroPierce","Str","fragmentPierceG"},
 	{"Micro","MicroDepth","Str","fragmentDepthG"},
 	{"Micro","MicroDisp","Str","fragmentDispG"},
-	{"Micro","MicroComp","Str","fragmentCompG"},
 	{"Micro","MicroPrce","Str","fragmentPrceG"},
 	{"Micro","MicroDpth","Str","fragmentDpthG"},
+	{"Micro","MicroDsp","Str","fragmentDspG"},
+	{"Micro","MicroPie","Str","fragmentPieG"},
+	{"Micro","MicroDep","Str","fragmentDepG"},
 }
 -- queue blobs are per Memory Resrc or Micro
 -- Micro queue blobs are decoupled from bindings per Micro,
@@ -756,6 +781,105 @@ MemoryAlt = {
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
 	{"Memory","Getintz","Int","%(return #def)"},
 	{"Memory","Getintz","Default","%(return def[1])"},
+
+
+	{"%(dea = {\"UniformRes\"}\
+	deb = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
+	dec = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"RelateRes\",\"IndexRes\",\"BringupRes\"}\
+	key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"}\
+	val={\"OldDerIns\",\"RelateRes\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"}\
+	kez={\"Reloc\",\"Format\"}\
+	wal={\"MiddleLoc\",\"WholeFrm\",\
+	\"AfterLoc\",\"SourceFrm\"}"..
+	"def={\"TrivDef\",".. -- MicIncIns.ary
+	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
+	"};"..
+	"arg={0,0,castMicro(\"MicroFill\")"..
+	"};"..
+	"\
+	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
+	function gnc () local ret = count; count = count + 1; return ret end\
+	\
+	count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+
+	-- MicroFill
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","SetTagIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Quality","RsizQua"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","RelateRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","ResizeLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reuse","FdbUse"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","ExtentFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","MiddleLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","MicroFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","WrlDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","RelateRes"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
+		{"Micro","Vectorz","Int","%(return gnc())%(return gnc())","Resrc","%(return fnc(dea))"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","PipeRes"},
+
+	-- MicroPie
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","SetTagIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Quality","RsizQua"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","PierceRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","ResizeLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reuse","SetUse"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","ExtentFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","MiddleLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","MicroFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","WrlDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","PierceRes"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
+		{"Micro","Vectorz","Int","%(return gnc())","Resrc","%(return fnc(deb))"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","PipeRes"},
+
+	-- MicroDis
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","SetTagIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Quality","RsizQua"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","ChainRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Memory","Memorys"},
+		{"Memory","Vectorz","Int","%(return gnc())","Micro","Micros"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","BeforeLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","NullFrm"},
+		{"Memory","Vectorz","Int","%(return gnc())","Quality","Qualitys"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reuse","Reuses"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","SwapRes"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","MiddleLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","MicroFrm"},
+	{"Micro","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
+		{"Micro","Vectorz","Int","%(return gnc())","Resrc","%(return fnc(dec))"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","PipeRes"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","ChainRes"},
+		{"Memory","Vectorz","Int","%(return gnc())","Reloc","AfterLoc"},
+		{"Memory","Vectorz","Int","%(return gnc())","Format","NullFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","SwapRes"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
+		{"Memory","Vectorz","Int","%(return gnc())","Resrc","PipeRes"},
+
+	-- Vectorz
+	{"Memory","Vectorz","Int", "%(return gnc())","%(return fnc(key))","%(return fnc(val))"},
+	{"Memory","Vectorz","Int", "%(return gnc())","%(return fnc(kez))","%(return fnc(wal))"},
+
+	-- Default/Int
+	{"%(count = 0; return \"Memory\")","Vectorz","Int","%(return gnc())","Default","%(return fnc(def))"},
+	{"%(count = 0; return \"Memory\")","Vectorz","Int","%(return gnc())","Int","%(return fnc(arg))"},
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
@@ -933,6 +1057,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(getold = #%(return count))Getoldz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(setint = #%(return count))Setintz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(setold = #%(return count))Setoldz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(vector = #%(return count))Vectorz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(uniform = #%(return count))Uniformz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(matrix = #%(return count))Matrixz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(triangle = #%(return count))Trianglez(siz:0idx:0slf:0)"},
@@ -1332,6 +1457,7 @@ Center = {
 	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
 	{"uns","Int32",{["mem"]={["Getintz"]=true,["Setintz"]=true}},"siz"},
 	{"old","Old",{["mem"]={["Getoldz"]=true,["Setoldz"]=true}},"siz"},
+	{"vec","Vector",{["mem"]={["Vectorz"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},

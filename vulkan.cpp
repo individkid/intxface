@@ -662,9 +662,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     }
     ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
     }
-    ArrayState(Quality key, Reuse val) : safe(1), idx(0) {
-        tag.qualify(0,key,val);
-    }
     ArrayState() : safe(1), idx(0) {
     }
     void qualify(int hdl, Quality key, int val) /*override*/ { // set current tags
@@ -1776,7 +1773,6 @@ struct PipeState : public BaseState {
         switch (micro) {default:
         break; case (MicroDebug): case (MicroDepth): case (MicroDpth): return SfloatFrm;
         break; case (MicroFill): case (MicroPierce): case (MicroPrce): return UintFrm;
-        break; case (MicroCompute): case (MicroComp): return UvecFrm;
         break; case (MicroTest): case (MicroDisplay): case (MicroDisp): return SrgbFrm;}
         return Renders;
     }
@@ -2409,9 +2405,6 @@ struct MainState {
             logicalState.graphics,logicalState.present),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        imageState(RuseQua,TexUse),
-        pierceState(RuseQua,PieUse),
-        relateState(RuseQua,FdbUse),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&changeState),
         copyState(&changeState,&threadState,enumState,constState) {

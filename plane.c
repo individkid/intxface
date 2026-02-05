@@ -1268,6 +1268,13 @@ void initTest()
     allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
     callCopy(eek,Getoldz,RptRsp,1,(debug?"getold":0));
 
+    /*struct Center *vec = centerPull(Vectorz); freeCenter(vec);
+    vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
+    allocOld(&vec->vec,vec->siz);
+    vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
+    vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
+    callCopy(vec,Vectorz,RptRsp,1,(debug?"vector":0));*/
+
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}
 }
