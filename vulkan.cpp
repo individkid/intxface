@@ -855,8 +855,8 @@ struct Ref {
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
     HeapState<SaveState,StackState::handls> bind[Resrcs];
-    int hand[Resrcs]; int size[Resrcs]; int init[Resrcs];
     HeapState<Ref,StackState::handls> bref[Phases];
+    int hand[Resrcs]; int size[Resrcs]; int init[Resrcs]; int nref[Phases];
     int lock; bool excl;
     HeapState<Dec,StackState::instrs> resp;
     BindState() :
@@ -880,10 +880,12 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         return hand[typ];
     }
-    void clr(Resrc typ) { // clear number of qualification indices 
+    void clr(Resrc typ, Phase pha) { // clear number of qualification indices 
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
+        if (pha < 0 || pha > Phases) EXIT
         size[typ] = 0;
+        if (pha != Phases) nref[pha] = 0;
     }
     int siz(Resrc typ) { // number of qualifications indices
         if (!excl) EXIT
@@ -913,7 +915,9 @@ struct BindState : public BaseState {
         hand[typ] = size[typ];
         size[typ] += 1;
         init[typ] = 1;
-        if (ref != Phases) bref[ref][hand[typ]] = Ref{typ,hand[typ]};
+        if (ref != Phases) {
+        bref[ref][nref[ref]] = Ref{typ,hand[typ]};
+        nref[ref] += 1;}
         return get(typ);
     }
     BaseState *res(Resrc typ, int hdl) { // indexed resource of type
@@ -1236,10 +1240,10 @@ struct CopyState {
         log << "check binding" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default:
-            break; case(NewDerIns): case(OldDerIns): case(GetDerIns): bind->clr(ins[i].res);
-            break; case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): bind->clr(ins[i].res);
-            break; case(WrlDeeIns): case(RdlDeeIns): bind->clr(ins[i].res);
-            break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): bind->clr(ins[i].res);}}
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns): bind->clr(ins[i].res,ins[i].phs);
+            break; case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): bind->clr(ins[i].res,ins[i].phs);
+            break; case(WrlDeeIns): case(RdlDeeIns): bind->clr(ins[i].res,ins[i].phs);
+            break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): bind->clr(ins[i].res,ins[i].phs);}}
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -2268,6 +2272,9 @@ struct DrawState : public BaseState {
         int idx = MicroBinding__Micro__Int__Int(loc.max.micro)(i);
         Phase phs = MicroBinding__Micro__Int__Phase(loc.max.micro)(i);
         BaseState *ptr = res(typ,vulkanHandle(phs));
+        bool found = false;
+        for (int j = 0; res(phs,j); j++) if (res(phs,j) == ptr) found = true;
+        // TODO if (!found) EXIT
         switch (phs) {default: EXIT
         break; case (PipePhs): if (pipePtr) EXIT else pipePtr = ptr;
         break; case (FramePhs): if (framePtr) EXIT else framePtr = ptr;
