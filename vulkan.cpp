@@ -1771,7 +1771,7 @@ struct PipeState : public BaseState {
     VkPipeline pipeline;
     Render renderIndex(Micro micro) {
         switch (micro) {default:
-        break; case (MicroDebug): case (MicroDepth): case (MicroDpth): return SfloatFrm;
+        break; case (MicroDebug): return SfloatFrm;
         break; case (MicroFill): case (MicroPierce): case (MicroPrce): return UintFrm;
         break; case (MicroTest): case (MicroDisplay): case (MicroDisp): return SrgbFrm;}
         return Renders;

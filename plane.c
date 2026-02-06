@@ -1259,7 +1259,7 @@ void initTest()
 
     struct Center *get = centerPull(Getintz); freeCenter(get);
     get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
-    allocOld(&get->old,get->siz); get->uns[0] = 1;
+    allocInt(&get->uns,get->siz); get->uns[0] = 1;
     callCopy(get,Getintz,RptRsp,1,(debug?"getint":0));
     while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);
 

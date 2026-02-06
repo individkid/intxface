@@ -132,7 +132,7 @@ vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
     /*if (tmq > tmq0 && tmq > tmq1 && tmq > tmp0 && tmq > tmp1 && tmq > tmp)*/ return uec;
 }
 
-#if defined(fragmentTest) || defined(fragmentDebug) || defined(fragmentFill) || defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDepth) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDpth) || defined(fragmentDsp) || defined(fragmentPie) || defined(fragmentDep)
+#if defined(fragmentTest) || defined(fragmentDebug) || defined(fragmentFill) || defined(fragmentDisplay) || defined(fragmentPierce) || defined(fragmentDisp) || defined(fragmentPrce) || defined(fragmentDsp) || defined(fragmentPie)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in vec4 fragVec;
 layout (location = 2) flat in uvec4 fragRef;
@@ -141,7 +141,7 @@ layout (location = 4) flat in uint fragTex;
 layout (location = 5) in vec3 fragColor;
 layout (location = 6) in vec2 fragTexCoord;
 #endif
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth) || defined(vertexDsp) || defined(vertexPie) || defined(vertexDep)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDsp) || defined(vertexPie)
 layout (location = 0) out vec4 fragOrd; // interpolated vertex
 layout (location = 1) out vec4 fragVec; // calculated normal
 layout (location = 2) out uvec4 fragRef; // facet identifiers
@@ -151,19 +151,19 @@ layout (location = 5) out vec3 fragColor; // interpolated color
 layout (location = 6) out vec2 fragTexCoord; // primitive space
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth) || defined(vertexDsp) || defined(vertexPie) || defined(vertexDep)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexFill) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDsp) || defined(vertexPie)
 layout (binding = 0) readonly uniform Uniforms {
     Uniform buf;
 } inUni;
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth) || defined(vertexDsp) || defined(vertexPie) || defined(vertexDep)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDsp) || defined(vertexPie)
 layout (binding = 1) readonly uniform Matrixs {
     Matrix buf[4]; // uniforms cannot be variable size
 } inMat;
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth) || defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDisp) || defined(vertexPrce)
 layout (binding = 3) readonly buffer Triangles {
     Triangle buf[];
 } inTri;
@@ -229,7 +229,7 @@ void display(uint tri, uint idx, uint num, uint tex, uint one, uint pol, uint al
     };
 #endif
 
-#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDsp) || defined(vertexPie) || defined(vertexDep)
+#if defined(vertexTest) || defined(vertexDebug) || defined(vertexDsp) || defined(vertexPie)
 void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
 {
     if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
@@ -241,7 +241,7 @@ void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
 }
 #endif
 
-#if defined(vertexTest) || defined(vertexDsp) || defined(vertexPie) || defined(vertexDep)
+#if defined(vertexTest) || defined(vertexDsp) || defined(vertexPie)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uvec4 inRefer;
@@ -258,7 +258,7 @@ void backoff()
 }
 #endif
 
-#if defined(vertexDisp) || defined(vertexPrce) || defined(vertexDpth)
+#if defined(vertexDisp) || defined(vertexPrce)
 void vertex()
 {
     uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
@@ -268,7 +268,7 @@ void vertex()
 }
 #endif
 
-#if defined(vertexDisplay) || defined(vertexPierce) || defined(vertexDepth)
+#if defined(vertexDisplay) || defined(vertexPierce)
 layout (binding = 2) readonly buffer Basiss {
     Basis buf[];
 } inBas;
@@ -335,12 +335,6 @@ void vertexPierce()
     coplane();
 }
 #endif
-#if defined(vertexDepth)
-void vertexDepth()
-{
-    coplane();
-}
-#endif
 
 // fallback
 #if defined(vertexDisp)
@@ -355,12 +349,6 @@ void vertexPrce()
     vertex();
 }
 #endif
-#if defined(vertexDpth)
-void vertexDpth()
-{
-    vertex();
-}
-#endif
 
 // bringup
 #if defined(vertexDsp)
@@ -371,12 +359,6 @@ void vertexDsp()
 #endif
 #if defined(vertexPie)
 void vertexPie()
-{
-    fetch();
-}
-#endif
-#if defined(vertexDep)
-void vertexDep()
 {
     fetch();
 }
@@ -433,13 +415,6 @@ void fragmentPierce()
     outColor = fragIdx;
 }
 #endif
-#if defined(fragmentDepth)
-layout (location = 0) out float outColor;
-void fragmentDepth()
-{
-    outColor = gl_FragCoord.z;
-}
-#endif
 
 #if defined(fragmentDisp)
 layout (location = 0) out vec4 outColor;
@@ -456,13 +431,6 @@ layout (location = 0) out uint outColor;
 void fragmentPrce()
 {
     outColor = fragIdx;
-}
-#endif
-#if defined(fragmentDpth)
-layout (location = 0) out float outColor;
-void fragmentDpth()
-{
-    outColor = gl_FragCoord.z;
 }
 #endif
 
@@ -486,13 +454,6 @@ layout (location = 0) out float outColor;
 void fragmentPie()
 {
     // outColor = fragIdx;
-    outColor = gl_FragCoord.z;
-}
-#endif
-#if defined(fragmentDep)
-layout (location = 0) out float outColor;
-void fragmentDep()
-{
     outColor = gl_FragCoord.z;
 }
 #endif

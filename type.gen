@@ -78,13 +78,10 @@ Micro = { -- what runs on gpu
 	"MicroFill", -- fill with uniform
 	"MicroDisplay", -- decorate vec4
 	"MicroPierce", -- pierced triangle
-	"MicroDepth", -- fixed point
 	"MicroDisp", -- indexed vertices
 	"MicroPrce", -- pierced triangle
-	"MicroDpth", -- fixed point
 	"MicroDsp", -- indexed vertices
 	"MicroPie", -- pierced triangle
-	"MicroDep", -- fixed point
 }
 Decor = { -- fragment shader graph operation
 	"MoveDec", -- move only
@@ -579,13 +576,13 @@ MicroBinding = {
 	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
 	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
 	mic = {\"MicroDisplay\"} rec = cat(rep,res,{}) phc = cat(php,phs,{}) bnc = cat(bnp,bns,{})\
-	mid = {\"MicroPierce\",\"MicroDepth\"} red = cat(req,res,{}) phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
+	mid = {\"MicroPierce\"} red = cat(req,res,{}) phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
 	\
 	res = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
 	bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
 	mie = {\"MicroDisp\"} ree = cat(rep,res,{}) phe = cat(php,phs,{}) bne = cat(bnp,bns,{})\
-	mif = {\"MicroPrce\",\"MicroDpth\"} ref = cat(req,res,{}) phf = cat(phq,phs,{}) bnf = cat(bnq,bns,{})\
+	mif = {\"MicroPrce\"} ref = cat(req,res,{}) phf = cat(phq,phs,{}) bnf = cat(bnq,bns,{})\
 	\
 	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
@@ -598,7 +595,7 @@ MicroBinding = {
 	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
 	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\",       }\
 	mig = {\"MicroDsp\"} reg = cat(rep,res,{}) phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
-	mih = {\"MicroPie\",\"MicroDep\"} reh = cat(req,res,{}) phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
+	mih = {\"MicroPie\"} reh = cat(req,res,{}) phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
 	\
 	res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}\
 	phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
@@ -642,13 +639,10 @@ VertexFile = {
 	{"Micro","MicroFill","Str","vertexFillG"},
 	{"Micro","MicroDisplay","Str","vertexDisplayG"},
 	{"Micro","MicroPierce","Str","vertexPierceG"},
-	{"Micro","MicroDepth","Str","vertexDepthG"},
 	{"Micro","MicroDisp","Str","vertexDispG"},
 	{"Micro","MicroPrce","Str","vertexPrceG"},
-	{"Micro","MicroDpth","Str","vertexDpthG"},
 	{"Micro","MicroDsp","Str","vertexDspG"},
 	{"Micro","MicroPie","Str","vertexPieG"},
-	{"Micro","MicroDep","Str","vertexDepG"},
 }
 FragmentFile = {
 	{"Micro","MicroTest","Str","fragmentTestG"},
@@ -656,13 +650,10 @@ FragmentFile = {
 	{"Micro","MicroFill","Str","fragmentFillG"},
 	{"Micro","MicroDisplay","Str","fragmentDisplayG"},
 	{"Micro","MicroPierce","Str","fragmentPierceG"},
-	{"Micro","MicroDepth","Str","fragmentDepthG"},
 	{"Micro","MicroDisp","Str","fragmentDispG"},
 	{"Micro","MicroPrce","Str","fragmentPrceG"},
-	{"Micro","MicroDpth","Str","fragmentDpthG"},
 	{"Micro","MicroDsp","Str","fragmentDspG"},
 	{"Micro","MicroPie","Str","fragmentPieG"},
-	{"Micro","MicroDep","Str","fragmentDepG"},
 }
 -- queue blobs are per Memory Resrc or Micro
 -- Micro queue blobs are decoupled from bindings per Micro,
