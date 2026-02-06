@@ -2262,7 +2262,8 @@ struct DrawState : public BaseState {
         int index = 0;
         log << "micro " << debug << " " << loc.max << " " << loc.max.tag << "==" << MicroExt << '\n';
         if (loc.max.tag != MicroExt) EXIT
-        for (int i = 0; MicroBinding__Micro__Int__Resrc(loc.max.micro)(i) != Resrcs; i++) {
+        for (int i = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(i) != Phases; i++) {
+        // TODO use Phase instead of Resrc and remove Resrc from MicroBinding
         Resrc typ = MicroBinding__Micro__Int__Resrc(loc.max.micro)(i);
         int idx = MicroBinding__Micro__Int__Int(loc.max.micro)(i);
         Phase phs = MicroBinding__Micro__Int__Phase(loc.max.micro)(i);
@@ -3034,7 +3035,7 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
     VkDescriptorSetLayout descriptorSetLayout;
     HeapState<VkDescriptorSetLayoutBinding> bindings;
-    for (int i = 0; MicroBinding__Micro__Int__Resrc(micro)(i) != Resrcs; i++)
+    for (int i = 0; MicroBinding__Micro__Int__Phase(micro)(i) != Phases; i++)
     switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
     break; case (UniformPhs): {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
@@ -3125,10 +3126,7 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     HeapState<VkVertexInputAttributeDescription> attributeDescriptions;
     /*{char *st2 = 0; showMicro(micro,&st2);
     fprintf(stderr,"micro:%s\n",st2);}*/
-    for (int i = 0; MicroBinding__Micro__Int__Resrc(micro)(i) != Resrcs; i++) {
-    Resrc typ = MicroBinding__Micro__Int__Resrc(micro)(i);
-    /*{char *st0 = 0; showResrc(typ,&st0);
-    fprintf(stderr,"resrc:%s %d\n",st0,i);}*/
+    for (int i = 0; MicroBinding__Micro__Int__Phase(micro)(i) != Phases; i++) {
     switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
     break; case (FetchPhs): {
     VkVertexInputBindingDescription bindingDescription{};
@@ -3141,10 +3139,6 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     VkVertexInputAttributeDescription attributeDescription{};
     attributeDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
     attributeDescription.location = j;
-    /*{char *st0 = 0; showResrc(typ,&st0);
-    char *st1 = 0; showRender(ResrcFormat__Resrc__Int__Render(typ)(j),&st1);
-    char *st2 = 0; showMicro(micro,&st2);
-    fprintf(stderr,"micro:%s resrc:%s %d render:%s %d\n",st2,st0,i,st1,j);}*/
     attributeDescription.format = PhysicalState::vulkanFormat(MicroFormat__Micro__Int__Render(micro)(j));
     attributeDescription.offset = MicroOffset__Micro__Int__Int(micro)(j);
     attributeDescriptions << attributeDescription;}}}}
