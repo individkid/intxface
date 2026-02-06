@@ -455,6 +455,7 @@ struct BaseState {
         return ploc[loc];
     }
     BaseState *res(Resrc typ, int hdl);
+    BaseState *res(Phase ref, int idx);
     int tag(Quality tag);
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
@@ -807,6 +808,7 @@ struct ConstState {
     decltype(MemoryIns__Memory__Int__Resrc) *memres;
     decltype(MemoryIns__Memory__Int__Memory) *memmem;
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
+    decltype(MemoryIns__Memory__Int__Phase) *memphs;
     decltype(MemoryIns__Memory__Int__Quality) *memkey;
     decltype(MemoryIns__Memory__Int__Reuse) *memret;
     decltype(MemoryIns__Memory__Int__Default) *memdef;
@@ -817,6 +819,7 @@ struct ConstState {
     decltype(ResrcIns__Resrc__Int__Resrc) *resres;
     decltype(ResrcIns__Resrc__Int__Memory) *resmem;
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
+    decltype(ResrcIns__Resrc__Int__Phase) *resphs;
     decltype(ResrcIns__Resrc__Int__Quality) *reskey;
     decltype(ResrcIns__Resrc__Int__Reuse) *resret;
     decltype(ResrcIns__Resrc__Int__Default) *resdef;
@@ -827,6 +830,7 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Resrc) *micres;
     decltype(MicroIns__Micro__Int__Memory) *micmem;
     decltype(MicroIns__Micro__Int__Micro) *micmic;
+    decltype(MicroIns__Micro__Int__Phase) *micphs;
     decltype(MicroIns__Micro__Int__Quality) *mickey;
     decltype(MicroIns__Micro__Int__Reuse) *micret;
     decltype(MicroIns__Micro__Int__Default) *micdef;
@@ -844,10 +848,15 @@ struct Dec {
     int hdl;
     Instr ins;
 };
+struct Ref {
+    Resrc typ;
+    int hdl;
+};
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
     HeapState<SaveState,StackState::handls> bind[Resrcs];
-    int hand[Resrcs]; int size[Resrcs];
+    int hand[Resrcs]; int size[Resrcs]; int init[Resrcs];
+    HeapState<Ref,StackState::handls> bref[Phases];
     int lock; bool excl;
     HeapState<Dec,StackState::instrs> resp;
     BindState() :
@@ -890,17 +899,21 @@ struct BindState : public BaseState {
         return &bind[typ][hdl];
     }
     SaveState *get(Resrc typ, int i) { // current next or first
+        if (init[typ]) {init[typ] = 0; hand[typ] = 0;}
         if (hand[typ] == size[typ]) hand[typ] = 0;
         SaveState *sav = get(typ);
         if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
         if (sav->fin < i) ERROR();
         return sav;
     }
-    SaveState *add(Resrc typ) { // add resource of type
+    SaveState *add(Resrc typ, Phase ref) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
+        if (ref < 0 || ref > Phases) EXIT
         hand[typ] = size[typ];
         size[typ] += 1;
+        init[typ] = 1;
+        if (ref != Phases) bref[ref][hand[typ]] = Ref{typ,hand[typ]};
         return get(typ);
     }
     BaseState *res(Resrc typ, int hdl) { // indexed resource of type
@@ -909,6 +922,12 @@ struct BindState : public BaseState {
         if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return bind[typ][hdl].sav;
+    }
+    BaseState *res(Phase ref, int idx) {
+        if (ref < 0 || ref >= Phases || idx < 0 || bref[ref].size() < idx) EXIT
+        if (bref[ref].size() == idx) return 0;
+        Ref &met = bref[ref][idx];
+        return res(met.typ,met.hdl);
     }
     bool push(Resrc typ, Reloc loc, Reuse ret, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
@@ -1023,6 +1042,10 @@ BaseState *BaseState::res(Resrc typ, int hdl) {
     if (lock == 0) EXIT
     return lock->res(typ,hdl);
 }
+BaseState *BaseState::res(Phase ref, int idx) {
+    if (lock == 0) EXIT
+    return lock->res(ref,idx);
+}
 void BaseState::unlock(Loc &loc, SmartState log) {
     if (lock) {lock->done(loc.unl,log);}
 }
@@ -1129,7 +1152,7 @@ struct EnumState {
 struct Arg {
     Instr ins = Instrs;
     Reloc loc; Reuse use = Reuses; Format fmt = Formats; Quality key = Qualitys;
-    Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros;
+    Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros; Phase phs = Phases;
 };
 struct CopyState {
     ChangeState<Configure,Configures> *change;
@@ -1233,7 +1256,7 @@ struct CopyState {
             Onl onl = get(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
             SaveState *sav = 0; if (!vld(ins[i].res,onl,bind)) {
             BaseState *buf = get(ins[i].ins,ins[i].res,ins[i].idx,ins[i].key,ins[i].val);
-            sav = bind->add(ins[i].res);
+            sav = bind->add(ins[i].res,ins[i].phs);
             sav->buf = buf; sav->fst = i; sav->onl = onl;}
             else sav = bind->get(ins[i].res);
             sav->fin = i;
@@ -1431,29 +1454,29 @@ struct CopyState {
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
         int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
-        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        return Inst{.ins=ins,.req=req,.res=dot[i].res,.phs=dot[i].phs,.idx=pre,.key=key,.val=vlu};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
         int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"DerIns",arg,siz,idx,log);
         log << "instruct " << vlu << "/" << dot[i].use << '\n';
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
-        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        return Inst{.ins=ins,.req=req,.res=dot[i].res,.phs=dot[i].phs,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDerIns): {
         int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         pre = get(arg,siz,idx,log,"IdxDerIns.idx");
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
-        return Inst{.ins=ins,.req=req,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        return Inst{.ins=ins,.req=req,.res=dot[i].res,.phs=dot[i].phs,.idx=pre,.key=key,.val=vlu};}
         break; case(WrlDeeIns): case(RdlDeeIns): {
         int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        return Inst{.ins=ins,.res=dot[i].res,.phs=dot[i].phs,.idx=pre,.key=key,.val=vlu};}
         break; case(WidDeeIns): case(RidDeeIns): {
         int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"DeeIns",arg,siz,idx,log);
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        return Inst{.ins=ins,.res=dot[i].res,.phs=dot[i].phs,.idx=pre,.key=key,.val=vlu};}
         break; case(IdxDeeIns): {
         int pre = 0; Quality key = Qualitys; int vlu = dot[i].use;
         pre = get(arg,siz,idx,log,"IdxDeeIns.idx");
-        return Inst{.ins=ins,.res=dot[i].res,.idx=pre,.key=key,.val=vlu};}
+        return Inst{.ins=ins,.res=dot[i].res,.phs=dot[i].phs,.idx=pre,.key=key,.val=vlu};}
         break; case(SetTagIns): {
         int pre = 0; Quality key = dot[i].key; int vlu = dot[i].use;
         quality(pre,key,vlu,"SetTagIns",arg,siz,idx,log);
@@ -1484,6 +1507,7 @@ struct CopyState {
         if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->memmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->memmic,typ,sub,Micros,log)) done = false;
+        if (builtin(sav.phs,dot.phs,ary->memphs,typ,sub,Phases,log)) done = false;
         return !done;
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
@@ -1497,6 +1521,7 @@ struct CopyState {
         if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->resmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->resmic,typ,sub,Micros,log)) done = false;
+        if (builtin(sav.phs,dot.phs,ary->resphs,typ,sub,Phases,log)) done = false;
         return !done;
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
@@ -1510,6 +1535,7 @@ struct CopyState {
         if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
         if (builtin(sav.mem,dot.mem,ary->micmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->micmic,typ,sub,Micros,log)) done = false;
+        if (builtin(sav.phs,dot.phs,ary->micphs,typ,sub,Phases,log)) done = false;
         /*
         char *db0 = 0; showResrc(dot.res,&db0);
         char *db1 = 0; showInstr(dot.ins,&db1);
@@ -2336,6 +2362,7 @@ struct MainState {
             MemoryIns__Memory__Int__Resrc,
             MemoryIns__Memory__Int__Memory,
             MemoryIns__Memory__Int__Micro,
+            MemoryIns__Memory__Int__Phase,
             MemoryIns__Memory__Int__Quality,
             MemoryIns__Memory__Int__Reuse,
             MemoryIns__Memory__Int__Default,
@@ -2346,6 +2373,7 @@ struct MainState {
             ResrcIns__Resrc__Int__Resrc,
             ResrcIns__Resrc__Int__Memory,
             ResrcIns__Resrc__Int__Micro,
+            ResrcIns__Resrc__Int__Phase,
             ResrcIns__Resrc__Int__Quality,
             ResrcIns__Resrc__Int__Reuse,
             ResrcIns__Resrc__Int__Default,
@@ -2356,6 +2384,7 @@ struct MainState {
             MicroIns__Micro__Int__Resrc,
             MicroIns__Micro__Int__Memory,
             MicroIns__Micro__Int__Micro,
+            MicroIns__Micro__Int__Phase,
             MicroIns__Micro__Int__Quality,
             MicroIns__Micro__Int__Reuse,
             MicroIns__Micro__Int__Default,
@@ -2366,6 +2395,7 @@ struct MainState {
             MemoryAlt__Memory__Int__Resrc,
             MemoryAlt__Memory__Int__Memory,
             MemoryAlt__Memory__Int__Micro,
+            MemoryAlt__Memory__Int__Phase,
             MemoryAlt__Memory__Int__Quality,
             MemoryAlt__Memory__Int__Reuse,
             MemoryAlt__Memory__Int__Default,
@@ -2376,6 +2406,7 @@ struct MainState {
             ResrcAlt__Resrc__Int__Resrc,
             ResrcAlt__Resrc__Int__Memory,
             ResrcAlt__Resrc__Int__Micro,
+            ResrcAlt__Resrc__Int__Phase,
             ResrcAlt__Resrc__Int__Quality,
             ResrcAlt__Resrc__Int__Reuse,
             ResrcAlt__Resrc__Int__Default,
@@ -2386,6 +2417,7 @@ struct MainState {
             MicroAlt__Micro__Int__Resrc,
             MicroAlt__Micro__Int__Memory,
             MicroAlt__Micro__Int__Micro,
+            MicroAlt__Micro__Int__Phase,
             MicroAlt__Micro__Int__Quality,
             MicroAlt__Micro__Int__Reuse,
             MicroAlt__Micro__Int__Default,
@@ -3101,10 +3133,10 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     break; case (FetchPhs): {
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
-    bindingDescription.stride = ResrcStride__Resrc__Int(typ);
+    bindingDescription.stride = MicroStride__Micro__Int(micro);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     bindingDescriptions << bindingDescription;
-    for (int j = 0; ResrcFormat__Resrc__Int__Render(typ)(j) != Renders; j++) {
+    for (int j = 0; MicroFormat__Micro__Int__Render(micro)(j) != Renders; j++) {
     // fprintf(stderr,"render:%d\n",j);
     VkVertexInputAttributeDescription attributeDescription{};
     attributeDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
@@ -3113,8 +3145,8 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     char *st1 = 0; showRender(ResrcFormat__Resrc__Int__Render(typ)(j),&st1);
     char *st2 = 0; showMicro(micro,&st2);
     fprintf(stderr,"micro:%s resrc:%s %d render:%s %d\n",st2,st0,i,st1,j);}*/
-    attributeDescription.format = PhysicalState::vulkanFormat(ResrcFormat__Resrc__Int__Render(typ)(j));
-    attributeDescription.offset = ResrcOffset__Resrc__Int__Int(typ)(j);
+    attributeDescription.format = PhysicalState::vulkanFormat(MicroFormat__Micro__Int__Render(micro)(j));
+    attributeDescription.offset = MicroOffset__Micro__Int__Int(micro)(j);
     attributeDescriptions << attributeDescription;}}}}
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());

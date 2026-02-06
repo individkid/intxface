@@ -531,23 +531,53 @@ Tag = { -- type of data piped between processes
 	"Valvez", -- share
 }
 --HERE Constants
-ResrcStride = {
-	{"Resrc","BringupRes","Int","48"},
+MicroStride = {
+	{"Micro","MicroTest","Int","48"},
+	{"Micro","MicroDebug","Int","48"},
+	{"Micro","MicroDsp","Int","48"},
+	{"Micro","MicroPie","Int","48"},
 }
-ResrcOffset = {
-	{"Resrc","BringupRes","Int","0","Int","0"},
-	{"Resrc","BringupRes","Int","1","Int","16"},
-	{"Resrc","BringupRes","Int","2","Int","32"},
+MicroOffset = {
+	{"Micro","MicroTest","Int","0","Int","0"},
+	{"Micro","MicroTest","Int","1","Int","16"},
+	{"Micro","MicroTest","Int","2","Int","32"},
+	{"Micro","MicroDebug","Int","0","Int","0"},
+	{"Micro","MicroDebug","Int","1","Int","16"},
+	{"Micro","MicroDebug","Int","2","Int","32"},
+	{"Micro","MicroDsp","Int","0","Int","0"},
+	{"Micro","MicroDsp","Int","1","Int","16"},
+	{"Micro","MicroDsp","Int","2","Int","32"},
+	{"Micro","MicroPie","Int","0","Int","0"},
+	{"Micro","MicroPie","Int","1","Int","16"},
+	{"Micro","MicroPie","Int","2","Int","32"},
 }
-ResrcFormat = {
-	{"Resrc","BringupRes","Int","0","Render","VecFrm"},
-	{"Resrc","BringupRes","Int","1","Render","VecFrm"},
-	{"Resrc","BringupRes","Int","2","Render","UvecFrm"},
+MicroFormat = {
+	{"Micro","MicroTest","Int","0","Render","VecFrm"},
+	{"Micro","MicroTest","Int","1","Render","VecFrm"},
+	{"Micro","MicroTest","Int","2","Render","UvecFrm"},
+	{"Micro","MicroDebug","Int","0","Render","VecFrm"},
+	{"Micro","MicroDebug","Int","1","Render","VecFrm"},
+	{"Micro","MicroDebug","Int","2","Render","UvecFrm"},
+	{"Micro","MicroDsp","Int","0","Render","VecFrm"},
+	{"Micro","MicroDsp","Int","1","Render","VecFrm"},
+	{"Micro","MicroDsp","Int","2","Render","UvecFrm"},
+	{"Micro","MicroPie","Int","0","Render","VecFrm"},
+	{"Micro","MicroPie","Int","1","Render","VecFrm"},
+	{"Micro","MicroPie","Int","2","Render","UvecFrm"},
 }
-ResrcElement = {
-	{"Resrc","BringupRes","Int","0","Int","4"},
-	{"Resrc","BringupRes","Int","1","Int","4"},
-	{"Resrc","BringupRes","Int","2","Int","4"},
+MicroElement = {
+	{"Micro","MicroTest","Int","0","Int","4"},
+	{"Micro","MicroTest","Int","1","Int","4"},
+	{"Micro","MicroTest","Int","2","Int","4"},
+	{"Micro","MicroDebug","Int","0","Int","4"},
+	{"Micro","MicroDebug","Int","1","Int","4"},
+	{"Micro","MicroDebug","Int","2","Int","4"},
+	{"Micro","MicroDsp","Int","0","Int","4"},
+	{"Micro","MicroDsp","Int","1","Int","4"},
+	{"Micro","MicroDsp","Int","2","Int","4"},
+	{"Micro","MicroPie","Int","0","Int","4"},
+	{"Micro","MicroPie","Int","1","Int","4"},
+	{"Micro","MicroPie","Int","2","Int","4"},
 }
 -- Resrc is sufficient for buffer structure, but binding info depend on Micro
 MicroBinding = {
@@ -679,6 +709,7 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","1","Instr","OldDerIns"},
 	{"Memory","%(return fnc(mem))","Int","1","Memory","Memorys"},
 	{"Memory","%(return fnc(mem))","Int","1","Micro","Micros"},
+	{"Memory","%(return fnc(mem))","Int","1","Phase","Phases"},
 	{"Memory","%(return fnc(mem))","Int","1","Reloc","ResizeLoc"},
 	{"Memory","%(return fnc(mem))","Int","1","Format","%(return fnc(siz))"},
 	{"Memory","%(return fnc(mem))","Int","2","Reloc","ReformLoc"},
@@ -702,6 +733,7 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Resrc","MatrixRes"},
 	{"Memory","Matrixz","Int","0","Memory","Memorys"},
 	{"Memory","Matrixz","Int","0","Micro","Micros"},
+	{"Memory","Matrixz","Int","0","Phase","Phases"},
 	{"Memory","Matrixz","Int","0","Reloc","MiddleLoc"},
 	{"Memory","Matrixz","Int","0","Format","LockFrm"},
 	{"Memory","Matrixz","Int","0","Quality","Qualitys"},
@@ -878,6 +910,7 @@ ResrcIns = {
 	{"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
 	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
+	 {"Resrc","SwapRes","Int","0","Phase","Phases"},
 	 {"Resrc","SwapRes","Int","0","Reloc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
@@ -897,6 +930,7 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Resrc","SwapRes"},
 	 {"Resrc","SwapRes","Int","0","Memory","Memorys"},
 	 {"Resrc","SwapRes","Int","0","Micro","Micros"},
+	 {"Resrc","SwapRes","Int","0","Phase","Phases"},
 	 {"Resrc","SwapRes","Int","0","Reloc","ResizeLoc"},
 	 {"Resrc","SwapRes","Int","0","Format","FalseFrm"},
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
@@ -946,6 +980,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","1","Resrc","ChainRes"},
 		{"Micro","%(return fnc(mic))","Int","1","Memory","Memorys"},
 		{"Micro","%(return fnc(mic))","Int","1","Micro","Micros"},
+		{"Micro","%(return fnc(mic))","Int","1","Phase","Phases"},
 		{"Micro","%(return fnc(mic))","Int","1","Reloc","BeforeLoc"},
 		{"Micro","%(return fnc(mic))","Int","1","Format","NullFrm"},
 		{"Micro","%(return fnc(mic))","Int","1","Quality","Qualitys"},
@@ -1024,6 +1059,7 @@ MicroAlt = {
 		{"Micro","MicroTest","Int","0","Resrc","ChainRes"},
 		{"Micro","MicroTest","Int","0","Memory","Memorys"},
 		{"Micro","MicroTest","Int","0","Micro","Micros"},
+		{"Micro","MicroTest","Int","0","Phase","Phases"},
 		{"Micro","MicroTest","Int","0","Reloc","BeforeLoc"},
 		{"Micro","MicroTest","Int","0","Format","MicroFrm"},
 		{"Micro","MicroTest","Int","0","Quality","Qualitys"},
@@ -1432,6 +1468,7 @@ Inst = {
 	{"ins","Instr",{},""},
 	{"req","Requ",{},{}}, -- only used by DerIns TODO change to pointer
 	{"res","Resrc",{},{}}, -- used by DerIns DeeIns IncIns TagIns
+	{"phs","Phase",{},{}}, -- only used by DeeIns
 	{"mem","Memory",{},{}}, -- only used by IncIns
 	{"mic","Micro",{},{}}, -- only used by IncIns
 	{"idx","Int",{},{}}, -- used by DerIns DeeIns TagIns
