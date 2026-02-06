@@ -942,11 +942,14 @@ MicroIns = {
 	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
 	-- n>0: departures from n-1
 	{"%(mic = {\"MicroTest\"}\
-	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
+	dee = {\"SwapRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
+	phs = {\"SwapPhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\"}\
 	mib = {\"MicroDebug\"}\
 	deb = {\"UniformRes\",\"MatrixRes\"}\
+	phb = {\"UniformPhs\",\"UniformPhs\"}\
 	mia = {\"MicroFill\"}\
 	dea = {\"UniformRes\"}\
+	pha = {\"UniformPhs\"}\
 	\
 	def = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
@@ -987,22 +990,27 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","1","Reuse","Reuses"},
 	{"Micro","%(return fnc(mic))","Int","2","Instr","RdlDeeIns"},
 		{"Micro","%(return fnc(mic))","Int","2","Resrc","SwapRes"},
+		{"Micro","%(return fnc(mic))","Int","2","Phase","SwapPhs"},
 	{"Micro","%(return fnc(mic))","Int","3","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mic))","Int","3","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mic))","Int","3","Reloc","MiddleLoc"},
 		{"Micro","%(return fnc(mic))","Int","3","Format","MicroFrm"},
 	{"Micro","%(return gnc(mic,dee))","Int","4","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mic,dee))","Int","%(return hnc(dee,4))","Resrc","%(return fnc(dee))"},
+		{"Micro","%(return gnc(mic,phs))","Int","%(return hnc(phs,4))","Phase","%(return fnc(phs))"},
 	{"Micro","%(return fnc(mic))","Int","%(return 4+#dee)","Instr","IdxDeeIns"},
 		{"Micro","%(return fnc(mic))","Int","%(return 4+#dee)","Resrc","PipeRes"},
+		{"Micro","%(return fnc(mic))","Int","%(return 4+#dee)","Phase","PipePhs"},
 	{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Resrc","ChainRes"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Reloc","AfterLoc"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Format","NullFrm"},
 	{"Micro","%(return fnc(mic))","Int","%(return 6+#dee)","Instr","RdlDeeIns"},
 		{"Micro","%(return fnc(mic))","Int","%(return 6+#dee)","Resrc","SwapRes"},
+		{"Micro","%(return fnc(mic))","Int","%(return 6+#dee)","Phase","SwapPhs"},
 	{"Micro","%(return fnc(mic))","Int","%(return 7+#dee)","Instr","IdxDeeIns"},
 		{"Micro","%(return fnc(mic))","Int","%(return 7+#dee)","Resrc","PipeRes"},
+		{"Micro","%(return fnc(mic))","Int","%(return 7+#dee)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mic,def))","Int","%(return hnc(def,0))","Default","%(return fnc(def))"},
 	{"Micro","%(return gnc(mic,dv0))","Int","%(return hnc(dv0,0))","Int","%(return fnc(dv0))"},
 	{"Micro","%(return fnc(mic))","Int","1","Int","%(return fnc(mic))"},
@@ -1022,10 +1030,13 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","2","Format","MicroFrm"},
 	{"Micro","%(return fnc(mib))","Int","3","Instr","WrlDeeIns"},
 		{"Micro","%(return fnc(mib))","Int","3","Resrc","PierceRes"},
+		{"Micro","%(return fnc(mib))","Int","3","Phase","RenderPhs"},
 	{"Micro","%(return fnc(mib))","Int","4","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mib,deb))","Int","%(return hnc(deb,4))","Resrc","%(return fnc(deb))"},
+		{"Micro","%(return gnc(mib,phb))","Int","%(return hnc(phb,4))","Phase","%(return fnc(phb))"},
 	{"Micro","%(return fnc(mib))","Int","%(return 4+#deb)","Instr","IdxDeeIns"},
 		{"Micro","%(return fnc(mib))","Int","%(return 4+#deb)","Resrc","PipeRes"},
+		{"Micro","%(return fnc(mib))","Int","%(return 4+#deb)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mib,deg))","Int","%(return hnc(deg,0))","Default","%(return fnc(deg))"},
 	{"Micro","%(return gnc(mib,dw0))","Int","%(return hnc(dw0,0))","Int","%(return fnc(dw0))"},
 	{"Micro","%(return fnc(mib))","Int","1","Int","%(return fnc(mib))"},
@@ -1045,10 +1056,13 @@ MicroIns = {
 		{"Micro","%(return fnc(mia))","Int","2","Format","MicroFrm"},
 	{"Micro","%(return fnc(mia))","Int","3","Instr","WrlDeeIns"},
 		{"Micro","%(return fnc(mia))","Int","3","Resrc","RelateRes"},
+		{"Micro","%(return fnc(mia))","Int","3","Phase","RenderPhs"},
 	{"Micro","%(return fnc(mia))","Int","4","Instr","RdlDeeIns"},
 		{"Micro","%(return gnc(mia,dea))","Int","%(return hnc(dea,4))","Resrc","%(return fnc(dea))"},
+		{"Micro","%(return gnc(mia,pha))","Int","%(return hnc(pha,4))","Phase","%(return fnc(pha))"},
 	{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Instr","IdxDeeIns"},
 		{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Resrc","PipeRes"},
+		{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mia,deh))","Int","%(return hnc(deh,0))","Default","%(return fnc(deh))"},
 	{"Micro","%(return gnc(mia,du0))","Int","%(return hnc(du0,0))","Int","%(return fnc(du0))"},
 	{"Micro","%(return fnc(mia))","Int","1","Int","%(return fnc(mia))"},
