@@ -77,6 +77,9 @@ Micro = { -- what runs on gpu
 	"MicroDebug", -- uint per pixel
 	"MicroFill", -- fill with uniform
 	"MicroDisplay", -- decorate vec4
+	-- TODO add PackState resource that moves floats or uint32s to/from vectors
+	-- TODO then only MicroFill/Fetch/Point/Plane needed, no need for Pierce/Prc/Pie
+	-- TODO control what fragment shader fills vector with using uniform and Decor
 	"MicroPierce", -- pierced triangle
 	"MicroDisp", -- indexed vertices
 	"MicroPrce", -- pierced triangle
@@ -743,8 +746,8 @@ MemoryAlt = {
 
 	{"Memory","Getoldz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getoldz","Int","0","Micro","MicroDebug"},
-	{"%(key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"};"..
-	"val={\"OldDerIns\",\"PierceRes\",\"BeforeLoc\",\"GetUse\",\"PeekFrm\"};"..
+	{"%(key={\"Instr\",\"Resrc\",\"Phase\",\"Reloc\",\"Reuse\",\"Format\"};"..
+	"val={\"OldDerIns\",\"PierceRes\",\"Phases\",\"BeforeLoc\",\"GetUse\",\"PeekFrm\"};"..
 	"kez={\"Reloc\",\"Format\"};"..
 	"wal={\"MiddleLoc\",\"WholeFrm\","..
 	"\"AfterLoc\",\"SourceFrm\"};"..
@@ -772,8 +775,8 @@ MemoryAlt = {
 
 	{"Memory","Getintz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getintz","Int","0","Micro","MicroFill"},
-	{"%(key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"};"..
-	"val={\"OldDerIns\",\"RelateRes\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"};"..
+	{"%(key={\"Instr\",\"Resrc\",\"Phase\",\"Reloc\",\"Reuse\",\"Format\"};"..
+	"val={\"OldDerIns\",\"RelateRes\",\"Phases\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"};"..
 	"kez={\"Reloc\",\"Format\"};"..
 	"wal={\"MiddleLoc\",\"WholeFrm\","..
 	"\"AfterLoc\",\"SourceFrm\"};"..
@@ -887,22 +890,29 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Reuse","Reuses"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","SwapRes"},
+		{"Memory","Vectorz","Int","%(return save)","Phase","SwapPhs"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","DrawRes"},
+		{"Memory","Vectorz","Int","%(return save)","Phase","Phases"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","MiddleLoc"},
 		{"Memory","Vectorz","Int","%(return save)","Format","MicroFrm"},
 	{"Micro","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
 		{"Micro","Vectorz","Int","%(return hnc(dec))","Resrc","%(return fnc(dec))"},
+		-- TODO dependee phases
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","PipeRes"},
+		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","NewDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","ChainRes"},
+		{"Memory","Vectorz","Int","%(return save)","Phase","Phases"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","AfterLoc"},
 		{"Memory","Vectorz","Int","%(return save)","Format","NullFrm"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","SwapRes"},
+		{"Memory","Vectorz","Int","%(return save)","Phase","SwapPhs"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","PipeRes"},
+		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
 
 	-- Vectorz
 	{"Memory","Vectorz","Int", "%(return enc(key))","%(return fnc(key))","%(return fnc(val))"},
@@ -1013,7 +1023,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","%(return 4+#dee)","Phase","PipePhs"},
 	{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Resrc","ChainRes"},
-		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Phase","FramePhs"},
+		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Phase","Phases"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Reloc","AfterLoc"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Format","NullFrm"},
 	{"Micro","%(return fnc(mic))","Int","%(return 6+#dee)","Instr","RdlDeeIns"},
@@ -1032,7 +1042,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","0","Quality","RsizQua"},
 	{"Micro","%(return fnc(mib))","Int","1","Instr","OldDerIns"},
 		{"Micro","%(return fnc(mib))","Int","1","Resrc","PierceRes"},
-		{"Micro","%(return fnc(mia))","Int","1","Phase","RenderPhs"},
+		{"Micro","%(return fnc(mib))","Int","1","Phase","RenderPhs"},
 		{"Micro","%(return fnc(mib))","Int","1","Reloc","ResizeLoc"},
 		{"Micro","%(return fnc(mib))","Int","1","Reuse","SetUse"},
 		{"Micro","%(return fnc(mib))","Int","1","Format","ExtentFrm"},

@@ -2261,26 +2261,28 @@ struct DrawState : public BaseState {
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         vkResetFences(device, 1, &loc.syn.fen);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        BaseState *pipePtr = 0;
-        BaseState *swapPtr = 0;
-        BaseState *framePtr = 0;
-        BaseState *indexPtr = 0;
-        BaseState *fetchPtr = 0;
-        int index = 0;
+        BaseState *pipePtr = 0; // res(PipePhs,0);
+        BaseState *swapPtr = 0; // (res(SwapPhs,0)?res(SwapPhs,0):res(RenderPhs,0));
+        BaseState *framePtr = 0; // (res(FramePhs,0)?res(FramePhs,0):res(RenderPhs,0));
+        BaseState *indexPtr = 0; // res(IndexPhs,0);
+        BaseState *fetchPtr = 0; // res(FetchPhs,0);
+        /*for (int i = 0; res(UniformPhs,i); i++) {BaseState *ptr = res(UniformPhs,i);
+        int idx = MicroBinding__Micro__Phase__Int(loc.max.micro)(UniformPhs);
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}*/
         log << "micro " << debug << " " << loc.max << " " << loc.max.tag << "==" << MicroExt << '\n';
         if (loc.max.tag != MicroExt) EXIT
         for (int i = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(i) != Phases; i++) {
         // TODO use Phase instead of Resrc and remove Resrc from MicroBinding
         Resrc typ = MicroBinding__Micro__Int__Resrc(loc.max.micro)(i);
-        int idx = MicroBinding__Micro__Int__Int(loc.max.micro)(i);
         Phase phs = MicroBinding__Micro__Int__Phase(loc.max.micro)(i);
+        int idx = MicroBinding__Micro__Int__Int(loc.max.micro)(i);
         BaseState *ptr = res(typ,vulkanHandle(phs));
         bool found = false;
         for (int j = 0; res(phs,j); j++) if (res(phs,j) == ptr) found = true;
-        /*TODO if (!found) {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+        if (!found) {char *st0 = 0; char *st1 = 0; char *st2 = 0;
         showResrc(typ,&st0); showPhase(phs,&st1); showMicro(loc.max.micro,&st2);
         std::cerr << "micro:" << st2 << " typ:" << st0 << "(" << typ << ") idx:" << idx << " phs:" << st1 << " ptr:" << (ptr?ptr->debug:"nil") << std::endl;
-        free(st0); free(st1); free(st2);}*/
+        free(st0); free(st1); free(st2);}
         switch (phs) {default: EXIT
         break; case (PipePhs): if (pipePtr) EXIT else pipePtr = ptr;
         break; case (FramePhs): if (framePtr) EXIT else framePtr = ptr;
