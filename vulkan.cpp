@@ -928,8 +928,9 @@ struct BindState : public BaseState {
         return bind[typ][hdl].sav;
     }
     BaseState *res(Phase ref, int idx) {
-        if (ref < 0 || ref >= Phases || idx < 0 || bref[ref].size() < idx) EXIT
-        if (bref[ref].size() == idx) return 0;
+        if (!excl) EXIT
+        if (ref < 0 || ref >= Phases || idx < 0 || nref[ref] < idx) EXIT
+        if (nref[ref] == idx) return 0;
         Ref &met = bref[ref][idx];
         return res(met.typ,met.hdl);
     }
@@ -1437,8 +1438,9 @@ struct CopyState {
         char *st1 = 0; showReloc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
         char *st3 = 0; showReuse(dot[i].use,&st3);
-        log << "instruct " << st0 << " " << st1 << " " << st3 << " " << st2 << '\n';
-        free(st0); free(st1); free(st2); free(st3);}
+        char *st4 = 0; showPhase(dot[i].phs,&st4);
+        log << "instruct " << st0 << " " << st4 << " " << st1 << " " << st3 << " " << st2 << '\n';
+        free(st0); free(st1); free(st2); free(st3); free(st4);}
         break; case(ResIncIns):
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
@@ -1502,7 +1504,7 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,Reuses,WholeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,Reuses,WholeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.use,dot.use,ary->memret,typ,sub,Reuses,log)) done = false;
@@ -1516,7 +1518,7 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.use,dot.use,ary->resret,typ,sub,Reuses,log)) done = false;
@@ -1530,7 +1532,7 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.use,dot.use,ary->micret,typ,sub,Reuses,log)) done = false;
@@ -1545,8 +1547,9 @@ struct CopyState {
         char *db1 = 0; showInstr(dot.ins,&db1);
         char *db2 = 0; showMicro(typ,&db2);
         char *db3 = 0; showReloc(dot.loc,&db3);
-        std::cerr << "iterate " << db2 << " " << db3 << " " << db1 << " " << db0 << std::endl;
-        free(db0); db0 = 0; free(db1); db1 = 0; free(db2); db2 = 0; free(db3); db3 = 0;
+        char *db4 = 0; showPhase(dot.phs,&db4);
+        std::cerr << "iterate " << done << " " << db2 << " " << db3 << " " << db1 << " " << db0 << " " << db4 << std::endl;
+        free(db0); free(db1); free(db2); free(db3); free(db4);
         */
         return !done;
     }
@@ -2274,7 +2277,10 @@ struct DrawState : public BaseState {
         BaseState *ptr = res(typ,vulkanHandle(phs));
         bool found = false;
         for (int j = 0; res(phs,j); j++) if (res(phs,j) == ptr) found = true;
-        // TODO if (!found) EXIT
+        /*TODO if (!found) {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+        showResrc(typ,&st0); showPhase(phs,&st1); showMicro(loc.max.micro,&st2);
+        std::cerr << "micro:" << st2 << " typ:" << st0 << "(" << typ << ") idx:" << idx << " phs:" << st1 << " ptr:" << (ptr?ptr->debug:"nil") << std::endl;
+        free(st0); free(st1); free(st2);}*/
         switch (phs) {default: EXIT
         break; case (PipePhs): if (pipePtr) EXIT else pipePtr = ptr;
         break; case (FramePhs): if (framePtr) EXIT else framePtr = ptr;

@@ -623,9 +623,6 @@ MicroBinding = {
 	mig = {\"MicroDsp\"} reg = cat(rep,res,{}) phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
 	mih = {\"MicroPie\"} reh = cat(req,res,{}) phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
 	\
-	res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"0\"      }\
 	res = {\"UniformRes\",\"PipeRes\"} rer = {\"RelateRes\"}\
 	phs = {\"UniformPhs\",\"PipePhs\"} phr = {\"RenderPhs\"}\
 	bns = {\"0\",         \"0\"      } bnr = {\"0\"        }\
@@ -993,9 +990,9 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","0","Quality","RsizQua"},
 	{"Micro","%(return fnc(mic))","Int","1","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mic))","Int","1","Resrc","ChainRes"},
+		{"Micro","%(return fnc(mic))","Int","1","Phase","FramePhs"},
 		{"Micro","%(return fnc(mic))","Int","1","Memory","Memorys"},
 		{"Micro","%(return fnc(mic))","Int","1","Micro","Micros"},
-		{"Micro","%(return fnc(mic))","Int","1","Phase","Phases"},
 		{"Micro","%(return fnc(mic))","Int","1","Reloc","BeforeLoc"},
 		{"Micro","%(return fnc(mic))","Int","1","Format","NullFrm"},
 		{"Micro","%(return fnc(mic))","Int","1","Quality","Qualitys"},
@@ -1005,6 +1002,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","2","Phase","SwapPhs"},
 	{"Micro","%(return fnc(mic))","Int","3","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mic))","Int","3","Resrc","DrawRes"},
+		{"Micro","%(return fnc(mic))","Int","3","Phase","Phases"},
 		{"Micro","%(return fnc(mic))","Int","3","Reloc","MiddleLoc"},
 		{"Micro","%(return fnc(mic))","Int","3","Format","MicroFrm"},
 	{"Micro","%(return gnc(mic,dee))","Int","4","Instr","RdlDeeIns"},
@@ -1015,6 +1013,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","%(return 4+#dee)","Phase","PipePhs"},
 	{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Resrc","ChainRes"},
+		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Phase","FramePhs"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Reloc","AfterLoc"},
 		{"Micro","%(return fnc(mic))","Int","%(return 5+#dee)","Format","NullFrm"},
 	{"Micro","%(return fnc(mic))","Int","%(return 6+#dee)","Instr","RdlDeeIns"},
@@ -1033,11 +1032,13 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","0","Quality","RsizQua"},
 	{"Micro","%(return fnc(mib))","Int","1","Instr","OldDerIns"},
 		{"Micro","%(return fnc(mib))","Int","1","Resrc","PierceRes"},
+		{"Micro","%(return fnc(mia))","Int","1","Phase","RenderPhs"},
 		{"Micro","%(return fnc(mib))","Int","1","Reloc","ResizeLoc"},
 		{"Micro","%(return fnc(mib))","Int","1","Reuse","SetUse"},
 		{"Micro","%(return fnc(mib))","Int","1","Format","ExtentFrm"},
 	{"Micro","%(return fnc(mib))","Int","2","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mib))","Int","2","Resrc","DrawRes"},
+		{"Micro","%(return fnc(mib))","Int","2","Phase","Phases"},
 		{"Micro","%(return fnc(mib))","Int","2","Reloc","MiddleLoc"},
 		{"Micro","%(return fnc(mib))","Int","2","Format","MicroFrm"},
 	{"Micro","%(return fnc(mib))","Int","3","Instr","WrlDeeIns"},
@@ -1059,11 +1060,13 @@ MicroIns = {
 		{"Micro","%(return fnc(mia))","Int","0","Quality","RsizQua"},
 	{"Micro","%(return fnc(mia))","Int","1","Instr","OldDerIns"},
 		{"Micro","%(return fnc(mia))","Int","1","Resrc","RelateRes"},
+		{"Micro","%(return fnc(mia))","Int","1","Phase","RenderPhs"},
 		{"Micro","%(return fnc(mia))","Int","1","Reloc","ResizeLoc"},
 		{"Micro","%(return fnc(mia))","Int","1","Reuse","FdbUse"},
 		{"Micro","%(return fnc(mia))","Int","1","Format","ExtentFrm"},
 	{"Micro","%(return fnc(mia))","Int","2","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mia))","Int","2","Resrc","DrawRes"},
+		{"Micro","%(return fnc(mia))","Int","2","Phase","Phases"},
 		{"Micro","%(return fnc(mia))","Int","2","Reloc","MiddleLoc"},
 		{"Micro","%(return fnc(mia))","Int","2","Format","MicroFrm"},
 	{"Micro","%(return fnc(mia))","Int","3","Instr","WrlDeeIns"},
