@@ -257,6 +257,7 @@ struct Adv {
 struct Unl {
     Resrc der; // index into bind->bind
     int hdl; // index into bind->bind[der]
+    Phase phs; // to clear reference
     int dee; // offset into bind->resp
     int siz; // number to unreserve of bind->resp
 };
@@ -840,6 +841,7 @@ struct ConstState {
 struct SaveState {
     BaseState *sav; int psav, rsav, wsav;
     BaseState *buf; int fst, fin; Onl onl;
+    Phase phs; // multiple resource per phase, but only one phase per resource
     SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
 };
 
@@ -862,8 +864,9 @@ struct BindState : public BaseState {
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0), excl(false) {
-        for (int i = 0; i < StackState::handls; i++) hand[i] = -1;
-        for (int i = 0; i < StackState::handls; i++) size[i] = 0;
+        for (int i = 0; i < Resrcs; i++) hand[i] = -1;
+        for (int i = 0; i < Resrcs; i++) size[i] = 0;
+        for (int i = 0; i < Phases; i++) nref[i] = 0;
     }
     BindState *getBind(SmartState log) override {
         safe.wait();
@@ -879,13 +882,6 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         return hand[typ];
-    }
-    void clr(Resrc typ, Phase pha) { // clear number of qualification indices 
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        if (pha < 0 || pha > Phases) EXIT
-        size[typ] = 0;
-        if (pha != Phases) nref[pha] = 0;
     }
     int siz(Resrc typ) { // number of qualifications indices
         if (!excl) EXIT
@@ -908,17 +904,22 @@ struct BindState : public BaseState {
         if (sav->fin < i) ERROR();
         return sav;
     }
-    SaveState *add(Resrc typ, Phase ref) { // add resource of type
+    SaveState *add(Resrc typ, Phase ref, SmartState log) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        if (ref < 0 || ref > Phases) EXIT
+        if (ref < 0 || ref >= Phases) EXIT
         hand[typ] = size[typ];
         size[typ] += 1;
         init[typ] = 1;
-        if (ref != Phases) {
+        char *st0 = 0; char *st1 = 0;
+        showResrc(typ,&st0); showPhase(ref,&st1);
+        log << "increment " << st0 << hand[typ] << " " << st1 << nref[ref] << '\n';
+        free(st0); free(st1);
         bref[ref][nref[ref]] = Ref{typ,hand[typ]};
-        nref[ref] += 1;}
-        return get(typ);
+        nref[ref] += 1;
+        SaveState *sav = get(typ);
+        sav->phs = ref;
+        return sav;
     }
     BaseState *res(Resrc typ, int hdl) { // indexed resource of type
         if (!excl) EXIT
@@ -966,8 +967,15 @@ struct BindState : public BaseState {
         if (ref.psav <= 0) EXIT
         ref.psav -= 1;
         BaseState *dbg = ref.sav;
+        Phase phs = ref.phs;
+        if (phs < 0 || phs >= Phases) EXIT
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        ref.sav = 0; lock -= 1;}
+        if (size[typ] <= 0 || nref[phs] <= 0) EXIT
+        char *st0 = 0; char *st1 = 0;
+        showResrc(typ,&st0); showPhase(phs,&st1);
+        log << "done " << debug << " " << st0 << size[typ] << " " << st1 << nref[phs] << '\n';
+        free(st0); free(st1);
+        ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
         log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
@@ -976,6 +984,11 @@ struct BindState : public BaseState {
     }
     void done(SmartState log) { // attempt this release
         if (!excl) EXIT
+        log << "bind done " << lock << " " << debug;
+        for (int i = 0; i < Phases; i++) if (nref[i]) {
+        char *st0 = 0; showPhase((Phase)i,&st0);
+        log << " " << st0; free(st0);}
+        log << '\n';
         if (lock == 1) {
         lock = 0; resp.clear();
         safe.wait(); excl = false; safe.post();}
@@ -1018,8 +1031,15 @@ struct BindState : public BaseState {
         if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
         (elock ? ref.wsav : ref.rsav) -= 1;
         BaseState *dbg = ref.sav;
+        Phase phs = ref.phs;
+        if (phs < 0 || phs > Phases) EXIT
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        ref.sav = 0; lock -= 1;}
+        if (size[typ] <= 0 || nref[phs] <= 0) EXIT
+        char *st0 = 0; char *st1 = 0;
+        showResrc(typ,&st0); showPhase(ref.phs,&st1);
+        log << "done " << debug << " " << st0 << size[typ] << " " << st1 << " " << (phs != Phases ? nref[phs] : 0) << '\n';
+        free(st0); free(st1);
+        ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
         log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
     }
     bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
@@ -1238,13 +1258,6 @@ struct CopyState {
         if (count > min) bind = stack[BindRes]->getbuf(0,Qualitys,0).resrc->getBind(log);
         int lim = num; // number checked for reservation
         if (count > min && bind == 0) lim = -1;
-        log << "check binding" << '\n';
-        for (int i = 0; i < num && i < lim; i++) {
-            switch (ins[i].ins) {default:
-            break; case(NewDerIns): case(OldDerIns): case(GetDerIns): bind->clr(ins[i].res,ins[i].phs);
-            break; case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): bind->clr(ins[i].res,ins[i].phs);
-            break; case(WrlDeeIns): case(RdlDeeIns): bind->clr(ins[i].res,ins[i].phs);
-            break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): bind->clr(ins[i].res,ins[i].phs);}}
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (ins[i].ins) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1261,7 +1274,7 @@ struct CopyState {
             Onl onl = get(ins[i].ins,ins[i].idx,ins[i].key,ins[i].val);
             SaveState *sav = 0; if (!vld(ins[i].res,onl,bind)) {
             BaseState *buf = get(ins[i].ins,ins[i].res,ins[i].idx,ins[i].key,ins[i].val);
-            sav = bind->add(ins[i].res,ins[i].phs);
+            sav = bind->add(ins[i].res,ins[i].phs,log);
             sav->buf = buf; sav->fst = i; sav->onl = onl;}
             else sav = bind->get(ins[i].res);
             sav->fin = i;
@@ -1273,7 +1286,7 @@ struct CopyState {
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
             SaveState *sav = bind->get(ins[i].res,i);
-            Unl unl = {.der=ins[i].res,.hdl=bind->hdl(ins[i].res),.dee=resps,.siz=0};
+            Unl unl = {.der=ins[i].res,.hdl=bind->hdl(ins[i].res),.phs=ins[i].phs,.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
@@ -1504,7 +1517,7 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,Reuses,WholeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,Reuses,WholeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.use,dot.use,ary->memret,typ,sub,Reuses,log)) done = false;
@@ -1514,11 +1527,18 @@ struct CopyState {
         if (builtin(sav.mem,dot.mem,ary->memmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->memmic,typ,sub,Micros,log)) done = false;
         if (builtin(sav.phs,dot.phs,ary->memphs,typ,sub,Phases,log)) done = false;
+        /*char *db0 = 0; showResrc(dot.res,&db0);
+        char *db1 = 0; showInstr(dot.ins,&db1);
+        char *db2 = 0; showMemory(typ,&db2);
+        char *db3 = 0; showReloc(dot.loc,&db3);
+        char *db4 = 0; showPhase(dot.phs,&db4);
+        log << "memory " << done << " " << db2 << " " << db3 << " " << db1 << " " << db0 << " " << db4 << '\n';
+        free(db0); free(db1); free(db2); free(db3); free(db4);*/
         return !done;
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.use,dot.use,ary->resret,typ,sub,Reuses,log)) done = false;
@@ -1528,11 +1548,18 @@ struct CopyState {
         if (builtin(sav.mem,dot.mem,ary->resmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->resmic,typ,sub,Micros,log)) done = false;
         if (builtin(sav.phs,dot.phs,ary->resphs,typ,sub,Phases,log)) done = false;
+        /*char *db0 = 0; showResrc(dot.res,&db0);
+        char *db1 = 0; showInstr(dot.ins,&db1);
+        char *db2 = 0; showResrc(typ,&db2);
+        char *db3 = 0; showReloc(dot.loc,&db3);
+        char *db4 = 0; showPhase(dot.phs,&db4);
+        log << "resrc " << done << " " << db2 << " " << db3 << " " << db1 << " " << db0 << " " << db4 << '\n';
+        free(db0); free(db1); free(db2); free(db3); free(db4);*/
         return !done;
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.use,dot.use,ary->micret,typ,sub,Reuses,log)) done = false;
@@ -1542,19 +1569,29 @@ struct CopyState {
         if (builtin(sav.mem,dot.mem,ary->micmem,typ,sub,Memorys,log)) done = false;
         if (builtin(sav.mic,dot.mic,ary->micmic,typ,sub,Micros,log)) done = false;
         if (builtin(sav.phs,dot.phs,ary->micphs,typ,sub,Phases,log)) done = false;
-        /*
-        char *db0 = 0; showResrc(dot.res,&db0);
+        /*char *db0 = 0; showResrc(dot.res,&db0);
         char *db1 = 0; showInstr(dot.ins,&db1);
         char *db2 = 0; showMicro(typ,&db2);
         char *db3 = 0; showReloc(dot.loc,&db3);
         char *db4 = 0; showPhase(dot.phs,&db4);
-        std::cerr << "iterate " << done << " " << db2 << " " << db3 << " " << db1 << " " << db0 << " " << db4 << std::endl;
-        free(db0); free(db1); free(db2); free(db3); free(db4);
-        */
+        log << "micro " << done << " " << db2 << " " << db3 << " " << db1 << " " << db0 << " " << db4 << '\n';
+        free(db0); free(db1); free(db2); free(db3); free(db4);*/
         return !done;
+    }
+    void showType(Memory typ, char **str) {
+        showMemory(typ,str);
+    }
+    void showType(Resrc typ, char **str) {
+        showResrc(typ,str);
+    }
+    void showType(Micro typ, char **str) {
+        showMicro(typ,str);
     }
     template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
         int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
+        {char *st0 = 0; showType(typ,&st0);
+        log << "push " << st0 << " " << ary << '\n';
+        free(st0);}
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
@@ -2256,51 +2293,37 @@ struct DrawState : public BaseState {
     VkFence setup(Loc &loc, SmartState log) override {
         log << "setup " << debug << '\n';
         if (loc.req.ptr != 0 || loc.req.idx != 0) EXIT
+        if (loc.max.tag != MicroExt) EXIT
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         vkResetFences(device, 1, &loc.syn.fen);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        BaseState *pipePtr = 0; // res(PipePhs,0);
-        BaseState *swapPtr = 0; // (res(SwapPhs,0)?res(SwapPhs,0):res(RenderPhs,0));
-        BaseState *framePtr = 0; // (res(FramePhs,0)?res(FramePhs,0):res(RenderPhs,0));
-        BaseState *indexPtr = 0; // res(IndexPhs,0);
-        BaseState *fetchPtr = 0; // res(FetchPhs,0);
-        /*for (int i = 0; res(UniformPhs,i); i++) {BaseState *ptr = res(UniformPhs,i);
-        int idx = MicroBinding__Micro__Phase__Int(loc.max.micro)(UniformPhs);
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}*/
-        log << "micro " << debug << " " << loc.max << " " << loc.max.tag << "==" << MicroExt << '\n';
-        if (loc.max.tag != MicroExt) EXIT
-        for (int i = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(i) != Phases; i++) {
-        // TODO use Phase instead of Resrc and remove Resrc from MicroBinding
-        Resrc typ = MicroBinding__Micro__Int__Resrc(loc.max.micro)(i);
-        Phase phs = MicroBinding__Micro__Int__Phase(loc.max.micro)(i);
-        int idx = MicroBinding__Micro__Int__Int(loc.max.micro)(i);
-        BaseState *ptr = res(typ,vulkanHandle(phs));
-        bool found = false;
-        for (int j = 0; res(phs,j); j++) if (res(phs,j) == ptr) found = true;
-        if (!found) {char *st0 = 0; char *st1 = 0; char *st2 = 0;
-        showResrc(typ,&st0); showPhase(phs,&st1); showMicro(loc.max.micro,&st2);
-        std::cerr << "micro:" << st2 << " typ:" << st0 << "(" << typ << ") idx:" << idx << " phs:" << st1 << " ptr:" << (ptr?ptr->debug:"nil") << std::endl;
-        free(st0); free(st1); free(st2);}
-        switch (phs) {default: EXIT
-        break; case (PipePhs): if (pipePtr) EXIT else pipePtr = ptr;
-        break; case (FramePhs): if (framePtr) EXIT else framePtr = ptr;
-        break; case (SwapPhs): if (swapPtr) EXIT else swapPtr = ptr;
-        break; case (RenderPhs): if (framePtr || swapPtr) EXIT else framePtr = swapPtr = ptr;
-        break; case (IndexPhs): if (indexPtr) EXIT else indexPtr = ptr;
-        break; case (FetchPhs): if (fetchPtr) EXIT else fetchPtr = ptr;
-        break; case (UniformPhs): {
-        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
+        BaseState *pipePtr = res(PipePhs,0);
+        BaseState *swapPtr = (res(SwapPhs,0)?res(SwapPhs,0):res(RenderPhs,0));
+        BaseState *framePtr = (res(FramePhs,0)?res(FramePhs,0):res(RenderPhs,0));
+        BaseState *indexPtr = res(IndexPhs,0);
+        BaseState *fetchPtr = res(FetchPhs,0);
+        for (int i = 0; res(UniformPhs,i); i++) {BaseState *ptr = res(UniformPhs,i);
+        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
+        if (UniformPhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
+        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO use idx(UniformPhs,i) initialized from get()
         updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
-        break; case (StoragePhs): {
-        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
-        break; case (RelatePhs): {
-        if (ptr->getBuffer() == VK_NULL_HANDLE) EXIT
-        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
-        break; case (SamplePhs): {
-        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}}}
+        for (int i = 0; res(StoragePhs,i); i++) {BaseState *ptr = res(StoragePhs,i);
+        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
+        if (StoragePhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
+        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        for (int i = 0; res(RelatePhs,i); i++) {BaseState *ptr = res(RelatePhs,i);
+        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
+        if (RelatePhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
+        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        for (int i = 0; res(SamplePhs,i); i++) {BaseState *ptr = res(SamplePhs,i);
+        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
+        if (SamplePhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
+        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO
+        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
         recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
