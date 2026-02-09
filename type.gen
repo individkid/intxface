@@ -1496,7 +1496,7 @@ Draw = {
 	{"arg","Int",{},"siz"},
 	{"val","Int",{},"sze"},
 }
-Requ = {
+Requ = { -- queue resource
 	{"tag","Request",{},{}},
 	{"ptr","Dat",{},{}},
 	{"idx","Int",{},{}},
@@ -1505,17 +1505,31 @@ Requ = {
 	{"base","Int",{},{}},
 	{"size","Int",{},{}},
 	{"loc","Reloc",{},{}},
+	{"use","Reuse",{},{}},
 }
-Inst = {
+Resv = { -- bind resource
+	{"res","Resrc",{},{}},
+	{"phs","Phase",{},{}},
+	{"bnd","Int",{},{}},
+	{"frc","Int",{},{}},
+}
+Qual = { -- quality of service
+	{"res","Resrc",{},{}},
+	{"hdl","Int",{},{}},
+	{"key","Quality",{},{}},
+	{"val","Int",{},{}},
+}
+Incl = { -- include builtin instructions
+	{"res","Resrc",{},{}},
+	{"mem","Memory",{},{}},
+	{"mic","Micro",{},{}},
+}
+Inst = { -- TODO pack fields
 	{"ins","Instr",{},""},
-	{"req","Requ",{},{}}, -- only used by DerIns TODO change to pointer
-	{"res","Resrc",{},{}}, -- used by DerIns DeeIns IncIns TagIns
-	{"phs","Phase",{},{}}, -- only used by DeeIns
-	{"mem","Memory",{},{}}, -- only used by IncIns
-	{"mic","Micro",{},{}}, -- only used by IncIns
-	{"idx","Int",{},{}}, -- used by DerIns DeeIns TagIns
-	{"key","Quality",{},{}}, -- used by DerIns DeeIns TagIns
-	{"val","Int",{},{}}, -- used by DerIns DeeIns TagIns
+	{"req","Requ",{},{}}, -- used by DerIns
+	{"res","Resv",{},{}}, -- used by DerIns DeeIns
+	{"key","Qual",{},{}}, -- used by DerIns DeeIns TagIns
+	{"inc","Incl",{},{}}, -- used by IncIns
 }
 Center = {
 	{"mem","Memory",{},""},
