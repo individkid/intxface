@@ -1438,24 +1438,17 @@ struct CopyState {
         }
         return req;
     }
-    Resv reserve(Instr ins, Resrc res, Phase phs, const char *str, int *arg, int siz, int &idx, SmartState log) {
+    Resv reserve(Instr ins, Resrc res, Phase phs, int *arg, int siz, int &idx, SmartState log) {
         Resv ret = {res,phs,0,0};
-        /* if (phs!=DrawPhs) {
-        char *st0 = (char*)malloc(strlen(str)+5); strcpy(st0,str); strcat(st0,".bnd");
-        ret.bnd = get(arg,siz,idx,log,str); free(st0);}*/
-        if (ins == IdxDerIns || ins == IdxDeeIns) {
-        char *st0 = (char*)malloc(strlen(str)+5); strcpy(st0,str); strcat(st0,".frc");
-        ret.frc = get(arg,siz,idx,log,st0); free(st0);}
+        /* if (phs!=DrawPhs) ret.bnd = get(arg,siz,idx,log,"reserve.bnd");*/
+        if (ins == IdxDerIns || ins == IdxDeeIns) ret.frc = get(arg,siz,idx,log,"reserve.frc");
         return ret;
     }
-    Qual qualify(Resrc res, Quality key, Reuse use, const char *str, int *arg, int siz, int &idx, SmartState log) {
+    Qual qualify(Resrc res, Quality key, Reuse use, int *arg, int siz, int &idx, SmartState log) {
         Qual ret = {res,0,key,0};
         if (key != Qualitys && key != RuseQua) {
-        char *ist = (char*)malloc(strlen(str)+5); strcpy(ist,str); strcat(ist,".idx");
-        char *vst = (char*)malloc(strlen(str)+5); strcpy(vst,str); strcat(vst,".val");
-        ret.hdl = get(arg,siz,idx,log,ist);
-        ret.val = get(arg,siz,idx,log,vst);
-        free(ist); free(vst);}
+        ret.hdl = get(arg,siz,idx,log,"qualify.hdl");
+        ret.val = get(arg,siz,idx,log,"qualify.val");}
         if (key == RuseQua) ret.val = use;
         return ret;
     }
@@ -1481,33 +1474,33 @@ struct CopyState {
         switch (ins) {default: EXIT
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,dot[i].use,val,arg,siz,idx,log);
-        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,"DerIns",arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,"DerIns",arg,siz,idx,log);
+        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,dot[i].use,val,arg,siz,idx,log);
-        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,"idDerIns",arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,"idDerIns",arg,siz,idx,log);
+        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(IdxDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,dot[i].use,val,arg,siz,idx,log);
-        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,"IdxDerIns",arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,"IdxDerIns",arg,siz,idx,log);
+        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(WrlDeeIns): case(RdlDeeIns): {
-        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,"DeeIns",arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,"DeeIns",arg,siz,idx,log);
+        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
         break; case(WidDeeIns): case(RidDeeIns): {
-        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,"idDeeIns",arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,"idDeeIns",arg,siz,idx,log);
+        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
         break; case(IdxDeeIns): {
-        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,"IdxDeeIns",arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,"IdxDeeIns",arg,siz,idx,log);
+        Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
         break; case(SetTagIns): case(MovTagIns): {
-        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,"TagIns",arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
         return Inst{.ins=ins,.key=key};}
         break; case(ResIncIns): return Inst{.ins=ins,.inc=Incl{.res=dot[i].res}};
         break; case(MemIncIns): return Inst{.ins=ins,.inc=Incl{.mem=dot[i].mem}};
