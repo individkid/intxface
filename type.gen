@@ -760,11 +760,12 @@ MemoryAlt = {
 	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",".. -- UniformPhs.bnd UniformPhs.bnd
 	"\"TrivDef\",".. -- IdxDeeIns.idx
 
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,0,castMicro(\"MicroDebug\"),0,1,0,12,castMicro(\"MicroDebug\"),castMicro(\"MicroDebug\"),"..
+	"arg={0,0,castMicro(\"MicroDebug\"),0,1,0,12,castMicro(\"MicroDebug\"),0,1,castMicro(\"MicroDebug\"),"..
 	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
@@ -786,14 +787,15 @@ MemoryAlt = {
 	{"Memory","Getintz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
 
 	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",".. -- UniformPhs.bnd
 	"\"TrivDef\",".. -- IdxDeeIns.idx
 
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,0,castMicro(\"MicroFill\"),0,1,0,6,castMicro(\"MicroFill\"),castMicro(\"MicroFill\"),"..
+	"arg={0,0,castMicro(\"MicroFill\"),0,1,0,6,castMicro(\"MicroFill\"),0,castMicro(\"MicroFill\"),"..
 	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
@@ -974,24 +976,27 @@ MicroIns = {
 	\
 	def = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
+	\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
 	dv0 = {\"0\"}\
-	dv1 = {\"0\",\"1\",\"1\",\"1\",\"1\"}\
+	dv1 = {\"0\",\"1\",\"1\",\"0\",\"1\",\"7\",\"1\",\"1\"}\
 	\
 	deg = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\"--[[ExtentFrm SizeReq ExtentExt:base/size]],\
 	\"GiveDef\",\"GiveDef\",\"BackDef\"--[[MicroFrm BothReq:idx/siz MicroExt:base]],\
+	\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
 	dw0 = {\"0\"}\
-	dw1 = {\"0\",\"1\",\"2\",\"3\",\"1\",\"1\"}\
+	dw1 = {\"0\",\"1\",\"2\",\"3\",\"1\",\"0\",\"1\",\"1\"}\
 	\
 	deh = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
-	\"GiveDef\",\"GiveDef\"--[[ExtentFrm SizeReq ExtentExt:base/size]],\
-	\"TrivDef\",\"TrivDef\",\"BackDef\"--[[MicroFrm BothReq:idx/siz MicroExt:base]],\
-	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
+	\"GiveDef\",\"GiveDef\",--[[ExtentFrm SizeReq ExtentExt:base/size]]\
+	\"TrivDef\",\"TrivDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
+	\"TrivDef\",--[[UniformPhs.bnd]]\
+	\"BackDef\"}--[[IdxDeeIns PipeRes:idx]]\
 	du0 = {\"0\"}\
-	du1 = {\"0\",\"1\",\"0\",\"6\",\"1\",\"1\"}\
+	du1 = {\"0\",\"1\",\"0\",\"6\",\"1\",\"0\",\"1\"}\
 	\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\

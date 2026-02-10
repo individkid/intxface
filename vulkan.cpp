@@ -1184,12 +1184,14 @@ struct CopyState {
     ThreadState *thread;
     StackState *stack[Resrcs];
     ConstState *array;
+    int depth;
     CopyState(ChangeState<Configure,Configures> *change,
         ThreadState *thread, EnumState *stack, ConstState *ary) :
         change(change),
         thread(thread),
         stack{},
-        array(ary) {
+        array(ary),
+        depth(0) {
         // std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
     }
@@ -1440,7 +1442,11 @@ struct CopyState {
     }
     Resv reserve(Instr ins, Resrc res, Phase phs, int *arg, int siz, int &idx, SmartState log) {
         Resv ret = {res,phs,0,0};
-        /* if (phs!=DrawPhs) ret.bnd = get(arg,siz,idx,log,"reserve.bnd");*/
+        switch (phs) {default:
+        break; case (UniformPhs): ret.bnd = get(arg,siz,idx,log,"UniformPhs.bnd");
+        break; case (StoragePhs): ret.bnd = get(arg,siz,idx,log,"StoragePhs.bnd");
+        break; case (RelatePhs): ret.bnd = get(arg,siz,idx,log,"RelatePhs.bnd");
+        break; case (SamplePhs): ret.bnd = get(arg,siz,idx,log,"SamplePhs.bnd");}
         if (ins == IdxDerIns || ins == IdxDeeIns) ret.frc = get(arg,siz,idx,log,"reserve.frc");
         return ret;
     }
@@ -1588,15 +1594,18 @@ struct CopyState {
     template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
         int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
         {char *st0 = 0; showType(typ,&st0);
-        log << "push " << st0 << " " << ary << '\n';
+        log << "push " << st0 << " " << ary << " " << depth << '\n';
         free(st0);}
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
         switch (ins.ins) {default: lst << ins;
-        break; case (ResIncIns): push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),log);
-        break; case (MemIncIns): push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),log);
-        break; case (MicIncIns): push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),log);}}
+        break; case (ResIncIns): depth += 1; push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),log); depth -= 1;
+        break; case (MemIncIns): depth += 1; push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),log); depth -= 1;
+        break; case (MicIncIns): depth += 1; push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),log); depth -= 1;}}
+        {char *st0 = 0; showType(typ,&st0);
+        log << "pone " << st0 << " " << ary << " " << depth << '\n';
+        free(st0);}
     }
     int size(Micro typ, int ary) {
         int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
