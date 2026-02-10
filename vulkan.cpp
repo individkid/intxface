@@ -457,6 +457,7 @@ struct BaseState {
     }
     BaseState *res(Resrc typ, int hdl);
     BaseState *res(Phase ref, int idx);
+    int bnd(Phase ref, int idx);
     int tag(Quality tag);
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
@@ -911,29 +912,39 @@ struct BindState : public BaseState {
         hand[typ] = size[typ];
         size[typ] += 1;
         init[typ] = 1;
-        char *st0 = 0; char *st1 = 0;
+        {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
-        log << "increment " << st0 << hand[typ] << " " << st1 << nref[ref] << '\n';
-        free(st0); free(st1);
+        log << "increment " << st0 << hand[typ] << " " << st1 << nref[ref] << "/" << bnd << '\n';
+        free(st0); free(st1);}
         bref[ref][nref[ref]] = Ref{typ,hand[typ]};
         nref[ref] += 1;
         SaveState *sav = get(typ);
         sav->phs = ref; sav->bnd = bnd;
         return sav;
     }
-    BaseState *res(Resrc typ, int hdl) { // indexed resource of type
+    SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
         if (hdl < 0 || hdl >= size[typ]) EXIT
-        return bind[typ][hdl].sav;
+        return &bind[typ][hdl];
+    }
+    BaseState *res(Resrc typ, int hdl) {
+        return sav(typ,hdl)->sav;
     }
     BaseState *res(Phase ref, int idx) {
         if (!excl) EXIT
         if (ref < 0 || ref >= Phases || idx < 0 || nref[ref] < idx) EXIT
         if (nref[ref] == idx) return 0;
         Ref &met = bref[ref][idx];
-        return res(met.typ,met.hdl);
+        return sav(met.typ,met.hdl)->sav;
+    }
+    int bnd(Phase ref, int idx) {
+        if (!excl) EXIT
+        if (ref < 0 || ref >= Phases || idx < 0 || nref[ref] < idx) EXIT
+        if (nref[ref] == idx) return 0;
+        Ref &met = bref[ref][idx];
+        return sav(met.typ,met.hdl)->bnd;
     }
     bool push(Resrc typ, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
@@ -1070,6 +1081,9 @@ BaseState *BaseState::res(Resrc typ, int hdl) {
 BaseState *BaseState::res(Phase ref, int idx) {
     if (lock == 0) EXIT
     return lock->res(ref,idx);
+}
+int BaseState::bnd(Phase ref, int idx) {
+    return lock->bnd(ref,idx);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     if (lock) {lock->done(loc.unl,log);}
@@ -2312,25 +2326,13 @@ struct DrawState : public BaseState {
         BaseState *indexPtr = res(IndexPhs,0);
         BaseState *fetchPtr = res(FetchPhs,0);
         for (int i = 0; res(UniformPhs,i); i++) {BaseState *ptr = res(UniformPhs,i);
-        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
-        if (UniformPhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
-        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO use idx(UniformPhs,i) initialized from get()
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd(UniformPhs,i),descriptorSet);}
         for (int i = 0; res(StoragePhs,i); i++) {BaseState *ptr = res(StoragePhs,i);
-        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
-        if (StoragePhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
-        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd(StoragePhs,i),descriptorSet);}
         for (int i = 0; res(RelatePhs,i); i++) {BaseState *ptr = res(RelatePhs,i);
-        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
-        if (RelatePhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
-        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),idx,descriptorSet);}
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd(RelatePhs,i),descriptorSet);}
         for (int i = 0; res(SamplePhs,i); i++) {BaseState *ptr = res(SamplePhs,i);
-        int idx = -1; for (int j = 0; MicroBinding__Micro__Int__Phase(loc.max.micro)(j) != Phases; j++)
-        if (SamplePhs == MicroBinding__Micro__Int__Phase(loc.max.micro)(j))
-        idx = MicroBinding__Micro__Int__Int(loc.max.micro)(j); // TODO
-        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),idx,descriptorSet);}
+        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),bnd(SamplePhs,i),descriptorSet);}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
         recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);

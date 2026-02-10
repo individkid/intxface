@@ -590,73 +590,64 @@ MicroBinding = {
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
 	function cat (one,oth,max) for i,v in ipairs(one) do max[#max+1] = v end for i,v in ipairs(oth) do max[#max+1] = v end return max end\
 	\
-	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"}\
-	php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
-	bnp = {\"0\",      \"0\",       \"7\"        } bnq = {\"0\",       }\
-	mia = {\"MicroTest\"} rea = cat(rep,res,{}) pha = cat(php,phs,{}) bna = cat(bnp,bns,{})\
+	--[[res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}]]\
+	    phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
+	    bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
+	--[[rep = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } req = {\"PierceRes\"}]]\
+	    php = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
+	    bnp = {\"0\",      \"0\",       \"7\"        } bnq = {\"0\",       }\
+	mia = {\"MicroTest\"} pha = cat(php,phs,{}) bna = cat(bnp,bns,{})\
 	\
-	res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"0\"      }\
-	mib = {\"MicroDebug\"} reb = cat(req,res,{}) phb = cat(phq,phs,{}) bnb = cat(bnq,bns,{})\
+	--[[res = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}]]\
+	    phs = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
+	    bns = {\"0\",         \"1\",         \"0\"      }\
+	mib = {\"MicroDebug\"} phb = cat(phq,phs,{}) bnb = cat(bnq,bns,{})\
 	\
-	res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"PierceRes\"}\
-	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
-	mic = {\"MicroDisplay\"} rec = cat(rep,res,{}) phc = cat(php,phs,{}) bnc = cat(bnp,bns,{})\
-	mid = {\"MicroPierce\"} red = cat(req,res,{}) phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
+	--[[res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}]]\
+	    phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
+	    bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"      }\
+	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"PierceRes\"}]]\
+	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
+	    bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
+	mic = {\"MicroDisplay\"} phc = cat(php,phs,{}) bnc = cat(bnp,bns,{})\
+	mid = {\"MicroPierce\"} phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
 	\
-	res = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
-	mie = {\"MicroDisp\"} ree = cat(rep,res,{}) phe = cat(php,phs,{}) bne = cat(bnp,bns,{})\
-	mif = {\"MicroPrce\"} ref = cat(req,res,{}) phf = cat(phq,phs,{}) bnf = cat(bnq,bns,{})\
+	--[[res = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}]]\
+	    phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
+	    bns = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
+	mie = {\"MicroDisp\"} phe = cat(php,phs,{}) bne = cat(bnp,bns,{})\
+	mif = {\"MicroPrce\"} phf = cat(phq,phs,{}) bnf = cat(bnq,bns,{})\
 	\
-	res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}\
-	phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
-	bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
-	rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"RelateRes\"}\
-	php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
-	bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\",       }\
-	mig = {\"MicroDsp\"} reg = cat(rep,res,{}) phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
-	mih = {\"MicroPie\"} reh = cat(req,res,{}) phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
+	--[[res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}]]\
+	    phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
+	    bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
+	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"RelateRes\"}]]\
+	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
+	    bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\",       }\
+	mig = {\"MicroDsp\"} phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
+	mih = {\"MicroPie\"} phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
 	\
-	res = {\"UniformRes\",\"PipeRes\"} rer = {\"RelateRes\"}\
-	phs = {\"UniformPhs\",\"PipePhs\"} phr = {\"RenderPhs\"}\
-	bns = {\"0\",         \"0\"      } bnr = {\"0\"        }\
-	mii = {\"MicroFill\"} rei = cat(rer,res,{}) phi = cat(phr,phs,{}) bni = cat(bnr,bns,{})\
+	--[[res = {\"UniformRes\",\"PipeRes\"} rer = {\"RelateRes\"}]]\
+	    phs = {\"UniformPhs\",\"PipePhs\"} phr = {\"RenderPhs\"}\
+	    bns = {\"0\",         \"0\"      } bnr = {\"0\"        }\
+	mii = {\"MicroFill\"} phi = cat(phr,phs,{}) bni = cat(bnr,bns,{})\
 	\
-	return \"Micro\")","%(return gnc(mia,rea))","Int","%(return hnc(rea,0))","Resrc","%(return fnc(rea))"},
-	{"Micro","%(return gnc(mia,pha))","Int","%(return hnc(pha,0))","Phase","%(return fnc(pha))"},
+	return \"Micro\")","%(return gnc(mia,pha))","Int","%(return hnc(pha,0))","Phase","%(return fnc(pha))"},
 	{"Micro","%(return gnc(mia,bna))","Int","%(return hnc(bna,0))","Int","%(return fnc(bna))"},
-	{"Micro","%(return gnc(mib,reb))","Int","%(return hnc(reb,0))","Resrc","%(return fnc(reb))"},
 	{"Micro","%(return gnc(mib,phb))","Int","%(return hnc(phb,0))","Phase","%(return fnc(phb))"},
 	{"Micro","%(return gnc(mib,bnb))","Int","%(return hnc(bnb,0))","Int","%(return fnc(bnb))"},
-	{"Micro","%(return gnc(mic,rec))","Int","%(return hnc(rec,0))","Resrc","%(return fnc(rec))"},
 	{"Micro","%(return gnc(mic,phc))","Int","%(return hnc(phc,0))","Phase","%(return fnc(phc))"},
 	{"Micro","%(return gnc(mic,bnc))","Int","%(return hnc(bnc,0))","Int","%(return fnc(bnc))"},
-	{"Micro","%(return gnc(mid,red))","Int","%(return hnc(red,0))","Resrc","%(return fnc(red))"},
 	{"Micro","%(return gnc(mid,phd))","Int","%(return hnc(phd,0))","Phase","%(return fnc(phd))"},
 	{"Micro","%(return gnc(mid,bnd))","Int","%(return hnc(bnd,0))","Int","%(return fnc(bnd))"},
-	{"Micro","%(return gnc(mie,ree))","Int","%(return hnc(ree,0))","Resrc","%(return fnc(ree))"},
 	{"Micro","%(return gnc(mie,phe))","Int","%(return hnc(phe,0))","Phase","%(return fnc(phe))"},
 	{"Micro","%(return gnc(mie,bne))","Int","%(return hnc(bne,0))","Int","%(return fnc(bne))"},
-	{"Micro","%(return gnc(mif,ref))","Int","%(return hnc(ref,0))","Resrc","%(return fnc(ref))"},
 	{"Micro","%(return gnc(mif,phf))","Int","%(return hnc(phf,0))","Phase","%(return fnc(phf))"},
 	{"Micro","%(return gnc(mif,bnf))","Int","%(return hnc(bnf,0))","Int","%(return fnc(bnf))"},
-	{"Micro","%(return gnc(mig,reg))","Int","%(return hnc(reg,0))","Resrc","%(return fnc(reg))"},
 	{"Micro","%(return gnc(mig,phg))","Int","%(return hnc(phg,0))","Phase","%(return fnc(phg))"},
 	{"Micro","%(return gnc(mig,bng))","Int","%(return hnc(bng,0))","Int","%(return fnc(bng))"},
-	{"Micro","%(return gnc(mih,reh))","Int","%(return hnc(reh,0))","Resrc","%(return fnc(reh))"},
 	{"Micro","%(return gnc(mih,phh))","Int","%(return hnc(phh,0))","Phase","%(return fnc(phh))"},
 	{"Micro","%(return gnc(mih,bnh))","Int","%(return hnc(bnh,0))","Int","%(return fnc(bnh))"},
-	{"Micro","%(return gnc(mii,rei))","Int","%(return hnc(rei,0))","Resrc","%(return fnc(rei))"},
 	{"Micro","%(return gnc(mii,phi))","Int","%(return hnc(phi,0))","Phase","%(return fnc(phi))"},
 	{"Micro","%(return gnc(mii,bni))","Int","%(return hnc(bni,0))","Int","%(return fnc(bni))"},
 }
