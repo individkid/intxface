@@ -621,9 +621,9 @@ MicroBinding = {
 	--[[res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}]]\
 	    phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
 	    bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
-	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"RelateRes\"}]]\
-	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
-	    bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\",       }\
+	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\",\"ImageRes\" } req = {\"RelateRes\"}]]\
+	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
+	    bnp = {\"0\",      \"0\",       \"6\",        \"7\"        } bnq = {\"0\",       }\
 	mig = {\"MicroDsp\"} phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
 	mih = {\"MicroPie\"} phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
 	\
@@ -801,19 +801,34 @@ MemoryAlt = {
 	deb = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
 	phb = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\"}\
 	dec = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"RelateRes\",\"IndexRes\",\"BringupRes\"}\
-	phc = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RenderPhs\",\"IndexPhs\",\"FecthPhs\"}\
+	phc = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RenderPhs\",\"IndexPhs\",\"FetchPhs\"}\
 	key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"}\
 	val={\"OldDerIns\",\"RelateRes\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"}\
 	kez={\"Reloc\",\"Format\"}\
 	wal={\"MiddleLoc\",\"WholeFrm\","..
-	"\"AfterLoc\",\"SourceFrm\"}"..
-	"def={\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
-	"};"..
-	"arg={0,0,castMicro(\"MicroFill\")"..
-	"};"..
-	"\
-	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
+	"\"AfterLoc\",\"SourceFrm\"} "..
+
+	"def={\"TrivDef\",\"TrivDef\", ".. -- SetTagIns.idx SetTagIns.val
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd PipeRes.frc
+
+	"\"TrivDef\",\"TrivDef\", ".. -- SetTagIns.idx SetTagIns.val
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
+
+	"\"TrivDef\",\"TrivDef\", ".. -- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd SamplePhs.bnd PipeRes.frc PipeRes.frc
+	"}"..
+
+	"arg={0,castMicro(\"MicroFill\"),0,1,0,6,castMicro(\"MicroFill\"),0,castMicro(\"MicroFill\"),"..
+	"0,castMicro(\"MicroPie\"),0,1,0,12,castMicro(\"MicroPie\"),0,0,castMicro(\"MicroPie\"),"..
+	"0,castMicro(\"MicroDsp\"),0,12,castMicro(\"MicroDsp\"),0,1,7,castMicro(\"MicroDsp\"),castMicro(\"MicroDsp\"),"..
+	"}"..
+
+	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc () save = count; count = count + 1; return save end\
 	function hnc (lst) count = save; for i,v in ipairs(lst) do if i ~= #lst then temp = count; count = count + 1; coroutine.yield(temp) else temp = count; count = count + 1; return temp end end end\
 	function enc (lst) save = count; for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(save) else return save end end end\
@@ -839,7 +854,7 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Phase","RenderPhs"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
 		{"Micro","Vectorz","Int","%(return hnc(dea))","Resrc","%(return fnc(dea))"},
-		{"Micro","Vectorz","Int","%(return hnc(dea))","Phase","%(return fnc(pha))"},
+		{"Micro","Vectorz","Int","%(return hnc(pha))","Phase","%(return fnc(pha))"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","PipeRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
@@ -864,12 +879,12 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Phase","RenderPhs"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
 		{"Micro","Vectorz","Int","%(return hnc(deb))","Resrc","%(return fnc(deb))"},
-		{"Micro","Vectorz","Int","%(return hnc(deb))","Phase","%(return fnc(phb))"},
+		{"Micro","Vectorz","Int","%(return hnc(phb))","Phase","%(return fnc(phb))"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","PipeRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
 
-	-- MicroDis
+	-- MicroDsp
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","SetTagIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","DrawRes"},
 		{"Memory","Vectorz","Int","%(return save)","Quality","RsizQua"},
@@ -892,7 +907,7 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Format","MicroFrm"},
 	{"Micro","Vectorz","Int","%(return gnc())","Instr","RdlDeeIns"},
 		{"Micro","Vectorz","Int","%(return hnc(dec))","Resrc","%(return fnc(dec))"},
-		-- TODO dependee phases
+		{"Micro","Vectorz","Int","%(return hnc(phc))","Phase","%(return fnc(phc))"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","IdxDeeIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","PipeRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
@@ -913,8 +928,10 @@ MemoryAlt = {
 	{"Memory","Vectorz","Int", "%(return enc(kez))","%(return fnc(kez))","%(return fnc(wal))"},
 
 	-- Default/Int
-	{"%(count = 0; return \"Memory\")","Vectorz","Int","%(return gnc())","Default","%(return fnc(def))"},
-	{"%(count = 0; return \"Memory\")","Vectorz","Int","%(return gnc())","Int","%(return fnc(arg))"},
+	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Vectorz","Int","%(return gnc())","Default","%(return fnc(def))"},
+	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Vectorz","Int","%(return gnc())","Int","%(return fnc(arg))"},
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses

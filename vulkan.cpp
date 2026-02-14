@@ -504,11 +504,13 @@ struct StackState {
     static const int frames = 2; // prevent blocking on resources
     static const int images = 10; // fragment shader textures
     static const int piercs = 1; // fragment shader feedback
-    static const int instrs = 20; // maximum steps in a binded submit
+    static const int instrs = 40; // maximum steps in a binded submit
     static const int resrcs = 2; // resource classification greediness
     static const int handls = 4; // maximum number of classifications
+    virtual void wait() = 0;
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
+    virtual void show(int hdl, Quality key, int val, char **str) = 0;
     virtual Res newold(int hdl, Quality key, int val) = 0;
     virtual Res newbuf(int hdl, Quality key, int val) = 0;
     virtual Res oldbuf(int hdl, Quality key, int val) = 0;
@@ -516,6 +518,7 @@ struct StackState {
     virtual BaseState *idxbuf(int i) = 0;
     virtual BaseState *newbuf() = 0;
     virtual BaseState *oldbuf() = 0;
+    virtual void post() = 0;
     virtual void advance(int hdl, Quality key, int val) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
@@ -622,6 +625,7 @@ VkBufferUsageFlags StackState::flags;
 
 template <class State, Resrc Type, int Size> struct ArrayState : public StackState {
     SafeState safe;
+    bool excl;
     int idx;
     SimpleState<Size,Qualitys,StackState::resrcs> tag;
     State state[Size];
@@ -661,77 +665,64 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         depthFormat,
         graphics,
         present),
-        safe(1), idx(0) {
+        safe(1), excl(false), idx(0) {
     }
     ArrayState(VkBufferUsageFlags flags) : StackState(flags), safe(1), idx(0) {
     }
     ArrayState() : safe(1), idx(0) {
     }
-    void qualify(int hdl, Quality key, int val) /*override*/ { // set current tags
+    void wait() /*override*/ {
         safe.wait();
+        excl = true;
+    }
+    void qualify(int hdl, Quality key, int val) /*override*/ { // set current tags
+        if (!excl) EXIT
         tag.qualify(hdl,key,val);
-        safe.post();
     }
     bool compare(Onl one, Onl oth) /*override*/ {
-        safe.wait();
-        bool ret = (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val));
-        safe.post();
-        return ret;
+        if (!excl) EXIT
+        return (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val));
+    }
+    void show(int hdl, Quality key, int val, char **str) /*override*/ {
+        if (!excl) EXIT
+        tag.show(hdl,key,val,str);
     }
     Res newold(int hdl, Quality key, int val) /*override*/ {
-        safe.wait();
+        if (!excl) EXIT
         auto idx = tag.newold(hdl,key,val);
-        Res ret;
-        ret.resrc = &state[idx.resrc];
-        ret.reuse = idx.reuse;
-        safe.post();
-        return ret;
+        return {&state[idx.resrc],idx.reuse};
     }
     Res newbuf(int hdl, Quality key, int val) /*override*/ {
-        safe.wait();
+        if (!excl) EXIT
         auto idx = tag.newbuf(hdl,key,val);
-        Res ret;
-        ret.resrc = &state[idx.resrc];
-        ret.reuse = idx.reuse;
-        safe.post();
-        return ret;
+        return {&state[idx.resrc],idx.reuse};
     }
     Res oldbuf(int hdl, Quality key, int val) /*override*/ {
-        safe.wait();
+        if (!excl) EXIT
         auto idx = tag.oldbuf(hdl,key,val);
-        Res ret;
-        ret.resrc = &state[idx.resrc];
-        ret.reuse = idx.reuse;
-        safe.post();
-        return ret;
+        return {&state[idx.resrc],idx.reuse};
     }
     Res getbuf(int hdl, Quality key, int val) /*override*/ {
-        safe.wait();
+        if (!excl) EXIT
         auto idx = tag.getbuf(hdl,key,val);
-        Res ret;
-        ret.resrc = &state[idx.resrc];
-        ret.reuse = idx.reuse;
-        safe.post();
-        return ret;
+        return {&state[idx.resrc],idx.reuse};
     }
     BaseState *idxbuf(int i) /*override*/ {
+        if (!excl) EXIT
         if (i < 0 || i >= Size) EXIT
-        safe.wait();
-        BaseState *ptr = &state[i];
-        safe.post();
-        return ptr;
+        return &state[i];
     }
     BaseState *newbuf() /*override*/ {
-        safe.wait();
-        BaseState *ptr = &state[idx];
-        safe.post();
-        return ptr;
+        if (!excl) EXIT
+        return &state[idx];
     }
     BaseState *oldbuf() /*override*/ {
-        safe.wait();
-        BaseState *ptr = &state[(idx+1)%Size];
+        if (!excl) EXIT
+        return &state[(idx+1)%Size];
+    }
+    void post() /*override*/ {
+        excl = false;
         safe.post();
-        return ptr;
     }
     void advance(int hdl, Quality key, int val) /*override*/ {
         // make oldbuf into newbuf
@@ -857,6 +848,7 @@ struct Ref {
 };
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
+    bool atom[Resrcs];
     HeapState<SaveState,StackState::handls> bind[Resrcs];
     HeapState<Ref,StackState::handls> bref[Phases];
     int hand[Resrcs]; int size[Resrcs]; int init[Resrcs]; int nref[Phases];
@@ -865,6 +857,7 @@ struct BindState : public BaseState {
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0), excl(false) {
+        for (int i = 0; i < Resrcs; i++) atom[i] = false;
         for (int i = 0; i < Resrcs; i++) hand[i] = -1;
         for (int i = 0; i < Resrcs; i++) size[i] = 0;
         for (int i = 0; i < Phases; i++) nref[i] = 0;
@@ -904,6 +897,18 @@ struct BindState : public BaseState {
         if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
         if (sav->fin < i) ERROR();
         return sav;
+    }
+    bool vld(Resrc typ) { // mark resource array as locked
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        bool tmp =  atom[typ]; atom[typ] = true;
+        return tmp;
+    }
+    bool clr(Resrc typ) { // mark resource array as unlocked
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        bool tmp =  atom[typ]; atom[typ] = false;
+        return tmp;
     }
     SaveState *add(Resrc typ, Phase ref, int bnd, SmartState log) { // add resource of type
         if (!excl) EXIT
@@ -1272,9 +1277,21 @@ struct CopyState {
             break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): count += 1;}}
         log << "choose binding" << '\n';
         BindState *bind = 0; int min = 0;
-        if (count > min) bind = stack[BindRes]->getbuf(0,Qualitys,0).resrc->getBind(log);
+        if (count > min) {
+        stack[BindRes]->wait();
+        bind = stack[BindRes]->getbuf(0,Qualitys,0).resrc->getBind(log);
+        stack[BindRes]->post();}
         int lim = num; // number checked for reservation
         if (count > min && bind == 0) lim = -1;
+        log << "reserve arrays" << '\n';
+        for (int i = 0; i < num && i < lim; i++) {
+            switch (INS) {default:
+            break; case (SetTagIns): case (MovTagIns):
+            if (!bind->vld(KES)) src(KES)->wait();
+            break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
+            case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
+            if (!bind->vld(RES)) src(RES)->wait();}}
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1294,8 +1311,17 @@ struct CopyState {
             sav = bind->add(RES,PHS,BND,log);
             sav->buf = buf; sav->fst = i; sav->onl = onl;}
             else sav = bind->get(RES);
-            sav->fin = i;
-            log << "DepIns " << sav->buf->debug << '\n';}}}
+            log << "DepIns " << sav->buf->debug << '\n';
+            sav->fin = i;}}}
+        log << "release arrays" << '\n';
+        for (int i = 0; i < num && i < lim; i++) {
+            switch (INS) {default:
+            break; case (SetTagIns): case (MovTagIns):
+            if (bind->clr(KES)) src(KES)->post();
+            break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
+            case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
+            if (bind->clr(RES)) src(RES)->post();}}
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
@@ -1744,15 +1770,9 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);}
         break; case (Imagez): push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
             datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
-        break; case (Getintz): push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
-            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
-        break; case (Getoldz): push(ptr->mem,(void*)ptr->old,ptr->idx,ptr->siz,
-            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
-        break; case (Setintz): push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
-            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
-        break; case (Setoldz): push(ptr->mem,(void*)ptr->old,ptr->idx,ptr->siz,
-            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
-        }
+        break; case (Getintz): case (Getoldz): case (Setintz): case (Setoldz): case (Vectorz):
+            push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
+            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);}
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
 };
@@ -2079,7 +2099,7 @@ struct ImageState : public BaseState {
         return 0;
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc->use << '\n';
+        int val = tag(RuseQua); log << "resize " << debug << " location:" << *loc << " quality value:" << val << "/" << loc->use << '\n';
         if (*loc == ResizeLoc) {
         if (&loc != &ploc[*loc]) EXIT
         int texWidth = loc.max.extent.width;
@@ -2131,7 +2151,7 @@ struct ImageState : public BaseState {
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        log << "setup " << debug << " location:" << *loc << " quality value:" << tag(RuseQua) << "/" << loc->use << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
+        int val = tag(RuseQua); log << "setup " << debug << " location:" << *loc << " quality value:" << val << "/" << loc->use << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc->use));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {

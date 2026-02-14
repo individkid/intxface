@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <pthread.h>
-#include <strings.h>
+#include <string.h>
 #include <math.h>
 #include "proto.h"
 #ifdef __cplusplus
@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <sstream>
 
 struct SafeState {
     pthread_mutex_t mutex;
@@ -431,6 +432,12 @@ template <int Size, int Dim, int Min> struct SimpleState {
         Only tmp = idxkey[idx];
         if (tag >= 0 && tag < Dim) tmp[tag] = val;
         return tmp;
+    }
+    void show(int idx, int tag, int val, char **str) {
+        Only tmp = get(idx,tag,val);
+        std::stringstream sst; sst << tmp[0];
+        for (int i = 1; i < Dim; i++) sst << "/" << tmp[i];
+        *str = (char*)realloc((void*)*str,sst.str().size()+1); strcpy(*str,sst.str().c_str());
     }
     Wseq get(const Only &key, int num) {
         Wseq tmp; 

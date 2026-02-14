@@ -133,7 +133,7 @@ clean:
 	rm -f typra facer typer filer planra spacra flatten
 	rm -f hole file line metal space share pipe page
 	rm -f *C *M *Cpp *Hs *Lua *Sw *G
-	rm -f *.err *.out *.log *.tmp *.cp *.ls *.rm
+	rm -f core.* run out *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	rm -f *.o *.so *.hi *_stub.h
 	rm -f *.metal *.metallib *.vsv *.fsv

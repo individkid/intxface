@@ -399,6 +399,7 @@ int centerMod(struct Center *ptr)
     break; case (Getoldz): return sizeof(float);
     break; case (Setintz): return sizeof(int32_t);
     break; case (Setoldz): return sizeof(float);
+    break; case (Vectorz): return sizeof(struct Vector);
     break; case (Uniformz): return sizeof(struct Uniform);
     break; case (Matrixz): return sizeof(struct Matrix);
     break; case (Trianglez): return sizeof(struct Triangle);
@@ -1270,7 +1271,7 @@ void initTest()
 
     /*struct Center *vec = centerPull(Vectorz); freeCenter(vec);
     vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
-    allocOld(&vec->vec,vec->siz);
+    allocVector(&vec->vec,vec->siz);
     vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
     vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
     callCopy(vec,Vectorz,RptRsp,1,(debug?"vector":0));*/
