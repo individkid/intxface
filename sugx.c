@@ -805,8 +805,8 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 
 int sugarSkip(const char **str)
 {
-	char *bas = strchr(*str,'(');
-	char *lim = strchr(*str,')');
+	const char *bas = strchr(*str,'(');
+	const char *lim = strchr(*str,')');
 	if (!lim) ERROR();
 	if (bas && bas < lim) {*str = bas+1; return 1;}
 	if (!bas || lim < bas) {*str = lim+1; return -1;}

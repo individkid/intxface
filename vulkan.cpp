@@ -313,11 +313,11 @@ struct BaseState {
         // reserve before pushing to thread
         safe.wait();
         if (plock-pdec || rlock-rdec || wlock-wdec) {
-        log << "push fail" << " plock-pdec:" << plock-pdec << " rlock-rdec:" << rlock-rdec << " wlock-wdec:" << wlock-wdec << " " << debug << '\n';
+        log << debug << ":fail plock-pdec:" << plock-pdec << " rlock-rdec:" << rlock-rdec << " wlock-wdec:" << wlock-wdec << '\n';
         safe.post(); return false;}
         {char *st0 = 0; char *st1 = 0;
         showReloc(req.loc,&st0); showReuse(req.use,&st1);
-        log << "push pass " << debug << " l" << st0 << " " << st1 << '\n';
+        log << debug << ":pass " << st0 << " " << st1 << '\n';
         free(st0); free(st1);}
         plock += 1;
         safe.post();
@@ -865,7 +865,7 @@ struct BindState : public BaseState {
     BindState *getBind(SmartState log) override {
         safe.wait();
         if (excl) {log << "bind fail " << debug << '\n'; safe.post(); return 0;}
-        log << "bind pass " << debug << '\n';
+        log << debug << ":pass" << '\n';
         excl = true;
         safe.post();
         if (lock != 0) EXIT
@@ -890,7 +890,8 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= size[typ]) EXIT
         return &bind[typ][hdl];
     }
-    SaveState *get(Resrc typ, int i) { // current next or first
+    SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
+        {char *st0 = 0; showResrc(typ,&st0); log << debug << ":get " << st0 << hand[typ] << "/" << size[typ] << "/" << init[typ] << '\n'; free(st0);}
         if (init[typ]) {init[typ] = 0; hand[typ] = 0;}
         if (hand[typ] == size[typ]) hand[typ] = 0;
         SaveState *sav = get(typ);
@@ -919,7 +920,7 @@ struct BindState : public BaseState {
         init[typ] = 1;
         {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
-        log << "increment " << st0 << hand[typ] << " " << st1 << nref[ref] << "/" << bnd << '\n';
+        log << debug << ":add " << st0 << hand[typ] << " " << st1 << nref[ref] << "/" << bnd << '\n';
         free(st0); free(st1);}
         bref[ref][nref[ref]] = Ref{typ,hand[typ]};
         nref[ref] += 1;
@@ -960,7 +961,7 @@ struct BindState : public BaseState {
         SaveState &ref = bind[typ][hdl];
         if (!ref.buf) EXIT
         if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,req,unl,log)) return false;
-        log << "push " << debug << " " << ref.buf->debug << " lock:" << lock << '\n';
+        log << debug << ":push " << ref.buf->debug << " lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         if (ref.sav != 0 && ref.sav != ref.buf) EXIT
         ref.sav = ref.buf;
@@ -989,10 +990,10 @@ struct BindState : public BaseState {
         if (size[typ] <= 0 || nref[phs] <= 0) EXIT
         char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(phs,&st1);
-        log << "done " << debug << " " << st0 << size[typ] << " " << st1 << nref[phs] << '\n';
+        log << debug << ":done " << st0 << size[typ] << " " << st1 << nref[phs] << '\n';
         free(st0); free(st1);
         ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
-        log << "done " << debug << " " << dbg->debug << " lock:" << lock << '\n';
+        log << debug << ":done " << dbg->debug << " lock:" << lock << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -1000,7 +1001,7 @@ struct BindState : public BaseState {
     }
     void done(SmartState log) { // attempt this release
         if (!excl) EXIT
-        log << "bind done " << lock << " " << debug;
+        log << debug << ":bind lock:" << lock;
         for (int i = 0; i < Phases; i++) if (nref[i]) {
         char *st0 = 0; showPhase((Phase)i,&st0);
         log << " " << st0; free(st0);}
@@ -1029,9 +1030,9 @@ struct BindState : public BaseState {
         SaveState &ref = bind[typ][hdl];
         if (ref.sav && ref.sav != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
-        log << "incr fail " << buf->debug << '\n';
+        log << debug << ":fail " << buf->debug << '\n';
         return false;}
-        log << "incr " << debug << " " << buf->debug << " lock:" << lock << '\n';
+        log << debug << ":pass " << buf->debug << " lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         ref.sav = buf;
         (elock ? ref.wsav : ref.rsav) += 1;
@@ -1053,10 +1054,10 @@ struct BindState : public BaseState {
         if (size[typ] <= 0 || nref[phs] <= 0) EXIT
         char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref.phs,&st1);
-        log << "done " << debug << " " << st0 << size[typ] << " " << st1 << " " << (phs != Phases ? nref[phs] : 0) << '\n';
+        log << debug << ":decr " << st0 << size[typ] << " " << st1 << " " << (phs != Phases ? nref[phs] : 0) << '\n';
         free(st0); free(st1);
         ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
-        log << "decr " << debug << " " << dbg->debug << " lock:" << lock << '\n';
+        log << debug << ":decr " << dbg->debug << " lock:" << lock << '\n';
     }
     bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
         return incr(typ,buf,false,log);
@@ -1296,10 +1297,16 @@ struct CopyState {
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (SetTagIns): {
-            log << "SetTagIns res:" << KES << " hdl:" << HDL << " key:" << KEY << " val:" << VAL << '\n';
+            {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+            showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
+            log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
+            free(st0); free(st1); free(st2);}
             src(KES)->qualify(ONL);}
             break; case (MovTagIns): {
-            log << "MovTagIns res:" << KES << " hdl:" << HDL << " key:" << KEY << " val:" << VAL << '\n';
+            {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+            showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
+            log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
+            free(st0); free(st1); free(st2);}
             src(KES)->newold(ONL);
             bind->get(KES)->onl = Onl{ONL};}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
@@ -1311,7 +1318,7 @@ struct CopyState {
             sav = bind->add(RES,PHS,BND,log);
             sav->buf = buf; sav->fst = i; sav->onl = onl;}
             else sav = bind->get(RES);
-            log << "DepIns " << sav->buf->debug << '\n';
+            {char *st0 = 0; showInstr(INS,&st0); log << st0 << " " << sav->buf->debug << '\n'; free(st0);}
             sav->fin = i;}}}
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
@@ -1328,7 +1335,7 @@ struct CopyState {
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             Unl unl = {.der=RES,.hdl=bind->hdl(RES),.phs=PHS,.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
@@ -1341,10 +1348,10 @@ struct CopyState {
             switch (INS) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->sav->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             if (!bind->winc(RES,sav->buf,log)) lim = i;}
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             if (!bind->rinc(RES,sav->buf,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
@@ -1353,14 +1360,14 @@ struct CopyState {
             switch(INS) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             Lnk *tmp = sav->buf->link(LOC,bas,lst,lnk);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = LOC;}}}}
         for (int i = 0; i < num; i++) {
             switch(INS) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             Lnk *nxt = &sav->buf->ploc[LOC].nxt;
             Lnk *lst = &sav->buf->ploc[LOC].lst;
             log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << LOC << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}
@@ -1374,16 +1381,16 @@ struct CopyState {
         for (int i = 0; i < num; i++) {
             switch (INS) {default:
             break; case(NewDerIns): case(NidDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             if (sav->fst == i) src(RES)->advance(ONL);
             log << "NewDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             log << "OldDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             if (sav->fst == i) src(RES)->advance(FRC);
             log << "IdxDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}}}
@@ -1398,7 +1405,7 @@ struct CopyState {
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i);
+            SaveState *sav = bind->get(RES,i,log);
             bind->done(RES,log);
             sav->buf->fail(log);}
             break; case(WrlDeeIns): case (WidDeeIns):
@@ -1506,7 +1513,7 @@ struct CopyState {
         char *st2 = 0; showInstr(dot[i].ins,&st2);
         char *st3 = 0; showReuse(dot[i].use,&st3);
         char *st4 = 0; showPhase(dot[i].phs,&st4);
-        log << "instruct " << st0 << " " << st4 << " " << st1 << " " << st3 << " " << st2 << '\n';
+        log << st2 << " " << st0 << " " << st4 << " " << st1 << " " << st3 << '\n';
         free(st0); free(st1); free(st2); free(st3); free(st4);}
         break; case(ResIncIns):
         {char *st0 = 0; showResrc(dot[i].res,&st0);
@@ -1633,9 +1640,7 @@ struct CopyState {
     }
     template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
         int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
-        {char *st0 = 0; showType(typ,&st0);
-        log << "push " << st0 << " " << ary << " " << depth << '\n';
-        free(st0);}
+        {char *st0 = 0; showType(typ,&st0); log << st0 << ":push " << " alt:" << ary << " depth:" << depth << '\n'; free(st0);}
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
@@ -1643,9 +1648,7 @@ struct CopyState {
         break; case (ResIncIns): depth += 1; push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),log); depth -= 1;
         break; case (MemIncIns): depth += 1; push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),log); depth -= 1;
         break; case (MicIncIns): depth += 1; push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),log); depth -= 1;}}
-        {char *st0 = 0; showType(typ,&st0);
-        log << "pone " << st0 << " " << ary << " " << depth << '\n';
-        free(st0);}
+        {char *st0 = 0; showType(typ,&st0); log << st0 << ":done " << " alt:" << ary << " depth:" << depth << '\n'; free(st0);}
     }
     int size(Micro typ, int ary) {
         int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
@@ -1702,8 +1705,6 @@ struct CopyState {
             else vlu[i] = 0;}
         // copy from given
         if (siz) for (int i = 0; i < tot; i++)
-            {char *st0 = 0; showDefault(dflt(typ,i,ary),&st0); log << "dflt:" << i << " " << st0 << '\n'; free(st0);}
-        if (siz) for (int i = 0; i < tot; i++)
             // ignore GiveDef if there is nothing proferred
             if (i < lim && dflt(typ,i,ary) == GiveDef) {
             int idx = fill(typ,i,ary);
@@ -1711,8 +1712,7 @@ struct CopyState {
             if (sze) {for (int j = 0; j < tot; j++)
             if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
             // siz no sze means all arg would be negative, and arg treated as proferred val
-            else if (idx >= 0 && idx < tot) {vlu[i] = arg[idx];
-            log << "give:" << idx << " vlu[" << i << "]:" << vlu[i] << " " << idx << "/" << tot << '\n';}}
+            else if (idx >= 0 && idx < tot) vlu[i] = arg[idx];}
         // force from given
         if (sze) for (int i = 0; i < tot; i++) {
             // siz and sze means force index is from arg
@@ -2397,7 +2397,7 @@ struct MainState {
     ArrayState<BufferState,VertexRes,StackState::frames> vertexState;
     ArrayState<BufferState,BasisRes,StackState::frames> basisState;
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
-    ArrayState<DrawState,DrawRes,StackState::frames> drawState;
+    ArrayState<DrawState,DrawRes,StackState::micros> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
     ThreadState threadState;
     CopyState copyState;
@@ -2587,6 +2587,7 @@ int main(int argc, const char **argv) {
     struct sigaction act;
     act.sa_handler = sigintFunc;
     if (sigaction(SIGINT,&act,0) < 0) ERROR();
+    if (sigaction(SIGSEGV,&act,0) < 0) ERROR();
     // errFunc(errorFunc); // in case pipe is closed just before written to
     // on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg

@@ -502,12 +502,19 @@ template <int Size, int Dim, int Min> struct SimpleState {
         seqn = (seqn+1)%wrap;
     }
     int insert(Only &tmp) {
-        auto itr = keyord.rbegin();
-        if (pool.empty() && keysiz.find(tmp) == keysiz.end()) remove(oldest[get(*itr)]);
-        else if (pool.empty() && (*itr)[Dim] > keysiz[tmp]+1) remove(oldest[get(*itr)]);
-        else if (pool.empty()) remove(oldest[tmp]);
+        auto itr = keyord.rbegin(); // class with the most
+        if (pool.empty() && keysiz.find(tmp) == keysiz.end())
+        // there are none of the given class
+        remove(oldest[get(*itr)]); // remove oldest of class with the most
+        else if (pool.empty() && (*itr)[Dim] > keysiz[tmp]+1)
+        // TODO is this right? if given has one, then class with most keeps up to two
+        // class with the most has much more than given class
+        remove(oldest[get(*itr)]); // remove oldest of class with the most
+        else if (pool.empty())
+        // given class must rotate
+        remove(oldest[tmp]); // remove oldest of given class
         Indx idx = pool.front(); pool.pop_front();
-        insert(tmp,idx);
+        insert(tmp,idx); // make last removed the newest
         return idx;
     }
     Pair oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
