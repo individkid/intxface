@@ -891,6 +891,7 @@ struct BindState : public BaseState {
         return &bind[typ][hdl];
     }
     SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
+        // TODO must set init[typ] upon fail rollback in CopyState for RptRsp
         {char *st0 = 0; showResrc(typ,&st0); log << debug << ":get " << st0 << hand[typ] << "/" << size[typ] << "/" << init[typ] << '\n'; free(st0);}
         if (init[typ]) {init[typ] = 0; hand[typ] = 0;}
         if (hand[typ] == size[typ]) hand[typ] = 0;
@@ -993,7 +994,7 @@ struct BindState : public BaseState {
         log << debug << ":done " << st0 << size[typ] << " " << st1 << nref[phs] << '\n';
         free(st0); free(st1);
         ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
-        log << debug << ":done " << dbg->debug << " lock:" << lock << '\n';
+        log << debug << ":more " << dbg->debug << " lock:" << lock << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -1032,7 +1033,7 @@ struct BindState : public BaseState {
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         log << debug << ":fail " << buf->debug << '\n';
         return false;}
-        log << debug << ":pass " << buf->debug << " lock:" << lock << '\n';
+        log << debug << ":bind " << buf->debug << " lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         ref.sav = buf;
         (elock ? ref.wsav : ref.rsav) += 1;
@@ -1052,12 +1053,12 @@ struct BindState : public BaseState {
         if (phs < 0 || phs > Phases) EXIT
         if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
         if (size[typ] <= 0 || nref[phs] <= 0) EXIT
-        char *st0 = 0; char *st1 = 0;
+        {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref.phs,&st1);
-        log << debug << ":decr " << st0 << size[typ] << " " << st1 << " " << (phs != Phases ? nref[phs] : 0) << '\n';
-        free(st0); free(st1);
+        log << debug << ":done " << st0 << size[typ] << " " << st1 << " " << (phs != Phases ? nref[phs] : 0) << '\n';
+        free(st0); free(st1);}
         ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
-        log << debug << ":decr " << dbg->debug << " lock:" << lock << '\n';
+        log << debug << ":more " << dbg->debug << " lock:" << lock << '\n';
     }
     bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
         return incr(typ,buf,false,log);
