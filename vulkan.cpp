@@ -891,13 +891,13 @@ struct BindState : public BaseState {
         return &bind[typ][hdl];
     }
     SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
-        // TODO must set init[typ] upon fail rollback in CopyState for RptRsp
-        {char *st0 = 0; showResrc(typ,&st0); log << debug << ":get " << st0 << hand[typ] << "/" << size[typ] << "/" << init[typ] << '\n'; free(st0);}
+        int tm0 = init[typ]; int tm1 = hand[typ];
         if (init[typ]) {init[typ] = 0; hand[typ] = 0;}
         if (hand[typ] == size[typ]) hand[typ] = 0;
         SaveState *sav = get(typ);
         if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
         if (sav->fin < i) ERROR();
+        log << (sav->buf?sav->buf->debug:"nil") << ":get init:" << tm0 << " hand:" << tm1 << "<" << hand[typ] << "<" << size[typ] << " life:" << sav->fst << "<" << i << "<" << sav->fin << '\n';
         return sav;
     }
     bool vld(Resrc typ) { // mark resource array as locked
@@ -912,21 +912,17 @@ struct BindState : public BaseState {
         bool tmp =  atom[typ]; atom[typ] = false;
         return tmp;
     }
-    SaveState *add(Resrc typ, Phase ref, int bnd, SmartState log) { // add resource of type
+    SaveState *add(Resrc typ, Phase ref, int bnd, BaseState *buf, int fst, Onl onl, SmartState log) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (ref < 0 || ref >= Phases) EXIT
         hand[typ] = size[typ];
         size[typ] += 1;
         init[typ] = 1;
-        {char *st0 = 0; char *st1 = 0;
-        showResrc(typ,&st0); showPhase(ref,&st1);
-        log << debug << ":add " << st0 << hand[typ] << " " << st1 << nref[ref] << "/" << bnd << '\n';
-        free(st0); free(st1);}
         bref[ref][nref[ref]] = Ref{typ,hand[typ]};
         nref[ref] += 1;
         SaveState *sav = get(typ);
-        sav->phs = ref; sav->bnd = bnd;
+        sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst; sav->onl = onl;
         return sav;
     }
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
@@ -962,7 +958,7 @@ struct BindState : public BaseState {
         SaveState &ref = bind[typ][hdl];
         if (!ref.buf) EXIT
         if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,req,unl,log)) return false;
-        log << debug << ":push " << ref.buf->debug << " lock:" << lock << '\n';
+        log << ref.buf->debug << ":push lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         if (ref.sav != 0 && ref.sav != ref.buf) EXIT
         ref.sav = ref.buf;
@@ -1033,7 +1029,7 @@ struct BindState : public BaseState {
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
         log << debug << ":fail " << buf->debug << '\n';
         return false;}
-        log << debug << ":bind " << buf->debug << " lock:" << lock << '\n';
+        log << buf->debug << ":bind lock:" << lock << '\n';
         if (ref.sav == 0) lock += 1;
         ref.sav = buf;
         (elock ? ref.wsav : ref.rsav) += 1;
@@ -1313,13 +1309,9 @@ struct CopyState {
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            Onl onl = Onl{ONL};
-            SaveState *sav = 0; if (!vld(RES,onl,bind)) {
-            BaseState *buf = get(INS,RES,FRC,ONL);
-            sav = bind->add(RES,PHS,BND,log);
-            sav->buf = buf; sav->fst = i; sav->onl = onl;}
-            else sav = bind->get(RES);
-            {char *st0 = 0; showInstr(INS,&st0); log << st0 << " " << sav->buf->debug << '\n'; free(st0);}
+            Onl onl = Onl{ONL}; bool cnd = vld(RES,onl,bind); SaveState *sav =
+            (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,onl,log));
+            {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
             sav->fin = i;}}}
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
@@ -1401,6 +1393,16 @@ struct CopyState {
         break; case (RetRsp): case (RptRsp): log << "RptRsp " << ptr << '\n'; thread->push(log,ptr,sub);}
         if (bind) stack[BindRes]->advance(0,Qualitys,0);
         } else {
+        log << "wrap handles " << num << ">" << lim << '\n';
+        if (lim >= 0) for (int i = lim; i < num; i++) {
+            switch (INS) {default:
+            break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
+            SaveState *sav = bind->get(RES,i,log);}
+            break; case(WrlDeeIns): case(WidDeeIns): {
+            SaveState *sav = bind->get(RES,i,log);}
+            break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
+            SaveState *sav = bind->get(RES,i,log);}}}
         log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
             switch (INS) {default:
