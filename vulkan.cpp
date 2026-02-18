@@ -869,11 +869,6 @@ struct BindState : public BaseState {
         lock = 1;
         return this;
     }
-    int hdl(Resrc typ) { // current qualification index of resource
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        return hand[typ];
-    }
     int siz(Resrc typ) { // number of qualifications indices
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -949,27 +944,20 @@ struct BindState : public BaseState {
     bool push(Resrc typ, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
         if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        int hdl = hand[typ];
-        if (hdl < 0 || hdl >= StackState::handls) EXIT
-        SaveState &ref = bind[typ][hdl];
-        unl.der = &ref; // TODO get unl.der outside so no need for Resrc parameter?
-        if (!ref.buf || ref.typ != typ) EXIT
-        if (!ref.buf->push(this,req,unl,log)) return false;
-        if (ref.sav == 0) lock += 1;
-        if (ref.sav != 0 && ref.sav != ref.buf) EXIT
-        ref.sav = ref.buf; // TODO use bool flag instead. this is to know if it is the first push or incr for this resource.
-        ref.psav += 1;
-        log << ref.buf->debug << ":push lock:" << lock << " psav:" << ref.psav << " rsav:" << ref.rsav << " wsav:" << ref.wsav << '\n';
+        unl.der = get(typ);
+        SaveState *sav = unl.der; // TODO get unl.der outside so no need for Resrc parameter?
+        if (!sav->buf || sav->typ != typ) EXIT
+        if (!sav->buf->push(this,req,unl,log)) return false;
+        if (sav->sav == 0) lock += 1;
+        if (sav->sav != 0 && sav->sav != sav->buf) EXIT
+        sav->sav = sav->buf; // TODO use bool flag instead. this is to know if it is the first push or incr for this resource.
+        sav->psav += 1;
+        log << sav->buf->debug << ":push lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
         return true;
     }
     void push(Resrc typ, Instr ins, SmartState log) {
         // reserve dependee without push to thread
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        int hdl = hand[typ];
-        if (hdl < 0 || hdl >= StackState::handls) EXIT
-        resp<<Dec{&bind[typ][hdl],ins};
+        resp<<Dec{get(typ),ins};
     }
     void done(SaveState *sav, SmartState log) { // attempt depender release
         if (!excl) EXIT
@@ -984,8 +972,7 @@ struct BindState : public BaseState {
         log << dbg->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
-        if (typ < 0 || typ >= Resrcs) EXIT
-        done(&bind[typ][hand[typ]],log);
+        done(get(typ),log);
     }
     void done(SmartState log) { // attempt this release
         if (!excl) EXIT
@@ -1006,17 +993,14 @@ struct BindState : public BaseState {
     bool incr(Resrc typ, BaseState *buf, bool elock, SmartState log) {
         if (!buf) EXIT
         if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        int hdl = hand[typ];
-        if (hdl < 0 || hdl >= StackState::handls) EXIT
-        SaveState &ref = bind[typ][hdl];
-        if (ref.sav && ref.sav != buf) EXIT
-        if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
+        SaveState *sav = get(typ);
+        if (sav->sav && sav->sav != buf) EXIT
+        if (!buf->incr(elock,sav->psav,sav->rsav,sav->wsav)) {
         return false;}
-        if (ref.sav == 0) lock += 1; // TODO this is why two pointers to same. use bool instead.
-        ref.sav = buf;
-        (elock ? ref.wsav : ref.rsav) += 1;
-        log << buf->debug << ":incr lock:" << lock << " psav:" << ref.psav << " rsav:" << ref.rsav << " wsav:" << ref.wsav << '\n';
+        if (sav->sav == 0) lock += 1; // TODO this is why two pointers to same. use bool instead.
+        sav->sav = buf;
+        (elock ? sav->wsav : sav->rsav) += 1;
+        log << buf->debug << ":incr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
         return true;
     }
     void decr(SaveState *sav, bool elock, SmartState log) {
@@ -1040,15 +1024,13 @@ struct BindState : public BaseState {
         return incr(typ,buf,true,log);
     }
     void rdec(Resrc typ, SmartState log) { // unreadlock current
-        if (typ < 0 || typ >= Resrcs) EXIT
-        decr(&bind[typ][hand[typ]],false,log);
+        decr(get(typ),false,log);
     }
     void rdec(SaveState *sav, SmartState log) { // unreadlock indexed
         decr(sav,false,log);
     }
     void wdec(Resrc typ, SmartState log) { // unwritelock current
-        if (typ < 0 || typ >= Resrcs) EXIT
-        decr(&bind[typ][hand[typ]],true,log);
+        decr(get(typ),true,log);
     }
     void wdec(SaveState *sav, SmartState log) { // unwritelock indexed
         decr(sav,true,log);
