@@ -254,10 +254,17 @@ struct Adv {
     Quality key; // which to change upon advance
     int val; // what to change to upon advance
 };
+struct Onl {
+    int hdl; Quality key; int val;
+};
+struct SaveState {
+    BaseState *sav; int psav, rsav, wsav;
+    BaseState *buf; int fst, fin; Onl onl;
+    Resrc typ; Phase phs; int bnd; // multiple resource per phase, but only one phase per resource
+    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
+};
 struct Unl {
-    Resrc der; // index into bind->bind
-    int hdl; // index into bind->bind[der]
-    Phase phs; // to clear reference
+    SaveState *der;
     int dee; // offset into bind->resp
     int siz; // number to unreserve of bind->resp
 };
@@ -309,11 +316,11 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool push(int pdec, int rdec, int wdec, BindState *ptr, Requ req, Unl unl, SmartState log) {
+    bool push(BindState *ptr, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
-        if (plock-pdec || rlock-rdec || wlock-wdec) {
-        log << debug << ":fail plock-pdec:" << plock-pdec << " rlock-rdec:" << rlock-rdec << " wlock-wdec:" << wlock-wdec << '\n';
+        if (plock-unl.der->psav || rlock-unl.der->rsav || wlock-unl.der->wsav) {
+        log << debug << ":fail plock-unl.der->psav:" << plock-unl.der->psav << " rlock-unl.der->rsav:" << rlock-unl.der->rsav << " wlock-unl.der->wsav:" << wlock-unl.der->wsav << '\n';
         safe.post(); return false;}
         {char *st0 = 0; char *st1 = 0;
         showReloc(req.loc,&st0); showReuse(req.use,&st1);
@@ -321,6 +328,7 @@ struct BaseState {
         free(st0); free(st1);}
         plock += 1;
         safe.post();
+        if (this != unl.der->buf) EXIT
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
         ploc[req.loc].req = req;
@@ -491,9 +499,6 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
-struct Onl {
-    int hdl; Quality key; int val;
-};
 struct Res {
     BaseState *resrc;
     bool reuse;
@@ -830,16 +835,8 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Int) *micval;
 };
 
-struct SaveState {
-    BaseState *sav; int psav, rsav, wsav;
-    BaseState *buf; int fst, fin; Onl onl;
-    Phase phs; int bnd; // multiple resource per phase, but only one phase per resource
-    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
-};
-
 struct Dec {
-    Resrc typ;
-    int hdl;
+    SaveState *sav;
     Instr ins;
 };
 struct Ref {
@@ -922,7 +919,7 @@ struct BindState : public BaseState {
         bref[ref][nref[ref]] = Ref{typ,hand[typ]};
         nref[ref] += 1;
         SaveState *sav = get(typ);
-        sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst; sav->onl = onl;
+        sav->typ = typ; sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst; sav->onl = onl;
         return sav;
     }
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
@@ -956,13 +953,14 @@ struct BindState : public BaseState {
         int hdl = hand[typ];
         if (hdl < 0 || hdl >= StackState::handls) EXIT
         SaveState &ref = bind[typ][hdl];
-        if (!ref.buf) EXIT
-        if (!ref.buf->push(ref.psav,ref.rsav,ref.wsav,this,req,unl,log)) return false;
-        log << ref.buf->debug << ":push lock:" << lock << '\n';
+        unl.der = &ref; // TODO get unl.der outside so no need for Resrc parameter?
+        if (!ref.buf || ref.typ != typ) EXIT
+        if (!ref.buf->push(this,req,unl,log)) return false;
         if (ref.sav == 0) lock += 1;
         if (ref.sav != 0 && ref.sav != ref.buf) EXIT
-        ref.sav = ref.buf;
+        ref.sav = ref.buf; // TODO use bool flag instead. this is to know if it is the first push or incr for this resource.
         ref.psav += 1;
+        log << ref.buf->debug << ":push lock:" << lock << " psav:" << ref.psav << " rsav:" << ref.rsav << " wsav:" << ref.wsav << '\n';
         return true;
     }
     void push(Resrc typ, Instr ins, SmartState log) {
@@ -971,38 +969,27 @@ struct BindState : public BaseState {
         if (typ < 0 || typ >= Resrcs) EXIT
         int hdl = hand[typ];
         if (hdl < 0 || hdl >= StackState::handls) EXIT
-        resp<<Dec{typ,hdl,ins};
+        resp<<Dec{&bind[typ][hdl],ins};
     }
-    void done(Resrc typ, int hdl, SmartState log) { // attempt depender release
+    void done(SaveState *sav, SmartState log) { // attempt depender release
         if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        if (hdl < 0 || hdl >= StackState::handls) EXIT
-        SaveState &ref = bind[typ][hdl];
-        if (ref.psav <= 0) EXIT
-        ref.psav -= 1;
-        BaseState *dbg = ref.sav;
-        Phase phs = ref.phs;
+        if (sav->psav <= 0) EXIT
+        sav->psav -= 1;
+        BaseState *dbg = sav->sav;
+        Phase phs = sav->phs;
         if (phs < 0 || phs >= Phases) EXIT
-        if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        if (size[typ] <= 0 || nref[phs] <= 0) EXIT
-        char *st0 = 0; char *st1 = 0;
-        showResrc(typ,&st0); showPhase(phs,&st1);
-        log << debug << ":done " << st0 << size[typ] << " " << st1 << nref[phs] << '\n';
-        free(st0); free(st1);
-        ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
-        log << debug << ":more " << dbg->debug << " lock:" << lock << '\n';
+        if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
+        if (size[sav->typ] <= 0 || nref[sav->phs] <= 0) EXIT
+        sav->sav = 0; size[sav->typ] -= 1; nref[sav->phs] -= 1; lock -= 1;}
+        log << dbg->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
         if (typ < 0 || typ >= Resrcs) EXIT
-        done(typ,hand[typ],log);
+        done(&bind[typ][hand[typ]],log);
     }
     void done(SmartState log) { // attempt this release
         if (!excl) EXIT
-        log << debug << ":bind lock:" << lock;
-        for (int i = 0; i < Phases; i++) if (nref[i]) {
-        char *st0 = 0; showPhase((Phase)i,&st0);
-        log << " " << st0; free(st0);}
-        log << '\n';
+        log << debug << ":bind lock:" << lock  << '\n';
         if (lock == 1) {
         lock = 0; resp.clear();
         safe.wait(); excl = false; safe.post();}
@@ -1011,12 +998,10 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (unl.dee+unl.siz > resp.size()) EXIT
         for (int i = 0; i < unl.siz; i++) {
-        Resrc typ = resp[unl.dee+i].typ;
-        int hdl = resp[unl.dee+i].hdl;
         switch (resp[unl.dee+i].ins) {default:
-        break; case (RdlDeeIns): case (IdxDeeIns): rdec(typ,hdl,log);
-        break; case (WrlDeeIns): wdec(typ,hdl,log);}}
-        done(unl.der,unl.hdl,log); done(log);
+        break; case (RdlDeeIns): case (IdxDeeIns): rdec(resp[unl.dee+i].sav,log);
+        break; case (WrlDeeIns): wdec(resp[unl.dee+i].sav,log);}}
+        done(unl.der,log); done(log);
     }
     bool incr(Resrc typ, BaseState *buf, bool elock, SmartState log) {
         if (!buf) EXIT
@@ -1027,34 +1012,26 @@ struct BindState : public BaseState {
         SaveState &ref = bind[typ][hdl];
         if (ref.sav && ref.sav != buf) EXIT
         if (!buf->incr(elock,ref.psav,ref.rsav,ref.wsav)) {
-        log << debug << ":fail " << buf->debug << '\n';
         return false;}
-        log << buf->debug << ":bind lock:" << lock << '\n';
-        if (ref.sav == 0) lock += 1;
+        if (ref.sav == 0) lock += 1; // TODO this is why two pointers to same. use bool instead.
         ref.sav = buf;
         (elock ? ref.wsav : ref.rsav) += 1;
+        log << buf->debug << ":incr lock:" << lock << " psav:" << ref.psav << " rsav:" << ref.rsav << " wsav:" << ref.wsav << '\n';
         return true;
     }
-    void decr(Resrc typ, int hdl, bool elock, SmartState log) {
+    void decr(SaveState *sav, bool elock, SmartState log) {
         if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        if (hdl < 0 || hdl >= StackState::handls) EXIT
-        SaveState &ref = bind[typ][hdl];
-        if (lock <= 0 || ref.sav == 0) EXIT
-        ref.sav->decr(elock);
-        if ((elock ? ref.wsav : ref.rsav) <= 0) EXIT
-        (elock ? ref.wsav : ref.rsav) -= 1;
-        BaseState *dbg = ref.sav;
-        Phase phs = ref.phs;
+        if (lock <= 0 || sav->sav == 0) EXIT
+        sav->sav->decr(elock);
+        if ((elock ? sav->wsav : sav->rsav) <= 0) EXIT
+        (elock ? sav->wsav : sav->rsav) -= 1;
+        BaseState *dbg = sav->sav;
+        Phase phs = sav->phs;
         if (phs < 0 || phs > Phases) EXIT
-        if (ref.psav == 0 && ref.rsav == 0 && ref.wsav == 0) {
-        if (size[typ] <= 0 || nref[phs] <= 0) EXIT
-        {char *st0 = 0; char *st1 = 0;
-        showResrc(typ,&st0); showPhase(ref.phs,&st1);
-        log << debug << ":done " << st0 << size[typ] << " " << st1 << " " << (phs != Phases ? nref[phs] : 0) << '\n';
-        free(st0); free(st1);}
-        ref.sav = 0; size[typ] -= 1; nref[phs] -= 1; lock -= 1;}
-        log << debug << ":more " << dbg->debug << " lock:" << lock << '\n';
+        if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
+        if (size[sav->typ] <= 0 || nref[sav->phs] <= 0) EXIT
+        sav->sav = 0; size[sav->typ] -= 1; nref[sav->phs] -= 1; lock -= 1;}
+        log << dbg->debug << ":decr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
     bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
         return incr(typ,buf,false,log);
@@ -1064,17 +1041,17 @@ struct BindState : public BaseState {
     }
     void rdec(Resrc typ, SmartState log) { // unreadlock current
         if (typ < 0 || typ >= Resrcs) EXIT
-        decr(typ,hand[typ],false,log);
+        decr(&bind[typ][hand[typ]],false,log);
     }
-    void rdec(Resrc typ, int hdl, SmartState log) { // unreadlock indexed
-        decr(typ,hdl,false,log);
+    void rdec(SaveState *sav, SmartState log) { // unreadlock indexed
+        decr(sav,false,log);
     }
     void wdec(Resrc typ, SmartState log) { // unwritelock current
         if (typ < 0 || typ >= Resrcs) EXIT
-        decr(typ,hand[typ],true,log);
+        decr(&bind[typ][hand[typ]],true,log);
     }
-    void wdec(Resrc typ, int hdl, SmartState log) { // unwritelock indexed
-        decr(typ,hdl,true,log);
+    void wdec(SaveState *sav, SmartState log) { // unwritelock indexed
+        decr(sav,true,log);
     }
 };
 BaseState *BaseState::res(Resrc typ, int hdl) {
@@ -1329,7 +1306,7 @@ struct CopyState {
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
             SaveState *sav = bind->get(RES,i,log);
-            Unl unl = {.der=RES,.hdl=bind->hdl(RES),.phs=PHS,.dee=resps,.siz=0};
+            Unl unl = {.der=0,.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
