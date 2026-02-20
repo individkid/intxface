@@ -254,15 +254,7 @@ struct Adv {
     Quality key; // which to change upon advance
     int val; // what to change to upon advance
 };
-struct Onl {
-    int hdl; Quality key; int val;
-};
-struct SaveState {
-    BaseState *sav; int psav, rsav, wsav;
-    BaseState *buf; int fst, fin; Onl onl;
-    Resrc typ; Phase phs; int bnd; // multiple resource per phase, but only one phase per resource
-    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
-};
+struct SaveState;
 struct Unl {
     SaveState *der;
     int dee; // offset into bind->resp
@@ -316,11 +308,15 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
+    bool check(SaveState *sav);
     bool push(BindState *ptr, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
-        if (plock-unl.der->psav || rlock-unl.der->rsav || wlock-unl.der->wsav) {
-        log << debug << ":fail plock-unl.der->psav:" << plock-unl.der->psav << " rlock-unl.der->rsav:" << rlock-unl.der->rsav << " wlock-unl.der->wsav:" << wlock-unl.der->wsav << '\n';
+        if (check(unl.der)) {
+        {char *st0 = 0; char *st1 = 0;
+        showReloc(req.loc,&st0); showReuse(req.use,&st1);
+        log << debug << ":fail " << st0 << " " << st1 << '\n';
+        free(st0); free(st1);}
         safe.post(); return false;}
         {char *st0 = 0; char *st1 = 0;
         showReloc(req.loc,&st0); showReuse(req.use,&st1);
@@ -328,7 +324,6 @@ struct BaseState {
         free(st0); free(st1);}
         plock += 1;
         safe.post();
-        if (this != unl.der->buf) EXIT
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
         ploc[req.loc].req = req;
@@ -499,6 +494,9 @@ struct BaseState {
     static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
 };
 
+struct Onl {
+    int hdl; Quality key; int val;
+};
 struct Res {
     BaseState *resrc;
     bool reuse;
@@ -835,7 +833,13 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Int) *micval;
 };
 
-struct Dec {
+struct SaveState {
+    BaseState *sav; int psav, rsav, wsav;
+    BaseState *buf; int fst, fin; Onl onl;
+    Resrc typ; Phase phs; int bnd; // multiple resource per phase, but only one phase per resource
+    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
+};
+struct Sav {
     SaveState *sav;
     Instr ins;
 };
@@ -848,16 +852,12 @@ struct BindState : public BaseState {
     bool atom[Resrcs];
     HeapState<SaveState,StackState::handls> bind[Resrcs];
     HeapState<Ref,StackState::handls> bref[Phases];
-    int hand[Resrcs]; int size[Resrcs]; int init[Resrcs]; int nref[Phases];
     int lock; bool excl;
-    HeapState<Dec,StackState::instrs> resp;
+    HeapState<Sav,StackState::instrs> resp;
     BindState() :
         BaseState("BindState",StackState::self),
         lock(0), excl(false) {
         for (int i = 0; i < Resrcs; i++) atom[i] = false;
-        for (int i = 0; i < Resrcs; i++) hand[i] = -1;
-        for (int i = 0; i < Resrcs; i++) size[i] = 0;
-        for (int i = 0; i < Phases; i++) nref[i] = 0;
     }
     BindState *getBind(SmartState log) override {
         safe.wait();
@@ -872,24 +872,18 @@ struct BindState : public BaseState {
     int siz(Resrc typ) { // number of qualifications indices
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        return size[typ];
+        return bind[typ].get();
     }
     SaveState *get(Resrc typ) { // current resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        int hdl = hand[typ];
-        if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
-        if (hdl < 0 || hdl >= size[typ]) EXIT
-        return &bind[typ][hdl];
+        return &bind[typ].get(0);
     }
     SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
-        int tm0 = init[typ]; int tm1 = hand[typ];
-        if (init[typ]) {init[typ] = 0; hand[typ] = 0;}
-        if (hand[typ] == size[typ]) hand[typ] = 0;
-        SaveState *sav = get(typ);
-        if (sav->fin < i) {hand[typ] += 1; sav = get(typ);}
-        if (sav->fin < i) ERROR();
-        log << (sav->buf?sav->buf->debug:"nil") << ":get init:" << tm0 << " hand:" << tm1 << "<" << hand[typ] << "<" << size[typ] << " life:" << sav->fst << "<" << i << "<" << sav->fin << '\n';
+        SaveState *sav = &bind[typ].get(0);
+        if (sav->fin == i) sav = &bind[typ].get(1);
+        if (sav->fin < i || sav->fst > i) ERROR();
+        log << (sav->buf?sav->buf->debug:"nil") << ":get " << sav->fst << "<" << i << "<" << sav->fin << '\n';
         return sav;
     }
     bool vld(Resrc typ) { // mark resource array as locked
@@ -908,20 +902,20 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (ref < 0 || ref >= Phases) EXIT
-        hand[typ] = size[typ];
-        size[typ] += 1;
-        init[typ] = 1;
-        bref[ref][nref[ref]] = Ref{typ,hand[typ]};
-        nref[ref] += 1;
-        SaveState *sav = get(typ);
+        int idx = bind[typ].get();
+        bref[ref].add(1) = Ref{typ,idx};
+        SaveState *sav = &bind[typ].add(1);
         sav->typ = typ; sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst; sav->onl = onl;
+        {char *st0 = 0; char *st1 = 0;
+        showResrc(typ,&st0); showPhase(ref,&st1);
+        log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << " " << st1 << '\n';
+        free(st0); free(st1);}
         return sav;
     }
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        if (size[typ] <= 0 || size[typ] > StackState::handls) EXIT
-        if (hdl < 0 || hdl >= size[typ]) EXIT
+        if (hdl < 0 || hdl >= bind[typ].get()) EXIT
         return &bind[typ][hdl];
     }
     BaseState *res(Resrc typ, int hdl) {
@@ -929,15 +923,15 @@ struct BindState : public BaseState {
     }
     BaseState *res(Phase ref, int idx) {
         if (!excl) EXIT
-        if (ref < 0 || ref >= Phases || idx < 0 || nref[ref] < idx) EXIT
-        if (nref[ref] == idx) return 0;
+        if (ref < 0 || ref >= Phases || idx < 0 || idx > bref[ref].get()) EXIT
+        if (idx == bref[ref].get()) return 0;
         Ref &met = bref[ref][idx];
         return sav(met.typ,met.hdl)->sav;
     }
     int bnd(Phase ref, int idx) {
         if (!excl) EXIT
-        if (ref < 0 || ref >= Phases || idx < 0 || nref[ref] < idx) EXIT
-        if (nref[ref] == idx) return 0;
+        if (ref < 0 || ref >= Phases || idx < 0 || idx > bref[ref].get()) EXIT
+        if (idx == bref[ref].get()) return 0;
         Ref &met = bref[ref][idx];
         return sav(met.typ,met.hdl)->bnd;
     }
@@ -957,7 +951,7 @@ struct BindState : public BaseState {
     }
     void push(Resrc typ, Instr ins, SmartState log) {
         // reserve dependee without push to thread
-        resp<<Dec{get(typ),ins};
+        resp<<Sav{get(typ),ins};
     }
     void done(SaveState *sav, SmartState log) { // attempt depender release
         if (!excl) EXIT
@@ -967,8 +961,8 @@ struct BindState : public BaseState {
         Phase phs = sav->phs;
         if (phs < 0 || phs >= Phases) EXIT
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
-        if (size[sav->typ] <= 0 || nref[sav->phs] <= 0) EXIT
-        sav->sav = 0; size[sav->typ] -= 1; nref[sav->phs] -= 1; lock -= 1;}
+        bind[sav->typ].clear(); bref[sav->phs].clear();
+        sav->sav = 0; lock -= 1;}
         log << dbg->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
@@ -1013,8 +1007,8 @@ struct BindState : public BaseState {
         Phase phs = sav->phs;
         if (phs < 0 || phs > Phases) EXIT
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
-        if (size[sav->typ] <= 0 || nref[sav->phs] <= 0) EXIT
-        sav->sav = 0; size[sav->typ] -= 1; nref[sav->phs] -= 1; lock -= 1;}
+        bind[sav->typ].clear(); bref[sav->phs].clear();
+        sav->sav = 0; lock -= 1;}
         log << dbg->debug << ":decr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
     bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
@@ -1036,12 +1030,13 @@ struct BindState : public BaseState {
         decr(sav,true,log);
     }
 };
+bool BaseState::check(SaveState *sav) {
+    return (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav);
+}
 BaseState *BaseState::res(Resrc typ, int hdl) {
-    if (lock == 0) EXIT
     return lock->res(typ,hdl);
 }
 BaseState *BaseState::res(Phase ref, int idx) {
-    if (lock == 0) EXIT
     return lock->res(ref,idx);
 }
 int BaseState::bnd(Phase ref, int idx) {
@@ -1283,7 +1278,7 @@ struct CopyState {
             if (bind->clr(RES)) src(RES)->post();}}
         log << "reserve chosen" << '\n';
         int resps = 0;
-        for (int i = 0; i < num && i < lim; i++) {
+        for (int i = 0; i < num && i < lim; i++) {slog.clr();
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
@@ -1353,7 +1348,7 @@ struct CopyState {
         if (bind) stack[BindRes]->advance(0,Qualitys,0);
         } else {
         log << "wrap handles " << num << ">" << lim << '\n';
-        if (lim >= 0) for (int i = lim; i < num; i++) {
+        if (lim >= 0) for (int i = lim+1; i < num; i++) {
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
@@ -1370,10 +1365,12 @@ struct CopyState {
             SaveState *sav = bind->get(RES,i,log);
             bind->done(RES,log);
             sav->buf->fail(log);}
-            break; case(WrlDeeIns): case (WidDeeIns):
-            bind->wdec(RES,log);
-            break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns):
-            bind->rdec(RES,log);}}
+            break; case(WrlDeeIns): case (WidDeeIns): {
+            SaveState *sav = bind->get(RES,i,log);
+            bind->wdec(RES,log);}
+            break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns): {
+            SaveState *sav = bind->get(RES,i,log);
+            bind->rdec(RES,log);}}}
         if (bind) bind->done(log);
         log << "notify fail" << '\n';
         switch (rsp) {default:

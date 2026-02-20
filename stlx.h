@@ -295,10 +295,10 @@ struct CallState {
 };
 
 template <class Type, int Size = 0> struct HeapState {
-    int bas, siz;
+    int bas, siz, rub, spr;
     std::vector<Type> vec;
     std::array<Type,Size> ary;
-    HeapState() : bas(0), siz(0) {}
+    HeapState() : bas(0), siz(0), rub(0), spr(0) {}
     int chk() const {
         return (Size?Size:vec.size());
     }
@@ -320,7 +320,7 @@ template <class Type, int Size = 0> struct HeapState {
     void clear() {
         if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
         {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
-        bas = 0; siz = 0;
+        bas = 0; siz = 0; rub = 0; spr = 0;
     }
     void clear(int i) {
         if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
@@ -343,6 +343,28 @@ template <class Type, int Size = 0> struct HeapState {
         else vec[(siz+bas)%vec.size()] = val;
         siz += 1;
         return *this;
+    }
+    Type &add(int j) {
+        if (rub == 0) {spr = 0; siz = 0;}
+        int i = rub;
+        rub += j;
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
+        if (Size) return ary[(bas+i)%chk()];
+        return vec[(bas+i)%chk()];
+    }
+    Type &get(int j) {
+        int i = spr;
+        if (siz == 0) {siz = rub; rub = 0;}
+        spr += j;
+        if (spr >= siz); spr = 0;
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
+        if (Size) return ary[(bas+i)%chk()];
+        return vec[(bas+i)%chk()];
+    }
+    int get() {
+        return (siz?siz:rub);
     }
     void chk(int i) const {
         if (siz < 0 || siz > chk() || bas < 0 || bas >= chk())
