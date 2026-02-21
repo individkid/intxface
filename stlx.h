@@ -350,8 +350,7 @@ template <class Type, int Size = 0> struct HeapState {
         rub += j;
         if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
         {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
-        if (Size) return ary[(bas+i)%chk()];
-        return vec[(bas+i)%chk()];
+        return operator[](i);
     }
     Type &get(int j) {
         int i = spr;
@@ -360,8 +359,7 @@ template <class Type, int Size = 0> struct HeapState {
         if (spr >= siz) spr = 0;
         if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
         {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
-        if (Size) return ary[(bas+i)%chk()];
-        return vec[(bas+i)%chk()];
+        return operator[](i);
     }
     int get() {
         return (siz?siz:rub);

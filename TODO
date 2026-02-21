@@ -1,4 +1,4 @@
-Bringup: Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
+Bringup: Generalize fragment shader to produce only vec4, and switch on uniform field to decide whether to apply texture or whatever. Then Micro only switches between input structures. Add PackState resource that packs fields of vectors in buffers into buffers of uint or float. Then pack is required after fill and pierce to supply highlighting info to fragment shader. Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 
@@ -6,29 +6,28 @@ Regress: Test spoofed user actions and file changes with Center loaded through p
 
 Release: Use actual user actions to interact with actual file.
 
-Build: Remove conditional generate in show.lua; just generate type.c to link generally.
-
 Decoration: Fragment shader little language follows graph edges depending on inputs from vertex shader for filling with a constant, copying color or depth or identifier from vertex shader, copying from image buffer, applying texture sampler, calculating from normal, highlighting from adjacent identifiers.
 Graph edges are constants/inputs in which hypersquare region of constants/inputs, or on which hyperline sids of constants/inputs.
 
 Actions:
 Mouse transformations include
- — (C) rotate around cross of pierce to clicked cursor and pierce to moved cursor,
- — (N) cross of pierce to normal through picture and pierce to normal through picture moved by same delta as cursor,
- — (O) cross between pierce to ortho through picture and pierce to ortho through picture moved by same delta as cursor,
- — (T) translate parallel to picture,
- — (P) parallel to pierced plane.
+ — (C) rotate around Cross of pierce to clicked cursor and pierce to moved cursor,
+ — (N) cross of pierce to Normal through picture and pierce to normal through picture moved by same delta as cursor,
+ — (O) cross between pierce to Ortho through picture and pierce to ortho through picture moved by same delta as cursor,
+ — (T) Translate parallel to picture,
+ — (P) Parallel to pierced plane.
 Roller transformations include
- — (R) rotate around moved leg of cross,
+ — (R) Rotate around moved leg of cross,
+ — (U) rotate around Unmoved leg of cross,
  — (Z) translate perpendicular to picture,
  — (Q) perpendicular to pierced plane,
- — (F) resize with pierce fixed.
+ — (F) resize with pierce Fixed.
 Click actions include
- — (A) add facet,
- — (S) subtract facet,
- — (B) random boundary through point,
- — (M) send pierce point as metric,
- — (W) warp to last metric sent.
+ — (A) Add facet,
+ — (S) Subtract facet,
+ — (B) random Boundary through point,
+ — (M) send pierce point as Metric,
+ — (W) Warp to last metric sent.
 
 Suite: In plane.lua, share, file, space, plane, side to manipulate polytopes. In space.lua, share, file, space, plane, to display tetrahedron overlaps as they are found and optimized. In line.lua, share, file, space, plane, line, side, to decorate polytopes with sound. In point.lua, share, file, space, plane, line, side, frame, to decorate facets with little language for textures, sound, frames, text, graffiti, permissions, wormholes, transparency. Share connects processes by pipe. Side displays and edits fields in file. Frame displays and edits video and interfaces to hdmi over usbc. 
 

@@ -78,7 +78,7 @@ Micro = { -- what runs on gpu
 	"MicroFill", -- fill with uniform
 	"MicroDisplay", -- decorate vec4
 	-- TODO add PackState resource that moves floats or uint32s to/from vectors
-	-- TODO then only MicroFill/Fetch/Point/Plane needed, no need for Pierce/Prc/Pie
+	-- TODO then Display/Disp/Dsp use same Vertex/FragmentFile as Pierce/Prce/Pie
 	-- TODO control what fragment shader fills vector with using uniform and Decor
 	"MicroPierce", -- pierced triangle
 	"MicroDisp", -- indexed vertices
@@ -378,8 +378,7 @@ Plan = { -- which test to run
 	-- Bootstrap detects arguments but no Argument, sets RegisterPlan to Builtin.
 	-- similar to Bringup, except use indexed instead of fetched points.
 	-- similar to Bringup, except matrix for planeTest copied to gpu by planeMachine.
-	-- similar to Bringup, except matrix for planeTest adjusted through
-	-- Comp Form Send Self Glob.
+	-- similar to Bringup, except matrix for planeTest adjusted through Comp Form Send Self Glob.
 	"Regress",
 	-- Bootstrap detects arguments and Argument, sets RegisterPlan to Regress.
 	-- no test or time thread, just gpu machine select.
@@ -606,9 +605,9 @@ MicroBinding = {
 	--[[res = {\"UniformRes\",\"MatrixRes\", \"BasisRes\",  \"TriangleRes\",\"NumericRes\",\"VertexRes\", \"PipeRes\"}]]\
 	    phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\", \"StoragePhs\",\"StoragePhs\",\"PipePhs\"}\
 	    bns = {\"0\",         \"1\",         \"2\",         \"3\",          \"4\",         \"5\",         \"0\"      }\
-	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\"} req = {\"PierceRes\"}]]\
-	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\"} phq = {\"RenderPhs\"}\
-	    bnp = {\"0\",      \"0\",       \"6\"        } bnq = {\"0\"        }\
+	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\",\"ImageRes\" } req = {\"RelateRes\"}]]\
+	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
+	    bnp = {\"0\",      \"0\",       \"6\" ,       \"7\"        } bnq = {\"0\"        }\
 	mic = {\"MicroDisplay\"} phc = cat(php,phs,{}) bnc = cat(bnp,bns,{})\
 	mid = {\"MicroPierce\"} phd = cat(phq,phs,{}) bnd = cat(bnq,bns,{})\
 	\
@@ -621,9 +620,6 @@ MicroBinding = {
 	--[[res = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}]]\
 	    phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
 	    bns = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
-	--[[rep = {\"SwapRes\",\"ChainRes\",\"RelateRes\",\"ImageRes\" } req = {\"RelateRes\"}]]\
-	    php = {\"SwapPhs\",\"FramePhs\",\"RelatePhs\",\"SamplePhs\"} phq = {\"RenderPhs\"}\
-	    bnp = {\"0\",      \"0\",       \"6\",        \"7\"        } bnq = {\"0\",       }\
 	mig = {\"MicroDsp\"} phg = cat(php,phs,{}) bng = cat(bnp,bns,{})\
 	mih = {\"MicroPie\"} phh = cat(phq,phs,{}) bnh = cat(bnq,bns,{})\
 	\

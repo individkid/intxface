@@ -369,6 +369,9 @@ layout (binding = 6) readonly buffer Relates {
     uint buf[];
 } inRel;
 layout (binding = 7) uniform sampler2D texSampler;
+layout (binding = 8) readonly buffer Decorates {
+    Decorate buf[];
+} inDec;
 layout (location = 0) out vec4 outColor;
 void fragmentTest()
 {
@@ -417,10 +420,14 @@ void fragmentPierce()
 #endif
 
 #if defined(fragmentDisp)
-layout (location = 0) out vec4 outColor;
 layout (binding = 6) readonly buffer Relates {
     uint buf[];
 } inRel;
+layout (binding = 7) uniform sampler2D texSampler;
+layout (binding = 8) readonly buffer Decorates {
+    Decorate buf[];
+} inDec;
+layout (location = 0) out vec4 outColor;
 void fragmentDisp()
 {
     outColor = fragOrd;
@@ -449,11 +456,9 @@ void fragmentDsp()
 }
 #endif
 #if defined(fragmentPie)
-// layout (location = 0) out uint outColor;
-layout (location = 0) out float outColor;
+layout (location = 0) out uint outColor;
 void fragmentPie()
 {
-    // outColor = fragIdx;
-    outColor = gl_FragCoord.z;
+    outColor = fragIdx;
 }
 #endif

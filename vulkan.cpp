@@ -877,7 +877,9 @@ struct BindState : public BaseState {
         return src->compare(only[typ],onl);
     }
     void set(Resrc typ, Onl onl) { // set qualification for subsequent vld
-        only[typ] = onl;
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+         only[typ] = onl;
     }
     SaveState *get(Resrc typ) { // current resource of type
         if (!excl) EXIT
@@ -885,7 +887,9 @@ struct BindState : public BaseState {
         return &bind[typ].get(0);
     }
     SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
-        SaveState *sav = &bind[typ].get(0);
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+         SaveState *sav = &bind[typ].get(0);
         if (sav->fin < i || sav->fst > i) {bind[typ].get(1); sav = &bind[typ].get(0);}
         if (sav->fin < i || sav->fst > i) ERROR();
         return sav;
@@ -910,6 +914,7 @@ struct BindState : public BaseState {
         bref[ref].add(1) = Ref{typ,idx};
         SaveState *sav = &bind[typ].add(1);
         sav->typ = typ; sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst;
+        set(typ,onl);
         {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
         log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << " " << st1 << '\n';
@@ -1264,7 +1269,6 @@ struct CopyState {
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             Onl onl = Onl{ONL}; bool cnd = bind->vld(RES,onl,src(RES));
             SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,onl,log));
-            bind->set(RES,onl);
             {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
             sav->fin = i;}}}
         log << "release arrays" << '\n';
