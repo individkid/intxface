@@ -835,9 +835,9 @@ struct ConstState {
 
 struct SaveState {
     BaseState *sav; int psav, rsav, wsav;
-    BaseState *buf; int fst, fin; Onl onl;
+    BaseState *buf; int fst, fin;
     Resrc typ; Phase phs; int bnd; // multiple resource per phase, but only one phase per resource
-    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0), onl{0,Qualitys,0} {}
+    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0) {}
 };
 struct Sav {
     SaveState *sav;
@@ -851,6 +851,7 @@ struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
     bool atom[Resrcs];
     HeapState<SaveState,StackState::handls> bind[Resrcs];
+    Onl only[Resrcs];
     HeapState<Ref,StackState::handls> bref[Phases];
     int lock; bool excl;
     HeapState<Sav,StackState::instrs> resp;
@@ -869,10 +870,14 @@ struct BindState : public BaseState {
         lock = 1;
         return this;
     }
-    int siz(Resrc typ) { // number of qualifications indices
+    int vld(Resrc typ, Onl onl, StackState *src) { // same qualification as last
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        return bind[typ].get();
+        if (bind[typ].get() == 0) return false;
+        return src->compare(only[typ],onl);
+    }
+    void set(Resrc typ, Onl onl) { // set qualification for subsequent vld
+        only[typ] = onl;
     }
     SaveState *get(Resrc typ) { // current resource of type
         if (!excl) EXIT
@@ -881,9 +886,8 @@ struct BindState : public BaseState {
     }
     SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
         SaveState *sav = &bind[typ].get(0);
-        if (sav->fin == i) sav = &bind[typ].get(1);
+        if (sav->fin < i || sav->fst > i) {bind[typ].get(1); sav = &bind[typ].get(0);}
         if (sav->fin < i || sav->fst > i) ERROR();
-        log << (sav->buf?sav->buf->debug:"nil") << ":get " << sav->fst << "<" << i << "<" << sav->fin << '\n';
         return sav;
     }
     bool vld(Resrc typ) { // mark resource array as locked
@@ -905,7 +909,7 @@ struct BindState : public BaseState {
         int idx = bind[typ].get();
         bref[ref].add(1) = Ref{typ,idx};
         SaveState *sav = &bind[typ].add(1);
-        sav->typ = typ; sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst; sav->onl = onl;
+        sav->typ = typ; sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst;
         {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
         log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << " " << st1 << '\n';
@@ -1174,11 +1178,6 @@ struct CopyState {
         if ((int)res < 0 || (int)res >= Resrcs) EXIT
         return stack[res];
     }
-    bool vld(Resrc typ, Onl onl, BindState *bnd) {
-        // whether current resource of typ has given qualifiers
-        if (!bnd->siz(typ)) return false;
-        return src(typ)->compare(bnd->get(typ)->onl,onl);
-    }
     int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
         // next default or given argument
         log << "get:" << str << ":" << idx << ":" << arg[idx] << '\n';
@@ -1259,12 +1258,13 @@ struct CopyState {
             log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
             free(st0); free(st1); free(st2);}
             src(KES)->newold(ONL);
-            bind->get(KES)->onl = Onl{ONL};}
+            bind->set(KES,Onl{ONL});}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            Onl onl = Onl{ONL}; bool cnd = vld(RES,onl,bind); SaveState *sav =
-            (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,onl,log));
+            Onl onl = Onl{ONL}; bool cnd = bind->vld(RES,onl,src(RES));
+            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,onl,log));
+            bind->set(RES,onl);
             {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
             sav->fin = i;}}}
         log << "release arrays" << '\n';
@@ -1293,7 +1293,7 @@ struct CopyState {
             if (sav->fin == i && lim == num) {
             Adv adv = {PushAdv,ONL};
             switch (INS) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
-            sav->sav->push(adv,log);}}
+            sav->buf->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
             SaveState *sav = bind->get(RES,i,log);
             if (!bind->winc(RES,sav->buf,log)) lim = i;}
@@ -1607,7 +1607,7 @@ struct CopyState {
         break; case (ResIncIns): depth += 1; push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),log); depth -= 1;
         break; case (MemIncIns): depth += 1; push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),log); depth -= 1;
         break; case (MicIncIns): depth += 1; push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),log); depth -= 1;}}
-        {char *st0 = 0; showType(typ,&st0); log << st0 << ":done " << " alt:" << ary << " depth:" << depth << '\n'; free(st0);}
+        {char *st0 = 0; showType(typ,&st0); log << st0 << ":done alt:" << ary << " depth:" << depth << '\n'; free(st0);}
     }
     int size(Micro typ, int ary) {
         int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;

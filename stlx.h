@@ -357,7 +357,7 @@ template <class Type, int Size = 0> struct HeapState {
         int i = spr;
         if (siz == 0) {siz = rub; rub = 0;}
         spr += j;
-        if (spr >= siz); spr = 0;
+        if (spr >= siz) spr = 0;
         if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()))
         {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         if (Size) return ary[(bas+i)%chk()];
