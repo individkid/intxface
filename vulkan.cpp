@@ -260,6 +260,9 @@ struct Unl {
     int dee; // offset into bind->resp
     int siz; // number to unreserve of bind->resp
 };
+struct Bnd {
+    BaseState *buf; Phase phs; int bnd; Instr ins;
+};
 struct Loc {
     SizeState max;
     Requ req;
@@ -458,9 +461,13 @@ struct BaseState {
         if ((int)loc < 0 || (int)loc >= Relocs) EXIT
         return ploc[loc];
     }
+
     BaseState *res(Resrc typ, int hdl);
     BaseState *res(Phase ref, int idx);
     int bnd(Phase ref, int idx);
+
+    Bnd get(Unl &unl, int idx);
+
     int tag(Quality tag);
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
@@ -836,12 +843,13 @@ struct ConstState {
 struct SaveState {
     BaseState *sav; int psav, rsav, wsav;
     BaseState *buf; int fst, fin;
-    Resrc typ; Phase phs; int bnd; // multiple resource per phase, but only one phase per resource
+    Resrc typ; Phase phs; int bnd; // TODO move phs/bnd to Sav and get bindings from resp
     SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0) {}
 };
 struct Sav {
     SaveState *sav;
     Instr ins;
+    // TODO phs/bnd belongs here since same resource instance can be dependend on multiple times
 };
 struct Ref {
     Resrc typ;
@@ -852,7 +860,7 @@ struct BindState : public BaseState {
     bool atom[Resrcs];
     HeapState<SaveState,StackState::handls> bind[Resrcs];
     Onl only[Resrcs];
-    HeapState<Ref,StackState::handls> bref[Phases];
+    HeapState<Ref,StackState::handls> bref[Phases]; // TODO remove this and get bindings from resp
     int lock; bool excl;
     HeapState<Sav,StackState::instrs> resp;
     BindState() :
@@ -921,6 +929,19 @@ struct BindState : public BaseState {
         free(st0); free(st1);}
         return sav;
     }
+
+    Sav &pre(Unl &unl, int idx) {
+        if (!excl) EXIT
+        if (unl.dee+unl.siz > resp.size()) EXIT
+        if (idx < 0 || idx >= unl.siz) EXIT
+        return resp[unl.dee+idx];
+    }
+    Bnd get(Unl &unl, int idx) {
+        Sav &met = pre(unl,idx);
+        SaveState *ptr = met.sav;
+        return Bnd{ptr->buf,ptr->phs,ptr->bnd,met.ins};
+    }
+
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -944,6 +965,7 @@ struct BindState : public BaseState {
         Ref &met = bref[ref][idx];
         return sav(met.typ,met.hdl)->bnd;
     }
+
     bool push(Resrc typ, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
         if (!excl) EXIT
@@ -1042,6 +1064,7 @@ struct BindState : public BaseState {
 bool BaseState::check(SaveState *sav) {
     return (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav);
 }
+
 BaseState *BaseState::res(Resrc typ, int hdl) {
     return lock->res(typ,hdl);
 }
@@ -1050,6 +1073,10 @@ BaseState *BaseState::res(Phase ref, int idx) {
 }
 int BaseState::bnd(Phase ref, int idx) {
     return lock->bnd(ref,idx);
+}
+
+Bnd BaseState::get(Unl &unl, int idx) {
+    return lock->get(unl,idx);
 }
 void BaseState::unlock(Loc &loc, SmartState log) {
     if (lock) {lock->done(loc.unl,log);}
@@ -2303,19 +2330,28 @@ struct DrawState : public BaseState {
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         vkResetFences(device, 1, &loc.syn.fen);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        BaseState *pipePtr = res(PipePhs,0);
-        BaseState *swapPtr = (res(SwapPhs,0)?res(SwapPhs,0):res(RenderPhs,0));
-        BaseState *framePtr = (res(FramePhs,0)?res(FramePhs,0):res(RenderPhs,0));
-        BaseState *indexPtr = res(IndexPhs,0);
-        BaseState *fetchPtr = res(FetchPhs,0);
-        for (int i = 0; res(UniformPhs,i); i++) {BaseState *ptr = res(UniformPhs,i);
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd(UniformPhs,i),descriptorSet);}
-        for (int i = 0; res(StoragePhs,i); i++) {BaseState *ptr = res(StoragePhs,i);
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd(StoragePhs,i),descriptorSet);}
-        for (int i = 0; res(RelatePhs,i); i++) {BaseState *ptr = res(RelatePhs,i);
-        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd(RelatePhs,i),descriptorSet);}
-        for (int i = 0; res(SamplePhs,i); i++) {BaseState *ptr = res(SamplePhs,i);
-        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),bnd(SamplePhs,i),descriptorSet);}
+        BaseState *pipePtr, *swapPtr, *framePtr, *indexPtr, *fetchPtr;
+        pipePtr = swapPtr = framePtr = indexPtr = fetchPtr = 0;
+        for (int i = 0; i < loc.unl.siz; i++) {
+        Bnd bnd = get(loc.unl,i);
+        {char *st0 = 0; showPhase(bnd.phs,&st0);
+        log << "setup " << st0 << '\n';
+        free(st0);}
+        switch (bnd.phs) {default: EXIT
+        break; case(PipePhs): pipePtr = bnd.buf;
+        break; case(SwapPhs): swapPtr = bnd.buf;
+        break; case(FramePhs): framePtr = bnd.buf;
+        break; case(RenderPhs): swapPtr = framePtr = bnd.buf;
+        break; case(IndexPhs): indexPtr = bnd.buf;
+        break; case(FetchPhs): fetchPtr = bnd.buf;
+        break; case(UniformPhs): {BaseState *ptr = bnd.buf;
+        updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
+        break; case(StoragePhs): {BaseState *ptr = bnd.buf;
+        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
+        break; case(RelatePhs): {BaseState *ptr = bnd.buf;
+        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
+        break; case(SamplePhs): {BaseState *ptr = bnd.buf;
+        updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),bnd.bnd,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
         recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);

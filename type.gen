@@ -943,8 +943,8 @@ MicroIns = {
 	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
 	-- n>0: departures from n-1
 	{"%(mic = {\"MicroTest\"}\
-	dee = {\"SwapRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	phs = {\"SwapPhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\"}\
+	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
+	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\"}\
 	mib = {\"MicroDebug\"}\
 	deb = {\"UniformRes\",\"MatrixRes\"}\
 	phb = {\"UniformPhs\",\"UniformPhs\"}\
