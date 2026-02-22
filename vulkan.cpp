@@ -834,19 +834,14 @@ struct ConstState {
 };
 
 struct SaveState {
-    BaseState *sav; int psav, rsav, wsav;
-    BaseState *buf; int fst, fin;
-    Resrc typ; Phase phs; int bnd; // TODO move phs/bnd to Sav and get bindings from resp
-    SaveState() : sav(0), psav(0), rsav(0), wsav(0), buf(0), fst(0), fin(0) {}
+    BaseState *sav, *buf; int psav, rsav, wsav; Resrc typ; int fst, fin;
+    SaveState() : sav(0), buf(0), psav(0), rsav(0), wsav(0), typ(Resrcs), fst(0), fin(0) {}
 };
 struct Sav {
-    SaveState *sav;
-    Instr ins;
-    // TODO phs/bnd belongs here since same resource instance can be dependend on multiple times
+    SaveState *sav; Instr ins; Phase phs; int bnd;
 };
 struct Ref {
-    Resrc typ;
-    int hdl;
+    Resrc typ; int hdl;
 };
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
@@ -914,7 +909,7 @@ struct BindState : public BaseState {
         int idx = bind[typ].get();
         bref[ref].add(1) = Ref{typ,idx};
         SaveState *sav = &bind[typ].add(1);
-        sav->typ = typ; sav->phs = ref; sav->bnd = bnd; sav->buf = buf; sav->fst = fst;
+        sav->buf = buf; sav->typ = typ; sav->fst = fst;
         set(typ,onl);
         {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
@@ -922,7 +917,6 @@ struct BindState : public BaseState {
         free(st0); free(st1);}
         return sav;
     }
-
     Sav &pre(Unl &unl, int idx) {
         if (!excl) EXIT
         if (unl.dee+unl.siz > resp.size()) EXIT
@@ -932,9 +926,8 @@ struct BindState : public BaseState {
     Bnd get(Unl &unl, int idx) {
         Sav &met = pre(unl,idx);
         SaveState *ptr = met.sav;
-        return Bnd{ptr->buf,ptr->typ,ptr->phs,ptr->bnd,met.ins};
+        return Bnd{ptr->buf,ptr->typ,met.phs,met.bnd,met.ins};
     }
-
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
@@ -955,19 +948,17 @@ struct BindState : public BaseState {
         log << sav->buf->debug << ":push lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
         return true;
     }
-    void push(Resrc typ, Instr ins, SmartState log) {
+    void push(Resrc typ, Instr ins, Phase phs, int bnd, SmartState log) {
         // reserve dependee without push to thread
-        resp<<Sav{get(typ),ins};
+        resp<<Sav{get(typ),ins,phs,bnd};
     }
     void done(SaveState *sav, SmartState log) { // attempt depender release
         if (!excl) EXIT
         if (sav->psav <= 0) EXIT
         sav->psav -= 1;
         BaseState *dbg = sav->sav;
-        Phase phs = sav->phs;
-        if (phs < 0 || phs >= Phases) EXIT
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
-        bind[sav->typ].clear(); bref[sav->phs].clear();
+        bind[sav->typ].clear();
         sav->sav = 0; lock -= 1;}
         log << dbg->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
@@ -1010,10 +1001,8 @@ struct BindState : public BaseState {
         if ((elock ? sav->wsav : sav->rsav) <= 0) EXIT
         (elock ? sav->wsav : sav->rsav) -= 1;
         BaseState *dbg = sav->sav;
-        Phase phs = sav->phs;
-        if (phs < 0 || phs > Phases) EXIT
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
-        bind[sav->typ].clear(); bref[sav->phs].clear();
+        bind[sav->typ].clear();
         sav->sav = 0; lock -= 1;}
         log << dbg->debug << ":decr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
@@ -1318,7 +1307,7 @@ struct CopyState {
             switch (INS) {default:
             break; case (WrlDeeIns): case(RdlDeeIns):
             case (WidDeeIns): case (RidDeeIns): case(IdxDeeIns):
-            if (bind) bind->push(RES,INS,log);}}
+            if (bind) bind->push(RES,INS,PHS,BND,log);}}
         log << "submit buffers" << '\n';
         for (int i = 0; i < num; i++) {
             switch (INS) {default:
