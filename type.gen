@@ -59,7 +59,6 @@ Resrc = { -- per variation of BaseState
 	"IndexRes",
 	"BringupRes",
 	"ImageRes",
-	"WrapRes",
 	"PierceRes",
 	"RelateRes",
 	"UniformRes",

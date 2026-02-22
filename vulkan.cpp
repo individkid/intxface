@@ -261,7 +261,7 @@ struct Unl {
     int siz; // number to unreserve of bind->resp
 };
 struct Bnd {
-    BaseState *buf; Phase phs; int bnd; Instr ins;
+    BaseState *buf; Resrc typ; Phase phs; int bnd; Instr ins;
 };
 struct Loc {
     SizeState max;
@@ -411,13 +411,13 @@ struct BaseState {
         if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
         return setup(ploc[loc],log);        
     }
-    void unlock(Loc &loc, SmartState log);
+    void unlock(Unl &unl, SmartState log);
     void advance(Adv &adv, SmartState log);
     void baseups(Reloc loc, SmartState log) {
         // after fence triggered
         log << "baseups " << debug << '\n';
         upset(ploc[loc],log);
-        unlock(ploc[loc],log);
+        if (lock) unlock(ploc[loc].unl,log);
         safe.wait();
         if (plock <= 0) EXIT
         plock -= 1;
@@ -461,13 +461,7 @@ struct BaseState {
         if ((int)loc < 0 || (int)loc >= Relocs) EXIT
         return ploc[loc];
     }
-
-    BaseState *res(Resrc typ, int hdl);
-    BaseState *res(Phase ref, int idx);
-    int bnd(Phase ref, int idx);
-
     Bnd get(Unl &unl, int idx);
-
     int tag(Quality tag);
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
@@ -770,7 +764,6 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (ImageRes): return "ImageRes";
         case (PierceRes): return "PierceRes";
         case (RelateRes): return "RelateRes";
-        case (WrapRes): return "WrapRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -939,7 +932,7 @@ struct BindState : public BaseState {
     Bnd get(Unl &unl, int idx) {
         Sav &met = pre(unl,idx);
         SaveState *ptr = met.sav;
-        return Bnd{ptr->buf,ptr->phs,ptr->bnd,met.ins};
+        return Bnd{ptr->buf,ptr->typ,ptr->phs,ptr->bnd,met.ins};
     }
 
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
@@ -948,24 +941,6 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= bind[typ].get()) EXIT
         return &bind[typ][hdl];
     }
-    BaseState *res(Resrc typ, int hdl) {
-        return sav(typ,hdl)->sav;
-    }
-    BaseState *res(Phase ref, int idx) {
-        if (!excl) EXIT
-        if (ref < 0 || ref >= Phases || idx < 0 || idx > bref[ref].get()) EXIT
-        if (idx == bref[ref].get()) return 0;
-        Ref &met = bref[ref][idx];
-        return sav(met.typ,met.hdl)->sav;
-    }
-    int bnd(Phase ref, int idx) {
-        if (!excl) EXIT
-        if (ref < 0 || ref >= Phases || idx < 0 || idx > bref[ref].get()) EXIT
-        if (idx == bref[ref].get()) return 0;
-        Ref &met = bref[ref][idx];
-        return sav(met.typ,met.hdl)->bnd;
-    }
-
     bool push(Resrc typ, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
         if (!excl) EXIT
@@ -1064,22 +1039,11 @@ struct BindState : public BaseState {
 bool BaseState::check(SaveState *sav) {
     return (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav);
 }
-
-BaseState *BaseState::res(Resrc typ, int hdl) {
-    return lock->res(typ,hdl);
-}
-BaseState *BaseState::res(Phase ref, int idx) {
-    return lock->res(ref,idx);
-}
-int BaseState::bnd(Phase ref, int idx) {
-    return lock->bnd(ref,idx);
-}
-
 Bnd BaseState::get(Unl &unl, int idx) {
     return lock->get(unl,idx);
 }
-void BaseState::unlock(Loc &loc, SmartState log) {
-    if (lock) {lock->done(loc.unl,log);}
+void BaseState::unlock(Unl &unl, SmartState log) {
+    lock->done(unl,log);
 }
 
 struct Push {
@@ -2193,40 +2157,6 @@ struct ImageState : public BaseState {
     static void transitionImageLayout(VkDevice device, VkQueue graphics, VkCommandBuffer commandBuffer, VkImage image, VkSemaphore semaphoreIn, VkSemaphore semaphoreOut, VkFence fenceOut, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 };
 
-struct WrapState : public BaseState {
-    const VkDevice device;
-    BaseState *ptr;
-    WrapState() : BaseState("WrapState",StackState::self), device(StackState::device), ptr(0) {}
-    ~WrapState() {
-        reset(SmartState());
-    }
-    VkImage getImage() override {return ptr->getImage();}
-    VkDeviceMemory getMemory() override {return ptr->getMemory();}
-    VkImageView getImageView() override {return ptr->getImageView();}
-    VkExtent2D getExtent() override {return ptr->getExtent();}
-    VkSampler getTextureSampler() override {return ptr->getTextureSampler();}
-    VkFramebuffer getFramebuffer() override {return ptr->getFramebuffer();}
-    // TODO add other accessors as needed
-    void resize(Loc &loc, SmartState log) override {
-        if (*loc==ResizeLoc && loc.max.tag != ResrcExt) EXIT
-        if (*loc==ResizeLoc && loc.max.resrc != PierceRes) EXIT
-        if (*loc==ResizeLoc) ptr = res(loc.max.resrc,0);
-        // TODO perhaps get index of resrc and use it instead of pointer
-        else ptr->resize(loc,log);
-    }
-    void unsize(Loc &loc, SmartState log) override {
-        if (*loc==ResizeLoc);
-        else ptr->unsize(loc,log);
-    }
-    VkFence setup(Loc &loc, SmartState log) override {
-        if (*loc!=ResizeLoc) return ptr->setup(loc,log);
-        return VK_NULL_HANDLE;
-    }
-    void upset(Loc &loc, SmartState log) override {
-        if (*loc!=ResizeLoc) ptr->upset(loc,log);
-    }
-};
-
 struct ChainState : public BaseState {
     const VkDevice device;
     const VkQueue present;
@@ -2259,7 +2189,10 @@ struct ChainState : public BaseState {
         log << "usize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        BaseState *swp = res(SwapRes,0);
+        BaseState *swp = 0;
+        for (int i = 0; i < loc.unl.siz; i++) {Bnd bnd = get(loc.unl,i);
+        if (bnd.phs == SwapPhs && swp) EXIT
+        if (bnd.phs == SwapPhs) swp = bnd.buf;}
         log << "setup " << debug << '\n';
         if (*loc == BeforeLoc) {
         VkResult result = vkAcquireNextImageKHR(device,
@@ -2307,7 +2240,10 @@ struct DrawState : public BaseState {
         return 0; // TODO in case there are multiple ImageRes or PierceRes per gpu queue blob
     }
     void resize(Loc &loc, SmartState log) override {
-        BaseState *pip = res(PipeRes,0);
+        BaseState *pip = 0;
+        for (int i = 0; i < loc.unl.siz; i++) {Bnd bnd = get(loc.unl,i);
+        if (bnd.phs == PipePhs && pip) EXIT
+        if (bnd.phs == PipePhs) pip = bnd.buf;}
         log << "resize " << debug << " " << pip->debug << '\n';
         descriptorPool = pip->getDescriptorPool();
         descriptorLayout = pip->getDescriptorSetLayout();
@@ -2334,9 +2270,10 @@ struct DrawState : public BaseState {
         pipePtr = swapPtr = framePtr = indexPtr = fetchPtr = 0;
         for (int i = 0; i < loc.unl.siz; i++) {
         Bnd bnd = get(loc.unl,i);
-        {char *st0 = 0; showPhase(bnd.phs,&st0);
-        log << "setup " << st0 << '\n';
-        free(st0);}
+        {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+        showPhase(bnd.phs,&st0); showResrc(bnd.typ,&st1); showInstr(bnd.ins,&st2);
+        log << "setup " << st0 << " " << st1 << " " << st2 << " " << bnd.buf->debug << '\n';
+        free(st0); free(st1); free(st2);}
         switch (bnd.phs) {default: EXIT
         break; case(PipePhs): pipePtr = bnd.buf;
         break; case(SwapPhs): swapPtr = bnd.buf;
@@ -2388,7 +2325,6 @@ struct MainState {
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
     ArrayState<ImageState,PierceRes,StackState::piercs> pierceState;
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
-    ArrayState<WrapState,WrapRes,StackState::images> wrapState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2411,7 +2347,6 @@ struct MainState {
             {ImageRes,&imageState},
             {PierceRes,&pierceState},
             {RelateRes,&relateState},
-            {WrapRes,&wrapState},
             {UniformRes,&uniformState},
             {MatrixRes,&matrixState},
             {TriangleRes,&triangleState},
