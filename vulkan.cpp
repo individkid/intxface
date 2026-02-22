@@ -453,7 +453,7 @@ struct BaseState {
         return ploc[loc];
     }
     Bnd get(Unl &unl, int idx);
-    int tag(Quality tag);
+    int get(Quality tag);
     virtual void unsize(Loc &loc, SmartState log) EXIT
     virtual void resize(Loc &loc, SmartState log) EXIT
     virtual VkFence setup(Loc &loc, SmartState log) EXIT
@@ -783,7 +783,7 @@ void BaseState::advance(Adv &adv, SmartState log)
 {
     item->advance(adv.hdl,adv.key,adv.val);
 }
-int BaseState::tag(Quality tag)
+int BaseState::get(Quality tag)
 {
     return item->buftag(indx,tag);
 }
@@ -825,8 +825,8 @@ struct ConstState {
 };
 
 struct SaveState {
-    BaseState *sav, *buf; int psav, rsav, wsav; Resrc typ; int fst, fin;
-    SaveState() : sav(0), buf(0), psav(0), rsav(0), wsav(0), typ(Resrcs), fst(0), fin(0) {}
+    BaseState *buf; bool sav; int psav, rsav, wsav; Resrc typ; int fst, fin;
+    SaveState() : buf(0), sav(false), psav(0), rsav(0), wsav(0), typ(Resrcs), fst(0), fin(0) {}
 };
 struct Sav {
     SaveState *sav; Instr ins; Phase phs; int bnd;
@@ -872,7 +872,7 @@ struct BindState : public BaseState {
     SaveState *get(Resrc typ, int i, SmartState log) { // current next or first
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-         SaveState *sav = &bind[typ].get(0);
+        SaveState *sav = &bind[typ].get(0);
         if (sav->fin < i || sav->fst > i) {bind[typ].get(1); sav = &bind[typ].get(0);}
         if (sav->fin < i || sav->fst > i) ERROR();
         return sav;
@@ -926,9 +926,8 @@ struct BindState : public BaseState {
         SaveState *sav = unl.der; // TODO get unl.der outside so no need for Resrc parameter?
         if (!sav->buf || sav->typ != typ) EXIT
         if (!sav->buf->push(this,req,unl,log)) return false;
-        if (sav->sav == 0) lock += 1;
-        if (sav->sav != 0 && sav->sav != sav->buf) EXIT
-        sav->sav = sav->buf; // TODO use bool flag instead. this is to know if it is the first push or incr for this resource.
+        if (!sav->sav) lock += 1;
+        sav->sav = true;
         sav->psav += 1;
         log << sav->buf->debug << ":push lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
         return true;
@@ -941,11 +940,10 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (sav->psav <= 0) EXIT
         sav->psav -= 1;
-        BaseState *dbg = sav->sav;
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
         bind[sav->typ].clear();
-        sav->sav = 0; lock -= 1;}
-        log << dbg->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
+        sav->sav = false; lock -= 1;}
+        log << sav->buf->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
     void done(Resrc typ, SmartState log) { // depender upon fail
         done(get(typ),log);
@@ -966,47 +964,37 @@ struct BindState : public BaseState {
         break; case (WrlDeeIns): wdec(resp[unl.dee+i].sav,log);}}
         done(unl.der,log); done(log);
     }
-    bool incr(Resrc typ, BaseState *buf, bool elock, SmartState log) {
-        if (!buf) EXIT
+    bool incr(SaveState *sav, bool elock, SmartState log) {
         if (!excl) EXIT
-        SaveState *sav = get(typ);
-        if (sav->sav && sav->sav != buf) EXIT
-        if (!buf->incr(elock,sav->psav,sav->rsav,sav->wsav)) {
+        if (!sav->buf->incr(elock,sav->psav,sav->rsav,sav->wsav)) {
         return false;}
-        if (sav->sav == 0) lock += 1; // TODO this is why two pointers to same. use bool instead.
-        sav->sav = buf;
+        if (!sav->sav) lock += 1;
+        sav->sav = true;
         (elock ? sav->wsav : sav->rsav) += 1;
-        log << buf->debug << ":incr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
+        log << sav->buf->debug << ":incr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
         return true;
     }
     void decr(SaveState *sav, bool elock, SmartState log) {
         if (!excl) EXIT
-        if (lock <= 0 || sav->sav == 0) EXIT
-        sav->sav->decr(elock);
+        if (lock <= 0 || !sav->sav) EXIT
+        sav->buf->decr(elock);
         if ((elock ? sav->wsav : sav->rsav) <= 0) EXIT
         (elock ? sav->wsav : sav->rsav) -= 1;
-        BaseState *dbg = sav->sav;
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
         bind[sav->typ].clear();
-        sav->sav = 0; lock -= 1;}
-        log << dbg->debug << ":decr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
+        sav->sav = false; lock -= 1;}
+        log << sav->buf->debug << ":decr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
-    bool rinc(Resrc typ, BaseState *buf, SmartState log) { // readlock on reasource
-        return incr(typ,buf,false,log);
+    bool rinc(SaveState *sav, SmartState log) {
+        return incr(sav,false,log);
     }
-    bool winc(Resrc typ, BaseState *buf, SmartState log) { // writelock on resource
-        return incr(typ,buf,true,log);
+    bool winc(SaveState *sav, SmartState log) {
+        return incr(sav,true,log);
     }
-    void rdec(Resrc typ, SmartState log) { // unreadlock current
-        decr(get(typ),false,log);
-    }
-    void rdec(SaveState *sav, SmartState log) { // unreadlock indexed
+    void rdec(SaveState *sav, SmartState log) {
         decr(sav,false,log);
     }
-    void wdec(Resrc typ, SmartState log) { // unwritelock current
-        decr(get(typ),true,log);
-    }
-    void wdec(SaveState *sav, SmartState log) { // unwritelock indexed
+    void wdec(SaveState *sav, SmartState log) {
         decr(sav,true,log);
     }
 };
@@ -1265,10 +1253,10 @@ struct CopyState {
             sav->buf->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
             SaveState *sav = bind->get(RES,i,log);
-            if (!bind->winc(RES,sav->buf,log)) lim = i;}
+            if (!bind->winc(sav,log)) lim = i;}
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             SaveState *sav = bind->get(RES,i,log);
-            if (!bind->rinc(RES,sav->buf,log)) lim = i;}}}
+            if (!bind->rinc(sav,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
         Lnk *lnk = 0; Reloc lst = Relocs; BaseState *bas = 0;
@@ -1336,10 +1324,10 @@ struct CopyState {
             sav->buf->fail(log);}
             break; case(WrlDeeIns): case (WidDeeIns): {
             SaveState *sav = bind->get(RES,i,log);
-            bind->wdec(RES,log);}
+            bind->wdec(sav,log);}
             break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns): {
             SaveState *sav = bind->get(RES,i,log);
-            bind->rdec(RES,log);}}}
+            bind->rdec(sav,log);}}}
         if (bind) bind->done(log);
         log << "notify fail" << '\n';
         switch (rsp) {default:
@@ -2027,7 +2015,7 @@ struct ImageState : public BaseState {
         return 0;
     }
     void resize(Loc &loc, SmartState log) override {
-        int val = tag(RuseQua); log << "resize " << debug << " location:" << *loc << " quality value:" << val << "/" << loc->use << '\n';
+        log << "resize " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << loc->use << '\n';
         if (*loc == ResizeLoc) {
         if (&loc != &ploc[*loc]) EXIT
         int texWidth = loc.max.extent.width;
@@ -2079,7 +2067,7 @@ struct ImageState : public BaseState {
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        int val = tag(RuseQua); log << "setup " << debug << " location:" << *loc << " quality value:" << val << "/" << loc->use << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
+        log << "setup " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << loc->use << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc->use));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
