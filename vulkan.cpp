@@ -235,30 +235,21 @@ std::ostream& operator<<(std::ostream& os, const SizeState& size) {
 }
 
 struct Syn {
-    VkFence fen = VK_NULL_HANDLE;
-    VkSemaphore sem = VK_NULL_HANDLE;
+    VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
 };
 struct BaseState;
 struct Lnk {
-    BaseState *ptr = 0;
-    Reloc loc;
+    BaseState *ptr = 0; Reloc loc;
 };
 enum Advance {
-    PushAdv,
-    FnceAdv,
-    QualAdv,
+    PushAdv, FnceAdv, QualAdv,
 };
 struct Adv {
-    Advance adv; // when to advance
-    int hdl; // which to use for advance
-    Quality key; // which to change upon advance
-    int val; // what to change to upon advance
+    Advance adv; int hdl; Quality key; int val;
 };
 struct SaveState;
 struct Unl {
-    SaveState *der;
-    int dee; // offset into bind->resp
-    int siz; // number to unreserve of bind->resp
+    SaveState *der; int dee; int siz;
 };
 struct Bnd {
     BaseState *buf; Resrc typ; Phase phs; int bnd; Instr ins;
@@ -840,15 +831,11 @@ struct SaveState {
 struct Sav {
     SaveState *sav; Instr ins; Phase phs; int bnd;
 };
-struct Ref {
-    Resrc typ; int hdl;
-};
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
     bool atom[Resrcs];
     HeapState<SaveState,StackState::handls> bind[Resrcs];
     Onl only[Resrcs];
-    HeapState<Ref,StackState::handls> bref[Phases]; // TODO remove this and get bindings from resp
     int lock; bool excl;
     HeapState<Sav,StackState::instrs> resp;
     BindState() :
@@ -906,8 +893,6 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (ref < 0 || ref >= Phases) EXIT
-        int idx = bind[typ].get();
-        bref[ref].add(1) = Ref{typ,idx};
         SaveState *sav = &bind[typ].add(1);
         sav->buf = buf; sav->typ = typ; sav->fst = fst;
         set(typ,onl);
