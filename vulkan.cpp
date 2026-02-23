@@ -919,12 +919,10 @@ struct BindState : public BaseState {
         if (hdl < 0 || hdl >= bind[typ].get()) EXIT
         return &bind[typ][hdl];
     }
-    bool push(Resrc typ, Requ req, Unl unl, SmartState log) {
+    bool push(SaveState *sav, Requ req, Unl unl, SmartState log) {
         // reserve depender and push to thread
         if (!excl) EXIT
-        unl.der = get(typ);
-        SaveState *sav = unl.der; // TODO get unl.der outside so no need for Resrc parameter?
-        if (!sav->buf || sav->typ != typ) EXIT
+        unl.der = sav;
         if (!sav->buf->push(this,req,unl,log)) return false;
         if (!sav->sav) lock += 1;
         sav->sav = true;
@@ -932,9 +930,9 @@ struct BindState : public BaseState {
         log << sav->buf->debug << ":push lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
         return true;
     }
-    void push(Resrc typ, Instr ins, Phase phs, int bnd, SmartState log) {
+    void push(SaveState *sav, Instr ins, Phase phs, int bnd, SmartState log) {
         // reserve dependee without push to thread
-        resp<<Sav{get(typ),ins,phs,bnd};
+        resp<<Sav{sav,ins,phs,bnd};
     }
     void done(SaveState *sav, SmartState log) { // attempt depender release
         if (!excl) EXIT
@@ -1160,6 +1158,10 @@ struct CopyState {
         return src(res)->idxbuf(idx);}
         return 0;
     }
+    SaveState *get(Instr ins, Resrc res, int idx, BindState *bnd, SmartState log) {
+        switch (ins) {default: break; case(SetTagIns): case(MovTagIns): return 0;}
+        return bnd->get(res,idx,log);
+    }
     #define INS ins[i].ins
     #define RES ins[i].res.res
     #define FRC ins[i].res.frc
@@ -1194,13 +1196,8 @@ struct CopyState {
         if (count > min && bind == 0) lim = -1;
         log << "reserve arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
-            switch (INS) {default:
-            break; case (SetTagIns): case (MovTagIns):
-            if (!bind->vld(KES)) src(KES)->wait();
-            break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
-            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
-            case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
-            if (!bind->vld(RES)) src(RES)->wait();}}
+            switch (INS) {default: if (!bind->vld(RES)) src(RES)->wait();
+            break; case (SetTagIns): case (MovTagIns): if (!bind->vld(KES)) src(KES)->wait();}}
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1226,75 +1223,69 @@ struct CopyState {
             sav->fin = i;}}}
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
-            switch (INS) {default:
-            break; case (SetTagIns): case (MovTagIns):
-            if (bind->clr(KES)) src(KES)->post();
-            break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
-            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
-            case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
-            if (bind->clr(RES)) src(RES)->post();}}
+            switch (INS) {default: if (bind->clr(RES)) src(RES)->post();
+            break; case (SetTagIns): case (MovTagIns): if (bind->clr(KES)) src(KES)->post();}}
         log << "reserve chosen" << '\n';
         int resps = 0;
-        for (int i = 0; i < num && i < lim; i++) {slog.clr();
+        for (int i = 0; i < num && i < lim; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             Unl unl = {.der=0,.dee=resps,.siz=0};
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
             break; case(WrlDeeIns): case(RdlDeeIns):
             case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): resps += 1; unl.siz += 1;}
-            if (!bind->push(RES,REQ,unl,log)) lim = i;
+            if (!bind->push(sav,REQ,unl,log)) lim = i;
             if (sav->fin == i && lim == num) {
             Adv adv = {PushAdv,ONL};
             switch (INS) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->buf->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
-            SaveState *sav = bind->get(RES,i,log);
             if (!bind->winc(sav,log)) lim = i;}
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            SaveState *sav = bind->get(RES,i,log);
             if (!bind->rinc(sav,log)) lim = i;}}}
         if (lim == num) {
         log << "link list" << '\n';
         Lnk *lnk = 0; Reloc lst = Relocs; BaseState *bas = 0;
         for (int i = 0; i < num; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);
             switch(INS) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             Lnk *tmp = sav->buf->link(LOC,bas,lst,lnk);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = LOC;}}}}
         for (int i = 0; i < num; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);
             switch(INS) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             Lnk *nxt = &sav->buf->ploc[LOC].nxt;
             Lnk *lst = &sav->buf->ploc[LOC].lst;
             log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << LOC << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
+            SaveState *sav = 0; switch (INS) {
+            default: sav = bind->get(RES,i,log);
+            break; case(SetTagIns): case(MovTagIns): break;}
             switch (INS) {default:
             break; case (WrlDeeIns): case(RdlDeeIns):
             case (WidDeeIns): case (RidDeeIns): case(IdxDeeIns):
-            if (bind) bind->push(RES,INS,PHS,BND,log);}}
+            if (bind) bind->push(sav,INS,PHS,BND,log);}}
         log << "submit buffers" << '\n';
         for (int i = 0; i < num; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NewDerIns): case(NidDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             if (sav->fst == i) src(RES)->advance(ONL);
             log << "NewDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             log << "OldDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             if (sav->fst == i) src(RES)->advance(FRC);
             log << "IdxDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}}}
@@ -1306,27 +1297,18 @@ struct CopyState {
         } else {
         log << "wrap handles " << num << ">" << lim << '\n';
         if (lim >= 0) for (int i = lim+1; i < num; i++) {
-            switch (INS) {default:
-            break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
-            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i,log);}
-            break; case(WrlDeeIns): case(WidDeeIns): {
-            SaveState *sav = bind->get(RES,i,log);}
-            break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            SaveState *sav = bind->get(RES,i,log);}}}
+            SaveState *sav = get(INS,RES,i,bind,log);}
         log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            SaveState *sav = bind->get(RES,i,log);
             bind->done(RES,log);
             sav->buf->fail(log);}
             break; case(WrlDeeIns): case (WidDeeIns): {
-            SaveState *sav = bind->get(RES,i,log);
             bind->wdec(sav,log);}
             break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns): {
-            SaveState *sav = bind->get(RES,i,log);
             bind->rdec(sav,log);}}}
         if (bind) bind->done(log);
         log << "notify fail" << '\n';
