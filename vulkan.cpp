@@ -831,11 +831,14 @@ struct SaveState {
 struct Sav {
     SaveState *sav; Instr ins; Phase phs; int bnd;
 };
+struct Lst {
+    Onl onl; Instr ins; int idx;
+};
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
     bool atom[Resrcs];
     HeapState<SaveState,StackState::handls> bind[Resrcs];
-    Onl only[Resrcs];
+    Lst last[Resrcs];
     int lock; bool excl;
     HeapState<Sav,StackState::instrs> resp;
     BindState() :
@@ -853,16 +856,20 @@ struct BindState : public BaseState {
         lock = 1;
         return this;
     }
-    int vld(Resrc typ, Onl onl, StackState *src) { // same qualification as last
+    int vld(Resrc typ, Lst lst, StackState *src) { // same qualification as last
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (bind[typ].get() == 0) return false;
-        return src->compare(only[typ],onl);
+        bool found = false;
+        switch (lst.ins) {default: break; case (IdxDerIns): case (IdxDeeIns): found = true;}
+        switch (last[typ].ins) {default: break; case (IdxDerIns): case (IdxDeeIns): found = true;}
+        if (found) return (last[typ].ins == lst.ins && last[typ].idx == lst.idx);
+        return src->compare(last[typ].onl,lst.onl);
     }
-    void set(Resrc typ, Onl onl) { // set qualification for subsequent vld
+    void set(Resrc typ, Lst lst) { // set qualification for subsequent vld
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-         only[typ] = onl;
+        last[typ] = lst;
     }
     SaveState *get(Resrc typ) { // current resource of type
         if (!excl) EXIT
@@ -889,13 +896,13 @@ struct BindState : public BaseState {
         bool tmp =  atom[typ]; atom[typ] = false;
         return tmp;
     }
-    SaveState *add(Resrc typ, Phase ref, int bnd, BaseState *buf, int fst, Onl onl, SmartState log) { // add resource of type
+    SaveState *add(Resrc typ, Phase ref, int bnd, BaseState *buf, int fst, Lst lst, SmartState log) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (ref < 0 || ref >= Phases) EXIT
         SaveState *sav = &bind[typ].add(1);
         sav->buf = buf; sav->typ = typ; sav->fst = fst;
-        set(typ,onl);
+        set(typ,lst);
         {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
         log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << " " << st1 << '\n';
@@ -1213,13 +1220,13 @@ struct CopyState {
             log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
             free(st0); free(st1); free(st2);}
             src(KES)->newold(ONL);
-            bind->set(KES,Onl{ONL});}
+            bind->set(KES,Lst{Onl{ONL},INS,FRC});}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            Onl onl = Onl{ONL}; bool cnd = bind->vld(RES,onl,src(RES));
-            // TODO cnd depends in INS because of IdxDerIns and IdxDeeIns
-            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,onl,log));
+            Lst lst = Lst{Onl{ONL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
+            // note there is no way to refer to previous before intervening of a certain resource
+            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,lst,log));
             {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
             sav->fin = i;}}}
         log << "release arrays" << '\n';
