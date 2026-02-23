@@ -1218,6 +1218,7 @@ struct CopyState {
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             Onl onl = Onl{ONL}; bool cnd = bind->vld(RES,onl,src(RES));
+            // TODO cnd depends in INS because of IdxDerIns and IdxDeeIns
             SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,onl,log));
             {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
             sav->fin = i;}}}
@@ -1267,9 +1268,7 @@ struct CopyState {
             log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << LOC << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
-            SaveState *sav = 0; switch (INS) {
-            default: sav = bind->get(RES,i,log);
-            break; case(SetTagIns): case(MovTagIns): break;}
+            SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case (WrlDeeIns): case(RdlDeeIns):
             case (WidDeeIns): case (RidDeeIns): case(IdxDeeIns):
@@ -2180,9 +2179,6 @@ struct DrawState : public BaseState {
         for (int i = 0; i < Relocs; i++) vkDestroySemaphore(device, get((Reloc)i).syn.sem, nullptr); // TODO as needed
         reset(SmartState());
     }
-    int vulkanHandle(Phase phs) {
-        return 0; // TODO in case there are multiple ImageRes or PierceRes per gpu queue blob
-    }
     void resize(Loc &loc, SmartState log) override {
         BaseState *pip = 0;
         for (int i = 0; i < loc.unl.siz; i++) {Bnd bnd = get(loc.unl,i);
@@ -2981,11 +2977,17 @@ VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
 VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micro micro) {
     VkDescriptorSetLayout descriptorSetLayout;
     HeapState<VkDescriptorSetLayoutBinding> bindings;
-    for (int i = 0; MicroBinding__Micro__Int__Phase(micro)(i) != Phases; i++)
-    switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
+    for (int i = 0; MicroBinding__Micro__Int__Phase(micro)(i) != Phases; i++) {
+    Phase phs = MicroBinding__Micro__Int__Phase(micro)(i);
+    int bnd = MicroBinding__Micro__Int__Int(micro)(i);
+    /*{char *st0 = 0; char *st1 = 0;
+    showMicro(micro,&st0); showPhase(phs,&st1);
+    std::cerr << st0 << " " << st1 << bnd << std::endl;
+    free(st0); free(st1);}*/
+    switch (phs) {default:
     break; case (UniformPhs): {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
+    uboLayoutBinding.binding = bnd;
     uboLayoutBinding.descriptorCount = 1;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.pImmutableSamplers = nullptr;
@@ -2993,7 +2995,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     bindings << uboLayoutBinding;}
     break; case (StoragePhs): {
     VkDescriptorSetLayoutBinding storageLayoutBinding{};
-    storageLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
+    storageLayoutBinding.binding = bnd;
     storageLayoutBinding.descriptorCount = 1;
     storageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     storageLayoutBinding.pImmutableSamplers = nullptr;
@@ -3001,7 +3003,7 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     bindings << storageLayoutBinding;}
     break; case (RelatePhs): {
     VkDescriptorSetLayoutBinding relateLayoutBinding{};
-    relateLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
+    relateLayoutBinding.binding = bnd;
     relateLayoutBinding.descriptorCount = 1;
     relateLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     relateLayoutBinding.pImmutableSamplers = nullptr;
@@ -3009,12 +3011,12 @@ VkDescriptorSetLayout PipeState::createDescriptorSetLayout(VkDevice device, Micr
     bindings << relateLayoutBinding;}
     break; case (SamplePhs): {
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = MicroBinding__Micro__Int__Int(micro)(i);
+    samplerLayoutBinding.binding = bnd;
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    bindings << samplerLayoutBinding;}}
+    bindings << samplerLayoutBinding;}}}
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
