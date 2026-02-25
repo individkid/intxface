@@ -1784,11 +1784,12 @@ struct PipeState : public BaseState {
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
+    // TODO use type.gen constant instead of switching on micro
     Render renderIndex(Micro micro) {
         switch (micro) {default:
         break; case (MicroDebug): return SfloatFrm;
-        break; case (MicroFill): case (MicroPierce): case (MicroPrce): return UintFrm;
-        break; case (MicroTest): case (MicroDisplay): case (MicroDisp): return SrgbFrm;}
+        break; case (MicroFill): case (MicroPierce): case (MicroPrce): case (MicroPie): return UintFrm;
+        break; case (MicroTest): case (MicroDisplay): case (MicroDisp): case (MicroDsp): return SrgbFrm;}
         return Renders;
     }
     PipeState() :
@@ -2512,6 +2513,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanState::debugCallback(VkDebugUtilsMessageSev
     if (messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
     std::cout << "validation layer: " << pCallbackData->pMessage << " severity:0x" << std::hex << messageSeverity << std::dec << std::endl;
     // if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) *(int*)0=0;
+    // if (pCallbackData->messageIdNumber == 1180184443) *(int*)0=0;
     return VK_FALSE;
 }
 VkDebugUtilsMessengerCreateInfoEXT VulkanState::createInfo(const char **validationLayers) {
@@ -3476,6 +3478,5 @@ void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void 
     else if (release == VK_NULL_HANDLE) {signalSemaphores[0] = after; submitInfo.signalSemaphoreCount = 1;}
     else if (after == VK_NULL_HANDLE) submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
-    if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS)
-    EXIT
+    if (vkQueueSubmit(graphics, 1, &submitInfo, fence) != VK_SUCCESS) EXIT
 }

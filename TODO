@@ -1,4 +1,4 @@
-Bringup: Generalize fragment shader to produce only vec4, and switch on uniform field to decide whether to apply texture or whatever. Then Micro only switches between input structures. Add PackState resource that packs fields of vectors in buffers into buffers of uint or float. Then pack is required after fill and pierce to supply highlighting info to fragment shader. Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
+Bringup: Name shaders based on inputs and outputs. Switch on uniform field to decide whether to apply texture or whatever. Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 
