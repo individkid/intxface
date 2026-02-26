@@ -819,7 +819,7 @@ MemoryAlt = {
 	"}"..
 
 	"arg={0,1,0,6,castMicro(\"MicroFill\"),0,castMicro(\"MicroFill\"),0,castMicro(\"MicroFill\"),"..
-	"0,1,0,12,castMicro(\"MicroPie\"),0,castMicro(\"MicroPie\"),0,0,castMicro(\"MicroPie\"),"..
+	"0,1,0,12,castMicro(\"MicroPie\"),0,castMicro(\"MicroPie\"),0,1,castMicro(\"MicroPie\"),"..
 	"0,12,castMicro(\"MicroDsp\"),0,castMicro(\"MicroDsp\"),0,1,7,castMicro(\"MicroDsp\"),"..
 	"}"..
 
