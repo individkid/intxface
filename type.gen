@@ -852,7 +852,7 @@ MemoryAlt = {
 	"}"..
 
 	"arg={0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1,castMicro(\"MicroFetPie\"),"..
+	"0,1,0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
 	"0,12,castMicro(\"MicroFetCol\"),0,castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),"..
 	"}"..
 
@@ -885,7 +885,7 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Resrc","PipeRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
 
-	-- MicroFetPie
+	-- MicroFetRel
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","ColorRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","RenderPhs"},

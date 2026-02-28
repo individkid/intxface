@@ -1,4 +1,4 @@
-Bringup: Name shaders based on inputs and outputs. Switch on uniform field to decide whether to apply texture or whatever. Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
+Bringup: Add struct and Memory to contain info for custom shaders. Switch on uniform field to decide whether to apply texture or whatever. Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 

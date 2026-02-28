@@ -2219,12 +2219,12 @@ struct DrawState : public BaseState {
         log << "setup " << st0 << " " << st1 << " " << st2 << " " << bnd.buf->debug << '\n';
         free(st0); free(st1); free(st2);}
         switch (bnd.phs) {default: EXIT
-        break; case(PipePhs): pipePtr = bnd.buf;
-        break; case(SwapPhs): swapPtr = bnd.buf;
-        break; case(FramePhs): framePtr = bnd.buf;
-        break; case(RenderPhs): swapPtr = framePtr = bnd.buf;
-        break; case(IndexPhs): indexPtr = bnd.buf;
-        break; case(FetchPhs): fetchPtr = bnd.buf;
+        break; case(PipePhs): if (pipePtr) EXIT; pipePtr = bnd.buf;
+        break; case(SwapPhs): if (swapPtr) EXIT; swapPtr = bnd.buf;
+        break; case(FramePhs): if (framePtr) EXIT; framePtr = bnd.buf;
+        break; case(RenderPhs): if (swapPtr || framePtr) EXIT; swapPtr = framePtr = bnd.buf;
+        break; case(IndexPhs): if (indexPtr) EXIT; indexPtr = bnd.buf;
+        break; case(FetchPhs): if (fetchPtr) EXIT; fetchPtr = bnd.buf;
         break; case(UniformPhs): {BaseState *ptr = bnd.buf;
         updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
         break; case(StoragePhs): {BaseState *ptr = bnd.buf;
@@ -2234,6 +2234,7 @@ struct DrawState : public BaseState {
         break; case(SamplePhs): {BaseState *ptr = bnd.buf;
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),bnd.bnd,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
+        log << "record " << debug << " " << framePtr->debug << '\n';
         recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
         VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
