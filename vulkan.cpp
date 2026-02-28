@@ -1979,7 +1979,7 @@ struct ImageState : public BaseState {
     }
     static Render vulkanRender(Reuse i) {
         switch (i) {default: EXIT
-        break; case (TexUse): return SrgbFrm;
+        break; case (TexUse): case (ColUse): return SrgbFrm;
         break; case (FdbUse): case (PieUse): return UintFrm;
         break; case (GetUse): case (SetUse): case (DptUse): return SfloatFrm;}
         return Renders;
@@ -1987,7 +1987,7 @@ struct ImageState : public BaseState {
     static bool isr(Reuse i) {
         switch (i) {default: EXIT
         break; case (TexUse): case (SetUse): return false;
-        break; case (FdbUse): case (GetUse): case (PieUse): case (DptUse): return true;}
+        break; case (FdbUse): case (GetUse): case (PieUse): case (DptUse): case (ColUse): return true;}
         return false;
     }
     static const char *vulkanDebug(VkImageLayout img) {
