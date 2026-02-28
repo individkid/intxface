@@ -814,7 +814,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroTest;
+    drw->drw[0].con.mic = MicroFetDrw;
     drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
@@ -835,7 +835,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroDebug;
+    drw->drw[0].con.mic = MicroConPie;
     drw->drw[0].siz = sizeof(hiv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
@@ -851,7 +851,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroFill;
+    drw->drw[0].con.mic = MicroFilRel;
     drw->drw[0].siz = sizeof(fiv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = fiv[i];

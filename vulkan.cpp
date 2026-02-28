@@ -755,6 +755,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (ImageRes): return "ImageRes";
         case (PierceRes): return "PierceRes";
         case (RelateRes): return "RelateRes";
+        case (ColorRes): return "ColorRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -1674,8 +1675,11 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);}
         break; case (Imagez): push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
             datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
-        break; case (Getintz): case (Getoldz): case (Setintz): case (Setoldz): case (Vectorz):
+        break; case (Getintz): case (Getoldz): case (Setintz): case (Setoldz):
             push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
+            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
+        break; case (Vectorz):
+            push(ptr->mem,(void*)ptr->uns,ptr->idx*4,ptr->siz*4,
             change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);}
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
@@ -1787,9 +1791,20 @@ struct PipeState : public BaseState {
     // TODO use type.gen constant instead of switching on micro
     Render renderIndex(Micro micro) {
         switch (micro) {default:
-        break; case (MicroDebug): return SfloatFrm;
-        break; case (MicroFill): case (MicroPierce): case (MicroPrce): case (MicroPie): return UintFrm;
-        break; case (MicroTest): case (MicroDisplay): case (MicroDisp): case (MicroDsp): return SrgbFrm;}
+        break; case(MicroFilRel): return UintFrm;
+        break; case(MicroConPie): return SfloatFrm;
+        break; case(MicroFetDrw): return SrgbFrm;
+        break; case(MicroFetCol): return SrgbFrm;
+        break; case(MicroFetPie): return SfloatFrm;
+        break; case(MicroFetRel): return UintFrm;
+        break; case(MicroVtxDrw): return SrgbFrm;
+        break; case(MicroVtxCol): return SrgbFrm;
+        break; case(MicroVtxPie): return SfloatFrm;
+        break; case(MicroVtxRel): return UintFrm;
+        break; case(MicroCopDrw): return SrgbFrm;
+        break; case(MicroCopCol): return SrgbFrm;
+        break; case(MicroCopPie): return SfloatFrm;
+        break; case(MicroCopRel): return UintFrm;}
         return Renders;
     }
     PipeState() :
@@ -2273,6 +2288,7 @@ struct MainState {
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
     ArrayState<ImageState,PierceRes,StackState::piercs> pierceState;
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
+    ArrayState<ImageState,ColorRes,StackState::frames> colorState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2295,6 +2311,7 @@ struct MainState {
             {ImageRes,&imageState},
             {PierceRes,&pierceState},
             {RelateRes,&relateState},
+            {ColorRes,&colorState},
             {UniformRes,&uniformState},
             {MatrixRes,&matrixState},
             {TriangleRes,&triangleState},
