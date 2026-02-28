@@ -584,6 +584,22 @@ MicroElement = {
 	{"Micro","MicroFetRel","Int","1","Int","4"},
 	{"Micro","MicroFetRel","Int","2","Int","4"},
 }
+MicroRender = {
+    {"Micro","MicroFilRel","Render","UintFrm"},
+    {"Micro","MicroConPie","Render","SfloatFrm"},
+    {"Micro","MicroFetDrw","Render","SrgbFrm"},
+    {"Micro","MicroFetCol","Render","SrgbFrm"},
+    {"Micro","MicroFetPie","Render","SfloatFrm"},
+    {"Micro","MicroFetRel","Render","UintFrm"},
+    {"Micro","MicroVtxDrw","Render","SrgbFrm"},
+    {"Micro","MicroVtxCol","Render","SrgbFrm"},
+    {"Micro","MicroVtxPie","Render","SfloatFrm"},
+    {"Micro","MicroVtxRel","Render","UintFrm"},
+    {"Micro","MicroCopDrw","Render","SrgbFrm"},
+    {"Micro","MicroCopCol","Render","SrgbFrm"},
+    {"Micro","MicroCopPie","Render","SfloatFrm"},
+    {"Micro","MicroCopRel","Render","UintFrm"},
+}
 -- Resrc is sufficient for buffer structure, but binding info depend on Micro
 MicroBinding = {
 	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\

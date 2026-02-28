@@ -1788,29 +1788,10 @@ struct PipeState : public BaseState {
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
-    // TODO use type.gen constant instead of switching on micro
-    Render renderIndex(Micro micro) {
-        switch (micro) {default:
-        break; case(MicroFilRel): return UintFrm;
-        break; case(MicroConPie): return SfloatFrm;
-        break; case(MicroFetDrw): return SrgbFrm;
-        break; case(MicroFetCol): return SrgbFrm;
-        break; case(MicroFetPie): return SfloatFrm;
-        break; case(MicroFetRel): return UintFrm;
-        break; case(MicroVtxDrw): return SrgbFrm;
-        break; case(MicroVtxCol): return SrgbFrm;
-        break; case(MicroVtxPie): return SfloatFrm;
-        break; case(MicroVtxRel): return UintFrm;
-        break; case(MicroCopDrw): return SrgbFrm;
-        break; case(MicroCopCol): return SrgbFrm;
-        break; case(MicroCopPie): return SfloatFrm;
-        break; case(MicroCopRel): return UintFrm;}
-        return Renders;
-    }
     PipeState() :
         BaseState("PipeState",StackState::self),
         device(StackState::device),
-        renderPass(StackState::renderPass[renderIndex((Micro)StackState::micro)]),
+        renderPass(StackState::renderPass[MicroRender__Micro__Render((Micro)StackState::micro)]),
         micro((Micro)StackState::micro++),
         descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
