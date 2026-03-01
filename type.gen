@@ -830,12 +830,7 @@ MemoryAlt = {
 	deb = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
 	phb = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\"}\
 	dec = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	phc = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\"}\
-	key={\"Instr\",\"Resrc\",\"Reloc\",\"Reuse\",\"Format\"}\
-	val={\"OldDerIns\",\"ColorRes\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"}\
-	kez={\"Reloc\",\"Format\"}\
-	wal={\"MiddleLoc\",\"WholeFrm\","..
-	"\"AfterLoc\",\"SourceFrm\"} "..
+	phc = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\"}"..
 
 	"def={\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
@@ -850,11 +845,14 @@ MemoryAlt = {
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\", ".. -- NidDerIns.idx NidDerIns.val
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd SamplePhs.bnd PipeRes.frc
+
+	"\"GiveDef\",\"GiveDef\","..
 	"}"..
 
 	"arg={0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
 	"0,1,0,12,castMicro(\"MicroFetCol\"),0,castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),"..
+	"2,3,"..
 	"}"..
 
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
@@ -908,6 +906,9 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Reloc","ResizeLoc"},
 		{"Memory","Vectorz","Int","%(return save)","Reuse","ColUse"},
 		{"Memory","Vectorz","Int","%(return save)","Format","ExtentFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
+		{"Memory","Vectorz","Int","%(return save)","Reloc","ReformLoc"},
+		{"Memory","Vectorz","Int","%(return save)","Format","PierceFrm"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","NidDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","DrawRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","DrawPhs"},
@@ -925,8 +926,17 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","%(return save)","Phase","PipePhs"},
 
 	-- Vectorz
-	{"Memory","Vectorz","Int", "%(return enc(key))","%(return fnc(key))","%(return fnc(val))"},
-	{"Memory","Vectorz","Int", "%(return enc(kez))","%(return fnc(kez))","%(return fnc(wal))"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
+		{"Memory","Vectorz","Int","%(return save)","Resrc","ColorRes"},
+		{"Memory","Vectorz","Int","%(return save)","Reloc","BeforeLoc"},
+		{"Memory","Vectorz","Int","%(return save)","Reuse","FdbUse"},
+		{"Memory","Vectorz","Int","%(return save)","Format","PeekFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
+		{"Memory","Vectorz","Int","%(return save)","Reloc","MiddleLoc"},
+		{"Memory","Vectorz","Int","%(return save)","Format","WholeFrm"},
+	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
+		{"Memory","Vectorz","Int","%(return save)","Reloc","AfterLoc"},
+		{"Memory","Vectorz","Int","%(return save)","Format","SourceFrm"},
 
 	-- Default/Int
 	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
