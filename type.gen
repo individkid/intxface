@@ -74,7 +74,9 @@ Resrc = { -- per variation of BaseState
 }
 Micro = { -- what runs on gpu
 	"MicroFilRel", -- lr -- MicroFill
-	"MicroConPie", -- nr -- MicroDebug
+	"MicroFilPie", -- lp
+	"MicroFilCol", -- lc
+	"MicroConPie", -- np -- MicroDebug
 	"MicroFetDrw", -- fd -- MicroTest
 	"MicroFetCol", -- fc
 	"MicroFetPie", -- fp
@@ -587,6 +589,8 @@ MicroElement = {
 }
 MicroRender = {
     {"Micro","MicroFilRel","Render","UintFrm"},
+    {"Micro","MicroFilPie","Render","SfloatFrm"},
+    {"Micro","MicroFilCol","Render","SrgbFrm"},
     {"Micro","MicroConPie","Render","SfloatFrm"},
     {"Micro","MicroFetDrw","Render","SrgbFrm"},
     {"Micro","MicroFetCol","Render","SrgbFrm"},
@@ -627,6 +631,8 @@ MicroBinding = {
 	    dph = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} cph = {\"RenderPhs\",\"SamplePhs\"} pph = {\"RenderPhs\"} rph = {\"RenderPhs\"}\
 	    dbn = {\"0\",      \"0\",       \"7\"        } cbn = {\"0\",        \"7\"        } pbn = {\"0\"}         rbn = {\"0\"}\
 	lrm = {\"MicroFilRel\"} lrh = cat(lph,rph,{}) lrn = cat(lbn,rbn,{})\
+	lpm = {\"MicroFilPie\"} lph = cat(lph,pph,{}) lpn = cat(lbn,pbn,{})\
+	lcm = {\"MicroFilCol\"} lch = cat(lph,cph,{}) lcn = cat(lbn,cbn,{})\
 	crm = {\"MicroConPie\"} crh = cat(nph,pph,{}) crn = cat(nbn,pbn,{})\
 	fdm = {\"MicroFetDrw\"} fdh = cat(fph,dph,{}) fdn = cat(fbn,dbn,{})\
 	fcm = {\"MicroFetCol\"} fch = cat(fph,cph,{}) fcn = cat(fbn,cbn,{})\
@@ -643,6 +649,10 @@ MicroBinding = {
 	\
 	return \"Micro\")","%(return gnc(lrm,lrh))","Int","%(return hnc(lrh,0))","Phase","%(return fnc(lrh))"},
 	{"Micro","%(return gnc(lrm,lrn))","Int","%(return hnc(lrn,0))","Int","%(return fnc(lrn))"},
+	{"Micro","%(return gnc(lpm,lph))","Int","%(return hnc(lph,0))","Phase","%(return fnc(lph))"},
+	{"Micro","%(return gnc(lpm,lpn))","Int","%(return hnc(lpn,0))","Int","%(return fnc(lpn))"},
+	{"Micro","%(return gnc(lcm,lch))","Int","%(return hnc(lch,0))","Phase","%(return fnc(lch))"},
+	{"Micro","%(return gnc(lcm,lcn))","Int","%(return hnc(lcn,0))","Int","%(return fnc(lcn))"},
 	{"Micro","%(return gnc(crm,crh))","Int","%(return hnc(crh,0))","Phase","%(return fnc(crh))"},
 	{"Micro","%(return gnc(crm,crn))","Int","%(return hnc(crn,0))","Int","%(return fnc(crn))"},
 	{"Micro","%(return gnc(fdm,fdh))","Int","%(return hnc(fdh,0))","Phase","%(return fnc(fdh))"},
@@ -672,6 +682,8 @@ MicroBinding = {
 }
 VertexFile = {
 	{"Micro","MicroFilRel","Str","vertexFillG"},
+	{"Micro","MicroFilPie","Str","vertexFillG"},
+	{"Micro","MicroFilCol","Str","vertexFillG"},
 	{"Micro","MicroConPie","Str","vertexConstG"},
 	{"Micro","MicroFetDrw","Str","vertexFetchG"},
 	{"Micro","MicroFetCol","Str","vertexFetchG"},
@@ -688,6 +700,8 @@ VertexFile = {
 }
 FragmentFile = {
 	{"Micro","MicroFilRel","Str","fragmentRelateG"},
+	{"Micro","MicroFilPie","Str","fragmentPierceG"},
+	{"Micro","MicroFilCol","Str","fragmentColorG"},
 	{"Micro","MicroConPie","Str","fragmentPierceG"},
 	{"Micro","MicroFetDrw","Str","fragmentColorG"},
 	{"Micro","MicroFetCol","Str","fragmentColorG"},

@@ -306,6 +306,7 @@ void coplane()
 void fullscreen()
 {
     gl_Position = extremes[indices[gl_VertexIndex]];
+    fragIdx = -1;
 }
 #endif
 
@@ -351,7 +352,8 @@ layout (binding = 8) readonly buffer Decorates {
 layout (location = 0) out vec4 outColor;
 void fragmentColor()
 {
-    if (fragIdx == 1) outColor = vec4(fragColor,1.0);
+    if (fragIdx == -1) outColor = vec4(1.0,2.0,3.0,4.0);
+    else if (fragIdx == 1) outColor = vec4(fragColor,1.0);
     else outColor = texture(texSampler, fragTexCoord);
 }
 #endif
