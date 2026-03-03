@@ -631,7 +631,7 @@ MicroBinding = {
 	    dph = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} cph = {\"RenderPhs\",\"SamplePhs\"} pph = {\"RenderPhs\"} rph = {\"RenderPhs\"}\
 	    dbn = {\"0\",      \"0\",       \"7\"        } cbn = {\"0\",        \"7\"        } pbn = {\"0\"}         rbn = {\"0\"}\
 	lrm = {\"MicroFilRel\"} lrh = cat(lph,rph,{}) lrn = cat(lbn,rbn,{})\
-	lpm = {\"MicroFilPie\"} lph = cat(lph,pph,{}) lpn = cat(lbn,pbn,{})\
+	lpm = {\"MicroFilPie\"} lqh = cat(lph,pph,{}) lpn = cat(lbn,pbn,{})\
 	lcm = {\"MicroFilCol\"} lch = cat(lph,cph,{}) lcn = cat(lbn,cbn,{})\
 	crm = {\"MicroConPie\"} crh = cat(nph,pph,{}) crn = cat(nbn,pbn,{})\
 	fdm = {\"MicroFetDrw\"} fdh = cat(fph,dph,{}) fdn = cat(fbn,dbn,{})\
@@ -649,7 +649,7 @@ MicroBinding = {
 	\
 	return \"Micro\")","%(return gnc(lrm,lrh))","Int","%(return hnc(lrh,0))","Phase","%(return fnc(lrh))"},
 	{"Micro","%(return gnc(lrm,lrn))","Int","%(return hnc(lrn,0))","Int","%(return fnc(lrn))"},
-	{"Micro","%(return gnc(lpm,lph))","Int","%(return hnc(lph,0))","Phase","%(return fnc(lph))"},
+	{"Micro","%(return gnc(lpm,lqh))","Int","%(return hnc(lqh,0))","Phase","%(return fnc(lqh))"},
 	{"Micro","%(return gnc(lpm,lpn))","Int","%(return hnc(lpn,0))","Int","%(return fnc(lpn))"},
 	{"Micro","%(return gnc(lcm,lch))","Int","%(return hnc(lch,0))","Phase","%(return fnc(lch))"},
 	{"Micro","%(return gnc(lcm,lcn))","Int","%(return hnc(lcn,0))","Int","%(return fnc(lcn))"},
@@ -839,7 +839,37 @@ MemoryAlt = {
 	{"Memory","Getintz","Default","%(return def[1])"},
 
 
-	{"%(dea = {\"UniformRes\"}\
+	{"Memory","Vectorz","Int","0","Instr","MicIncIns"},
+	{"Memory","Vectorz","Int","0","Micro","MicroFilCol"},
+	{"%(key={\"Instr\",\"Resrc\",\"Phase\",\"Reloc\",\"Reuse\",\"Format\"};"..
+	"val={\"OldDerIns\",\"RelateRes\",\"DrawPhs\",\"BeforeLoc\",\"FdbUse\",\"PeekFrm\"};"..
+	"kez={\"Reloc\",\"Format\"};"..
+	"wal={\"MiddleLoc\",\"WholeFrm\","..
+	"\"AfterLoc\",\"SourceFrm\"};"..
+	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Vectorz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
+	{"Memory","Vectorz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
+
+	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
+	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",".. -- UniformPhs.bnd
+	"\"TrivDef\",".. -- IdxDeeIns.idx
+
+	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
+
+	"arg={0,0,castMicro(\"MicroFilCol\"),0,1,0,6,castMicro(\"MicroFilCol\"),0,castMicro(\"MicroFilCol\"),"..
+	"2,3};"..
+
+	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Vectorz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
+	{"Memory","Vectorz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
+	{"Memory","Vectorz","Int","%(return #def)"},
+	{"Memory","Vectorz","Default","%(return def[1])"},
+
+
+	--[[{"%(dea = {\"UniformRes\"}\
 	pha = {\"UniformPhs\"}\
 	deb = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
 	phb = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\"}\
@@ -956,7 +986,7 @@ MemoryAlt = {
 	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Vectorz","Int","%(return gnc())","Default","%(return fnc(def))"},
 	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
-	{"Memory","Vectorz","Int","%(return gnc())","Int","%(return fnc(arg))"},
+	{"Memory","Vectorz","Int","%(return gnc())","Int","%(return fnc(arg))"},]]
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys,Reuses
