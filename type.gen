@@ -864,7 +864,7 @@ MemoryIns = {
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","ColorRes"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","BeforeLoc"},
-		{"Memory","Vectorz","Int","%(return save)","Reuse","FdbUse"},
+		{"Memory","Vectorz","Int","%(return save)","Reuse","ColUse"},
 		{"Memory","Vectorz","Int","%(return save)","Format","PeekFrm"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","MiddleLoc"},
@@ -1301,9 +1301,11 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd "..
 		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . old 0 Op , EndOp Op ; @_ Op "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str old:Op , Imm @_ . old 0 Op , EndOp Op ; @_ Op "..
 		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str num:Op , Imm @_ . uns 0 Op , EndOp Op ; @_ Op "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str uns:Op , Imm @_ . uns 0 Op , EndOp Op ; @_ Op "..
+		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str vec:Op , Imm @_ . vec 0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..

@@ -373,9 +373,9 @@ void centerDone(struct Center *ptr, int idx)
     centerPlace(ptr,idx);
     if (ptr && ptr->slf == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    if (idx==Vectorz) {
+    /*if (idx==Vectorz) {
     char *st0 = 0; showCenter(ptr,&st0);
-    fprintf(stderr,"centerDone %s\n",st0); free(st0);}
+    fprintf(stderr,"centerDone %s\n",st0); free(st0);}*/
     callJnfo(RegisterPass,(1<<idx),planeWots);}
     else if (ptr) {
     callJnfo(RegisterWake,(1<<FailMsk),planeWots);
@@ -830,7 +830,7 @@ void planeTest(enum Thread tag, int idx)
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
     if (count == tested) {}
-    else if (count%8 == 1 || count%8 == 5) {
+    else if (count%10 == 1 || count%10 == 6) {
     struct Center *drw = centerPull(Memorys+2); if (!drw) {callWait(); continue;}
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -840,13 +840,13 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
     callCopy(drw,Memorys+2,RptRsp,0,(debug?"debug":0));}
-    else if (count%8 == 2 || count%8 == 6) {
+    else if (count%10 == 2 || count%10 == 7) {
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz);
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
-    else if (count%8 == 3 || count%8 == 7) {
+    else if (count%10 == 3 || count%10 == 8) {
     struct Center *drw = centerPull(Memorys+4); if (!drw) {callWait(); continue;}
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
@@ -856,12 +856,19 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = fiv[i];
     callCopy(drw,Memorys+4,RptRsp,0,(debug?"fill":0));}
-    else if (count%8 == 4 || count%8 == 0) {
+    else if (count%10 == 4 || count%10 == 9) {
     struct Center *eek = centerPull(Memorys+5); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocInt(&eek->uns,eek->siz);
     callCopy(eek,Memorys+5,RptRsp,0,(debug?"ident":0));}
+    else if (count%10 == 5 || count%10 == 0) {
+    struct Center *vec = centerPull(Vectorz); freeCenter(vec);
+    vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
+    allocVector(&vec->vec,vec->siz);
+    vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
+    vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
+    callCopy(vec,Vectorz,RptRsp,0,(debug?"getvec":0));}
     tested = count;}}}
 }
 
@@ -1268,20 +1275,6 @@ void initTest()
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
     callCopy(eek,Getoldz,RptRsp,1,(debug?"getold":0));
-
-    /*struct Center *vec = centerPull(Vectorz); freeCenter(vec);
-    vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
-    allocVector(&vec->vec,vec->siz);
-    vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
-    vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
-    callCopy(vec,Vectorz,RptRsp,1,(debug?"getvec":0));*/
-
-    /*struct Center *vec = centerPull(Vectorz); freeCenter(vec);
-    vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
-    allocVector(&vec->vec,vec->siz);
-    vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
-    vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
-    callCopy(vec,Vectorz,RptRsp,0,(debug?"vector":0));*/
 
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}

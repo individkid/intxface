@@ -2083,7 +2083,6 @@ struct ImageState : public BaseState {
         if (loc->use == TexUse) {
         memcpy(data, loc.req.ptr, loc.req.siz);}
         else if (!isr(loc->use)) {
-        // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, isr(loc->use));}
@@ -2095,7 +2094,7 @@ struct ImageState : public BaseState {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
-        VkDeviceSize imageSize = texWidth*texHeight*4;
+        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(loc->use);
         if (isr(loc->use)) {
         void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
