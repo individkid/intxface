@@ -1979,10 +1979,15 @@ struct ImageState : public BaseState {
     }
     static Render vulkanRender(Reuse i) {
         switch (i) {default: EXIT
-        break; case (TexUse): case (ColUse): return SrgbFrm;
+        break; case (ColUse): return VecFrm;
+        break; case (TexUse): return SrgbFrm;
         break; case (FdbUse): case (PieUse): return UintFrm;
         break; case (GetUse): case (SetUse): case (DptUse): return SfloatFrm;}
         return Renders;
+    }
+    static int vulkanPixel(Reuse i) {
+        switch (i) {default: break; case (ColUse): return 4;}
+        return 1;
     }
     static bool isr(Reuse i) {
         switch (i) {default: EXIT
@@ -2071,7 +2076,7 @@ struct ImageState : public BaseState {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
-        VkDeviceSize imageSize = texWidth*texHeight*4;
+        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(loc->use);
         createBuffer(device, physical, imageSize, (isr(loc->use) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
         void* data; if (!isr(loc->use)) {
         vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);}

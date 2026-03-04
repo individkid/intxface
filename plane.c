@@ -373,9 +373,9 @@ void centerDone(struct Center *ptr, int idx)
     centerPlace(ptr,idx);
     if (ptr && ptr->slf == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    /*if (idx==Uniformz) {
+    if (idx==Vectorz) {
     char *st0 = 0; showCenter(ptr,&st0);
-    fprintf(stderr,"centerDone %s\n",st0); free(st0);}*/
+    fprintf(stderr,"centerDone %s\n",st0); free(st0);}
     callJnfo(RegisterPass,(1<<idx),planeWots);}
     else if (ptr) {
     callJnfo(RegisterWake,(1<<FailMsk),planeWots);
@@ -1281,7 +1281,7 @@ void initTest()
     allocVector(&vec->vec,vec->siz);
     vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
     vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
-    callCopy(vec,Vectorz,RptRsp,1,(debug?"vector":0));*/
+    callCopy(vec,Vectorz,RptRsp,0,(debug?"vector":0));*/
 
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}
