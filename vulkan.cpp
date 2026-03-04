@@ -1880,9 +1880,6 @@ struct BufferState : public BaseState {
     VkBuffer buffer;
     VkDeviceMemory memory;
     int range;
-    // temporary between sup and ups:
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
     BufferState() :
         BaseState("BufferState",StackState::self),
         device(StackState::device),
@@ -1918,18 +1915,18 @@ struct BufferState : public BaseState {
         if (tmp < 0 || loc.req.siz < 0 || tmp+loc.req.siz > loc.max.size) EXIT
         VkDeviceSize bufferSize = loc.max.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        memProperties, stagingBuffer, stagingBufferMemory);
-        void* data; vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy((void*)((char*)data+tmp),loc.req.ptr,loc.req.siz);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         vkResetFences(device, 1, &loc.syn.fen);
-        copyBuffer(device, graphics, stagingBuffer, buffer, bufferSize, loc.commandBuffer, loc.syn.fen,VK_NULL_HANDLE,VK_NULL_HANDLE);
+        copyBuffer(device, graphics, loc.stagingBuffer, buffer, bufferSize, loc.commandBuffer, loc.syn.fen,VK_NULL_HANDLE,VK_NULL_HANDLE);
         return loc.syn.fen;
     }
     void upset(Loc &loc, SmartState log) override {
-        vkUnmapMemory(device, stagingBufferMemory);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkUnmapMemory(device, loc.stagingBufferMemory);
+        vkFreeMemory(device, loc.stagingBufferMemory, nullptr);
+        vkDestroyBuffer(device, loc.stagingBuffer, nullptr);
     }
     static void copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
