@@ -147,351 +147,12 @@ struct LogicalState {
     static VkRenderPass createRenderPass(VkDevice device, VkFormat imageFormat, VkFormat depthFormat);
 };
 
-struct SizeState {
-    Extent tag;
-    union {
-    struct {int base,size;};
-    struct {VkImageLayout src,dst;};
-    VkExtent2D extent;
-    int value;
-    Micro micro;
-    Resrc resrc;};
-    SizeState() {
-        tag = InitExt;
-    }
-    SizeState(Extent ext, int base, int size) {
-        tag = ext; switch (ext) {
-        default: EXIT
-        break; case (InitExt):
-        break; case (IntExt): this->base = base; this->size = size;
-        break; case (FormExt): src = (VkImageLayout)base; dst = (VkImageLayout)size;
-        break; case (ExtentExt): extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
-        break; case (FillExt): value = base;
-        break; case (MicroExt): micro = (Micro)base;
-        break; case (ResrcExt): resrc = (Resrc)base;
-        break; case (TrueExt):
-        break; case (FalseExt):;}
-    }
-    SizeState(int base, int size) {
-        tag = IntExt;
-        this->base = base;
-        this->size = size;
-    }
-    SizeState(VkImageLayout src, VkImageLayout dst) {
-        tag = FormExt;
-        this->src = src;
-        this->dst = dst;
-    }
-    SizeState(VkExtent2D extent) {
-        tag = ExtentExt;
-        this->extent = extent;
-    }
-    SizeState(int value) {
-        tag = FillExt;
-        this->value = value;
-    }
-    SizeState(Micro micro) {
-        tag = MicroExt;
-        this->micro = micro;
-    }
-    SizeState(Resrc resrc) {
-        tag = ResrcExt;
-        this->resrc = resrc;
-    }
-    SizeState(Extent tag) {
-        this->tag = tag;
-    }
-    bool operator==(const SizeState &other) const {
-        if (tag == InitExt && other.tag == InitExt) return true;
-        if (tag == IntExt && other.tag == IntExt &&
-        base == other.base && size == other.size) return true;
-        if (tag == FormExt && other.tag == FormExt &&
-        src == other.src && dst == other.dst) return true;
-        if (tag == ExtentExt && other.tag == ExtentExt &&
-        extent.width == other.extent.width &&
-        extent.height == other.extent.height) return true;
-        if (tag == FillExt && other.tag == FillExt &&
-        value == other.value) return true;
-        if (tag == MicroExt && other.tag == MicroExt &&
-        micro == other.micro) return true;
-        if (tag == ResrcExt && other.tag == ResrcExt &&
-        resrc == other.resrc) return true;
-        if (tag == TrueExt && other.tag == TrueExt) return true;
-        return false;
-    }
-};
-std::ostream& operator<<(std::ostream& os, const SizeState& size) {
-    switch (size.tag) {default: os << "MicroSize()"; break;
-    case (InitExt): os << "InitSize()"; break;
-    case (IntExt): os << "IntSize(" << size.base << "," << size.size << ")"; break;
-    case (FormExt): os << "FormSize(" << size.src << "," << size.dst << ")"; break;
-    case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
-    case (FillExt): os << "FillSize(" << size.value << ")"; break;
-    case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
-    case (ResrcExt): os << "ResrcSize(" << size.resrc << ")"; break;
-    case (TrueExt): os << "TrueSize()"; break;
-    case (FalseExt): os << "FalseSize()"; break;}
-    return os;
-}
-
-struct Syn {
-    VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
-};
-struct BaseState;
-struct Lnk {
-    BaseState *ptr = 0; Reloc loc;
-};
-enum Advance {
-    PushAdv, FnceAdv, QualAdv,
-};
-struct Adv {
-    Advance adv; int hdl; Quality key; int val;
-};
-struct SaveState;
-struct Unl {
-    SaveState *der; int dee; int siz;
-};
-struct Bnd {
-    BaseState *buf; Resrc typ; Phase phs; int bnd; Instr ins;
-};
-struct Loc {
-    SizeState max;
-    Requ req;
-    Unl unl;
-    Syn syn;
-    Lnk lst; 
-    Lnk nxt;
-    VkCommandBuffer commandBuffer;
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    Requ *operator->() {return &req;}
-};
-Reloc &operator*(Loc &loc) {
-    return loc.req.loc;
-}
-struct StackState;
-struct BindState;
-struct BaseState {
-    StackState *item;
-    int indx;
-    SafeState safe;
-    bool valid;
-    int plock, rlock, wlock;
-    BindState *lock;
-    Loc ploc[Relocs];
-    int mask; // which ploc have valid max
-    Adv adv;
-    char debug[64];
-    int index();
-    int count();
-    const char *bname();
-    BaseState(const char *name, StackState *ptr) :
-        item(ptr),
-        indx(index()),
-        safe(1),
-        valid(false),
-        plock(0),
-        rlock(0),
-        wlock(0),
-        lock(0),
-        mask(0),
-        debug{} {
-        sprintf(debug,"%s_%s_%d",name,bname(),count());
-        // std::cout << debug << std::endl;
-    }
-    ~BaseState() {
-        // std::cout << "~" << debug << std::endl;
-    }
-    bool check(SaveState *sav);
-    bool push(BindState *ptr, Requ req, Unl unl, SmartState log) {
-        // reserve before pushing to thread
-        safe.wait();
-        if (check(unl.der)) {
-        {char *st0 = 0; char *st1 = 0;
-        showReloc(req.loc,&st0); showReuse(req.use,&st1);
-        log << debug << ":fail " << st0 << " " << st1 << '\n';
-        free(st0); free(st1);}
-        safe.post(); return false;}
-        {char *st0 = 0; char *st1 = 0;
-        showReloc(req.loc,&st0); showReuse(req.use,&st1);
-        log << debug << ":pass " << st0 << " " << st1 << '\n';
-        free(st0); free(st1);}
-        plock += 1;
-        safe.post();
-        if (lock != 0 && lock != ptr) EXIT
-        lock = ptr;
-        ploc[req.loc].req = req;
-        ploc[req.loc].unl = unl;
-        return true;
-    }
-    void push(Adv adv, SmartState log) {
-        safe.wait();
-        if (plock <= 0) EXIT
-        this->adv = adv;
-        safe.post();
-    }
-    void fail(SmartState log) {
-        safe.wait();
-        if (plock != 1) EXIT
-        plock = 0; lock = 0;
-        safe.post();
-    }
-    void reset(SmartState log) {
-        for (int i = 0; i < Relocs; i++)
-        if (ploc[i].max == SizeState(InitExt));
-        else unsize(ploc[i],log);
-    }
-    void finish() {
-        safe.wait();
-        valid = false;
-        safe.post();
-    }
-    bool recall(Loc &loc, SmartState log) {
-        SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
-        SizeState ini = SizeState(InitExt);
-        int msk = 1<<*loc;
-        safe.wait(); bool temp = valid; safe.post();
-        if (temp && loc.max == max); else {
-        if (loc.max == ini); else {
-        mask &= ~msk;
-        if (mask == 0) {safe.wait(); valid = false; safe.post();}
-        unsize(loc,log);}
-        loc.max = max;
-        if (loc.max == ini); else {
-        resize(loc,log);
-        if (mask == 0) {safe.wait(); valid = true; safe.post();}
-        mask |= msk;
-        return true;}}
-        return false;
-    }
-    VkFence basesiz(Reloc loc, SmartState log) {
-        // resize and setup
-        safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != BothReq) EXIT
-        safe.post();
-        recall(ploc[loc],log);
-        return setup(ploc[loc],log);
-    }
-    void basenul(Reloc loc, SmartState log) {
-        // resize and setup
-        safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != NullReq) EXIT
-        safe.post();
-        recall(ploc[loc],log);
-        if (setup(ploc[loc],log) != VK_NULL_HANDLE) EXIT;
-    }
-    void baseres(Reloc loc, SmartState log) {
-        // resize only
-        safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != SizeReq) EXIT
-        safe.post();
-        recall(ploc[loc],log);
-    }
-    VkFence basesup(Reloc loc, SmartState log) {
-        // setup only
-        safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != LockReq) EXIT
-        safe.post();
-        return setup(ploc[loc],log);
-    }
-    VkFence basexor(Reloc loc, SmartState log) {
-        // resize and maybe setup
-        safe.wait();
-        if (plock <= 0 || ploc[loc].req.tag != ExclReq) EXIT
-        safe.post();
-        if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
-        return setup(ploc[loc],log);        
-    }
-    void unlock(Unl &unl, SmartState log);
-    void advance(Adv &adv, SmartState log);
-    void baseups(Reloc loc, SmartState log) {
-        // after fence triggered
-        log << "baseups " << debug << '\n';
-        upset(ploc[loc],log);
-        if (lock) unlock(ploc[loc].unl,log);
-        safe.wait();
-        if (plock <= 0) EXIT
-        plock -= 1;
-        if (plock == 0) {
-        lock = 0;
-        if (adv.adv == FnceAdv) advance(adv,log);}
-        safe.post();
-    }
-    bool incr(bool elock, int psav, int rsav, int wsav) {
-        safe.wait();
-        if (plock < psav || wlock < wsav || rlock < rsav) EXIT
-        if (!(valid || psav) || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
-        safe.post(); return false;}
-        (elock ? wlock : rlock) += 1;
-        safe.post();
-        return true;
-    }
-    void decr(bool elock) {
-        safe.wait();
-        if ((elock ? wlock : rlock) <= 0) EXIT
-        (elock ? wlock : rlock) -= 1;
-        safe.post();
-    }
-    Lnk *link(Reloc loc, BaseState *ptr, Reloc lst, Lnk *lnk) {
-        if ((int)loc < 0 || (int)loc >= Relocs) EXIT
-        Loc &ref = ploc[loc];
-        SizeState max = SizeState(ref.req.ext,ref.req.base,ref.req.size);
-        SizeState ini = SizeState(InitExt);
-        switch (ref.req.tag) {default: EXIT
-        break; case(SizeReq): return 0;
-        break; case(LockReq):
-        break; case(BothReq):
-        break; case(NullReq): return 0;
-        break; case(ExclReq): if (ref.max == max || max == ini) return 0;}
-        if (lnk) {lnk->ptr = this; lnk->loc = loc;}
-        ref.lst.ptr = ptr; ref.lst.loc = lst;
-        ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
-        return &ref.nxt;
-    }
-    Loc &get(Reloc loc) {
-        if ((int)loc < 0 || (int)loc >= Relocs) EXIT
-        return ploc[loc];
-    }
-    Bnd get(Unl &unl, int idx);
-    int get(Quality tag);
-    virtual void unsize(Loc &loc, SmartState log) EXIT
-    virtual void resize(Loc &loc, SmartState log) EXIT
-    virtual VkFence setup(Loc &loc, SmartState log) EXIT
-    virtual void upset(Loc &loc, SmartState log) EXIT
-    virtual BindState *getBind(SmartState log) EXIT
-    virtual VkImage getImage() EXIT
-    virtual VkSwapchainKHR getSwapchain() EXIT
-    virtual VkSemaphore getAcquireSem() EXIT
-    virtual VkSemaphore getPresentSem() EXIT
-    virtual VkFramebuffer getFramebuffer() EXIT
-    virtual VkFramebuffer getFramebuffer(int i) EXIT
-    virtual VkPipeline getPipeline() EXIT
-    virtual VkPipelineLayout getPipelineLayout() EXIT
-    virtual VkBuffer getBuffer() EXIT
-    virtual VkDeviceMemory getMemory() EXIT
-    virtual int getRange() EXIT
-    virtual VkImageView getImageView() EXIT
-    virtual VkSampler getTextureSampler() EXIT
-    virtual VkDescriptorPool getDescriptorPool() EXIT
-    virtual VkDescriptorSetLayout getDescriptorSetLayout() EXIT
-    virtual VkRenderPass getRenderPass() EXIT
-    virtual VkExtent2D getExtent() EXIT
-    static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags, VkPhysicalDeviceMemoryProperties memProperties);
-    static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool);
-    static VkFence createFence(VkDevice device);
-    static VkSemaphore createSemaphore(VkDevice device);
-    static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-    static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkBuffer& buffer, VkDeviceMemory& memory);
-    static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
-    static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
-};
-
 struct Onl {
     int hdl; Quality key; int val;
 };
+struct BaseState;
 struct Res {
-    BaseState *resrc;
-    bool reuse;
+    BaseState *resrc; bool reuse;
 };
 struct StackState {
     static const int descrs = 4; // maximum descriptor sets in use
@@ -768,61 +429,441 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         return 0;
     }
 };
-int BaseState::index()
-{
-    return StackState::index++;
-}
-int BaseState::count()
-{
-    return StackState::debug++;
-}
-const char *BaseState::bname()
-{
-    return item->bufnam();
-}
-void BaseState::advance(Adv &adv, SmartState log)
-{
-    item->advance(adv.hdl,adv.key,adv.val);
-}
-int BaseState::get(Quality tag)
-{
-    return item->buftag(indx,tag);
-}
 
-struct ConstState {
-    decltype(MemoryIns__Memory__Int__Instr) *memins;
-    decltype(MemoryIns__Memory__Int__Reloc) *memloc;
-    decltype(MemoryIns__Memory__Int__Format) *memfmt;
-    decltype(MemoryIns__Memory__Int__Resrc) *memres;
-    decltype(MemoryIns__Memory__Int__Memory) *memmem;
-    decltype(MemoryIns__Memory__Int__Micro) *memmic;
-    decltype(MemoryIns__Memory__Int__Phase) *memphs;
-    decltype(MemoryIns__Memory__Int__Quality) *memkey;
-    decltype(MemoryIns__Memory__Int__Reuse) *memret;
-    decltype(MemoryIns__Memory__Int__Default) *memdef;
-    decltype(MemoryIns__Memory__Int__Int) *memval;
-    decltype(ResrcIns__Resrc__Int__Instr) *resins;
-    decltype(ResrcIns__Resrc__Int__Reloc) *resloc;
-    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
-    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
-    decltype(ResrcIns__Resrc__Int__Memory) *resmem;
-    decltype(ResrcIns__Resrc__Int__Micro) *resmic;
-    decltype(ResrcIns__Resrc__Int__Phase) *resphs;
-    decltype(ResrcIns__Resrc__Int__Quality) *reskey;
-    decltype(ResrcIns__Resrc__Int__Reuse) *resret;
-    decltype(ResrcIns__Resrc__Int__Default) *resdef;
-    decltype(ResrcIns__Resrc__Int__Int) *resval;
-    decltype(MicroIns__Micro__Int__Instr) *micins;
-    decltype(MicroIns__Micro__Int__Reloc) *micloc;
-    decltype(MicroIns__Micro__Int__Format) *micfmt;
-    decltype(MicroIns__Micro__Int__Resrc) *micres;
-    decltype(MicroIns__Micro__Int__Memory) *micmem;
-    decltype(MicroIns__Micro__Int__Micro) *micmic;
-    decltype(MicroIns__Micro__Int__Phase) *micphs;
-    decltype(MicroIns__Micro__Int__Quality) *mickey;
-    decltype(MicroIns__Micro__Int__Reuse) *micret;
-    decltype(MicroIns__Micro__Int__Default) *micdef;
-    decltype(MicroIns__Micro__Int__Int) *micval;
+struct SizeState {
+    Extent tag;
+    union {
+    struct {int base,size;};
+    struct {VkImageLayout src,dst;};
+    VkExtent2D extent;
+    int value;
+    Micro micro;
+    Resrc resrc;};
+    SizeState() {
+        tag = InitExt;
+    }
+    SizeState(Extent ext, int base, int size) {
+        tag = ext; switch (ext) {
+        default: EXIT
+        break; case (InitExt):
+        break; case (IntExt): this->base = base; this->size = size;
+        break; case (FormExt): src = (VkImageLayout)base; dst = (VkImageLayout)size;
+        break; case (ExtentExt): extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
+        break; case (FillExt): value = base;
+        break; case (MicroExt): micro = (Micro)base;
+        break; case (ResrcExt): resrc = (Resrc)base;
+        break; case (TrueExt):
+        break; case (FalseExt):;}
+    }
+    SizeState(int base, int size) {
+        tag = IntExt;
+        this->base = base;
+        this->size = size;
+    }
+    SizeState(VkImageLayout src, VkImageLayout dst) {
+        tag = FormExt;
+        this->src = src;
+        this->dst = dst;
+    }
+    SizeState(VkExtent2D extent) {
+        tag = ExtentExt;
+        this->extent = extent;
+    }
+    SizeState(int value) {
+        tag = FillExt;
+        this->value = value;
+    }
+    SizeState(Micro micro) {
+        tag = MicroExt;
+        this->micro = micro;
+    }
+    SizeState(Resrc resrc) {
+        tag = ResrcExt;
+        this->resrc = resrc;
+    }
+    SizeState(Extent tag) {
+        this->tag = tag;
+    }
+    bool operator==(const SizeState &other) const {
+        if (tag == InitExt && other.tag == InitExt) return true;
+        if (tag == IntExt && other.tag == IntExt &&
+        base == other.base && size == other.size) return true;
+        if (tag == FormExt && other.tag == FormExt &&
+        src == other.src && dst == other.dst) return true;
+        if (tag == ExtentExt && other.tag == ExtentExt &&
+        extent.width == other.extent.width &&
+        extent.height == other.extent.height) return true;
+        if (tag == FillExt && other.tag == FillExt &&
+        value == other.value) return true;
+        if (tag == MicroExt && other.tag == MicroExt &&
+        micro == other.micro) return true;
+        if (tag == ResrcExt && other.tag == ResrcExt &&
+        resrc == other.resrc) return true;
+        if (tag == TrueExt && other.tag == TrueExt) return true;
+        return false;
+    }
+};
+std::ostream& operator<<(std::ostream& os, const SizeState& size) {
+    switch (size.tag) {default: os << "MicroSize()"; break;
+    case (InitExt): os << "InitSize()"; break;
+    case (IntExt): os << "IntSize(" << size.base << "," << size.size << ")"; break;
+    case (FormExt): os << "FormSize(" << size.src << "," << size.dst << ")"; break;
+    case (ExtentExt): os << "ExtentSize(" << size.extent.width << "," << size.extent.height << ")"; break;
+    case (FillExt): os << "FillSize(" << size.value << ")"; break;
+    case (MicroExt): os << "MicroSize(" << size.micro << ")"; break;
+    case (ResrcExt): os << "ResrcSize(" << size.resrc << ")"; break;
+    case (TrueExt): os << "TrueSize()"; break;
+    case (FalseExt): os << "FalseSize()"; break;}
+    return os;
+}
+struct Syn {
+    VkFence fen = VK_NULL_HANDLE; VkSemaphore sem = VK_NULL_HANDLE;
+};
+struct Lnk {
+    BaseState *ptr = 0; Reloc loc;
+};
+enum Advance {
+    PushAdv, FnceAdv, QualAdv,
+};
+struct Adv {
+    Advance adv; int hdl; Quality key; int val;
+};
+struct SaveState;
+struct Unl {
+    SaveState *der; int dee; int siz;
+};
+struct Bnd {
+    BaseState *buf; Resrc typ; Phase phs; int bnd; Instr ins;
+};
+struct Loc {
+    SizeState max;
+    Requ req;
+    Unl unl;
+    Syn syn;
+    Lnk lst; 
+    Lnk nxt;
+    VkCommandBuffer commandBuffer;
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    Requ *operator->() {return &req;}
+};
+Reloc &operator*(Loc &loc) {
+    return loc.req.loc;
+}
+struct BindState;
+struct BaseState {
+    StackState *item;
+    int indx;
+    SafeState safe;
+    bool valid;
+    int plock, rlock, wlock;
+    BindState *lock;
+    Loc ploc[Relocs];
+    int mask; // which ploc have valid max
+    Adv adv;
+    char debug[64];
+    int index() {
+        return StackState::index++;
+    }
+    int count() {
+        return StackState::debug++;
+    }
+    const char *bname() {
+        return item->bufnam();
+    }
+    BaseState(const char *name, StackState *ptr) :
+        item(ptr),
+        indx(index()),
+        safe(1),
+        valid(false),
+        plock(0),
+        rlock(0),
+        wlock(0),
+        lock(0),
+        mask(0),
+        debug{} {
+        sprintf(debug,"%s_%s_%d",name,bname(),count());
+        // std::cout << debug << std::endl;
+    }
+    ~BaseState() {
+        // std::cout << "~" << debug << std::endl;
+    }
+    bool check(SaveState *sav);
+    bool push(BindState *ptr, Requ req, Unl unl, SmartState log) {
+        // reserve before pushing to thread
+        safe.wait();
+        if (check(unl.der)) {
+        {char *st0 = 0; char *st1 = 0;
+        showReloc(req.loc,&st0); showReuse(req.use,&st1);
+        log << debug << ":fail " << st0 << " " << st1 << '\n';
+        free(st0); free(st1);}
+        safe.post(); return false;}
+        {char *st0 = 0; char *st1 = 0;
+        showReloc(req.loc,&st0); showReuse(req.use,&st1);
+        log << debug << ":pass " << st0 << " " << st1 << '\n';
+        free(st0); free(st1);}
+        plock += 1;
+        safe.post();
+        if (lock != 0 && lock != ptr) EXIT
+        lock = ptr;
+        ploc[req.loc].req = req;
+        ploc[req.loc].unl = unl;
+        return true;
+    }
+    void push(Adv adv, SmartState log) {
+        safe.wait();
+        if (plock <= 0) EXIT
+        this->adv = adv;
+        safe.post();
+    }
+    void fail(SmartState log) {
+        safe.wait();
+        if (plock != 1) EXIT
+        plock = 0; lock = 0;
+        safe.post();
+    }
+    void reset(SmartState log) {
+        for (int i = 0; i < Relocs; i++)
+        if (ploc[i].max == SizeState(InitExt));
+        else unsize(ploc[i],log);
+    }
+    void finish() {
+        safe.wait();
+        valid = false;
+        safe.post();
+    }
+    bool recall(Loc &loc, SmartState log) {
+        SizeState max = SizeState(loc.req.ext,loc.req.base,loc.req.size);
+        SizeState ini = SizeState(InitExt);
+        int msk = 1<<*loc;
+        safe.wait(); bool temp = valid; safe.post();
+        if (temp && loc.max == max); else {
+        if (loc.max == ini); else {
+        mask &= ~msk;
+        if (mask == 0) {safe.wait(); valid = false; safe.post();}
+        unsize(loc,log);}
+        loc.max = max;
+        if (loc.max == ini); else {
+        resize(loc,log);
+        if (mask == 0) {safe.wait(); valid = true; safe.post();}
+        mask |= msk;
+        return true;}}
+        return false;
+    }
+    VkFence basesiz(Reloc loc, SmartState log) {
+        // resize and setup
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != BothReq) EXIT
+        safe.post();
+        recall(ploc[loc],log);
+        return setup(ploc[loc],log);
+    }
+    void basenul(Reloc loc, SmartState log) {
+        // resize and setup
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != NullReq) EXIT
+        safe.post();
+        recall(ploc[loc],log);
+        if (setup(ploc[loc],log) != VK_NULL_HANDLE) EXIT;
+    }
+    void baseres(Reloc loc, SmartState log) {
+        // resize only
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != SizeReq) EXIT
+        safe.post();
+        recall(ploc[loc],log);
+    }
+    VkFence basesup(Reloc loc, SmartState log) {
+        // setup only
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != LockReq) EXIT
+        safe.post();
+        return setup(ploc[loc],log);
+    }
+    VkFence basexor(Reloc loc, SmartState log) {
+        // resize and maybe setup
+        safe.wait();
+        if (plock <= 0 || ploc[loc].req.tag != ExclReq) EXIT
+        safe.post();
+        if (!recall(ploc[loc],log)) return VK_NULL_HANDLE;
+        return setup(ploc[loc],log);        
+    }
+    void unlock(Unl &unl, SmartState log);
+    void advance(Adv &adv, SmartState log) {
+        item->advance(adv.hdl,adv.key,adv.val);
+    }
+    void baseups(Reloc loc, SmartState log) {
+        // after fence triggered
+        log << "baseups " << debug << '\n';
+        upset(ploc[loc],log);
+        if (lock) unlock(ploc[loc].unl,log);
+        safe.wait();
+        if (plock <= 0) EXIT
+        plock -= 1;
+        if (plock == 0) {
+        lock = 0;
+        if (adv.adv == FnceAdv) advance(adv,log);}
+        safe.post();
+    }
+    bool incr(bool elock, int psav, int rsav, int wsav) {
+        safe.wait();
+        if (plock < psav || wlock < wsav || rlock < rsav) EXIT
+        if (!(valid || psav) || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
+        safe.post(); return false;}
+        (elock ? wlock : rlock) += 1;
+        safe.post();
+        return true;
+    }
+    void decr(bool elock) {
+        safe.wait();
+        if ((elock ? wlock : rlock) <= 0) EXIT
+        (elock ? wlock : rlock) -= 1;
+        safe.post();
+    }
+    Lnk *link(Reloc loc, BaseState *ptr, Reloc lst, Lnk *lnk) {
+        if ((int)loc < 0 || (int)loc >= Relocs) EXIT
+        Loc &ref = ploc[loc];
+        SizeState max = SizeState(ref.req.ext,ref.req.base,ref.req.size);
+        SizeState ini = SizeState(InitExt);
+        switch (ref.req.tag) {default: EXIT
+        break; case(SizeReq): return 0;
+        break; case(LockReq):
+        break; case(BothReq):
+        break; case(NullReq): return 0;
+        break; case(ExclReq): if (ref.max == max || max == ini) return 0;}
+        if (lnk) {lnk->ptr = this; lnk->loc = loc;}
+        ref.lst.ptr = ptr; ref.lst.loc = lst;
+        ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
+        return &ref.nxt;
+    }
+    Loc &get(Reloc loc) {
+        if ((int)loc < 0 || (int)loc >= Relocs) EXIT
+        return ploc[loc];
+    }
+    Bnd get(Unl &unl, int idx);
+    int get(Quality tag) {
+        return item->buftag(indx,tag);
+    }
+    virtual void unsize(Loc &loc, SmartState log) EXIT
+    virtual void resize(Loc &loc, SmartState log) EXIT
+    virtual VkFence setup(Loc &loc, SmartState log) EXIT
+    virtual void upset(Loc &loc, SmartState log) EXIT
+    virtual BindState *getBind(SmartState log) EXIT
+    virtual VkImage getImage() EXIT
+    virtual VkSwapchainKHR getSwapchain() EXIT
+    virtual VkSemaphore getAcquireSem() EXIT
+    virtual VkSemaphore getPresentSem() EXIT
+    virtual VkFramebuffer getFramebuffer() EXIT
+    virtual VkFramebuffer getFramebuffer(int i) EXIT
+    virtual VkPipeline getPipeline() EXIT
+    virtual VkPipelineLayout getPipelineLayout() EXIT
+    virtual VkBuffer getBuffer() EXIT
+    virtual VkDeviceMemory getMemory() EXIT
+    virtual int getRange() EXIT
+    virtual VkImageView getImageView() EXIT
+    virtual VkSampler getTextureSampler() EXIT
+    virtual VkDescriptorPool getDescriptorPool() EXIT
+    virtual VkDescriptorSetLayout getDescriptorSetLayout() EXIT
+    virtual VkRenderPass getRenderPass() EXIT
+    virtual VkExtent2D getExtent() EXIT
+    static uint32_t findMemoryType(VkPhysicalDevice device, uint32_t filter, VkMemoryPropertyFlags flags, VkPhysicalDeviceMemoryProperties memProperties);
+    static VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool pool);
+    static VkFence createFence(VkDevice device);
+    static VkSemaphore createSemaphore(VkDevice device);
+    static VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    static void createBuffer(VkDevice device, VkPhysicalDevice physical, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkPhysicalDeviceMemoryProperties memProperties, VkBuffer& buffer, VkDeviceMemory& memory);
+    static void createImage(VkDevice device, VkPhysicalDevice physical, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkPhysicalDeviceMemoryProperties memProperties, VkImage& image, VkDeviceMemory& imageMemory);
+    static void createFramebuffer(VkDevice device, VkExtent2D swapChainExtent, VkRenderPass renderPass, VkImageView swapChainImageView, VkImageView depthImageView, VkFramebuffer &framebuffer);
+};
+struct Push {
+    SmartState log;
+    BaseState *base; Reloc loc;
+    Center *ptr; int sub;
+    VkFence fence;
+};
+struct ThreadState : public DoneState {
+    const VkDevice device;
+    ChangeState<Configure,Configures> *change;
+    SafeState safe; SafeState wake;
+    HeapState<Push> before;
+    HeapState<Push> after;
+    int seqnum;
+    bool goon;
+    ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
+        device(device),
+        change(change),
+        safe(1),
+        wake(0),
+        seqnum(0),
+        goon(true) {
+        strcpy(debug,"ThreadState");
+        // std::cout << debug << std::endl;
+    }
+    ~ThreadState() {
+        // std::cout << "~" << debug << std::endl;
+    }
+    void push(Push push) {
+        push.fence = VK_NULL_HANDLE;
+        safe.wait();
+        before << push;
+        safe.post();
+        wake.post();
+    }
+    void push(SmartState log, BaseState *base, Reloc loc) {
+        // enque resource to process on thread
+        push({log,base,loc,0,0});
+    }
+    void push(SmartState log, Center *ptr, int sub) {
+        // enque response for after enqued resource fences
+        push({log,0,Relocs,ptr,sub});
+    }
+    bool stage() {
+        while (1) {while (1) {
+        safe.wait();
+        if (before.size() == 0) {safe.post(); break;}
+        Push push = before[0]; before.clear(1); safe.post();
+        if (push.base) {
+        Request tag = push.base->get(push.loc).req.tag;
+        switch (tag) {
+        default: EXIT
+        break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
+        break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
+        break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);
+        break; case(NullReq): push.fence = VK_NULL_HANDLE; push.base->basenul(push.loc,push.log);
+        break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);}}
+        after << push;}
+        if (after.size() != 0) break;
+        safe.wait();
+        bool empty = (before.size() == 0);
+        bool done = (empty && !goon);
+        safe.post();
+        if (done) return false;
+        if (empty) wake.wait();}
+        return true;
+    }
+    void call() override {
+        while (stage()) {
+        if (after.size() == 0) EXIT
+        Push push = after[0]; after.clear(1);
+        if (push.fence != VK_NULL_HANDLE) {
+        VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
+        if (result != VK_SUCCESS) EXIT}
+        if (push.base) {
+        push.base->baseups(push.loc,push.log);}
+        if (push.ptr) centerDone(push.ptr,push.sub);
+        change->wots(RegisterWake,1<<FnceMsk);}
+        vkDeviceWaitIdle(device);
+    }
+    void done() override {
+        safe.wait();
+        goon = false;
+        safe.post();
+        wake.post();
+    }
+    void heap() override {}
+    void noop() override {
+        wake.post();
+    }
 };
 
 struct SaveState {
@@ -1007,109 +1048,53 @@ struct BindState : public BaseState {
 bool BaseState::check(SaveState *sav) {
     return (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav);
 }
-Bnd BaseState::get(Unl &unl, int idx) {
-    return lock->get(unl,idx);
-}
 void BaseState::unlock(Unl &unl, SmartState log) {
     lock->done(unl,log);
 }
-
-struct Push {
-    SmartState log;
-    BaseState *base; Reloc loc;
-    Center *ptr; int sub;
-    VkFence fence;
-};
-struct ThreadState : public DoneState {
-    const VkDevice device;
-    ChangeState<Configure,Configures> *change;
-    SafeState safe; SafeState wake;
-    HeapState<Push> before;
-    HeapState<Push> after;
-    int seqnum;
-    bool goon;
-    ThreadState(VkDevice device, ChangeState<Configure,Configures> *change) :
-        device(device),
-        change(change),
-        safe(1),
-        wake(0),
-        seqnum(0),
-        goon(true) {
-        strcpy(debug,"ThreadState");
-        // std::cout << debug << std::endl;
-    }
-    ~ThreadState() {
-        // std::cout << "~" << debug << std::endl;
-    }
-    void push(Push push) {
-        push.fence = VK_NULL_HANDLE;
-        safe.wait();
-        before << push;
-        safe.post();
-        wake.post();
-    }
-    void push(SmartState log, BaseState *base, Reloc loc) {
-        // enque resource to process on thread
-        push({log,base,loc,0,0});
-    }
-    void push(SmartState log, Center *ptr, int sub) {
-        // enque response for after enqued resource fences
-        push({log,0,Relocs,ptr,sub});
-    }
-    bool stage() {
-        while (1) {while (1) {
-        safe.wait();
-        if (before.size() == 0) {safe.post(); break;}
-        Push push = before[0]; before.clear(1); safe.post();
-        if (push.base) {
-        Request tag = push.base->get(push.loc).req.tag;
-        switch (tag) {
-        default: EXIT
-        break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
-        break; case(LockReq): push.fence = push.base->basesup(push.loc,push.log);
-        break; case(BothReq): push.fence = push.base->basesiz(push.loc,push.log);
-        break; case(NullReq): push.fence = VK_NULL_HANDLE; push.base->basenul(push.loc,push.log);
-        break; case(ExclReq): push.fence = push.base->basexor(push.loc,push.log);}}
-        after << push;}
-        if (after.size() != 0) break;
-        safe.wait();
-        bool empty = (before.size() == 0);
-        bool done = (empty && !goon);
-        safe.post();
-        if (done) return false;
-        if (empty) wake.wait();}
-        return true;
-    }
-    void call() override {
-        while (stage()) {
-        if (after.size() == 0) EXIT
-        Push push = after[0]; after.clear(1);
-        if (push.fence != VK_NULL_HANDLE) {
-        VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
-        if (result != VK_SUCCESS) EXIT}
-        if (push.base) {
-        push.base->baseups(push.loc,push.log);}
-        if (push.ptr) centerDone(push.ptr,push.sub);
-        change->wots(RegisterWake,1<<FnceMsk);}
-        vkDeviceWaitIdle(device);
-    }
-    void done() override {
-        safe.wait();
-        goon = false;
-        safe.post();
-        wake.post();
-    }
-    void heap() override {}
-    void noop() override {
-        wake.post();
-    }
-};
+Bnd BaseState::get(Unl &unl, int idx) {
+    return lock->get(unl,idx);
+}
 
 extern "C" {
 int datxVoids(void *dat);
 void *datxVoidz(int num, void *dat);
 };
 void vulkanWait();
+struct ConstState {
+    decltype(MemoryIns__Memory__Int__Instr) *memins;
+    decltype(MemoryIns__Memory__Int__Reloc) *memloc;
+    decltype(MemoryIns__Memory__Int__Format) *memfmt;
+    decltype(MemoryIns__Memory__Int__Resrc) *memres;
+    decltype(MemoryIns__Memory__Int__Memory) *memmem;
+    decltype(MemoryIns__Memory__Int__Micro) *memmic;
+    decltype(MemoryIns__Memory__Int__Phase) *memphs;
+    decltype(MemoryIns__Memory__Int__Quality) *memkey;
+    decltype(MemoryIns__Memory__Int__Reuse) *memret;
+    decltype(MemoryIns__Memory__Int__Default) *memdef;
+    decltype(MemoryIns__Memory__Int__Int) *memval;
+    decltype(ResrcIns__Resrc__Int__Instr) *resins;
+    decltype(ResrcIns__Resrc__Int__Reloc) *resloc;
+    decltype(ResrcIns__Resrc__Int__Format) *resfmt;
+    decltype(ResrcIns__Resrc__Int__Resrc) *resres;
+    decltype(ResrcIns__Resrc__Int__Memory) *resmem;
+    decltype(ResrcIns__Resrc__Int__Micro) *resmic;
+    decltype(ResrcIns__Resrc__Int__Phase) *resphs;
+    decltype(ResrcIns__Resrc__Int__Quality) *reskey;
+    decltype(ResrcIns__Resrc__Int__Reuse) *resret;
+    decltype(ResrcIns__Resrc__Int__Default) *resdef;
+    decltype(ResrcIns__Resrc__Int__Int) *resval;
+    decltype(MicroIns__Micro__Int__Instr) *micins;
+    decltype(MicroIns__Micro__Int__Reloc) *micloc;
+    decltype(MicroIns__Micro__Int__Format) *micfmt;
+    decltype(MicroIns__Micro__Int__Resrc) *micres;
+    decltype(MicroIns__Micro__Int__Memory) *micmem;
+    decltype(MicroIns__Micro__Int__Micro) *micmic;
+    decltype(MicroIns__Micro__Int__Phase) *micphs;
+    decltype(MicroIns__Micro__Int__Quality) *mickey;
+    decltype(MicroIns__Micro__Int__Reuse) *micret;
+    decltype(MicroIns__Micro__Int__Default) *micdef;
+    decltype(MicroIns__Micro__Int__Int) *micval;
+};
 struct EnumState {
     Resrc key = Resrcs; StackState *val = 0;
 };
