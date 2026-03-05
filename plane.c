@@ -861,7 +861,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(eek);
     eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocInt(&eek->uns,eek->siz);
-    callCopy(eek,Memorys+5,RptRsp,0,(debug?"ident":0));}
+    callCopy(eek,Memorys+5,RptRsp,1,(debug?"ident":0));}
     else if (count%10 == 5 || count%10 == 0) {
     struct Center *vec = centerPull(Vectorz); freeCenter(vec);
     vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
@@ -1264,17 +1264,6 @@ void initTest()
     memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
-
-    struct Center *get = centerPull(Getintz); freeCenter(get);
-    get->mem = Getintz; get->idx = (int)(0.3*width)+(int)(0.3*height)*width; get->siz = 1;
-    allocInt(&get->uns,get->siz); get->uns[0] = 1;
-    callCopy(get,Getintz,RptRsp,1,(debug?"getint":0));
-    while (!(get = centerPull(Getintz))) {callWait(); continue;} centerPlace(get,Getintz);
-
-    struct Center *eek = centerPull(Getoldz); freeCenter(eek);
-    eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
-    allocOld(&eek->old,eek->siz); eek->old[0] = 1.0;
-    callCopy(eek,Getoldz,RptRsp,1,(debug?"getold":0));
 
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
     break; case (Builtin): case (Regress): case (Release): {}}

@@ -135,7 +135,10 @@ Extent = { -- resource initialization done on gpu thread
 	"InitExt", -- leave in initial state; don't resize
 	"IntExt", -- resize to base,size
 	"FormExt", -- reform to format
-	"ExtentExt", -- resize to 2d vk extent
+	"ExtentExt", -- resize to 2d vk exten
+	"UintExt", -- resize to 2d vk extent
+	"SfloatExt", -- resize to 2d vk extent
+	"SvecExt", -- resize to 2d vk extent
 	"FillExt", -- record fill value
 	"MicroExt", -- resize to micro enum
 	"ResrcExt", -- resize to bind enum
@@ -182,6 +185,9 @@ Format = {
 	"RdwrFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (src to dst)
 	"WrrdFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to src)
 	"ExtentFrm", -- SizeReq ExtentExt base(given:width) size(given:height)
+	"RelextFrm", -- SizeReq UintExt base(given:width) size(given:height)
+	"PieextFrm", -- SizeReq SfloatExt base(given:width) size(given:height)
+	"ColextFrm", -- SizeReq SvecExt base(given:width) size(given:height)
 	"SizeFrm", -- SizeReq IntExt base(from center) size(from center)
 	"WholeFrm", -- BothReq IntExt ptr(from center) idx(from center) siz(from center) base(implied: same as idx) size(implied: same as siz)
 	"LockFrm", -- LockReq IntExt ptr(from center) idx(from center) siz(from center)
@@ -725,7 +731,7 @@ MemoryIns = {
 	{"%(mem={\"Imagez\",\"Setoldz\",\"Getoldz\",\"Setintz\",\"Getintz\"}"..
 	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\",\"RelateRes\",\"RelateRes\"}"..
 	"ret={\"TexUse\",\"SetUse\",\"GetUse\",\"SetUse\",\"GetUse\"}"..
-	"siz={\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\",\"ExtentFrm\"}"..
+	"siz={\"ExtentFrm\",\"PieextFrm\",\"PieextFrm\",\"PieextFrm\",\"PieextFrm\"}"..
 	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\",\"PierceFrm\",\"PierceFrm\"}"..
 	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\",\"PokeFrm\",\"PeekFrm\"}"..
 	"mid={\"WholeFrm\",\"WholeFrm\",\"WholeFrm\",\"WholeFrm\",\"WholeFrm\"}"..
@@ -801,7 +807,7 @@ MemoryIns = {
 		{"Memory","Vectorz","Int","%(return save)","Resrc","RelateRes"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","ResizeLoc"},
 		{"Memory","Vectorz","Int","%(return save)","Reuse","FdbUse"},
-		{"Memory","Vectorz","Int","%(return save)","Format","ExtentFrm"},
+		{"Memory","Vectorz","Int","%(return save)","Format","RelextFrm"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","NidDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Resrc","DrawRes"},
 		{"Memory","Vectorz","Int","%(return save)","Phase","DrawPhs"},
@@ -840,7 +846,7 @@ MemoryIns = {
 		{"Memory","Vectorz","Int","%(return save)","Resrc","ColorRes"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","ResizeLoc"},
 		{"Memory","Vectorz","Int","%(return save)","Reuse","ColUse"},
-		{"Memory","Vectorz","Int","%(return save)","Format","ExtentFrm"},
+		{"Memory","Vectorz","Int","%(return save)","Format","ColextFrm"},
 	{"Memory","Vectorz","Int","%(return gnc())","Instr","OldDerIns"},
 		{"Memory","Vectorz","Int","%(return save)","Reloc","ReformLoc"},
 		{"Memory","Vectorz","Int","%(return save)","Format","PierceFrm"},
@@ -1130,7 +1136,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","1","Phase","RenderPhs"},
 		{"Micro","%(return fnc(mib))","Int","1","Reloc","ResizeLoc"},
 		{"Micro","%(return fnc(mib))","Int","1","Reuse","SetUse"},
-		{"Micro","%(return fnc(mib))","Int","1","Format","ExtentFrm"},
+		{"Micro","%(return fnc(mib))","Int","1","Format","PieextFrm"},
 	{"Micro","%(return fnc(mib))","Int","2","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mib))","Int","2","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mib))","Int","2","Phase","DrawPhs"},
@@ -1158,7 +1164,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mia))","Int","1","Phase","RenderPhs"},
 		{"Micro","%(return fnc(mia))","Int","1","Reloc","ResizeLoc"},
 		{"Micro","%(return fnc(mia))","Int","1","Reuse","FdbUse"},
-		{"Micro","%(return fnc(mia))","Int","1","Format","ExtentFrm"},
+		{"Micro","%(return fnc(mia))","Int","1","Format","RelextFrm"},
 	{"Micro","%(return fnc(mia))","Int","2","Instr","NewDerIns"},
 		{"Micro","%(return fnc(mia))","Int","2","Resrc","DrawRes"},
 		{"Micro","%(return fnc(mia))","Int","2","Phase","DrawPhs"},
@@ -1186,7 +1192,7 @@ MicroIns = {
 		{"Micro","%(return fnc(mid))","Int","1","Phase","RenderPhs"},
 		{"Micro","%(return fnc(mid))","Int","1","Reloc","ResizeLoc"},
 		{"Micro","%(return fnc(mid))","Int","1","Reuse","ColUse"},
-		{"Micro","%(return fnc(mid))","Int","1","Format","ExtentFrm"},
+		{"Micro","%(return fnc(mid))","Int","1","Format","ColextFrm"},
 	{"Micro","%(return fnc(mid))","Int","2","Instr","OldDerIns"},
 		{"Micro","%(return fnc(mid))","Int","2","Reloc","ReformLoc"},
 		{"Micro","%(return fnc(mid))","Int","2","Format","PierceFrm"},

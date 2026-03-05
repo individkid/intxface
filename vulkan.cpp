@@ -448,38 +448,14 @@ struct SizeState {
         break; case (InitExt):
         break; case (IntExt): this->base = base; this->size = size;
         break; case (FormExt): src = (VkImageLayout)base; dst = (VkImageLayout)size;
-        break; case (ExtentExt): extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
+        break; case (ExtentExt): case (UintExt): case (SfloatExt): case (SvecExt):
+        extent = VkExtent2D{(uint32_t)base,(uint32_t)size};
         break; case (FillExt): value = base;
         break; case (MicroExt): micro = (Micro)base;
         break; case (ResrcExt): resrc = (Resrc)base;
         break; case (TrueExt):
-        break; case (FalseExt):;}
-    }
-    SizeState(int base, int size) {
-        tag = IntExt;
-        this->base = base;
-        this->size = size;
-    }
-    SizeState(VkImageLayout src, VkImageLayout dst) {
-        tag = FormExt;
-        this->src = src;
-        this->dst = dst;
-    }
-    SizeState(VkExtent2D extent) {
-        tag = ExtentExt;
-        this->extent = extent;
-    }
-    SizeState(int value) {
-        tag = FillExt;
-        this->value = value;
-    }
-    SizeState(Micro micro) {
-        tag = MicroExt;
-        this->micro = micro;
-    }
-    SizeState(Resrc resrc) {
-        tag = ResrcExt;
-        this->resrc = resrc;
+        break; case (FalseExt):
+        break;}
     }
     SizeState(Extent tag) {
         this->tag = tag;
@@ -490,7 +466,13 @@ struct SizeState {
         base == other.base && size == other.size) return true;
         if (tag == FormExt && other.tag == FormExt &&
         src == other.src && dst == other.dst) return true;
-        if (tag == ExtentExt && other.tag == ExtentExt &&
+        if (tag == UintExt && other.tag == UintExt &&
+        extent.width == other.extent.width &&
+        extent.height == other.extent.height) return true;
+        if (tag == SfloatExt && other.tag == SfloatExt &&
+        extent.width == other.extent.width &&
+        extent.height == other.extent.height) return true;
+        if (tag == SvecExt && other.tag == SvecExt &&
         extent.width == other.extent.width &&
         extent.height == other.extent.height) return true;
         if (tag == FillExt && other.tag == FillExt &&
@@ -626,6 +608,11 @@ struct BaseState {
         for (int i = 0; i < Relocs; i++)
         if (ploc[i].max == SizeState(InitExt));
         else unsize(ploc[i],log);
+    }
+    void reset(Reloc loc, SmartState log) {
+        if (ploc[loc].max == SizeState(InitExt));
+        else {unsize(ploc[loc],log);
+        ploc[loc].max = SizeState(InitExt);}
     }
     void finish() {
         safe.wait();
@@ -1284,7 +1271,7 @@ struct CopyState {
         log << "notify pass" << '\n';
         ptr->slf = 0;
         switch (rsp) {default:
-        break; case (RetRsp): case (RptRsp): log << "RptRsp " << ptr << '\n'; thread->push(log,ptr,sub);}
+        break; case (RetRsp): case (RptRsp): thread->push(log,ptr,sub);}
         if (bind) stack[BindRes]->advance(0,Qualitys,0);
         } else {
         log << "wrap handles " << num << ">" << lim << '\n';
@@ -1348,6 +1335,15 @@ struct CopyState {
         break; case (ExtentFrm):
         req.tag = SizeReq; req.ext = ExtentExt;
         req.base = get(arg,siz,idx,log,"ExtentFrm.base"); req.size = get(arg,siz,idx,log,"ExtentFrm.size");
+        break; case (RelextFrm):
+        req.tag = SizeReq; req.ext = UintExt;
+        req.base = get(arg,siz,idx,log,"RelextFrm.base"); req.size = get(arg,siz,idx,log,"RelextFrm.size");
+        break; case (PieextFrm):
+        req.tag = SizeReq; req.ext = SfloatExt;
+        req.base = get(arg,siz,idx,log,"PieextFrm.base"); req.size = get(arg,siz,idx,log,"PieextFrm.size");
+        break; case (ColextFrm):
+        req.tag = SizeReq; req.ext = SvecExt;
+        req.base = get(arg,siz,idx,log,"ColextFrm.base"); req.size = get(arg,siz,idx,log,"ColextFrm.size");
         break; case (SizeFrm):
         req.tag = SizeReq; req.ext = IntExt;
         req.base = get(arg,siz,idx,log,"SizeFrm.base"); req.size = get(arg,siz,idx,log,"SizeFrm.size");
@@ -1982,8 +1978,8 @@ struct ImageState : public BaseState {
         break; case (VK_IMAGE_LAYOUT_UNDEFINED): return "VK_IMAGE_LAYOUT_UNDEFINED";
         break; case (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL): return "VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL";
         break; case (VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL): return "VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL";
-        break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL): return "VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL";VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        break; case (VK_IMAGE_LAYOUT_PRESENT_SRC_KHR): return "VK_IMAGE_LAYOUT_PRESENT_SRC_KHR";VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;}
+        break; case (VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL): return "VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL";
+        break; case (VK_IMAGE_LAYOUT_PRESENT_SRC_KHR): return "VK_IMAGE_LAYOUT_PRESENT_SRC_KHR";}
         return 0;
     }
     void resize(Loc &loc, SmartState log) override {
@@ -1994,11 +1990,12 @@ struct ImageState : public BaseState {
         int texHeight = loc.max.extent.height;
         extent = loc.max.extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc->use));
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc->use)); // TODO use loc.max.tag instead of loc->use
         if (loc->use == TexUse) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
         if (loc->use != TexUse) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
+        if (*loc == ResizeLoc) reset(ReformLoc,log);
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
         if (loc->use == TexUse) {
@@ -2048,7 +2045,7 @@ struct ImageState : public BaseState {
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == BeforeLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        log << "setup BeforeLoc " << vulkanDebug(loc.max.src) << "/" << before << "->" << vulkanDebug(loc.max.dst) << "/" << after << '\n';
+        log << "setup BeforeLoc " << vulkanDebug(loc.max.src) << "/" << before << "->" << vulkanDebug(loc.max.dst) << "/" << after << " commandBuffer " << loc.commandBuffer << '\n';
         transitionImageLayout(device, graphics, loc.commandBuffer, getImage(), before, after, fence, forms, loc.max.src, loc.max.dst);}
         if (*loc == AfterLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2071,7 +2068,7 @@ struct ImageState : public BaseState {
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
-        log << "upset " << debug << " location:" << *loc << '\n';
+        log << "upset " << debug << " location:" << *loc << " size:" << loc.max << " " << loc->use << '\n';
         if (*loc == MiddleLoc) {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
