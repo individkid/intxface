@@ -397,8 +397,6 @@ int centerMod(struct Center *ptr)
     break; case (Imagez): return sizeof(struct Image);
     break; case (Getintz): return sizeof(int32_t);
     break; case (Getoldz): return sizeof(float);
-    break; case (Setintz): return sizeof(int32_t);
-    break; case (Setoldz): return sizeof(float);
     break; case (Vectorz): return sizeof(struct Vector);
     break; case (Uniformz): return sizeof(struct Uniform);
     break; case (Matrixz): return sizeof(struct Matrix);
@@ -529,9 +527,7 @@ void machineBopy(int sig, int *arg)
     case (Bringupz): copyVertex(&dstPtr->ver[dstSub+i],&srcPtr->ver[srcSub+i]); break;
     case (Imagez): copyImage(&dstPtr->img[dstSub+i],&srcPtr->img[srcSub+i]); break;
     case (Getintz): dstPtr->uns[dstSub+i] = srcPtr->uns[srcSub+i]; break;
-    case (Setintz): dstPtr->uns[dstSub+i] = srcPtr->uns[srcSub+i]; break;
     case (Getoldz): dstPtr->old[dstSub+i] = srcPtr->old[srcSub+i]; break;
-    case (Setoldz): dstPtr->old[dstSub+i] = srcPtr->old[srcSub+i]; break;
     case (Uniformz): copyUniform(&dstPtr->uni[dstSub+i],&srcPtr->uni[srcSub+i]); break;
     case (Matrixz): copyMatrix(&dstPtr->mat[dstSub+i],&srcPtr->mat[srcSub+i]); break;
     case (Trianglez): copyTriangle(&dstPtr->tri[dstSub+i],&srcPtr->tri[srcSub+i]); break;
@@ -1231,8 +1227,6 @@ void initTest()
     ptr->drw[0].con.tag = ResrcCon;
     ptr->drw[0].con.res = ChainRes;
     callCopy(ptr,Drawz,MptRsp,0,(debug?"chain":0));}
-    // write to PierceRes with Setintz and read back the same with Getintz
-    // Getintz should use OldDerIns instead of GetDerIns
     int width = callInfo(UniformWid,0,planeRcfg);
     int height = callInfo(UniformHei,0,planeRcfg);
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);

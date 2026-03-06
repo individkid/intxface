@@ -1656,7 +1656,7 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);}
         break; case (Imagez): push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
             datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
-        break; case (Getintz): case (Getoldz): case (Setintz): case (Setoldz):
+        break; case (Getintz): case (Getoldz):
             push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
             change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
         break; case (Vectorz):

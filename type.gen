@@ -36,8 +36,6 @@ Memory = {
 	"Imagez", -- facet decorations
 	"Getintz", -- per fragment read
 	"Getoldz", -- per fragment read
-	"Setintz", -- per fragment write
-	"Setoldz", -- per fragment write
 	"Vectorz", -- displayed framebuffer
 	"Uniformz", -- references into arrays
 	"Matrixz", -- transformations
@@ -728,14 +726,14 @@ FragmentFile = {
 MemoryIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys,Reuses
 	-- n>0: departures from n-1
-	{"%(mem={\"Imagez\",\"Setoldz\",\"Getoldz\",\"Setintz\",\"Getintz\"}"..
-	"res={\"ImageRes\",\"PierceRes\",\"PierceRes\",\"RelateRes\",\"RelateRes\"}"..
-	"ret={\"TexUse\",\"SetUse\",\"GetUse\",\"SetUse\",\"GetUse\"}"..
-	"siz={\"ExtentFrm\",\"PieextFrm\",\"PieextFrm\",\"PieextFrm\",\"PieextFrm\"}"..
-	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\",\"PierceFrm\",\"PierceFrm\"}"..
-	"bef={\"WonlyFrm\",\"PokeFrm\",\"PeekFrm\",\"PokeFrm\",\"PeekFrm\"}"..
-	"mid={\"WholeFrm\",\"WholeFrm\",\"WholeFrm\",\"WholeFrm\",\"WholeFrm\"}"..
-	"aft={\"RonlyFrm\",\"DestFrm\",\"SourceFrm\",\"DestFrm\",\"SourceFrm\"}"..
+	{"%(mem={\"Imagez\",\"Getoldz\",\"Getintz\"}"..
+	"res={\"ImageRes\",\"PierceRes\",\"RelateRes\"}"..
+	"ret={\"TexUse\",\"GetUse\",\"GetUse\"}"..
+	"siz={\"ExtentFrm\",\"PieextFrm\",\"PieextFrm\"}"..
+	"ref={\"ImageFrm\",\"PierceFrm\",\"PierceFrm\"}"..
+	"bef={\"WonlyFrm\",\"PeekFrm\",\"PeekFrm\"}"..
+	"mid={\"WholeFrm\",\"WholeFrm\",\"WholeFrm\"}"..
+	"aft={\"RonlyFrm\",\"SourceFrm\",\"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
 	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;"..
@@ -1243,8 +1241,6 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(image = #%(return count))Imagez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(getint = #%(return count))Getintz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(getold = #%(return count))Getoldz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(setint = #%(return count))Setintz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(setold = #%(return count))Setoldz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(vector = #%(return count))Vectorz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(uniform = #%(return count))Uniformz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(matrix = #%(return count))Matrixz(siz:0idx:0slf:0)"},
@@ -1660,8 +1656,8 @@ Center = {
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"ver","Vertex",{["mem"]={["Bringupz"]=true}},"siz"},
 	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
-	{"uns","Int32",{["mem"]={["Getintz"]=true,["Setintz"]=true}},"siz"},
-	{"old","Old",{["mem"]={["Getoldz"]=true,["Setoldz"]=true}},"siz"},
+	{"uns","Int32",{["mem"]={["Getintz"]=true}},"siz"},
+	{"old","Old",{["mem"]={["Getoldz"]=true}},"siz"},
 	{"vec","Vector",{["mem"]={["Vectorz"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
