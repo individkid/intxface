@@ -576,12 +576,12 @@ struct BaseState {
         safe.wait();
         if (check(unl.der)) {
         {char *st0 = 0; char *st1 = 0;
-        showReloc(req.loc,&st0); showReuse(req.use,&st1);
+        showReloc(req.loc,&st0); showExtent(req.ext,&st1);
         log << debug << ":fail " << st0 << " " << st1 << '\n';
         free(st0); free(st1);}
         safe.post(); return false;}
         {char *st0 = 0; char *st1 = 0;
-        showReloc(req.loc,&st0); showReuse(req.use,&st1);
+        showReloc(req.loc,&st0); showExtent(req.ext,&st1);
         log << debug << ":pass " << st0 << " " << st1 << '\n';
         free(st0); free(st1);}
         plock += 1;
@@ -1296,8 +1296,8 @@ struct CopyState {
         break; case (MltRsp): ptr->slf = -1;
         break; case (RetRsp): ptr->slf = -1; thread->push(log,ptr,sub);}}}
     }
-    Requ request(Format frm, Reloc loc, Reuse use, void *val, int *arg, int siz, int &idx, SmartState log) {
-        Requ req = {Requests,0,0,0,Extents,0,0,loc,use};
+    Requ request(Format frm, Reloc loc, void *val, int *arg, int siz, int &idx, SmartState log) {
+        Requ req = {Requests,0,0,0,Extents,0,0,loc};
         switch (frm) {default: EXIT
         break; case (ImageFrm): // initial to texture,shadow
         req.tag = ExclReq; req.ext = FormExt; // ReformLoc
@@ -1412,17 +1412,17 @@ struct CopyState {
         log << "include " << st0 << '\n'; free(st0);}}
         switch (ins) {default: EXIT
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
-        Requ req = request(dot[i].fmt,dot[i].loc,dot[i].use,val,arg,siz,idx,log);
+        Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
         Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
-        Requ req = request(dot[i].fmt,dot[i].loc,dot[i].use,val,arg,siz,idx,log);
+        Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
         Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(IdxDerIns): {
-        Requ req = request(dot[i].fmt,dot[i].loc,dot[i].use,val,arg,siz,idx,log);
+        Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
         Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
@@ -1955,23 +1955,21 @@ struct ImageState : public BaseState {
     ~ImageState() {
         reset(SmartState());
     }
-    static Render vulkanRender(Reuse i) {
+    static Render vulkanRender(Extent i) {
         switch (i) {default: EXIT
-        break; case (ColUse): return VecFrm;
-        break; case (TexUse): return SrgbFrm;
-        break; case (FdbUse): case (PieUse): return UintFrm;
-        break; case (GetUse): case (SetUse): case (DptUse): return SfloatFrm;}
+        break; case (SvecExt): return VecFrm;
+        break; case (ExtentExt): return SrgbFrm;
+        break; case (UintExt): return UintFrm;
+        break; case (SfloatExt): return SfloatFrm;}
         return Renders;
     }
-    static int vulkanPixel(Reuse i) {
-        switch (i) {default: break; case (ColUse): return 4;}
+    static int vulkanPixel(Extent i) {
+        switch (i) {default: break; case (SvecExt): return 4;}
         return 1;
     }
-    static bool isr(Reuse i) {
-        switch (i) {default: EXIT
-        break; case (TexUse): case (SetUse): return false;
-        break; case (FdbUse): case (GetUse): case (PieUse): case (DptUse): case (ColUse): return true;}
-        return false;
+    static bool isr(Extent i) {
+        switch (i) {default: break; case (ExtentExt): return false;}
+        return true;
     }
     static const char *vulkanDebug(VkImageLayout img) {
         switch (img) {default: EXIT
@@ -1983,27 +1981,28 @@ struct ImageState : public BaseState {
         return 0;
     }
     void resize(Loc &loc, SmartState log) override {
-        log << "resize " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << loc->use << '\n';
+        Extent ext = get(ResizeLoc).max.tag;
+        log << "resize " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << ext << '\n';
         if (*loc == ResizeLoc) {
         if (&loc != &ploc[*loc]) EXIT
         int texWidth = loc.max.extent.width;
         int texHeight = loc.max.extent.height;
         extent = loc.max.extent;
         VkImageUsageFlagBits flags;
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc->use)); // TODO use loc.max.tag instead of loc->use
-        if (loc->use == TexUse) {
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(ext));
+        if (ext == ExtentExt) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_SAMPLED_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
-        if (loc->use != TexUse) {
+        if (ext != ExtentExt) {
         flags = (VkImageUsageFlagBits)((int)VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | (int)VK_IMAGE_USAGE_TRANSFER_SRC_BIT | (int)VK_IMAGE_USAGE_TRANSFER_DST_BIT);}
         if (*loc == ResizeLoc) reset(ReformLoc,log);
         createImage(device, physical, texWidth, texHeight, forms, flags, memProperties, /*output*/ image, imageMemory);
         imageView = createImageView(device, image, forms, VK_IMAGE_ASPECT_COLOR_BIT);
-        if (loc->use == TexUse) {
+        if (ext == ExtentExt) {
         textureSampler = createTextureSampler(device,properties);}
-        if (loc->use != TexUse) {
+        if (ext != ExtentExt) {
         createImage(device, physical, loc.max.extent.width, loc.max.extent.height, depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, memProperties,/*output*/ depthImage, depthMemory);
         depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender(loc->use)],imageView,depthImageView,framebuffer);}}
+        createFramebuffer(device,loc.max.extent,renderPass[vulkanRender(ext)],imageView,depthImageView,framebuffer);}}
         if (*loc == ReformLoc) loc.commandBuffer = createCommandBuffer(device,commandPool); 
         if (*loc == BeforeLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
         if (*loc == MiddleLoc) loc.commandBuffer = createCommandBuffer(device,commandPool);
@@ -2012,6 +2011,7 @@ struct ImageState : public BaseState {
         loc.syn.fen = createFence(device); // TODO as needed
     }
     void unsize(Loc &loc, SmartState log) override {
+        Extent ext = get(ResizeLoc).max.tag;
         log << "unsize " << debug << " location:" << *loc << '\n';
         vkDestroyFence(device, loc.syn.fen, nullptr); // TODO as needed
         vkDestroySemaphore(device, loc.syn.sem, nullptr); // TODO as needed
@@ -2021,23 +2021,24 @@ struct ImageState : public BaseState {
         if (*loc == ReformLoc) vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
         if (*loc == ResizeLoc) {
         if (&loc != &ploc[*loc]) EXIT
-        if (loc->use != TexUse) {
+        if (ext != ExtentExt) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
         vkDestroyImageView(device, depthImageView, nullptr);
         vkDestroyImage(device, depthImage, nullptr);
         vkFreeMemory(device, depthMemory, nullptr);}
-        if (loc->use == TexUse) {
+        if (ext == ExtentExt) {
         vkDestroySampler(device, textureSampler, nullptr);}
         vkDestroyImageView(device, imageView, nullptr);
         vkDestroyImage(device, image, nullptr);
         vkFreeMemory(device, imageMemory, nullptr);}
     }
     VkFence setup(Loc &loc, SmartState log) override {
+        Extent ext = get(ResizeLoc).max.tag;
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        log << "setup " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << loc->use << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
-        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(loc->use));
+        log << "setup " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << ext << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
+        VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(ext));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
@@ -2055,26 +2056,27 @@ struct ImageState : public BaseState {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
-        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(loc->use);
-        createBuffer(device, physical, imageSize, (isr(loc->use) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
-        void* data; if (!isr(loc->use)) {
+        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(ext);
+        createBuffer(device, physical, imageSize, (isr(ext) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        void* data; if (!isr(ext)) {
         vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);}
-        if (loc->use == TexUse) {
+        if (ext == ExtentExt) {
         memcpy(data, loc.req.ptr, loc.req.siz);}
-        else if (!isr(loc->use)) {
+        else if (!isr(ext)) {
         memcpy((void*)((char*)data + loc.req.idx*4), loc.req.ptr, loc.req.siz*4);}
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, isr(loc->use));}
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, isr(ext));}
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
-        log << "upset " << debug << " location:" << *loc << " size:" << loc.max << " " << loc->use << '\n';
+        Extent ext = get(ResizeLoc).max.tag;
+        log << "upset " << debug << " location:" << *loc << " size:" << loc.max << " " << ext << '\n';
         if (*loc == MiddleLoc) {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
-        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(loc->use);
-        if (isr(loc->use)) {
+        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(ext);
+        if (isr(ext)) {
         void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);
         // TODO allow widths other than 4 by interpreting idx and siz as bytes
         memcpy((void*)loc.req.ptr, (void*)((char*)data + loc.req.idx*4), loc.req.siz*4);}
