@@ -1056,7 +1056,6 @@ struct ConstState {
     decltype(MemoryIns__Memory__Int__Micro) *memmic;
     decltype(MemoryIns__Memory__Int__Phase) *memphs;
     decltype(MemoryIns__Memory__Int__Quality) *memkey;
-    decltype(MemoryIns__Memory__Int__Reuse) *memret;
     decltype(MemoryIns__Memory__Int__Default) *memdef;
     decltype(MemoryIns__Memory__Int__Int) *memval;
     decltype(ResrcIns__Resrc__Int__Instr) *resins;
@@ -1067,7 +1066,6 @@ struct ConstState {
     decltype(ResrcIns__Resrc__Int__Micro) *resmic;
     decltype(ResrcIns__Resrc__Int__Phase) *resphs;
     decltype(ResrcIns__Resrc__Int__Quality) *reskey;
-    decltype(ResrcIns__Resrc__Int__Reuse) *resret;
     decltype(ResrcIns__Resrc__Int__Default) *resdef;
     decltype(ResrcIns__Resrc__Int__Int) *resval;
     decltype(MicroIns__Micro__Int__Instr) *micins;
@@ -1078,7 +1076,6 @@ struct ConstState {
     decltype(MicroIns__Micro__Int__Micro) *micmic;
     decltype(MicroIns__Micro__Int__Phase) *micphs;
     decltype(MicroIns__Micro__Int__Quality) *mickey;
-    decltype(MicroIns__Micro__Int__Reuse) *micret;
     decltype(MicroIns__Micro__Int__Default) *micdef;
     decltype(MicroIns__Micro__Int__Int) *micval;
 };
@@ -1087,7 +1084,7 @@ struct EnumState {
 };
 struct Arg {
     Instr ins = Instrs;
-    Reloc loc = Relocs; Reuse use = Reuses; Format fmt = Formats; Quality key = Qualitys;
+    Reloc loc = Relocs; Format fmt = Formats; Quality key = Qualitys;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros; Phase phs = Phases;
 };
 struct CopyState {
@@ -1383,12 +1380,11 @@ struct CopyState {
         if (ins == IdxDerIns || ins == IdxDeeIns) ret.frc = get(arg,siz,idx,log,"reserve.frc");
         return ret;
     }
-    Qual qualify(Resrc res, Quality key, Reuse use, int *arg, int siz, int &idx, SmartState log) {
+    Qual qualify(Resrc res, Quality key, int *arg, int siz, int &idx, SmartState log) {
         Qual ret = {res,0,key,0};
-        if (key != Qualitys && key != RuseQua) {
+        if (key != Qualitys) {
         ret.hdl = get(arg,siz,idx,log,"qualify.hdl");
         ret.val = get(arg,siz,idx,log,"qualify.val");}
-        if (key == RuseQua) ret.val = use;
         return ret;
     }
     template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
@@ -1397,10 +1393,9 @@ struct CopyState {
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         char *st1 = 0; showReloc(dot[i].loc,&st1);
         char *st2 = 0; showInstr(dot[i].ins,&st2);
-        char *st3 = 0; showReuse(dot[i].use,&st3);
-        char *st4 = 0; showPhase(dot[i].phs,&st4);
-        log << st2 << " " << st0 << " " << st4 << " " << st1 << " " << st3 << '\n';
-        free(st0); free(st1); free(st2); free(st3); free(st4);}
+        char *st3 = 0; showPhase(dot[i].phs,&st3);
+        log << st2 << " " << st0 << " " << st3 << " " << st1 << " " << '\n';
+        free(st0); free(st1); free(st2); free(st3);}
         break; case(ResIncIns):
         {char *st0 = 0; showResrc(dot[i].res,&st0);
         log << "include " << st0 << '\n'; free(st0);}
@@ -1414,32 +1409,32 @@ struct CopyState {
         break; case(NewDerIns): case(OldDerIns): case(GetDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(NidDerIns): case(OidDerIns): case(GidDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,dot[i].key,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(IdxDerIns): {
         Requ req = request(dot[i].fmt,dot[i].loc,val,arg,siz,idx,log);
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,arg,siz,idx,log);
         return Inst{.ins=ins,.req=req,.res=res,.key=key};}
         break; case(WrlDeeIns): case(RdlDeeIns): {
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
         break; case(WidDeeIns): case(RidDeeIns): {
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,dot[i].key,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
         break; case(IdxDeeIns): {
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
-        Qual key = qualify(dot[i].res,Qualitys,Reuses,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,Qualitys,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
         break; case(SetTagIns): case(MovTagIns): {
-        Qual key = qualify(dot[i].res,dot[i].key,dot[i].use,arg,siz,idx,log);
+        Qual key = qualify(dot[i].res,dot[i].key,arg,siz,idx,log);
         return Inst{.ins=ins,.key=key};}
         break; case(ResIncIns): return Inst{.ins=ins,.inc=Incl{.res=dot[i].res}};
         break; case(MemIncIns): return Inst{.ins=ins,.inc=Incl{.mem=dot[i].mem}};
@@ -1454,10 +1449,9 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,Reuses,WholeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,Relocs,log)) done = false;
-        if (builtin(sav.use,dot.use,ary->memret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->memkey,typ,sub,Qualitys,log)) done = false;
         if (builtin(sav.res,dot.res,ary->memres,typ,sub,Resrcs,log)) done = false;
@@ -1475,10 +1469,9 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,Relocs,log)) done = false;
-        if (builtin(sav.use,dot.use,ary->resret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->reskey,typ,sub,Qualitys,log)) done = false;
         if (builtin(sav.res,dot.res,ary->resres,typ,sub,Resrcs,log)) done = false;
@@ -1496,10 +1489,9 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,Reuses,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,Relocs,log)) done = false;
-        if (builtin(sav.use,dot.use,ary->micret,typ,sub,Reuses,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
         if (builtin(sav.key,dot.key,ary->mickey,typ,sub,Qualitys,log)) done = false;
         if (builtin(sav.res,dot.res,ary->micres,typ,sub,Resrcs,log)) done = false;
@@ -2298,7 +2290,6 @@ struct MainState {
             MemoryIns__Memory__Int__Micro,
             MemoryIns__Memory__Int__Phase,
             MemoryIns__Memory__Int__Quality,
-            MemoryIns__Memory__Int__Reuse,
             MemoryIns__Memory__Int__Default,
             MemoryIns__Memory__Int__Int,
             ResrcIns__Resrc__Int__Instr,
@@ -2309,7 +2300,6 @@ struct MainState {
             ResrcIns__Resrc__Int__Micro,
             ResrcIns__Resrc__Int__Phase,
             ResrcIns__Resrc__Int__Quality,
-            ResrcIns__Resrc__Int__Reuse,
             ResrcIns__Resrc__Int__Default,
             ResrcIns__Resrc__Int__Int,
             MicroIns__Micro__Int__Instr,
@@ -2320,7 +2310,6 @@ struct MainState {
             MicroIns__Micro__Int__Micro,
             MicroIns__Micro__Int__Phase,
             MicroIns__Micro__Int__Quality,
-            MicroIns__Micro__Int__Reuse,
             MicroIns__Micro__Int__Default,
             MicroIns__Micro__Int__Int},{
             MemoryAlt__Memory__Int__Instr,
@@ -2331,7 +2320,6 @@ struct MainState {
             MemoryAlt__Memory__Int__Micro,
             MemoryAlt__Memory__Int__Phase,
             MemoryAlt__Memory__Int__Quality,
-            MemoryAlt__Memory__Int__Reuse,
             MemoryAlt__Memory__Int__Default,
             MemoryAlt__Memory__Int__Int,
             ResrcAlt__Resrc__Int__Instr,
@@ -2342,7 +2330,6 @@ struct MainState {
             ResrcAlt__Resrc__Int__Micro,
             ResrcAlt__Resrc__Int__Phase,
             ResrcAlt__Resrc__Int__Quality,
-            ResrcAlt__Resrc__Int__Reuse,
             ResrcAlt__Resrc__Int__Default,
             ResrcAlt__Resrc__Int__Int,
             MicroAlt__Micro__Int__Instr,
@@ -2353,7 +2340,6 @@ struct MainState {
             MicroAlt__Micro__Int__Micro,
             MicroAlt__Micro__Int__Phase,
             MicroAlt__Micro__Int__Quality,
-            MicroAlt__Micro__Int__Reuse,
             MicroAlt__Micro__Int__Default,
             MicroAlt__Micro__Int__Int}},
         vulkanState(windowState.window),
