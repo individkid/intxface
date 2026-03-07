@@ -655,10 +655,6 @@ void machineArg(int *arg, int sig, struct Express *exp)
 {
     for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
 }
-#define MACHINE(XFR) { \
-    int arg[mptr->sig]; \
-    machineArg(arg,mptr->sig,mptr->arg); \
-    machine ## XFR(mptr->sig,arg);}
 void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
@@ -666,19 +662,19 @@ void machineSwitch(struct Machine *mptr)
     case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
-    case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break;
-    case (Void): machineVoid(&mptr->exp[0]); break;
-    case (Argv): MACHINE(Argv) break;
-    case (Comp): MACHINE(Comp) break;
-    case (Form): MACHINE(Form) break;
-    case (Send): MACHINE(Send) break;
-    case (Self): MACHINE(Self) break;
-    case (Glob): MACHINE(Glob) break;
-    case (Bopy): MACHINE(Bopy) break;
-    case (Copy): MACHINE(Copy) break;
-    case (Dopy): MACHINE(Dopy) break;
-    case (Popy): MACHINE(Popy) break;
-    case (Qopy): MACHINE(Qopy) break;}
+    case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
+    case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
+    case (Argv): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineArgv(mptr->sig,arg);} break;
+    case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
+    case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
+    case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
+    case (Self): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSelf(mptr->sig,arg);} break;
+    case (Glob): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineGlob(mptr->sig,arg);} break;
+    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
+    case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
+    case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
+    case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
+    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;}
 }
 
 // thread callbacks
