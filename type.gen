@@ -716,13 +716,13 @@ MemoryIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"%("..
-	"mem={\"Imagez\",   \"Getoldz\",  \"Getintz\"}"..
-	"res={\"ImageRes\", \"PierceRes\",\"RelateRes\"}"..
-	"siz={\"ExtentFrm\",\"PieextFrm\",\"PieextFrm\"}"..
-	"ref={\"ImageFrm\", \"PierceFrm\",\"PierceFrm\"}"..
-	"bef={\"WonlyFrm\", \"PeekFrm\",  \"PeekFrm\"}"..
-	"mid={\"WholeFrm\", \"WholeFrm\", \"WholeFrm\"}"..
-	"aft={\"RonlyFrm\", \"SourceFrm\",\"SourceFrm\"}"..
+	"mem={\"Imagez\",   \"Getintz\"}"..
+	"res={\"ImageRes\", \"RelateRes\"}"..
+	"siz={\"ExtentFrm\",\"PieextFrm\"}"..
+	"ref={\"ImageFrm\", \"PierceFrm\"}"..
+	"bef={\"WonlyFrm\", \"PeekFrm\"}"..
+	"mid={\"WholeFrm\", \"WholeFrm\"}"..
+	"aft={\"RonlyFrm\", \"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
 	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;"..
@@ -751,13 +751,15 @@ MemoryIns = {
 
 
 	{"%(\
-	mem = {\"Vectorz\"}\
-	dea = {\"UniformRes\"}\
-	pha = {\"UniformPhs\"}\
-	deb = {\"UniformRes\",\"MatrixRes\", \"IndexRes\", \"BringupRes\"}\
-	phb = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\", \"FetchPhs\"}\
-	dec = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"IndexRes\",  \"BringupRes\"}\
-	phc = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",  \"FetchPhs\"}"..
+	mem = {\"Vectorz\",  \"Getoldz\"}\
+	res = {\"ColorRes\", \"PierceRes\"}\
+	frm = {\"ColextFrm\",\"PieextFrm\"}\
+	fil_dep = {\"UniformRes\"}\
+	fil_phs = {\"UniformPhs\"}\
+	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\", \"BringupRes\"}\
+	fet_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\", \"FetchPhs\"}\
+	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"IndexRes\",  \"BringupRes\"}\
+	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",  \"FetchPhs\"}"..
 
 	"def={"..
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
@@ -774,13 +776,20 @@ MemoryIns = {
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd SamplePhs.bnd PipeRes.frc
 
-	"\"GiveDef\",\"GiveDef\","..
+	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
 	"}"..
 
-	"arg={"..
+	"col_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
 	"0,1,0,12,castMicro(\"MicroFetCol\"),0,castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),"..
+	"2,3,"..
+	"}"..
+
+	"pie_arg={"..
+	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
+	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
+	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1,7,castMicro(\"MicroFetPie\"),"..
 	"2,3,"..
 	"}"..
 
@@ -788,11 +797,9 @@ MemoryIns = {
 	function fun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(u) else return u end end end\
 	function gun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
 	function hun (mem) for j,u in ipairs(mem) do count[u] = 0 end end\
-	\
-	function fnc (mem,lst) for j,u in ipairs(mem) do for i,v in ipairs(lst) do if i ~= #lst or j ~= #mem then coroutine.yield(v) else return v end end end end\
 	function gnc (mem) for j,u in ipairs(mem) do save[u] = count[u]; count[u] = count[u] + 1; if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
-	function hnc (mem,lst) for j,u in ipairs(mem) do count[u] = save[u]; for i,v in ipairs(lst) do if i ~= #lst then temp = count[u]; count[u] = count[u] + 1; coroutine.yield(temp) else temp = count[u]; count[u] = count[u] + 1; return temp end end end end\
-	\
+	function hnc (mem,lst) count[mem] = save[mem]; for i,j in ipairs(lst) do temp = count[mem]; count[mem] = count[mem] + 1; if i ~= #lst then coroutine.yield(temp) else return temp end end end\
+	function fnc (mem) save[mem] = count[mem]; return save[mem] end\
 	count = {}; save = {}; hun(mem); return \"Memory\")","Matrixz","Int","1","Int","1"},
 
 	-- MicroFilRel
@@ -809,9 +816,12 @@ MemoryIns = {
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","RenderPhs"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return hnc(mem,dea))","Resrc","%(return fnc(mem,dea))"},
-		{"Memory","%(return fun(mem))","Int","%(return hnc(mem,pha))","Phase","%(return fnc(mem,pha))"},
+	{"Memory","Vectorz","Int","%(return fnc(\"Vectorz\"))","Instr","RdlDeeIns"},
+		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fil_dep))","Resrc","%(return fun(fil_dep))"},
+		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fil_phs))","Phase","%(return fun(fil_phs))"},
+	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fil_dep))","Resrc","%(return fun(fil_dep))"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fil_phs))","Phase","%(return fun(fil_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
@@ -826,18 +836,21 @@ MemoryIns = {
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","RenderPhs"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return hnc(mem,deb))","Resrc","%(return fnc(mem,deb))"},
-		{"Memory","%(return fun(mem))","Int","%(return hnc(mem,phb))","Phase","%(return fnc(mem,phb))"},
+	{"Memory","Vectorz","Int","%(return fnc(\"Vectorz\"))","Instr","RdlDeeIns"},
+		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
+		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fet_phs))","Phase","%(return fun(fet_phs))"},
+	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
 
 	-- MicroFetCol
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","OldDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","ColorRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","ResizeLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","ColextFrm"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","%(return fun(frm))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","OldDerIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","ReformLoc"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PierceFrm"},
@@ -848,18 +861,21 @@ MemoryIns = {
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","MicroFrm"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RsizQua"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","ColorRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","RenderPhs"},
-	{"Micro","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return hnc(mem,dec))","Resrc","%(return fnc(mem,dec))"},
-		{"Memory","%(return fun(mem))","Int","%(return hnc(mem,phc))","Phase","%(return fnc(mem,phc))"},
+	{"Memory","Vectorz","Int","%(return fnc(\"Vectorz\"))","Instr","RdlDeeIns"},
+		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",col_dep))","Resrc","%(return fun(col_dep))"},
+		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",col_phs))","Phase","%(return fun(col_phs))"},
+	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",col_dep))","Resrc","%(return fun(col_dep))"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",col_phs))","Phase","%(return fun(col_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
 
 	-- Vectorz
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","OldDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","ColorRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","BeforeLoc"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PeekFrm"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","OldDerIns"},
@@ -870,10 +886,18 @@ MemoryIns = {
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","SourceFrm"},
 
 	-- Default/Int
-	{"%(hun(mem); return \"Memory\")","Matrixz","Int","1","Int","1"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Default","%(return fnc(mem,def))"},
-	{"%(hun(mem); return \"Memory\")","Matrixz","Int","1","Int","1"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Int","%(return fnc(mem,arg))"},
+	{"%(\
+	function dun () save = count; count = count + 1; return save end\
+	count = 0; save = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Vectorz","Int","%(return dun())","Default","%(return fun(def))"},
+	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Vectorz","Int","%(return dun())","Int","%(return fun(col_arg))"},
+
+	-- Default/Int
+	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Getoldz","Int","%(return dun())","Default","%(return fun(def))"},
+	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"Memory","Getoldz","Int","%(return dun())","Int","%(return fun(pie_arg))"},
 }
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},

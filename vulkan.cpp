@@ -2193,7 +2193,7 @@ struct DrawState : public BaseState {
         Bnd bnd = get(loc.unl,i);
         {char *st0 = 0; char *st1 = 0; char *st2 = 0;
         showPhase(bnd.phs,&st0); showResrc(bnd.typ,&st1); showInstr(bnd.ins,&st2);
-        log << "setup " << st0 << " " << st1 << " " << st2 << " " << bnd.buf->debug << '\n';
+        log << "setup " << st0 << " " << st1 << " " << st2 << " " << bnd.bnd << " " << bnd.buf->debug << '\n';
         free(st0); free(st1); free(st2);}
         switch (bnd.phs) {default: EXIT
         break; case(PipePhs): if (pipePtr) EXIT; pipePtr = bnd.buf;
