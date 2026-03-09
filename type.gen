@@ -631,7 +631,7 @@ MicroBinding = {
 	crm = {\"MicroConPie\"} crh = cat(nph,pph,{}) crn = cat(nbn,pbn,{})\
 	fdm = {\"MicroFetDrw\"} fdh = cat(fph,dph,{}) fdn = cat(fbn,dbn,{})\
 	fcm = {\"MicroFetCol\"} fch = cat(fph,cph,{}) fcn = cat(fbn,cbn,{})\
-	fpm = {\"MicroFetPie\"} fph = cat(fph,pph,{}) fpn = cat(fbn,pbn,{})\
+	fpm = {\"MicroFetPie\"} fqh = cat(fph,pph,{}) fpn = cat(fbn,pbn,{})\
 	frm = {\"MicroFetRel\"} frh = cat(fph,rph,{}) frn = cat(fbn,rbn,{})\
 	vdm = {\"MicroVtxDrw\"} vdh = cat(vph,dph,{}) vdn = cat(vbn,dbn,{})\
 	vcm = {\"MicroVtxCol\"} vch = cat(vph,cph,{}) vcn = cat(vbn,cbn,{})\
@@ -654,26 +654,26 @@ MicroBinding = {
 	{"Micro","%(return gnc(fdm,fdn))","Int","%(return hnc(fdn,0))","Int","%(return fnc(fdn))"},
 	{"Micro","%(return gnc(fcm,fch))","Int","%(return hnc(fch,0))","Phase","%(return fnc(fch))"},
 	{"Micro","%(return gnc(fcm,fcn))","Int","%(return hnc(fcn,0))","Int","%(return fnc(fcn))"},
-	{"Micro","%(return gnc(fpm,fph))","Int","%(return hnc(fph,0))","Phase","%(return fnc(fph))"},
+	{"Micro","%(return gnc(fpm,fqh))","Int","%(return hnc(fqh,0))","Phase","%(return fnc(fqh))"},
 	{"Micro","%(return gnc(fpm,fpn))","Int","%(return hnc(fpn,0))","Int","%(return fnc(fpn))"},
 	{"Micro","%(return gnc(frm,frh))","Int","%(return hnc(frh,0))","Phase","%(return fnc(frh))"},
 	{"Micro","%(return gnc(frm,frn))","Int","%(return hnc(frn,0))","Int","%(return fnc(frn))"},
-	{"Micro","%(return gnc(vdm,fdh))","Int","%(return hnc(vdh,0))","Phase","%(return fnc(vdh))"},
-	{"Micro","%(return gnc(vdm,fdn))","Int","%(return hnc(vdn,0))","Int","%(return fnc(vdn))"},
-	{"Micro","%(return gnc(vcm,fch))","Int","%(return hnc(vch,0))","Phase","%(return fnc(vch))"},
-	{"Micro","%(return gnc(vcm,fcn))","Int","%(return hnc(vcn,0))","Int","%(return fnc(vcn))"},
-	{"Micro","%(return gnc(vpm,fph))","Int","%(return hnc(vph,0))","Phase","%(return fnc(vph))"},
-	{"Micro","%(return gnc(vpm,fpn))","Int","%(return hnc(vpn,0))","Int","%(return fnc(vpn))"},
-	{"Micro","%(return gnc(vrm,frh))","Int","%(return hnc(vrh,0))","Phase","%(return fnc(vrh))"},
-	{"Micro","%(return gnc(vrm,frn))","Int","%(return hnc(vrn,0))","Int","%(return fnc(vrn))"},
-	{"Micro","%(return gnc(bdm,fdh))","Int","%(return hnc(bdh,0))","Phase","%(return fnc(bdh))"},
-	{"Micro","%(return gnc(bdm,fdn))","Int","%(return hnc(bdn,0))","Int","%(return fnc(bdn))"},
-	{"Micro","%(return gnc(bcm,fch))","Int","%(return hnc(bch,0))","Phase","%(return fnc(bch))"},
-	{"Micro","%(return gnc(bcm,fcn))","Int","%(return hnc(bcn,0))","Int","%(return fnc(bcn))"},
-	{"Micro","%(return gnc(bpm,fph))","Int","%(return hnc(bph,0))","Phase","%(return fnc(bph))"},
-	{"Micro","%(return gnc(bpm,fpn))","Int","%(return hnc(bpn,0))","Int","%(return fnc(bpn))"},
-	{"Micro","%(return gnc(brm,frh))","Int","%(return hnc(brh,0))","Phase","%(return fnc(brh))"},
-	{"Micro","%(return gnc(brm,frn))","Int","%(return hnc(brn,0))","Int","%(return fnc(brn))"},
+	{"Micro","%(return gnc(vdm,vdh))","Int","%(return hnc(vdh,0))","Phase","%(return fnc(vdh))"},
+	{"Micro","%(return gnc(vdm,vdn))","Int","%(return hnc(vdn,0))","Int","%(return fnc(vdn))"},
+	{"Micro","%(return gnc(vcm,vch))","Int","%(return hnc(vch,0))","Phase","%(return fnc(vch))"},
+	{"Micro","%(return gnc(vcm,vcn))","Int","%(return hnc(vcn,0))","Int","%(return fnc(vcn))"},
+	{"Micro","%(return gnc(vpm,vph))","Int","%(return hnc(vph,0))","Phase","%(return fnc(vph))"},
+	{"Micro","%(return gnc(vpm,vpn))","Int","%(return hnc(vpn,0))","Int","%(return fnc(vpn))"},
+	{"Micro","%(return gnc(vrm,vrh))","Int","%(return hnc(vrh,0))","Phase","%(return fnc(vrh))"},
+	{"Micro","%(return gnc(vrm,vrn))","Int","%(return hnc(vrn,0))","Int","%(return fnc(vrn))"},
+	{"Micro","%(return gnc(bdm,bdh))","Int","%(return hnc(bdh,0))","Phase","%(return fnc(bdh))"},
+	{"Micro","%(return gnc(bdm,bdn))","Int","%(return hnc(bdn,0))","Int","%(return fnc(bdn))"},
+	{"Micro","%(return gnc(bcm,bch))","Int","%(return hnc(bch,0))","Phase","%(return fnc(bch))"},
+	{"Micro","%(return gnc(bcm,bcn))","Int","%(return hnc(bcn,0))","Int","%(return fnc(bcn))"},
+	{"Micro","%(return gnc(bpm,bph))","Int","%(return hnc(bph,0))","Phase","%(return fnc(bph))"},
+	{"Micro","%(return gnc(bpm,bpn))","Int","%(return hnc(bpn,0))","Int","%(return fnc(bpn))"},
+	{"Micro","%(return gnc(brm,brh))","Int","%(return hnc(brh,0))","Phase","%(return fnc(brh))"},
+	{"Micro","%(return gnc(brm,brn))","Int","%(return hnc(brn,0))","Int","%(return fnc(brn))"},
 }
 VertexFile = {
 	{"Micro","MicroFilRel","Str","vertexFillG"},
@@ -761,7 +761,7 @@ MemoryIns = {
 	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"IndexRes\",  \"BringupRes\"}\
 	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",  \"FetchPhs\"}"..
 
-	"def={"..
+	"col_def={"..
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
@@ -779,6 +779,24 @@ MemoryIns = {
 	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
 	"}"..
 
+	"pie_def={"..
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
+	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd PipeRes.frc
+
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
+
+	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
+	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
+
+	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
+	"}"..
+
 	"col_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
@@ -789,7 +807,7 @@ MemoryIns = {
 	"pie_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1,7,castMicro(\"MicroFetPie\"),"..
+	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1,castMicro(\"MicroFetPie\"),"..
 	"2,3,"..
 	"}"..
 
@@ -867,8 +885,8 @@ MemoryIns = {
 		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",col_dep))","Resrc","%(return fun(col_dep))"},
 		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",col_phs))","Phase","%(return fun(col_phs))"},
 	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",col_dep))","Resrc","%(return fun(col_dep))"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",col_phs))","Phase","%(return fun(col_phs))"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
+		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
@@ -889,13 +907,13 @@ MemoryIns = {
 	{"%(\
 	function dun () save = count; count = count + 1; return save end\
 	count = 0; save = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
-	{"Memory","Vectorz","Int","%(return dun())","Default","%(return fun(def))"},
+	{"Memory","Vectorz","Int","%(return dun())","Default","%(return fun(col_def))"},
 	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Vectorz","Int","%(return dun())","Int","%(return fun(col_arg))"},
 
 	-- Default/Int
 	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
-	{"Memory","Getoldz","Int","%(return dun())","Default","%(return fun(def))"},
+	{"Memory","Getoldz","Int","%(return dun())","Default","%(return fun(pie_def))"},
 	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getoldz","Int","%(return dun())","Int","%(return fun(pie_arg))"},
 }

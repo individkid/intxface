@@ -830,32 +830,21 @@ void planeTest(enum Thread tag, int idx)
 
     if (count == tested) {}
 
-    /*else if (count%10 == 1 || count%10 == 6) {
-    struct Center *drw = centerPull(Memorys+2); if (!drw) {callWait(); continue;}
-    freeCenter(drw);
-    drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
-    drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroConPie;
-    drw->drw[0].siz = sizeof(hiv)/sizeof(int);
-    allocInt(&drw->drw[0].arg,drw->drw[0].siz);
-    for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = hiv[i];
-    callCopy(drw,Memorys+2,RptRsp,0,(debug?"debug":0));}*/
-
-    /*else if (count%10 == 2 || count%10 == 7) {
+    else if (count%6 == 1 || count%6 == 4) {
     struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz);
-    callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}*/
+    callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
 
-    else if (count%6 == 1 || count%6 == 4) {
+    else if (count%6 == 2 || count%6 == 5) {
     struct Center *eek = centerPull(Memorys+5); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocInt(&eek->uns,eek->siz);
     callCopy(eek,Memorys+5,RptRsp,1,(debug?"ident":0));}
 
-    else if (count%6 == 2 || count%6 == 5) {
+    else if (count%6 == 3 || count%6 == 0) {
     struct Center *vec = centerPull(Vectorz); freeCenter(vec);
     vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
     allocVector(&vec->vec,vec->siz);
