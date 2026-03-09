@@ -761,7 +761,7 @@ MemoryIns = {
 	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"IndexRes\",  \"BringupRes\"}\
 	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",  \"FetchPhs\"}"..
 
-	"col_def={"..
+	"def0 = {"..
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
@@ -774,27 +774,11 @@ MemoryIns = {
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd SamplePhs.bnd PipeRes.frc
-
-	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
+	"\"TrivDef\",\"TrivDef\"".. -- UniformRes.bnd UniformRes.bnd
 	"}"..
-
-	"pie_def={"..
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd PipeRes.frc
-
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
-
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
-
-	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
+	"def1 = {"..
+	"\"TrivDef\",".. -- SamplePhs.bnd PipeRes.frc
+	"\"GiveDef\",\"GiveDef\"".. -- WholeFrm.idx WholeFrm.siz
 	"}"..
 
 	"col_arg={"..
@@ -807,9 +791,13 @@ MemoryIns = {
 	"pie_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1,castMicro(\"MicroFetPie\"),"..
+	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1, castMicro(\"MicroFetPie\"),"..
 	"2,3,"..
 	"}"..
+
+	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
+	"col_def = cat({def0,{\"TrivDef\"},def1},{})"..
+	"pie_def = cat({def0,def1},{})"..
 
 	"\
 	function fun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(u) else return u end end end\
