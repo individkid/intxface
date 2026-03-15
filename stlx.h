@@ -435,11 +435,12 @@ template <int Size, int Dim, int Min> struct SimpleState {
         }
     };
     std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
-    std::map<Wseq,Indx,WseqLess> ording; // to find next in sparse ording
+    std::map<Wseq,Indx,WseqLess> ording; // to find next or last of list
+    std::map<Only,int,OnlyLess> keysiz; // how many in list
+    Indx seqold;
+    std::map<Seqn,Indx,SeqnLess> seqing; // to find next or last of all
     std::map<Indx,Only,IndxLess> keyval; // which list index is in
     std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
-    std::map<Only,int,OnlyLess> keysiz; // number in list
-    std::set<Wsiz,WsizLess> keyord; // ordered by number
     std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
     Seqn seqn;
     std::map<int,Only> idxkey; // handle for qualifier
@@ -479,12 +480,12 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (*i < siz) temp.push_back(*i);
         pool = temp;
         // add to pool to increase to siz
-        Indx max = 0;
+        Indx lim = 0;
         for (auto i = pool.begin(); i != pool.end(); i++)
-        if (*i >= max) max = *i+1;
+        if (*i >= lim) lim = *i+1;
         for (auto i = keyval.begin(); i != keyval.end(); i++)
-        if ((*i).first >= max) max = (*i).first+1;
-        for (int i = max; i < siz; i++) pool.push_back(i);
+        if ((*i).first >= lim) lim = (*i).first+1;
+        for (int i = lim; i < siz; i++) pool.push_back(i);
     }
     void remove(int idx) {
         auto itr = keyval.find(idx);
@@ -495,78 +496,75 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (oldest[tmp] == idx && newest[tmp] == idx) {
         oldest.erase(tmp);
         newest.erase(tmp);}
-        else if (oldest[tmp] == idx) {
-        Wseq seq = get(tmp,(num+1)%wrap);
-        oldest[tmp] = (*ording.lower_bound(seq)).second;}
-        else if (newest[tmp] == idx) {
-        Wseq seq = get(tmp,(num+wrap-1)%wrap);
-        newest[tmp] = (*ording.upper_bound(seq)).second;}
+        else if (oldest[tmp] == idx) while (1) {
+        num = (num+1)%wrap; Wseq seq = get(tmp,num); auto itr = ording.find(seq);
+        if (itr != ording.end()) {oldest[tmp] = (*itr).second; break;}}
+        else if (newest[tmp] == idx) while (1) {
+        num = (num+wrap-1)%wrap; Wseq seq = get(tmp,num); auto itr = ording.find(seq);
+        if (itr != ording.end()) {newest[tmp] = (*itr).second; break;}}
+        if ((keysiz[tmp] -= 1) == 0) keysiz.erase(tmp);
         ording.erase(seq);
         keyval.erase(idx);
+        num = seqnum[idx];
+        seqing.erase(num);
+        if (!seqing.empty()) while (1) {
+        num = (num+1)%wrap; auto itr = seqing.find(num);
+        if (itr != seqing.end()) {seqold = (*itr).second; break;}}
         seqnum.erase(idx);
-        if (keysiz[tmp] == 1) {keyord.erase(get(tmp,1)); keysiz.erase(tmp);}
-        else {keyord.erase(get(tmp,keysiz[tmp])); keysiz[tmp] -= 1; keyord.insert(get(tmp,keysiz[tmp]));}
         pool.push_front(idx);
     }
     void insert(Only &tmp, int idx) { // after insert given idx is newest
         if (oldest.find(tmp) == oldest.end()) oldest[tmp] = idx;
         newest[tmp] = idx;
+        if (keysiz.find(tmp) == keysiz.end()) keysiz[tmp] = 1; else keysiz[tmp] += 1;
         ording[get(tmp,seqn)] = idx;
         keyval[idx] = tmp;
         seqnum[idx] = seqn;
-        if (keysiz.find(tmp) == keysiz.end()) {
-        keysiz[tmp] = 1; keyord.insert(get(tmp,1));} else {
-        keyord.erase(get(tmp,keysiz[tmp]));
-        keysiz[tmp] += 1;
-        keyord.insert(get(tmp,keysiz[tmp]));}
+        if (seqing.empty()) seqold = idx;
+        seqing[seqn] = idx;
         seqn = (seqn+1)%wrap;
     }
-    int insert(Only &tmp) {
-        auto itr = keyord.rbegin(); // class with the most
-        if (pool.empty() && keysiz.find(tmp) == keysiz.end())
-        // there are none of the given class
-        remove(oldest[get(*itr)]); // remove oldest of class with the most
-        else if (pool.empty() && (*itr)[Dim] > keysiz[tmp]+1)
-        // TODO is this right? if given has one, then class with most keeps up to two
-        // class with the most has much more than given class
-        remove(oldest[get(*itr)]); // remove oldest of class with the most
-        else if (pool.empty())
-        // given class must rotate
-        remove(oldest[tmp]); // remove oldest of given class
+    int insert(Only &tmp, SmartState log) {
+        if (pool.empty() && seqing.empty()) {*(int*)0=0;exit(-1);}
+        if (pool.empty()) remove(seqold);
         Indx idx = pool.front(); pool.pop_front();
         insert(tmp,idx); // make last removed the newest
+        log << "insert " << idx << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         return idx;
     }
-    Pair oldbuf(Only &tmp) { // used for insert in advance, so no preemptive insert
+    Pair oldbuf(Only &tmp, SmartState log) { // used for insert in advance, so no preemptive insert
         Pair ret;
         ret.reuse = (oldest.find(tmp) == oldest.end());
-        if (ret.reuse) insert(tmp);
+        log << "oldbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        if (ret.reuse) insert(tmp,log);
         ret.resrc = oldest[tmp];
         return ret;
     }
-    Pair getbuf(Only &tmp) { // used for reserve, so returns new oldest if possible
+    Pair getbuf(Only &tmp, SmartState log) { // used for reserve, so returns new oldest if possible
         Pair ret;
-        ret.reuse = (keysiz.find(tmp) == keysiz.end() || keysiz[tmp] < Min || !pool.empty());
-        if (ret.reuse) {int idx = insert(tmp);
+        ret.reuse = (oldest.find(tmp) == oldest.end() || keysiz[tmp] < Min || !pool.empty());
+        log << "getbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        if (ret.reuse) {int idx = insert(tmp,log);
         while (oldest[tmp] != idx) {
-        remove(oldest[tmp]); insert(tmp);}}
+        remove(oldest[tmp]); insert(tmp,log);}}
         ret.resrc = oldest[tmp];
         return ret;
     }
-    Pair newbuf(Only &tmp) { // used for depend, so returns result of last advance
+    Pair newbuf(Only &tmp, SmartState log) { // used for depend, so returns result of last advance
         Pair ret;
         ret.reuse = (newest.find(tmp) == newest.end());
-        if (ret.reuse) insert(tmp);
+        log << "newbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        if (ret.reuse) insert(tmp,log);
         ret.resrc = newest[tmp];
         return ret;
     }
-    Pair newold(int idx, int tag, int val) { // move last of idx to tag val
+    Pair newold(int idx, int tag, int val, SmartState log) { // move last of idx to tag val
         Only src = get(idx,Dim,0);
         Only dst = get(idx,tag,val);
         Pair ret;
         ret.reuse = (newest.find(src) == newest.end());
         if (!ret.reuse) remove(newest[src]);
-        ret.resrc = insert(dst);
+        ret.resrc = insert(dst,log);
         return ret;
     }
     void qualify(int idx, int tag, int val) {
@@ -574,21 +572,21 @@ template <int Size, int Dim, int Min> struct SimpleState {
         Only tmp = {0}; idxkey[idx] = tmp;}
         if (tag >= 0 && tag < Dim) idxkey[idx][tag] = val;
     }
-    int insert(int idx, int tag, int val) {
+    int insert(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return insert(tmp);
+        return insert(tmp,log);
     }
-    Pair oldbuf(int idx, int tag, int val) {
+    Pair oldbuf(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return oldbuf(tmp);
+        return oldbuf(tmp,log);
     }
-    Pair getbuf(int idx, int tag, int val) {
+    Pair getbuf(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return getbuf(tmp);
+        return getbuf(tmp,log);
     }
-    Pair newbuf(int idx, int tag, int val) {
+    Pair newbuf(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return newbuf(tmp);
+        return newbuf(tmp,log);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}

@@ -762,36 +762,40 @@ MemoryIns = {
 	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",  \"FetchPhs\"}"..
 
 	"def0 = {"..
+	-- MicroFilRel
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
 	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd PipeRes.frc
-
+	-- MicroFetRel
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
-
+	-- MicroFetCol
+	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
 	"\"TrivDef\",\"TrivDef\"".. -- UniformRes.bnd UniformRes.bnd
-	"}"..
+	"}".. -- SamplePhs.bnd
 	"def1 = {"..
-	"\"TrivDef\",".. -- SamplePhs.bnd PipeRes.frc
+	"\"TrivDef\",".. -- PipeRes.frc
+	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
+	-- Vectorz
 	"\"GiveDef\",\"GiveDef\"".. -- WholeFrm.idx WholeFrm.siz
 	"}"..
 
 	"col_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"0,1,0,12,castMicro(\"MicroFetCol\"),0,castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),"..
+	"0,1,0,1,0,12,castMicro(\"MicroFetCol\"),0,castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),0,0,"..
 	"2,3,"..
 	"}"..
 
 	"pie_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1, castMicro(\"MicroFetPie\"),"..
+	"0,1,0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1, castMicro(\"MicroFetPie\"),0,0,"..
 	"2,3,"..
 	"}"..
 
@@ -853,6 +857,9 @@ MemoryIns = {
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
 
 	-- MicroFetCol
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","OldDerIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","ResizeLoc"},
@@ -878,6 +885,9 @@ MemoryIns = {
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
 
 	-- Vectorz
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","OldDerIns"},

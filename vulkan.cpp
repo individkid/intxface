@@ -155,7 +155,7 @@ struct Res {
     BaseState *resrc; bool reuse;
 };
 struct StackState {
-    static const int descrs = 4; // maximum descriptor sets in use
+    static const int descrs = 3;
     static const int micros = Micros;
     static const int frames = 2; // prevent blocking on resources
     static const int images = 10; // fragment shader textures
@@ -167,15 +167,15 @@ struct StackState {
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
     virtual void show(int hdl, Quality key, int val, char **str) = 0;
-    virtual Res newold(int hdl, Quality key, int val) = 0;
-    virtual Res newbuf(int hdl, Quality key, int val) = 0;
-    virtual Res oldbuf(int hdl, Quality key, int val) = 0;
-    virtual Res getbuf(int hdl, Quality key, int val) = 0;
+    virtual Res newold(int hdl, Quality key, int val, SmartState log) = 0;
+    virtual Res newbuf(int hdl, Quality key, int val, SmartState log) = 0;
+    virtual Res oldbuf(int hdl, Quality key, int val, SmartState log) = 0;
+    virtual Res getbuf(int hdl, Quality key, int val, SmartState log) = 0;
     virtual BaseState *idxbuf(int i) = 0;
     virtual BaseState *newbuf() = 0;
     virtual BaseState *oldbuf() = 0;
     virtual void post() = 0;
-    virtual void advance(int hdl, Quality key, int val) = 0;
+    virtual void advance(int hdl, Quality key, int val, SmartState log) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
     virtual int buftag(int i, Quality t) = 0;
@@ -343,24 +343,24 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (!excl) EXIT
         tag.show(hdl,key,val,str);
     }
-    Res newold(int hdl, Quality key, int val) /*override*/ {
+    Res newold(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.newold(hdl,key,val);
+        auto idx = tag.newold(hdl,key,val,log);
         return {&state[idx.resrc],idx.reuse};
     }
-    Res newbuf(int hdl, Quality key, int val) /*override*/ {
+    Res newbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.newbuf(hdl,key,val);
+        auto idx = tag.newbuf(hdl,key,val,log);
         return {&state[idx.resrc],idx.reuse};
     }
-    Res oldbuf(int hdl, Quality key, int val) /*override*/ {
+    Res oldbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.oldbuf(hdl,key,val);
+        auto idx = tag.oldbuf(hdl,key,val,log);
         return {&state[idx.resrc],idx.reuse};
     }
-    Res getbuf(int hdl, Quality key, int val) /*override*/ {
+    Res getbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.getbuf(hdl,key,val);
+        auto idx = tag.getbuf(hdl,key,val,log);
         return {&state[idx.resrc],idx.reuse};
     }
     BaseState *idxbuf(int i) /*override*/ {
@@ -380,12 +380,12 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         excl = false;
         safe.post();
     }
-    void advance(int hdl, Quality key, int val) /*override*/ {
+    void advance(int hdl, Quality key, int val, SmartState log) /*override*/ {
         // make oldbuf into newbuf
         safe.wait();
-        auto idx = tag.oldbuf(hdl,key,val);
+        auto idx = tag.oldbuf(hdl,key,val,log);
         tag.remove(idx.resrc);
-        if (tag.insert(hdl,key,val)!=idx.resrc) EXIT
+        if (tag.insert(hdl,key,val,log)!=idx.resrc) EXIT
         safe.post();
     }
     void advance(int i) /*override*/ {
@@ -570,21 +570,17 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool check(SaveState *sav);
+    bool check(SaveState *sav, SmartState log);
     bool push(BindState *ptr, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
-        if (check(unl.der)) {
-        {char *st0 = 0; char *st1 = 0;
-        showReloc(req.loc,&st0); showExtent(req.ext,&st1);
-        log << debug << ":fail " << st0 << " " << st1 << '\n';
-        free(st0); free(st1);}
+        if (check(unl.der,log)) {
         safe.post(); return false;}
+        plock += 1;
         {char *st0 = 0; char *st1 = 0;
         showReloc(req.loc,&st0); showExtent(req.ext,&st1);
-        log << debug << ":pass " << st0 << " " << st1 << '\n';
+        log << debug << ":pass " << plock << " " << st0 << " " << st1 << '\n';
         free(st0); free(st1);}
-        plock += 1;
         safe.post();
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
@@ -600,8 +596,9 @@ struct BaseState {
     }
     void fail(SmartState log) {
         safe.wait();
-        if (plock != 1) EXIT
-        plock = 0; lock = 0;
+        plock -= 1;
+        log << debug << ":fail " << plock << '\n';
+        if (plock == 0) lock = 0;
         safe.post();
     }
     void reset(SmartState log) {
@@ -677,16 +674,16 @@ struct BaseState {
     }
     void unlock(Unl &unl, SmartState log);
     void advance(Adv &adv, SmartState log) {
-        item->advance(adv.hdl,adv.key,adv.val);
+        item->advance(adv.hdl,adv.key,adv.val,log);
     }
     void baseups(Reloc loc, SmartState log) {
         // after fence triggered
-        log << "baseups " << debug << '\n';
         upset(ploc[loc],log);
         if (lock) unlock(ploc[loc].unl,log);
         safe.wait();
         if (plock <= 0) EXIT
         plock -= 1;
+        log << debug << ":baseups " << plock << '\n';
         if (plock == 0) {
         lock = 0;
         if (adv.adv == FnceAdv) advance(adv,log);}
@@ -909,8 +906,9 @@ struct BindState : public BaseState {
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         SaveState *sav = &bind[typ].get(0);
+        if (sav == 0) EXIT
         if (sav->fin < i || sav->fst > i) {bind[typ].get(1); sav = &bind[typ].get(0);}
-        if (sav->fin < i || sav->fst > i) ERROR();
+        if (sav->fin < i || sav->fst > i) EXIT
         return sav;
     }
     bool vld(Resrc typ) { // mark resource array as locked
@@ -975,18 +973,14 @@ struct BindState : public BaseState {
         if (sav->psav <= 0) EXIT
         sav->psav -= 1;
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
-        bind[sav->typ].clear();
         sav->sav = false; lock -= 1;}
         log << sav->buf->debug << ":done lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
-    void done(Resrc typ, SmartState log) { // depender upon fail
-        done(get(typ),log);
-    }
     void done(SmartState log) { // attempt this release
         if (!excl) EXIT
-        log << debug << ":bind lock:" << lock  << '\n';
         if (lock == 1) {
         lock = 0; resp.clear();
+        log << debug << ":done lock:" << lock  << '\n';
         safe.wait(); excl = false; safe.post();}
     }
     void done(Unl unl, SmartState log) { // attempt dependee release
@@ -1015,7 +1009,6 @@ struct BindState : public BaseState {
         if ((elock ? sav->wsav : sav->rsav) <= 0) EXIT
         (elock ? sav->wsav : sav->rsav) -= 1;
         if (sav->psav == 0 && sav->rsav == 0 && sav->wsav == 0) {
-        bind[sav->typ].clear();
         sav->sav = false; lock -= 1;}
         log << sav->buf->debug << ":decr lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
     }
@@ -1032,8 +1025,11 @@ struct BindState : public BaseState {
         decr(sav,true,log);
     }
 };
-bool BaseState::check(SaveState *sav) {
-    return (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav);
+bool BaseState::check(SaveState *sav, SmartState log) {
+    if (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav) {
+    log << debug << ":fail p:" << plock << "-" << sav->psav << "||r:" << rlock << "-" << sav->rsav << "||w:" << wlock << "-" << sav->wsav << '\n';
+    return true;}
+    return false;
 }
 void BaseState::unlock(Unl &unl, SmartState log) {
     lock->done(unl,log);
@@ -1118,19 +1114,19 @@ struct CopyState {
         int tmp = idx; idx += 1;
         return arg[tmp];
     }
-    BaseState *get(Instr ins, Resrc res, int idx, int hdl, Quality key, int val) {
+    BaseState *get(Instr ins, Resrc res, int idx, int hdl, Quality key, int val, SmartState log) {
         // depender or dependee qualified resource
         switch (ins) {default: break;
-        case(NewDerIns): case(NidDerIns):
+        case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
         case(WrlDeeIns): case(WidDeeIns):
         case(RdlDeeIns): case(RidDeeIns): {
-        auto ptr = src(res)->newbuf(hdl,key,val);
+        auto ptr = src(res)->newbuf(hdl,key,val,log);
         if (ptr.reuse) ptr.resrc->finish();
         return ptr.resrc;}
         break; case(OldDerIns): case(OidDerIns):
-        return src(res)->getbuf(hdl,key,val).resrc;
+        return src(res)->getbuf(hdl,key,val,log).resrc; // TODO why not finish upon reuse
         break; case(GetDerIns): case(GidDerIns):
-        return src(res)->oldbuf(hdl,key,val).resrc;
+        return src(res)->oldbuf(hdl,key,val,log).resrc;
         break; case(IdxDerIns): case(IdxDeeIns):
         return src(res)->idxbuf(idx);}
         return 0;
@@ -1154,7 +1150,7 @@ struct CopyState {
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
-        bool goon = true; while (goon) {goon = false;
+        bool goon = true; while (goon) {goon = false; slog.clr();
         log << "count depends" << '\n';
         int count = 0;
         for (int i = 0; i < num; i++) {
@@ -1167,10 +1163,19 @@ struct CopyState {
         BindState *bind = 0; int min = 0;
         if (count > min) {
         stack[BindRes]->wait();
-        bind = stack[BindRes]->getbuf(0,Qualitys,0).resrc->getBind(log);
+        bind = stack[BindRes]->getbuf(0,Qualitys,0,log).resrc->getBind(log);
         stack[BindRes]->post();}
         int lim = num; // number checked for reservation
         if (count > min && bind == 0) lim = -1;
+        log << "allow reuse" << '\n';
+        for (int i = 0; i < num && i <lim; i++) {
+            switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
+            break; case (SetTagIns):
+            break; case (MovTagIns):
+            break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
+            case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
+            bind->bind[RES].clear();}}
         log << "reserve arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: if (!bind->vld(RES)) src(RES)->wait();
@@ -1189,14 +1194,14 @@ struct CopyState {
             showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
             log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
             free(st0); free(st1); free(st2);}
-            src(KES)->newold(ONL);
+            src(KES)->newold(ONL,log);
             bind->set(KES,Lst{Onl{ONL},INS,FRC});}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             Lst lst = Lst{Onl{ONL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
             // note there is no way to refer to previous before intervening of a certain resource
-            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL),i,lst,log));
+            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL,log),i,lst,log));
             {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
             sav->fin = i;}}}
         log << "release arrays" << '\n';
@@ -1255,7 +1260,7 @@ struct CopyState {
             SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NewDerIns): case(NidDerIns): {
-            if (sav->fst == i) src(RES)->advance(ONL);
+            if (sav->fst == i) src(RES)->advance(ONL,log);
             log << "NewDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
@@ -1269,7 +1274,7 @@ struct CopyState {
         ptr->slf = 0;
         switch (rsp) {default:
         break; case (RetRsp): case (RptRsp): thread->push(log,ptr,sub);}
-        if (bind) stack[BindRes]->advance(0,Qualitys,0);
+        if (bind) stack[BindRes]->advance(0,Qualitys,0,log);
         } else {
         log << "wrap handles " << num << ">" << lim << '\n';
         if (lim >= 0) for (int i = lim+1; i < num; i++) {
@@ -1280,14 +1285,13 @@ struct CopyState {
             switch (INS) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            bind->done(RES,log);
-            sav->buf->fail(log);}
+            bind->done(sav,log); sav->buf->fail(log);}
             break; case(WrlDeeIns): case (WidDeeIns): {
             bind->wdec(sav,log);}
             break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns): {
             bind->rdec(sav,log);}}}
         if (bind) bind->done(log);
-        log << "notify fail" << '\n';
+        log << "notify fail" << '\n'; slog.clr();
         switch (rsp) {default:
         break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
         break; case (MltRsp): ptr->slf = -1;
@@ -1766,7 +1770,7 @@ struct PipeState : public BaseState {
         device(StackState::device),
         renderPass(StackState::renderPass[MicroRender__Micro__Render((Micro)StackState::micro)]),
         micro((Micro)StackState::micro++),
-        descriptorPool(createDescriptorPool(StackState::device,StackState::descrs)),
+        descriptorPool(createDescriptorPool(StackState::device,StackState::descrs,StackState::micros)),
         descriptorSetLayout(createDescriptorSetLayout(StackState::device,micro)),
         pipelineLayout(createPipelineLayout(StackState::device,descriptorSetLayout)),
         pipeline(createGraphicsPipeline(StackState::device,getRenderPass(),pipelineLayout,micro)) {
@@ -1792,7 +1796,7 @@ struct PipeState : public BaseState {
     void upset(Loc &loc, SmartState log) override {
         log << "upset " << debug << '\n';
     }
-    static VkDescriptorPool createDescriptorPool(VkDevice device, int frames);
+    static VkDescriptorPool createDescriptorPool(VkDevice device, int descrs, int micros);
     static VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device, Micro micro);
     static VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
     static VkPipeline createGraphicsPipeline(VkDevice device, VkRenderPass renderPass, VkPipelineLayout pipelineLayout, Micro micro);
@@ -2261,6 +2265,11 @@ struct MainState {
     CopyState copyState;
     ChangeState<Configure,Configures> changeState;
     CallState callState;
+    void livelockDebug() {
+        for (int i = 0; i < StackState::micros; i++) {
+        DrawState *ptr = &drawState.state[i];
+        std::cout << ptr->debug << " " << ptr->valid << "/" << ptr->plock << "/" << ptr->rlock << "/" << ptr->wlock << std::endl;}
+    }
     MainState() :
         enumState{
             {SwapRes,&swapState},
@@ -2432,7 +2441,7 @@ void errorFunc(const char *str, int num, int idx) {
     std::cout << "errfnc called on " << idx << " in " << str << ": " << num << std::endl;
 }
 void sigintFunc(int sig) {
-    slog.clr(); *(int*)0=0;
+    slog.clr(); /*mptr->livelockDebug();*/ *(int*)0=0;
 }
 
 int main(int argc, const char **argv) {
@@ -2482,7 +2491,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanState::debugCallback(VkDebugUtilsMessageSev
     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     if (messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
     std::cout << "validation layer: " << pCallbackData->pMessage << " severity:0x" << std::hex << messageSeverity << std::dec << std::endl;
-    // if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) *(int*)0=0;
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {slog.clr(); *(int*)0=0;}
     // if (pCallbackData->messageIdNumber == 1180184443) *(int*)0=0;
     return VK_FALSE;
 }
@@ -2934,21 +2943,21 @@ void SwapState::createFramebuffers(VkDevice device, VkExtent2D swapChainExtent, 
     createFramebuffer(device,swapChainExtent,renderPass,swapChainImageViews[i],depthImageView,framebuffers[i]);
 }
 
-VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int frames) {
+VkDescriptorPool PipeState::createDescriptorPool(VkDevice device, int descrs, int micros) {
     VkDescriptorPool descriptorPool;
     HeapState<VkDescriptorPoolSize, 3> poolSizes; poolSizes.fill({});
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(frames);
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(descrs*micros);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(frames);
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(descrs*micros);
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[2].descriptorCount = static_cast<uint32_t>(frames);
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(descrs*micros);
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     descriptorPoolInfo.pPoolSizes = poolSizes.data();
-    descriptorPoolInfo.maxSets = static_cast<uint32_t>(frames);
+    descriptorPoolInfo.maxSets = static_cast<uint32_t>(micros);
     if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
     EXIT
     return descriptorPool;
