@@ -152,7 +152,7 @@ struct Onl {
 };
 struct BaseState;
 struct Res {
-    BaseState *resrc; bool reuse;
+    BaseState *resrc; int reuse; int index;
 };
 struct StackState {
     static const int descrs = 3;
@@ -167,7 +167,6 @@ struct StackState {
     virtual void qualify(int hdl, Quality key, int val) = 0;
     virtual bool compare(Onl one, Onl oth) = 0;
     virtual void show(int hdl, Quality key, int val, char **str) = 0;
-    virtual Res newold(int hdl, Quality key, int val, SmartState log) = 0;
     virtual Res newbuf(int hdl, Quality key, int val, SmartState log) = 0;
     virtual Res oldbuf(int hdl, Quality key, int val, SmartState log) = 0;
     virtual Res getbuf(int hdl, Quality key, int val, SmartState log) = 0;
@@ -175,7 +174,7 @@ struct StackState {
     virtual BaseState *newbuf() = 0;
     virtual BaseState *oldbuf() = 0;
     virtual void post() = 0;
-    virtual void advance(int hdl, Quality key, int val, SmartState log) = 0;
+    virtual void advance(int hdl, Quality key, int val, int idx, SmartState log) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
     virtual int buftag(int i, Quality t) = 0;
@@ -343,25 +342,20 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (!excl) EXIT
         tag.show(hdl,key,val,str);
     }
-    Res newold(int hdl, Quality key, int val, SmartState log) /*override*/ {
-        if (!excl) EXIT
-        auto idx = tag.newold(hdl,key,val,log);
-        return {&state[idx.resrc],idx.reuse};
-    }
     Res newbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
         auto idx = tag.newbuf(hdl,key,val,log);
-        return {&state[idx.resrc],idx.reuse};
+        return {&state[idx.resrc],idx.reuse,idx.resrc};
     }
     Res oldbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
         auto idx = tag.oldbuf(hdl,key,val,log);
-        return {&state[idx.resrc],idx.reuse};
+        return {&state[idx.resrc],idx.reuse,idx.resrc};
     }
     Res getbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
         if (!excl) EXIT
         auto idx = tag.getbuf(hdl,key,val,log);
-        return {&state[idx.resrc],idx.reuse};
+        return {&state[idx.resrc],idx.reuse,idx.resrc};
     }
     BaseState *idxbuf(int i) /*override*/ {
         if (!excl) EXIT
@@ -380,12 +374,12 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         excl = false;
         safe.post();
     }
-    void advance(int hdl, Quality key, int val, SmartState log) /*override*/ {
+    void advance(int hdl, Quality key, int val, int idx, SmartState log) /*override*/ {
         // make oldbuf into newbuf
         safe.wait();
-        auto idx = tag.oldbuf(hdl,key,val,log);
-        tag.remove(idx.resrc);
-        if (tag.insert(hdl,key,val,log)!=idx.resrc) EXIT
+        auto tmp = tag.get(hdl,key,val);
+        tag.remove(idx);
+        tag.insert(tmp,idx);
         safe.post();
     }
     void advance(int i) /*override*/ {
@@ -508,9 +502,12 @@ enum Advance {
     PushAdv, FnceAdv, QualAdv,
 };
 struct Adv {
-    Advance adv; int hdl; Quality key; int val;
+    Advance adv; int hdl; Quality key; int val; int idx;
 };
-struct SaveState;
+struct SaveState {
+    BaseState *buf; bool sav; int psav, rsav, wsav; Resrc typ; int fst, fin, idx, use;
+    SaveState() : buf(0), sav(false), psav(0), rsav(0), wsav(0), typ(Resrcs), fst(0), fin(0), idx(0), use(0) {}
+};
 struct Unl {
     SaveState *der; int dee; int siz;
 };
@@ -570,7 +567,12 @@ struct BaseState {
     ~BaseState() {
         // std::cout << "~" << debug << std::endl;
     }
-    bool check(SaveState *sav, SmartState log);
+    bool check(SaveState *sav, SmartState log) {
+        if (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav) {
+        log << debug << ":fail p:" << plock << "-" << sav->psav << "||r:" << rlock << "-" << sav->rsav << "||w:" << wlock << "-" << sav->wsav << '\n';
+        return true;}
+        return false;
+    }
     bool push(BindState *ptr, Requ req, Unl unl, SmartState log) {
         // reserve before pushing to thread
         safe.wait();
@@ -674,7 +676,7 @@ struct BaseState {
     }
     void unlock(Unl &unl, SmartState log);
     void advance(Adv &adv, SmartState log) {
-        item->advance(adv.hdl,adv.key,adv.val,log);
+        item->advance(adv.hdl,adv.key,adv.val,adv.idx,log);
     }
     void baseups(Reloc loc, SmartState log) {
         // after fence triggered
@@ -850,10 +852,6 @@ struct ThreadState : public DoneState {
     }
 };
 
-struct SaveState {
-    BaseState *buf; bool sav; int psav, rsav, wsav; Resrc typ; int fst, fin;
-    SaveState() : buf(0), sav(false), psav(0), rsav(0), wsav(0), typ(Resrcs), fst(0), fin(0) {}
-};
 struct Sav {
     SaveState *sav; Instr ins; Phase phs; int bnd;
 };
@@ -923,12 +921,12 @@ struct BindState : public BaseState {
         bool tmp =  atom[typ]; atom[typ] = false;
         return tmp;
     }
-    SaveState *add(Resrc typ, Phase ref, int bnd, BaseState *buf, int fst, Lst lst, SmartState log) { // add resource of type
+    SaveState *add(Resrc typ, Phase ref, int bnd, Res res, int fst, Lst lst, SmartState log) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (ref < 0 || ref >= Phases) EXIT
         SaveState *sav = &bind[typ].add(1);
-        sav->buf = buf; sav->typ = typ; sav->fst = fst;
+        sav->buf = res.resrc; sav->typ = typ; sav->fst = fst; sav->idx = res.index; sav->use = res.reuse;
         set(typ,lst);
         {char *st0 = 0; char *st1 = 0;
         showResrc(typ,&st0); showPhase(ref,&st1);
@@ -1025,12 +1023,6 @@ struct BindState : public BaseState {
         decr(sav,true,log);
     }
 };
-bool BaseState::check(SaveState *sav, SmartState log) {
-    if (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav) {
-    log << debug << ":fail p:" << plock << "-" << sav->psav << "||r:" << rlock << "-" << sav->rsav << "||w:" << wlock << "-" << sav->wsav << '\n';
-    return true;}
-    return false;
-}
 void BaseState::unlock(Unl &unl, SmartState log) {
     lock->done(unl,log);
 }
@@ -1114,25 +1106,24 @@ struct CopyState {
         int tmp = idx; idx += 1;
         return arg[tmp];
     }
-    BaseState *get(Instr ins, Resrc res, int idx, int hdl, Quality key, int val, SmartState log) {
+    Res get(Instr ins, Resrc res, int idx, int hdl, Quality key, int val, SmartState log) {
         // depender or dependee qualified resource
+        Res ptr = {0,0,0};
         switch (ins) {default: break;
         case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
         case(WrlDeeIns): case(WidDeeIns):
-        case(RdlDeeIns): case(RidDeeIns): {
-        auto ptr = src(res)->newbuf(hdl,key,val,log);
-        if (ptr.reuse) ptr.resrc->finish();
-        return ptr.resrc;}
+        case(RdlDeeIns): case(RidDeeIns):
+        ptr = src(res)->newbuf(hdl,key,val,log);
         break; case(OldDerIns): case(OidDerIns):
-        return src(res)->getbuf(hdl,key,val,log).resrc; // TODO why not finish upon reuse
+        ptr = src(res)->getbuf(hdl,key,val,log);
         break; case(GetDerIns): case(GidDerIns):
-        return src(res)->oldbuf(hdl,key,val,log).resrc;
+        ptr = src(res)->oldbuf(hdl,key,val,log);
         break; case(IdxDerIns): case(IdxDeeIns):
-        return src(res)->idxbuf(idx);}
-        return 0;
+        ptr = Res{src(res)->idxbuf(idx),0,idx};}
+        return ptr;
     }
     SaveState *get(Instr ins, Resrc res, int idx, BindState *bnd, SmartState log) {
-        switch (ins) {default: break; case(SetTagIns): case(MovTagIns): return 0;}
+        switch (ins) {default: break; case(SetTagIns): return 0;}
         return bnd->get(res,idx,log);
     }
     #define INS ins[i].ins
@@ -1160,10 +1151,11 @@ struct CopyState {
             break; case(WrlDeeIns): case(RdlDeeIns): count += 1;
             break; case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): count += 1;}}
         log << "choose binding" << '\n';
-        BindState *bind = 0; int min = 0;
+        BindState *bind = 0; int indx = 0; int min = 0;
         if (count > min) {
         stack[BindRes]->wait();
-        bind = stack[BindRes]->getbuf(0,Qualitys,0,log).resrc->getBind(log);
+        Res ptr = stack[BindRes]->getbuf(0,Qualitys,0,log);
+        bind = ptr.resrc->getBind(log); indx = ptr.index;
         stack[BindRes]->post();}
         int lim = num; // number checked for reservation
         if (count > min && bind == 0) lim = -1;
@@ -1171,15 +1163,14 @@ struct CopyState {
         for (int i = 0; i < num && i <lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (SetTagIns):
-            break; case (MovTagIns):
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
-            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns): // TODO notice depender resources
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
             bind->bind[RES].clear();}}
         log << "reserve arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: if (!bind->vld(RES)) src(RES)->wait();
-            break; case (SetTagIns): case (MovTagIns): if (!bind->vld(KES)) src(KES)->wait();}}
+            break; case (SetTagIns): if (!bind->vld(KES)) src(KES)->wait();}}
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
@@ -1189,15 +1180,8 @@ struct CopyState {
             log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
             free(st0); free(st1); free(st2);}
             src(KES)->qualify(ONL);}
-            break; case (MovTagIns): {
-            {char *st0 = 0; char *st1 = 0; char *st2 = 0;
-            showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
-            log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
-            free(st0); free(st1); free(st2);}
-            src(KES)->newold(ONL,log);
-            bind->set(KES,Lst{Onl{ONL},INS,FRC});}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
-            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns): // TODO ignore depender resources
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             Lst lst = Lst{Onl{ONL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
             // note there is no way to refer to previous before intervening of a certain resource
@@ -1207,7 +1191,7 @@ struct CopyState {
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: if (bind->clr(RES)) src(RES)->post();
-            break; case (SetTagIns): case (MovTagIns): if (bind->clr(KES)) src(KES)->post();}}
+            break; case (SetTagIns): if (bind->clr(KES)) src(KES)->post();}}
         log << "reserve chosen" << '\n';
         int resps = 0;
         for (int i = 0; i < num && i < lim; i++) {
@@ -1222,8 +1206,10 @@ struct CopyState {
             break; case(WrlDeeIns): case(RdlDeeIns):
             case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): resps += 1; unl.siz += 1;}
             if (!bind->push(sav,REQ,unl,log)) lim = i;
+            if (sav->fst == i && lim == num) {
+            if (sav->use) sav->buf->finish();}
             if (sav->fin == i && lim == num) {
-            Adv adv = {PushAdv,ONL};
+            Adv adv = {PushAdv,ONL,sav->idx};
             switch (INS) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->buf->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
@@ -1260,7 +1246,7 @@ struct CopyState {
             SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NewDerIns): case(NidDerIns): {
-            if (sav->fst == i) src(RES)->advance(ONL,log);
+            if (sav->fst == i) src(RES)->advance(ONL,sav->idx,log);
             log << "NewDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
@@ -1274,7 +1260,7 @@ struct CopyState {
         ptr->slf = 0;
         switch (rsp) {default:
         break; case (RetRsp): case (RptRsp): thread->push(log,ptr,sub);}
-        if (bind) stack[BindRes]->advance(0,Qualitys,0,log);
+        if (bind) stack[BindRes]->advance(0,Qualitys,0,indx,log);
         } else {
         log << "wrap handles " << num << ">" << lim << '\n';
         if (lim >= 0) for (int i = lim+1; i < num; i++) {
@@ -1437,7 +1423,7 @@ struct CopyState {
         Resv res = reserve(dot[i].ins,dot[i].res,dot[i].phs,arg,siz,idx,log);
         Qual key = qualify(dot[i].res,Qualitys,arg,siz,idx,log);
         return Inst{.ins=ins,.res=res,.key=key};}
-        break; case(SetTagIns): case(MovTagIns): {
+        break; case(SetTagIns): {
         Qual key = qualify(dot[i].res,dot[i].key,arg,siz,idx,log);
         return Inst{.ins=ins,.key=key};}
         break; case(ResIncIns): return Inst{.ins=ins,.inc=Incl{.res=dot[i].res}};
@@ -1978,7 +1964,7 @@ struct ImageState : public BaseState {
     }
     void resize(Loc &loc, SmartState log) override {
         Extent ext = get(ResizeLoc).max.tag;
-        log << "resize " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << ext << '\n';
+        log << "resize " << debug << " location:" << *loc << '\n';
         if (*loc == ResizeLoc) {
         if (&loc != &ploc[*loc]) EXIT
         int texWidth = loc.max.extent.width;
@@ -2033,7 +2019,7 @@ struct ImageState : public BaseState {
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        log << "setup " << debug << " location:" << *loc << " quality value:" << get(RuseQua) << "/" << ext << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
+        log << "setup " << debug << " location:" << *loc << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(ext));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {

@@ -210,7 +210,6 @@ Instr = {
 	"RidDeeIns", -- increment read in indicated
 	"IdxDeeIns", -- increment read lock in indexed
 	"SetTagIns", -- set tag value in given quality
-	"MovTagIns", -- change tag of newest of handle
 	"ResIncIns", -- include instructions from Resrc
 	"MemIncIns", -- include instructions from Memory
 	"MicIncIns", -- include instructions from Micro

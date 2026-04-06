@@ -402,6 +402,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
             return lhs < rhs;
         }
     };
+    typedef std::set<Indx,IndxLess> Pool;
     typedef int Seqn; // sequence number
     static const Seqn wrap = 10000;
     struct SeqnLess {
@@ -412,40 +413,23 @@ template <int Size, int Dim, int Min> struct SimpleState {
         }
     };
     typedef std::array<int,Dim> Only; // key value only
+    typedef std::map<Seqn,Indx,SeqnLess> Sequ;
     struct OnlyLess {
         bool operator()(const Only &lhs, const Only &rhs) const {
             for (int i = 0; i < Dim; i++) if (lhs[i] < rhs[i]) return true;
             return false;
         }
     };
-    typedef std::array<int,Dim+1> Wseq; // with sequence number
-    struct WseqLess {
-        bool operator()(const Wseq &lhs, const Wseq &rhs) const {
-            for (int i = 0; i < Dim; i++) if (lhs[i] < rhs[i]) return true;
-            for (int i = 0; i < Dim; i++) if (lhs[i] > rhs[i]) return false;
-            return SeqnLess()(lhs[Dim],rhs[Dim]);
-        }
-    };
-    typedef std::array<int,Dim+1> Wsiz; // with list size
-    struct WsizLess {
-        bool operator()(const Wsiz &lhs, const Wsiz &rhs) const {
-            if (lhs[Dim] < rhs[Dim]) return true;
-            if (lhs[Dim] > rhs[Dim]) return false;
-            return (lhs < rhs);
-        }
-    };
-    std::map<Only,Indx,OnlyLess> oldest, newest; // first and last in list
-    std::map<Wseq,Indx,WseqLess> ording; // to find next or last of list
-    std::map<Only,int,OnlyLess> keysiz; // how many in list
-    Indx seqold;
-    std::map<Seqn,Indx,SeqnLess> seqing; // to find next or last of all
+    std::map<Only,Sequ,OnlyLess> ording; // to find next or last of list
+    Sequ seqing; // to find next or last of all
     std::map<Indx,Only,IndxLess> keyval; // which list index is in
     std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
-    std::deque<Indx> pool; // push_front, so insert after remove uses removed idx
+    Pool pool, pend;
     Seqn seqn;
     std::map<int,Only> idxkey; // handle for qualifier
+    std::map<int,Pool> idxign; // handle for unrepeats
     SimpleState() : seqn(0) {
-        for (int i = 0; i < Size; i++) pool.push_back(i);
+        for (int i = 0; i < Size; i++) pool.insert(i);
     }
     Only get(int idx, int tag, int val) {
         if (idxkey.find(idx) == idxkey.end()) {
@@ -454,117 +438,93 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (tag >= 0 && tag < Dim) tmp[tag] = val;
         return tmp;
     }
+    Indx first(Sequ &map, Indx def, Pool &ign) {
+        for (auto i = map.begin(); i != map.end(); i++)
+        if (ign.find((*i).second) == ign.end()) return (*i).second;
+        return def;
+    }
+    Indx last(Sequ &map, Indx def, Pool &ign) {
+        for (auto i = map.rbegin(); i != map.rend(); i--)
+        if (ign.find((*i).second) == ign.end()) return (*i).second;
+        return def;
+    }
+    Indx find(Pool &set, Indx def, Pool &ign) {
+        for (auto i = set.begin(); i != set.end(); i++)
+        if (ign.find(*i) == ign.end()) return *i;
+        return def;
+    }
     void show(int idx, int tag, int val, char **str) {
         Only tmp = get(idx,tag,val);
         std::stringstream sst; sst << tmp[0];
         for (int i = 1; i < Dim; i++) sst << "/" << tmp[i];
         *str = (char*)realloc((void*)*str,sst.str().size()+1); strcpy(*str,sst.str().c_str());
     }
-    Wseq get(const Only &key, int num) {
-        Wseq tmp; 
-        for (int i = 0; i < Dim; i++) tmp[i] = key[i];
-        tmp[Dim] = num;
-        return tmp;
-    }
-    Only get(const Wsiz &ord) {
-        Only tmp;
-        for (int i = 0; i < Dim; i++) tmp[i] = ord[i];
-        return tmp;
-    }
-    void set(int siz) {
-        // remove any Indx not less than siz
-        int size = pool.size() + keyval.size();
-        for (int i = size-1; i >= siz; i--) remove(i);
-        std::deque<Indx> temp;
-        for (auto i = pool.begin(); i != pool.end(); i++)
-        if (*i < siz) temp.push_back(*i);
-        pool = temp;
-        // add to pool to increase to siz
-        Indx lim = 0;
-        for (auto i = pool.begin(); i != pool.end(); i++)
-        if (*i >= lim) lim = *i+1;
-        for (auto i = keyval.begin(); i != keyval.end(); i++)
-        if ((*i).first >= lim) lim = (*i).first+1;
-        for (int i = lim; i < siz; i++) pool.push_back(i);
-    }
+    // TODO add resize function
     void remove(int idx) {
-        auto itr = keyval.find(idx);
-        if (itr == keyval.end()) return; // TODO move idx to front of pool
-        Only tmp = (*itr).second;
-        Seqn num = seqnum[idx];
-        Wseq seq = get(tmp,num);
-        if (oldest[tmp] == idx && newest[tmp] == idx) {
-        oldest.erase(tmp);
-        newest.erase(tmp);}
-        else if (oldest[tmp] == idx) while (1) {
-        num = (num+1)%wrap; Wseq seq = get(tmp,num); auto itr = ording.find(seq);
-        if (itr != ording.end()) {oldest[tmp] = (*itr).second; break;}}
-        else if (newest[tmp] == idx) while (1) {
-        num = (num+wrap-1)%wrap; Wseq seq = get(tmp,num); auto itr = ording.find(seq);
-        if (itr != ording.end()) {newest[tmp] = (*itr).second; break;}}
-        if ((keysiz[tmp] -= 1) == 0) keysiz.erase(tmp);
-        ording.erase(seq);
-        keyval.erase(idx);
-        num = seqnum[idx];
+        if (pool.find(idx) != pool.end()) return;
+        if (pend.find(idx) != pend.end()) return;
+        if (keyval.find(idx) == keyval.end()) *(int*)0=0;
+        Only tmp = keyval.at(idx);
+        if (seqnum.find(idx) == seqnum.end()) *(int*)0=0;
+        Seqn num = seqnum.at(idx);
+        if (ording.find(tmp) == ording.end()) *(int*)0=0;
+        if (ording.at(tmp).find(num) == ording.at(tmp).end()) *(int*)0=0;
+        ording.at(tmp).erase(num);
+        if (seqing.find(num) == seqing.end()) *(int*)0=0;
         seqing.erase(num);
-        if (!seqing.empty()) while (1) {
-        num = (num+1)%wrap; auto itr = seqing.find(num);
-        if (itr != seqing.end()) {seqold = (*itr).second; break;}}
+        keyval.erase(idx);
         seqnum.erase(idx);
-        pool.push_front(idx);
+        pool.insert(idx);
     }
     void insert(Only &tmp, int idx) { // after insert given idx is newest
-        if (oldest.find(tmp) == oldest.end()) oldest[tmp] = idx;
-        newest[tmp] = idx;
-        if (keysiz.find(tmp) == keysiz.end()) keysiz[tmp] = 1; else keysiz[tmp] += 1;
-        ording[get(tmp,seqn)] = idx;
-        keyval[idx] = tmp;
-        seqnum[idx] = seqn;
-        if (seqing.empty()) seqold = idx;
-        seqing[seqn] = idx;
+        if (pool.find(idx) != pool.end()) pool.erase(idx);
+        else if (pend.find(idx) != pend.end()) pend.erase(idx);
+        else *(int*)0=0;
+        if (keyval.find(idx) != keyval.end()) *(int*)0=0; keyval[idx] = tmp;
+        if (seqnum.find(idx) != seqnum.end()) *(int*)0=0; seqnum[idx] = seqn;
+        if (ording.find(tmp) != ording.end() && ording.at(tmp).find(seqn) != ording.at(tmp).end()) *(int*)0=0; ording[tmp][seqn] = idx;
+        if (seqing.find(seqn) != seqing.end()) *(int*)0=0; seqing[seqn] = idx;
         seqn = (seqn+1)%wrap;
     }
-    int insert(Only &tmp, SmartState log) {
-        if (pool.empty() && seqing.empty()) {*(int*)0=0;exit(-1);}
-        if (pool.empty()) remove(seqold);
-        Indx idx = pool.front(); pool.pop_front();
-        insert(tmp,idx); // make last removed the newest
-        log << "insert " << idx << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
-        return idx;
+    void reserve(int idx) {
+        remove(idx);
+        if (pool.find(idx) == pool.end()) *(int*)0=0; pool.erase(idx);
+        if (pend.find(idx) != pend.end()) *(int*)0=0; pend.insert(idx);
     }
-    Pair oldbuf(Only &tmp, SmartState log) { // used for insert in advance, so no preemptive insert
+    void release(int idx) {
+        if (pend.find(idx) == pend.end()) *(int*)0=0; pend.erase(idx);
+        if (pool.find(idx) != pool.end()) *(int*)0=0; pool.insert(idx);
+    }
+    void advance(Only &tmp, int idx) {
+        remove(idx);
+        insert(tmp,idx);
+    }
+    Pair reuse(Pool &ign, SmartState log) {
         Pair ret;
-        ret.reuse = (oldest.find(tmp) == oldest.end());
-        log << "oldbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
-        if (ret.reuse) insert(tmp,log);
-        ret.resrc = oldest[tmp];
+        ret.reuse = 1; ret.resrc = find(pool,-1,ign);
+        if (ret.resrc < 0) ret.resrc = first(seqing,-1,ign);
+        if (ret.resrc < 0) {ret.resrc = 0; ret.reuse = -1;}
         return ret;
     }
-    Pair getbuf(Only &tmp, SmartState log) { // used for reserve, so returns new oldest if possible
+    Pair oldbuf(Only &tmp, Pool &ign, SmartState log) { // used for insert in advance, so no preemptive insert
         Pair ret;
-        ret.reuse = (oldest.find(tmp) == oldest.end() || keysiz[tmp] < Min || !pool.empty());
-        log << "getbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
-        if (ret.reuse) {int idx = insert(tmp,log);
-        while (oldest[tmp] != idx) {
-        remove(oldest[tmp]); insert(tmp,log);}}
-        ret.resrc = oldest[tmp];
+        log << "oldbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
+        if (ret.resrc < 0) return reuse(ign,log);
         return ret;
     }
-    Pair newbuf(Only &tmp, SmartState log) { // used for depend, so returns result of last advance
+    Pair getbuf(Only &tmp, Pool &ign, SmartState log) { // used for reserve, so returns new oldest if possible
         Pair ret;
-        ret.reuse = (newest.find(tmp) == newest.end());
+        log << "getbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
+        if (ret.resrc < 0 || ording[tmp].size() < Min) return reuse(ign,log);
+        return ret;
+    }
+    Pair newbuf(Only &tmp, Pool &ign, SmartState log) { // used for depend, so returns result of last advance
+        Pair ret;
         log << "newbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
-        if (ret.reuse) insert(tmp,log);
-        ret.resrc = newest[tmp];
-        return ret;
-    }
-    Pair newold(int idx, int tag, int val, SmartState log) { // move last of idx to tag val
-        Only src = get(idx,Dim,0);
-        Only dst = get(idx,tag,val);
-        Pair ret;
-        ret.reuse = (newest.find(src) == newest.end());
-        if (!ret.reuse) remove(newest[src]);
-        ret.resrc = insert(dst,log);
+        ret.reuse = 0; ret.resrc = last(ording[tmp],-1,ign);
+        if (ret.resrc < 0) return reuse(ign,log);
         return ret;
     }
     void qualify(int idx, int tag, int val) {
@@ -572,21 +532,23 @@ template <int Size, int Dim, int Min> struct SimpleState {
         Only tmp = {0}; idxkey[idx] = tmp;}
         if (tag >= 0 && tag < Dim) idxkey[idx][tag] = val;
     }
-    int insert(int idx, int tag, int val, SmartState log) {
-        Only tmp = get(idx,tag,val);
-        return insert(tmp,log);
+    void ignore(int idx, int res) {
+        idxign[idx].insert(res);
+    }
+    void notice(int idx, int res) {
+        idxign[idx].erase(res);
     }
     Pair oldbuf(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return oldbuf(tmp,log);
+        return oldbuf(tmp,idxign[idx],log);
     }
     Pair getbuf(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return getbuf(tmp,log);
+        return getbuf(tmp,idxign[idx],log);
     }
     Pair newbuf(int idx, int tag, int val, SmartState log) {
         Only tmp = get(idx,tag,val);
-        return newbuf(tmp,log);
+        return newbuf(tmp,idxign[idx],log);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}
