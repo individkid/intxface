@@ -173,7 +173,9 @@ struct StackState {
     virtual BaseState *idxbuf(int i) = 0;
     virtual BaseState *newbuf() = 0;
     virtual BaseState *oldbuf() = 0;
+    virtual void ignore(int hdl, int idx) = 0;
     virtual void post() = 0;
+    virtual void notice(int hdl, int idx) = 0;
     virtual void advance(int hdl, Quality key, int val, int idx, SmartState log) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
@@ -370,8 +372,17 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (!excl) EXIT
         return &state[(idx+1)%Size];
     }
+    void ignore(int hdl, int idx) /*override*/ {
+        if (!excl) EXIT
+        tag.ignore(hdl,idx);
+    }
     void post() /*override*/ {
         excl = false;
+        safe.post();
+    }
+    void notice(int hdl, int idx) /*override*/ {
+        safe.wait();
+        tag.notice(hdl,idx);
         safe.post();
     }
     void advance(int hdl, Quality key, int val, int idx, SmartState log) /*override*/ {
@@ -1108,7 +1119,7 @@ struct CopyState {
     }
     Res get(Instr ins, Resrc res, int idx, int hdl, Quality key, int val, SmartState log) {
         // depender or dependee qualified resource
-        Res ptr = {0,0,0};
+        Res ptr = {.resrc=0,.reuse=0,.index=0};
         switch (ins) {default: break;
         case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
         case(WrlDeeIns): case(WidDeeIns):
@@ -1132,10 +1143,8 @@ struct CopyState {
     #define PHS ins[i].res.phs
     #define BND ins[i].res.bnd
     #define KES ins[i].key.res
-    #define HDL ins[i].key.hdl
     #define KEY ins[i].key.key
     #define VAL ins[i].key.val
-    #define ONL ins[i].key.hdl,ins[i].key.key,ins[i].key.val
     #define LOC ins[i].req.loc
     #define REQ ins[i].req
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
@@ -1164,7 +1173,7 @@ struct CopyState {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
             break; case (SetTagIns):
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
-            case(GetDerIns): case(GidDerIns): case(IdxDerIns): // TODO notice depender resources
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns):
             bind->bind[RES].clear();}}
         log << "reserve arrays" << '\n';
@@ -1174,20 +1183,24 @@ struct CopyState {
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
-            break; case (SetTagIns): {
-            {char *st0 = 0; char *st1 = 0; char *st2 = 0;
-            showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
-            log << st0 << " " << st1 << " " << HDL << " " << st2 << " " << VAL << '\n';
-            free(st0); free(st1); free(st2);}
-            src(KES)->qualify(ONL);}
+                break; case (SetTagIns): {
+                {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+                showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
+                log << st0 << " " << st1 << " " << indx << " " << st2 << " " << VAL << '\n';
+                free(st0); free(st1); free(st2);}
+                src(KES)->qualify(indx,KEY,VAL);}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
-            case(GetDerIns): case(GidDerIns): case(IdxDerIns): // TODO ignore depender resources
+            case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-            Lst lst = Lst{Onl{ONL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
-            // note there is no way to refer to previous before intervening of a certain resource
-            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,ONL,log),i,lst,log));
-            {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
-            sav->fin = i;}}}
+                Lst lst = Lst{Onl{indx,KEY,VAL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
+                // note there is no way to refer to previous before intervening of a certain resource
+                SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,lst,log));
+                {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
+                sav->fin = i;
+            switch (INS) {default: break;
+            case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
+            case(OldDerIns): case(OidDerIns):
+                src(RES)->ignore(indx,sav->idx);}}}}
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: if (bind->clr(RES)) src(RES)->post();
@@ -1209,13 +1222,23 @@ struct CopyState {
             if (sav->fst == i && lim == num) {
             if (sav->use) sav->buf->finish();}
             if (sav->fin == i && lim == num) {
-            Adv adv = {PushAdv,ONL,sav->idx};
+            Adv adv = {PushAdv,indx,KEY,VAL,sav->idx};
             switch (INS) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
             sav->buf->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
             if (!bind->winc(sav,log)) lim = i;}
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             if (!bind->rinc(sav,log)) lim = i;}}}
+        log << "wrap handles " << num << ">" << lim << '\n';
+        if (lim >= 0) for (int i = lim+1; i < num; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);}
+        log << "cleanup ignores" << '\n';
+        if (lim >= 0) for (int i = 0; i < num; i++) {
+            SaveState *sav = get(INS,RES,i,bind,log);
+            switch (INS) {default: break;
+            case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
+            case(OldDerIns): case(OidDerIns):
+            src(RES)->notice(indx,sav->idx);}}
         if (lim == num) {
         log << "link list" << '\n';
         Lnk *lnk = 0; Reloc lst = Relocs; BaseState *bas = 0;
@@ -1246,7 +1269,7 @@ struct CopyState {
             SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NewDerIns): case(NidDerIns): {
-            if (sav->fst == i) src(RES)->advance(ONL,sav->idx,log);
+            if (sav->fst == i) src(RES)->advance(indx,KEY,VAL,sav->idx,log);
             log << "NewDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
@@ -1262,9 +1285,6 @@ struct CopyState {
         break; case (RetRsp): case (RptRsp): thread->push(log,ptr,sub);}
         if (bind) stack[BindRes]->advance(0,Qualitys,0,indx,log);
         } else {
-        log << "wrap handles " << num << ">" << lim << '\n';
-        if (lim >= 0) for (int i = lim+1; i < num; i++) {
-            SaveState *sav = get(INS,RES,i,bind,log);}
         log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
             SaveState *sav = get(INS,RES,i,bind,log);
@@ -1373,7 +1393,7 @@ struct CopyState {
     Qual qualify(Resrc res, Quality key, int *arg, int siz, int &idx, SmartState log) {
         Qual ret = {res,0,key,0};
         if (key != Qualitys) {
-        ret.hdl = get(arg,siz,idx,log,"qualify.hdl");
+        ret.hdl = get(arg,siz,idx,log,"qualify.hdl"); // TODO hdl is ignored
         ret.val = get(arg,siz,idx,log,"qualify.val");}
         return ret;
     }

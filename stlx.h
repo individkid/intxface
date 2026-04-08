@@ -444,7 +444,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         return def;
     }
     Indx last(Sequ &map, Indx def, Pool &ign) {
-        for (auto i = map.rbegin(); i != map.rend(); i--)
+        for (auto i = map.rbegin(); i != map.rend(); i++)
         if (ign.find((*i).second) == ign.end()) return (*i).second;
         return def;
     }
