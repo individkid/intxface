@@ -7,6 +7,7 @@
 #include <array>
 #include <vector>
 #include <deque>
+#include <list>
 #include <set>
 #include <map>
 #include <iostream>
@@ -403,32 +404,30 @@ template <int Size, int Dim, int Min> struct SimpleState {
         }
     };
     typedef std::set<Indx,IndxLess> Pool;
-    typedef int Seqn; // sequence number
-    static const Seqn wrap = 10000;
-    struct SeqnLess {
-        bool operator()(const Seqn &lhs, const Seqn &rhs) const {
-            if (lhs < rhs && rhs-lhs < wrap) return true;
-            if (lhs > rhs && lhs-rhs >= wrap) return true;
-            return false;
-        }
-    };
+    typedef std::list<Indx> List;
+    typedef List::iterator Seqn; // sequence number
     typedef std::array<int,Dim> Only; // key value only
-    typedef std::map<Seqn,Indx,SeqnLess> Sequ;
     struct OnlyLess {
         bool operator()(const Only &lhs, const Only &rhs) const {
             for (int i = 0; i < Dim; i++) if (lhs[i] < rhs[i]) return true;
             return false;
         }
     };
-    std::map<Only,Sequ,OnlyLess> ording; // to find next or last of list
-    Sequ seqing; // to find next or last of all
+    typedef int Hndl; // class base handle
+    struct HndlLess {
+        bool operator()(const Hndl &lhs, const Hndl &rhs) const {
+            return lhs < rhs;
+        }
+    };
+    std::map<Only,List,OnlyLess> ording; // to find next or last of list
+    List seqing; // to find next or last of all
     std::map<Indx,Only,IndxLess> keyval; // which list index is in
-    std::map<Indx,Seqn,IndxLess> seqnum; // sparse ordering in list
+    std::map<Indx,Seqn,IndxLess> ordnum; // sparse ordering in ording
+    std::map<Indx,Seqn,IndxLess> allnum; // sparse ordering in seqing
     Pool pool, pend;
-    Seqn seqn;
-    std::map<int,Only> idxkey; // handle for qualifier
-    std::map<int,Pool> idxign; // handle for unrepeats
-    SimpleState() : seqn(0) {
+    std::map<Hndl,Only,HndlLess> idxkey; // handle for qualifier
+    std::map<Hndl,Pool,HndlLess> idxign; // handle for unrepeats
+    SimpleState() {
         for (int i = 0; i < Size; i++) pool.insert(i);
     }
     Only get(int idx, int tag, int val) {
@@ -438,17 +437,17 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (tag >= 0 && tag < Dim) tmp[tag] = val;
         return tmp;
     }
-    Indx first(Sequ &map, Indx def, Pool &ign) {
+    Indx first(List &map, Indx def, Pool &ign) {
         for (auto i = map.begin(); i != map.end(); i++)
-        if (ign.find((*i).second) == ign.end()) return (*i).second;
+        if (ign.find(*i) == ign.end()) return *i;
         return def;
     }
-    Indx last(Sequ &map, Indx def, Pool &ign) {
+    Indx last(List &map, Indx def, Pool &ign) {
         for (auto i = map.rbegin(); i != map.rend(); i++)
-        if (ign.find((*i).second) == ign.end()) return (*i).second;
+        if (ign.find(*i) == ign.end()) return *i;
         return def;
     }
-    Indx find(Pool &set, Indx def, Pool &ign) {
+    Indx find(Pool &set, Indx def, Pool &ign) { // TODO pool and pend should be disjoint
         for (auto i = set.begin(); i != set.end(); i++)
         if (ign.find(*i) == ign.end()) return *i;
         return def;
@@ -465,15 +464,13 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (pend.find(idx) != pend.end()) return;
         if (keyval.find(idx) == keyval.end()) *(int*)0=0;
         Only tmp = keyval.at(idx);
-        if (seqnum.find(idx) == seqnum.end()) *(int*)0=0;
-        Seqn num = seqnum.at(idx);
-        if (ording.find(tmp) == ording.end()) *(int*)0=0;
-        if (ording.at(tmp).find(num) == ording.at(tmp).end()) *(int*)0=0;
-        ording.at(tmp).erase(num);
-        if (seqing.find(num) == seqing.end()) *(int*)0=0;
-        seqing.erase(num);
+        if (ordnum.find(idx) == ordnum.end()) *(int*)0=0;
+        if (allnum.find(idx) == allnum.end()) *(int*)0=0;
+        ording.at(tmp).erase(ordnum.at(idx));
+        seqing.erase(allnum.at(idx));
         keyval.erase(idx);
-        seqnum.erase(idx);
+        ordnum.erase(idx);
+        allnum.erase(idx);
         pool.insert(idx);
     }
     void insert(Only &tmp, int idx) { // after insert given idx is newest
@@ -481,10 +478,8 @@ template <int Size, int Dim, int Min> struct SimpleState {
         else if (pend.find(idx) != pend.end()) pend.erase(idx);
         else *(int*)0=0;
         if (keyval.find(idx) != keyval.end()) *(int*)0=0; keyval[idx] = tmp;
-        if (seqnum.find(idx) != seqnum.end()) *(int*)0=0; seqnum[idx] = seqn;
-        if (ording.find(tmp) != ording.end() && ording.at(tmp).find(seqn) != ording.at(tmp).end()) *(int*)0=0; ording[tmp][seqn] = idx;
-        if (seqing.find(seqn) != seqing.end()) *(int*)0=0; seqing[seqn] = idx;
-        seqn = (seqn+1)%wrap;
+        ordnum[idx] = ording[tmp].insert(ording[tmp].end(),idx);
+        allnum[idx] = seqing.insert(seqing.end(),idx);
     }
     void reserve(int idx) {
         remove(idx);
@@ -504,6 +499,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         ret.reuse = 1; ret.resrc = find(pool,-1,ign);
         if (ret.resrc < 0) ret.resrc = first(seqing,-1,ign);
         if (ret.resrc < 0) {ret.resrc = 0; ret.reuse = -1;}
+        if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
     Pair oldbuf(Only &tmp, Pool &ign, SmartState log) { // used for insert in advance, so no preemptive insert
@@ -511,6 +507,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         log << "oldbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
         if (ret.resrc < 0) return reuse(ign,log);
+        if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
     Pair getbuf(Only &tmp, Pool &ign, SmartState log) { // used for reserve, so returns new oldest if possible
@@ -518,6 +515,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         log << "getbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
         if (ret.resrc < 0 || ording[tmp].size() < Min) return reuse(ign,log);
+        if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
     Pair newbuf(Only &tmp, Pool &ign, SmartState log) { // used for depend, so returns result of last advance
@@ -525,6 +523,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         log << "newbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = last(ording[tmp],-1,ign);
         if (ret.resrc < 0) return reuse(ign,log);
+        if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
     void qualify(int idx, int tag, int val) {

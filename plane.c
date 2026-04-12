@@ -844,13 +844,13 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&eek->uns,eek->siz);
     callCopy(eek,Memorys+5,RptRsp,1,(debug?"ident":0));}
 
-    /*else if (count%6 == 3 || count%6 == 0) {
+    else if (count%6 == 3 || count%6 == 0) {
     struct Center *vec = centerPull(Vectorz); freeCenter(vec);
     vec->mem = Vectorz; vec->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->siz = 1;
     allocVector(&vec->vec,vec->siz);
     vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
     vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
-    callCopy(vec,Vectorz,RptRsp,0,(debug?"getvec":0));}*/
+    callCopy(vec,Vectorz,RptRsp,0,(debug?"getvec":0));}
 
     tested = count;}}}
 }

@@ -723,12 +723,12 @@ struct BaseState {
         SizeState max = SizeState(ref.req.ext,ref.req.base,ref.req.size);
         SizeState ini = SizeState(InitExt);
         switch (ref.req.tag) {default: EXIT
-        break; case(SizeReq): ref.lst.ptr = ref.nxt.ptr = 0; return 0;
+        break; case(SizeReq): ref.lst.ptr = ref.nxt.ptr = 0; ref.lst.loc = Relocs; return 0;
         break; case(LockReq):
         break; case(BothReq):
-        break; case(NullReq): ref.lst.ptr = ref.nxt.ptr = 0; return 0;
+        break; case(NullReq): ref.lst.ptr = ref.nxt.ptr = 0; ref.lst.loc = Relocs; return 0;
         break; case(ExclReq): if (ref.max == max || max == ini) {
-        ref.lst.ptr = ref.nxt.ptr = 0; return 0;}}
+        ref.lst.ptr = ref.nxt.ptr = 0; ref.lst.loc = Relocs; return 0;}}
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ref.lst.ptr = ptr; ref.lst.loc = lst;
         ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
