@@ -1122,14 +1122,14 @@ struct CopyState {
         // depender or dependee qualified resource
         Res ptr = {.resrc=0,.reuse=0,.index=0};
         switch (ins) {default: break;
-        case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
         case(WrlDeeIns): case(WidDeeIns):
         case(RdlDeeIns): case(RidDeeIns):
         ptr = src(res)->newbuf(hdl,key,val,log);
         break; case(OldDerIns): case(OidDerIns):
-        ptr = src(res)->getbuf(hdl,key,val,log);
-        break; case(GetDerIns): case(GidDerIns):
+        case(NewDerIns): case(NidDerIns):
         ptr = src(res)->oldbuf(hdl,key,val,log);
+        break; case(GetDerIns): case(GidDerIns):
+        ptr = src(res)->getbuf(hdl,key,val,log);
         break; case(IdxDerIns): case(IdxDeeIns):
         ptr = Res{src(res)->idxbuf(idx),0,idx};}
         return ptr;
@@ -1199,8 +1199,9 @@ struct CopyState {
                 {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
                 sav->fin = i;
             switch (INS) {default: break;
-            case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
+            case(NewDerIns): case(NidDerIns):
             case(OldDerIns): case(OidDerIns):
+            case(GetDerIns): case(GidDerIns):
                 src(RES)->ignore(indx,sav->idx);}}}}
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
@@ -1224,7 +1225,10 @@ struct CopyState {
             if (sav->use) sav->buf->finish();}
             if (sav->fin == i && lim == num) {
             Adv adv = {PushAdv,indx,KEY,VAL,sav->idx};
-            switch (INS) {default: break; case(OldDerIns): case(GetDerIns): adv.adv = FnceAdv;}
+            switch (INS) {default: break;
+            case(OldDerIns): case(GetDerIns):
+            case(OidDerIns): case(GidDerIns):
+            adv.adv = FnceAdv;}
             sav->buf->push(adv,log);}}
             break; case(WrlDeeIns): case(WidDeeIns): {
             if (!bind->winc(sav,log)) lim = i;}
@@ -1237,7 +1241,7 @@ struct CopyState {
         if (lim >= 0) for (int i = 0; i < num; i++) {
             SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default: break;
-            case(NewDerIns): case(NidDerIns): // TODO rethink using newbuf for dependers
+            case(NewDerIns): case(NidDerIns):
             case(OldDerIns): case(OidDerIns):
             src(RES)->notice(indx,sav->idx);}}
         if (lim == num) {
@@ -1250,14 +1254,6 @@ struct CopyState {
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
             Lnk *tmp = sav->buf->link(LOC,bas,lst,lnk);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = LOC;}}}}
-        for (int i = 0; i < num; i++) {
-            SaveState *sav = get(INS,RES,i,bind,log);
-            switch(INS) {default:
-            break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
-            case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
-            Lnk *nxt = &sav->buf->ploc[LOC].nxt;
-            Lnk *lst = &sav->buf->ploc[LOC].lst;
-            log << "link " << lst->loc << "/" << (lst->ptr?lst->ptr->debug:"null") << "->" << LOC << "/" << sav->buf->debug << "->" << nxt->loc << "/" << (nxt->ptr?nxt->ptr->debug:"null") << '\n';}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {
             SaveState *sav = get(INS,RES,i,bind,log);

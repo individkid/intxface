@@ -1278,9 +1278,10 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
 }
 int planeLoop()
 {
+    int fever = 0;
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
     break; case (Bringup):
-    if ((processTime()-start)*1000 < 2000) return 1;
+    if (fever || (processTime()-start)*1000 < 2000) return 1;
     break; case (Builtin): case (Regress): case (Release):
     if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
