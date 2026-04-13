@@ -590,10 +590,6 @@ struct BaseState {
         if (check(unl.der,log)) {
         safe.post(); return false;}
         plock += 1;
-        {char *st0 = 0; char *st1 = 0;
-        showReloc(req.loc,&st0); showExtent(req.ext,&st1);
-        log << debug << ":pass " << plock << " " << st0 << " " << st1 << '\n';
-        free(st0); free(st1);}
         safe.post();
         if (lock != 0 && lock != ptr) EXIT
         lock = ptr;
@@ -717,7 +713,7 @@ struct BaseState {
         (elock ? wlock : rlock) -= 1;
         safe.post();
     }
-    Lnk *link(Reloc loc, BaseState *ptr, Reloc lst, Lnk *lnk) {
+    Lnk *link(Reloc loc, BaseState *ptr, Reloc lst, Lnk *lnk, SmartState log) {
         if ((int)loc < 0 || (int)loc >= Relocs) EXIT
         Loc &ref = ploc[loc];
         SizeState max = SizeState(ref.req.ext,ref.req.base,ref.req.size);
@@ -732,6 +728,8 @@ struct BaseState {
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ref.lst.ptr = ptr; ref.lst.loc = lst;
         ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
+        {char *st0 = 0; char *st1 = 0; showReloc(lst,&st0); showReloc(loc,&st1);
+        log << (ptr?ptr->debug:"nil") << " " << st0 << " -> " << debug << " " << st1 << '\n';}
         return &ref.nxt;
     }
     Loc &get(Reloc loc) {
@@ -1184,25 +1182,26 @@ struct CopyState {
         log << "choose buffers" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: {std::cerr << "invalid instruction" << std::endl; EXIT}
-                break; case (SetTagIns): {
-                {char *st0 = 0; char *st1 = 0; char *st2 = 0;
-                showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
-                log << st0 << " " << st1 << " " << indx << " " << st2 << " " << VAL << '\n';
-                free(st0); free(st1); free(st2);}
-                src(KES)->qualify(indx,KEY,VAL);}
+            break; case (SetTagIns): {
+            {char *st0 = 0; char *st1 = 0; char *st2 = 0;
+            showInstr(INS,&st0); showResrc(KES,&st1); showQuality(KEY,&st2);
+            log << st0 << " " << st1 << " " << indx << " " << st2 << " " << VAL << '\n';
+            free(st0); free(st1); free(st2);}
+            // change class of subsequent of certain resource
+            src(KES)->qualify(indx,KEY,VAL);}
             break; case(NewDerIns): case(NidDerIns): case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
-                Lst lst = Lst{Onl{indx,KEY,VAL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
-                // note there is no way to refer to previous before intervening of a certain resource
-                SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,lst,log));
-                {char *st0 = 0; showInstr(INS,&st0); log << sav->buf->debug << ":" << st0 << " " << i << " " << cnd << '\n'; free(st0);}
-                sav->fin = i;
+            // remember first and reuse subsequent of the same resource and class
+            Lst lst = Lst{Onl{indx,KEY,VAL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
+            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,lst,log));
+            sav->fin = i;
+            // prevent chosen from being stolen by different classes in same resource
             switch (INS) {default: break;
             case(NewDerIns): case(NidDerIns):
             case(OldDerIns): case(OidDerIns):
             case(GetDerIns): case(GidDerIns):
-                src(RES)->ignore(indx,sav->idx);}}}}
+            src(RES)->ignore(indx,sav->idx);}}}}
         log << "release arrays" << '\n';
         for (int i = 0; i < num && i < lim; i++) {
             switch (INS) {default: if (bind->clr(RES)) src(RES)->post();
@@ -1215,21 +1214,27 @@ struct CopyState {
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
             Unl unl = {.der=0,.dee=resps,.siz=0};
+            // search through subsequent to count dependees before next depender
             for (int j = i+1; j < num; j++) switch (ins[j].ins) {default:
             break; case(NewDerIns): case(OldDerIns): case(GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): j = num-1;
             break; case(WrlDeeIns): case(RdlDeeIns):
             case(WidDeeIns): case(RidDeeIns): case(IdxDeeIns): resps += 1; unl.siz += 1;}
+            // check and reserve depender
             if (!bind->push(sav,REQ,unl,log)) lim = i;
-            if (sav->fst == i && lim == num) {
-            if (sav->use) sav->buf->finish();}
+            // reset size of resource if it was stolen from different classification
+            if (sav->fst == i && lim == num && sav->use) sav->buf->finish();
+            // finish up resource upon last reference to it
             if (sav->fin == i && lim == num) {
             Adv adv = {PushAdv,indx,KEY,VAL,sav->idx};
+            // decide whether to advance for reuse in this or separate thread
             switch (INS) {default: break;
             case(OldDerIns): case(GetDerIns):
             case(OidDerIns): case(GidDerIns):
             adv.adv = FnceAdv;}
+            // record info to advance resource
             sav->buf->push(adv,log);}}
+            // check and reserve dependee
             break; case(WrlDeeIns): case(WidDeeIns): {
             if (!bind->winc(sav,log)) lim = i;}
             break; case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
@@ -1243,6 +1248,7 @@ struct CopyState {
             switch (INS) {default: break;
             case(NewDerIns): case(NidDerIns):
             case(OldDerIns): case(OidDerIns):
+            case(GetDerIns): case(GidDerIns):
             src(RES)->notice(indx,sav->idx);}}
         if (lim == num) {
         log << "link list" << '\n';
@@ -1252,7 +1258,7 @@ struct CopyState {
             switch(INS) {default:
             break; case(NewDerIns): case (OldDerIns): case (GetDerIns):
             case(NidDerIns): case(OidDerIns): case(GidDerIns): case (IdxDerIns): {
-            Lnk *tmp = sav->buf->link(LOC,bas,lst,lnk);
+            Lnk *tmp = sav->buf->link(LOC,bas,lst,lnk,log);
             if (tmp) {lnk = tmp; bas = sav->buf; lst = LOC;}}}}
         log << "record bindings" << '\n';
         for (int i = 0; i < num; i++) {

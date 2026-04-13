@@ -1,15 +1,10 @@
-Bringup: Add struct and Memory to contain info for custom shaders. Switch on uniform field to decide whether to apply texture or whatever. Add coincidence color. Add Express to file.c so Persist can do read modify write of fields.
+Bringup: Add coincidence color.
 
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 
-Regress: Test spoofed user actions and file changes with Center loaded through pipe.
+Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.
 
 Release: Use actual user actions to interact with actual file.
-
-Decoration: Fragment shader little language follows graph edges depending on inputs from vertex shader for filling with a constant, copying color or depth or identifier from vertex shader, copying from image buffer, applying texture sampler, calculating from normal, highlighting from adjacent identifiers.
-Graph edges are constants/inputs in which hypersquare region of constants/inputs, or on which hyperline sids of constants/inputs.
-
-Actions:
 Mouse transformations include
  — (C) rotate around Cross of pierce to clicked cursor and pierce to moved cursor,
  — (N) cross of pierce to Normal through picture and pierce to normal through picture moved by same delta as cursor,
@@ -28,6 +23,8 @@ Click actions include
  — (B) random Boundary through point,
  — (M) send pierce point as Metric,
  — (W) Warp to last metric sent.
+
+Decoration: Add struct and Memory to contain info for custom shaders. Switch on uniform field to decide whether to apply texture or whatever. Fragment shader little language follows graph edges depending on inputs from vertex shader for filling with a constant, copying color or depth or identifier from vertex shader, copying from image buffer, applying texture sampler, calculating from normal, highlighting from adjacent identifiers. Graph edges are constants/inputs in which hypersquare region of constants/inputs, or on which hyperline sids of constants/inputs.
 
 Suite: In plane.lua, share, file, space, plane, side to manipulate polytopes. In space.lua, share, file, space, plane, to display tetrahedron overlaps as they are found and optimized. In line.lua, share, file, space, plane, line, side, to decorate polytopes with sound. In point.lua, share, file, space, plane, line, side, frame, to decorate facets with little language for textures, sound, frames, text, graffiti, permissions, wormholes, transparency. Share connects processes by pipe. Side displays and edits fields in file. Frame displays and edits video and interfaces to hdmi over usbc. 
 

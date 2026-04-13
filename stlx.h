@@ -504,7 +504,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
     }
     Pair oldbuf(Only &tmp, Pool &ign, SmartState log) { // used for insert in advance, so no preemptive insert
         Pair ret;
-        log << "oldbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        // log << "oldbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
         if (ret.resrc < 0) return reuse(ign,log);
         if (ret.resrc < 0) *(int*)0=0;
@@ -512,7 +512,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
     }
     Pair getbuf(Only &tmp, Pool &ign, SmartState log) { // used for reserve, so returns new oldest if possible
         Pair ret;
-        log << "getbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        // log << "getbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
         if (ret.resrc < 0 || ording[tmp].size() < Min) return reuse(ign,log);
         if (ret.resrc < 0) *(int*)0=0;
@@ -520,7 +520,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
     }
     Pair newbuf(Only &tmp, Pool &ign, SmartState log) { // used for depend, so returns result of last advance
         Pair ret;
-        log << "newbuf " << ret.reuse << " " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
+        // log << "newbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = last(ording[tmp],-1,ign);
         if (ret.resrc < 0) return reuse(ign,log);
         if (ret.resrc < 0) *(int*)0=0;
