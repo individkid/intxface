@@ -523,7 +523,7 @@ struct Unl {
     SaveState *der; int dee; int siz;
 };
 struct Bnd {
-    BaseState *buf; Resrc typ; Phase phs; int bnd; Instr ins;
+    BaseState *buf; Phase phs; int bnd;
 };
 struct Loc {
     SizeState max;
@@ -944,16 +944,13 @@ struct BindState : public BaseState {
         free(st0); free(st1);}
         return sav;
     }
-    Sav &pre(Unl &unl, int idx) {
+    Bnd get(Unl &unl, int idx) {
         if (!excl) EXIT
         if (unl.dee+unl.siz > resp.size()) EXIT
         if (idx < 0 || idx >= unl.siz) EXIT
-        return resp[unl.dee+idx];
-    }
-    Bnd get(Unl &unl, int idx) {
-        Sav &met = pre(unl,idx);
+        Sav &met = resp[unl.dee+idx];
         SaveState *ptr = met.sav;
-        return Bnd{ptr->buf,ptr->typ,met.phs,met.bnd,met.ins};
+        return Bnd{ptr->buf,met.phs,met.bnd};
     }
     SaveState *sav(Resrc typ, int hdl) { // indexed resource of type
         if (!excl) EXIT
@@ -2127,7 +2124,8 @@ struct ChainState : public BaseState {
     }
     VkFence setup(Loc &loc, SmartState log) override {
         BaseState *swp = 0;
-        for (int i = 0; i < loc.unl.siz; i++) {Bnd bnd = get(loc.unl,i);
+        for (int i = 0; i < loc.unl.siz; i++) {
+        Bnd bnd = get(loc.unl,i);
         if (bnd.phs == SwapPhs && swp) EXIT
         if (bnd.phs == SwapPhs) swp = bnd.buf;}
         log << "setup " << debug << '\n';
@@ -2175,7 +2173,8 @@ struct DrawState : public BaseState {
     }
     void resize(Loc &loc, SmartState log) override {
         BaseState *pip = 0;
-        for (int i = 0; i < loc.unl.siz; i++) {Bnd bnd = get(loc.unl,i);
+        for (int i = 0; i < loc.unl.siz; i++) {
+        Bnd bnd = get(loc.unl,i);
         if (bnd.phs == PipePhs && pip) EXIT
         if (bnd.phs == PipePhs) pip = bnd.buf;}
         log << "resize " << debug << " " << pip->debug << '\n';
@@ -2204,10 +2203,7 @@ struct DrawState : public BaseState {
         pipePtr = swapPtr = framePtr = indexPtr = fetchPtr = 0;
         for (int i = 0; i < loc.unl.siz; i++) {
         Bnd bnd = get(loc.unl,i);
-        {char *st0 = 0; char *st1 = 0; char *st2 = 0;
-        showPhase(bnd.phs,&st0); showResrc(bnd.typ,&st1); showInstr(bnd.ins,&st2);
-        log << "setup " << st0 << " " << st1 << " " << st2 << " " << bnd.bnd << " " << bnd.buf->debug << '\n';
-        free(st0); free(st1); free(st2);}
+        {char *st0 = 0; showPhase(bnd.phs,&st0); log << "setup " << st0 << " " << bnd.bnd << " " << bnd.buf->debug << '\n'; free(st0);}
         switch (bnd.phs) {default: EXIT
         break; case(PipePhs): if (pipePtr) EXIT; pipePtr = bnd.buf;
         break; case(SwapPhs): if (swapPtr) EXIT; swapPtr = bnd.buf;
