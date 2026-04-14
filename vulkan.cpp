@@ -1391,9 +1391,8 @@ struct CopyState {
         return ret;
     }
     Qual qualify(Resrc res, Quality key, int *arg, int siz, int &idx, SmartState log) {
-        Qual ret = {res,0,key,0};
+        Qual ret = {res,key,0};
         if (key != Qualitys) {
-        ret.hdl = get(arg,siz,idx,log,"qualify.hdl"); // TODO hdl is ignored
         ret.val = get(arg,siz,idx,log,"qualify.val");}
         return ret;
     }
@@ -1566,6 +1565,10 @@ struct CopyState {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
     template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int sze, int &idx, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+        log << "copy";
+        for (int i = 0; dflt(typ,i,ary) != Defaults; i++) {
+        char *st0 = 0; showDefault(dflt(typ,i,ary),&st0); log << " " << i << ":" << st0 << ":" << fill(typ,i,ary); free(st0);}
+        log << '\n';
         // profer means GiveDef uses fill value as count into proferred
         // with both arg/siz and val/sze,
         //  negative arg means profer the val,
@@ -1620,6 +1623,7 @@ struct CopyState {
         push(lst,ptr,sub,rsp,log);
     }
     void push(Draw &drw, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+        {char *st0 = 0; showDraw(&drw,&st0); log << "copy " << st0 << '\n'; free(st0);}
         int idx = 0; switch (drw.con.tag) {default: ERROR();
         break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
         break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);

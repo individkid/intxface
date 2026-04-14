@@ -764,37 +764,37 @@ MemoryIns = {
 	-- MicroFilRel
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
+	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd PipeRes.frc
 	-- MicroFetRel
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
+	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
 	-- MicroFetCol
-	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\",".. -- SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- NidDerIns.idx NidDerIns.val
+	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\",\"TrivDef\"".. -- UniformRes.bnd UniformRes.bnd
 	"}".. -- SamplePhs.bnd
 	"def1 = {"..
 	"\"TrivDef\",".. -- PipeRes.frc
-	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\",".. -- SetTagIns.val
 	-- Vectorz
 	"\"GiveDef\",\"GiveDef\"".. -- WholeFrm.idx WholeFrm.siz
 	"}"..
 
 	"col_arg={"..
-	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"0,1,0,1,0,12,castMicro(\"MicroFetCol\"),0,castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),0,0,"..
+	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
+	"0,12,castMicro(\"MicroFetRel\"),castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
+	"1,0,1,0,12,castMicro(\"MicroFetCol\"),castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),0,"..
 	"2,3,"..
 	"}"..
 
 	"pie_arg={"..
-	"0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,12,castMicro(\"MicroFetRel\"),0,castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"0,1,0,1,0,12,castMicro(\"MicroFetPie\"),0,castMicro(\"MicroFetPie\"),0,1, castMicro(\"MicroFetPie\"),0,0,"..
+	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
+	"0,12,castMicro(\"MicroFetRel\"),castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
+	"1,0,1,0,12,castMicro(\"MicroFetPie\"),castMicro(\"MicroFetPie\"),0,1,castMicro(\"MicroFetPie\"),0,"..
 	"2,3,"..
 	"}"..
 
@@ -946,7 +946,7 @@ MemoryAlt = {
 
 	{"%(def={"..
 	"\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",\"TrivDef\","..-- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\","..-- SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",\"TrivDef\",".. -- UniformPhs.bnd UniformPhs.bnd
@@ -954,7 +954,7 @@ MemoryAlt = {
 
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,0,castMicro(\"MicroConPie\"),0,1,0,12,castMicro(\"MicroConPie\"),0,1,castMicro(\"MicroConPie\"),"..
+	"arg={0,castMicro(\"MicroConPie\"),0,1,0,12,castMicro(\"MicroConPie\"),0,1,castMicro(\"MicroConPie\"),"..
 	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
@@ -974,7 +974,7 @@ MemoryAlt = {
 	{"Memory","Getintz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
 
 	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\",".. -- SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",".. -- UniformPhs.bnd
@@ -982,7 +982,7 @@ MemoryAlt = {
 
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,0,castMicro(\"MicroFilRel\"),0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
+	"arg={0,castMicro(\"MicroFilRel\"),0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
@@ -1002,7 +1002,7 @@ MemoryAlt = {
 	{"Memory","Vectorz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
 
 	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",\"TrivDef\",".. -- SetTagIns.idx SetTagIns.val
+	"\"TrivDef\",".. -- SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",".. -- UniformPhs.bnd
@@ -1012,7 +1012,7 @@ MemoryAlt = {
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
 	"arg={0,"..
-	"0,castMicro(\"MicroFilCol\"), 0,1, 0,6,castMicro(\"MicroFilCol\"), 0, 7, castMicro(\"MicroFilCol\"),"..
+	"castMicro(\"MicroFilCol\"), 0,1, 0,6,castMicro(\"MicroFilCol\"), 0, 7, castMicro(\"MicroFilCol\"),"..
 	"2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
@@ -1069,38 +1069,34 @@ MicroIns = {
 	ded = {\"UniformRes\",\"ImageRes\"}\
 	phd = {\"UniformPhs\",\"SamplePhs\"}\
 	\
-	def = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
+	def = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
-	dv0 = {\"0\"}\
-	dv1 = {\"0\",\"1\",\"1\",\"0\",\"1\",\"7\",\"1\",\"1\"}\
+	dv1 = {\"0\",\"1\",\"0\",\"0\",\"1\",\"7\",\"0\",\"0\"}\
 	\
-	deg = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
+	deg = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\"--[[ExtentFrm SizeReq ExtentExt:base/size]],\
 	\"GiveDef\",\"GiveDef\",\"BackDef\"--[[MicroFrm BothReq:idx/siz MicroExt:base]],\
 	\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
-	dw0 = {\"0\"}\
-	dw1 = {\"0\",\"1\",\"2\",\"3\",\"1\",\"0\",\"1\",\"1\"}\
+	dw1 = {\"0\",\"1\",\"2\",\"3\",\"0\",\"0\",\"1\",\"0\"}\
 	\
-	deh = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
+	deh = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",--[[ExtentFrm SizeReq ExtentExt:base/size]]\
 	\"TrivDef\",\"TrivDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"TrivDef\",--[[UniformPhs.bnd]]\
 	\"BackDef\"}--[[IdxDeeIns PipeRes:idx]]\
-	du0 = {\"0\"}\
-	du1 = {\"0\",\"1\",\"0\",\"6\",\"1\",\"0\",\"1\"}\
+	du1 = {\"0\",\"1\",\"0\",\"6\",\"0\",\"0\",\"0\"}\
 	\
-	dei = {\"TrivDef\",\"TrivDef\",--[[TagIns]]\
+	dei = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",--[[ExtentFrm SizeReq ExtentExt:base/size]]\
 	\"TrivDef\",\"TrivDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"TrivDef\",--[[UniformPhs.bnd]]\
 	\"TrivDef\",--[[SamplePhs.bnd]]\
 	\"BackDef\"}--[[IdxDeeIns PipeRes:idx]]\
-	dt0 = {\"0\"}\
-	dt1 = {\"0\",\"1\", \"0\",\"6\",\"1\", \"0\", \"7\", \"1\"}\
+	dt1 = {\"0\",\"1\", \"0\",\"6\",\"0\", \"0\", \"7\", \"0\"}\
 	\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
@@ -1144,9 +1140,8 @@ MicroIns = {
 		{"Micro","%(return fnc(mic))","Int","%(return 7+#dee)","Resrc","PipeRes"},
 		{"Micro","%(return fnc(mic))","Int","%(return 7+#dee)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mic,def))","Int","%(return hnc(def,0))","Default","%(return fnc(def))"},
-	{"Micro","%(return gnc(mic,dv0))","Int","%(return hnc(dv0,0))","Int","%(return fnc(dv0))"},
-	{"Micro","%(return fnc(mic))","Int","1","Int","%(return fnc(mic))"},
-	{"Micro","%(return gnc(mic,dv1))","Int","%(return hnc(dv1,2))","Int","%(return fnc(dv1))"},
+	{"Micro","%(return fnc(mic))","Int","0","Int","%(return fnc(mic))"},
+	{"Micro","%(return gnc(mic,dv1))","Int","%(return hnc(dv1,1))","Int","%(return fnc(dv1))"},
 
 	{"Micro","%(return fnc(mib))","Int","0","Instr","SetTagIns"},
 		{"Micro","%(return fnc(mib))","Int","0","Resrc","DrawRes"},
@@ -1171,9 +1166,8 @@ MicroIns = {
 		{"Micro","%(return fnc(mib))","Int","%(return 4+#deb)","Resrc","PipeRes"},
 		{"Micro","%(return fnc(mib))","Int","%(return 4+#deb)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mib,deg))","Int","%(return hnc(deg,0))","Default","%(return fnc(deg))"},
-	{"Micro","%(return gnc(mib,dw0))","Int","%(return hnc(dw0,0))","Int","%(return fnc(dw0))"},
-	{"Micro","%(return fnc(mib))","Int","1","Int","%(return fnc(mib))"},
-	{"Micro","%(return gnc(mib,dw1))","Int","%(return hnc(dw1,2))","Int","%(return fnc(dw1))"},
+	{"Micro","%(return fnc(mib))","Int","0","Int","%(return fnc(mib))"},
+	{"Micro","%(return gnc(mib,dw1))","Int","%(return hnc(dw1,1))","Int","%(return fnc(dw1))"},
 
 	{"Micro","%(return fnc(mia))","Int","0","Instr","SetTagIns"},
 		{"Micro","%(return fnc(mia))","Int","0","Resrc","DrawRes"},
@@ -1198,9 +1192,8 @@ MicroIns = {
 		{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Resrc","PipeRes"},
 		{"Micro","%(return fnc(mia))","Int","%(return 4+#dea)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mia,deh))","Int","%(return hnc(deh,0))","Default","%(return fnc(deh))"},
-	{"Micro","%(return gnc(mia,du0))","Int","%(return hnc(du0,0))","Int","%(return fnc(du0))"},
-	{"Micro","%(return fnc(mia))","Int","1","Int","%(return fnc(mia))"},
-	{"Micro","%(return gnc(mia,du1))","Int","%(return hnc(du1,2))","Int","%(return fnc(du1))"},
+	{"Micro","%(return fnc(mia))","Int","0","Int","%(return fnc(mia))"},
+	{"Micro","%(return gnc(mia,du1))","Int","%(return hnc(du1,1))","Int","%(return fnc(du1))"},
 
 	{"Micro","%(return fnc(mid))","Int","0","Instr","SetTagIns"},
 		{"Micro","%(return fnc(mid))","Int","0","Resrc","DrawRes"},
@@ -1228,9 +1221,8 @@ MicroIns = {
 		{"Micro","%(return fnc(mid))","Int","%(return 5+#ded)","Resrc","PipeRes"},
 		{"Micro","%(return fnc(mid))","Int","%(return 5+#ded)","Phase","PipePhs"},
 	{"Micro","%(return gnc(mid,dei))","Int","%(return hnc(dei,0))","Default","%(return fnc(dei))"},
-	{"Micro","%(return gnc(mid,dt0))","Int","%(return hnc(dt0,0))","Int","%(return fnc(dt0))"},
-	{"Micro","%(return fnc(mid))","Int","1","Int","%(return fnc(mid))"},
-	{"Micro","%(return gnc(mid,dt1))","Int","%(return hnc(dt1,2))","Int","%(return fnc(dt1))"},
+	{"Micro","%(return fnc(mid))","Int","0","Int","%(return fnc(mid))"},
+	{"Micro","%(return gnc(mid,dt1))","Int","%(return hnc(dt1,1))","Int","%(return fnc(dt1))"},
 }
 MicroAlt = {
 	{"Micro","MicroFetDrw","Int","0","Instr","NewDerIns"},
@@ -1649,7 +1641,6 @@ Resv = { -- bind resource
 }
 Qual = { -- quality of service
 	{"res","Resrc",{},{}},
-	{"hdl","Int",{},{}},
 	{"key","Quality",{},{}},
 	{"val","Int",{},{}},
 }
