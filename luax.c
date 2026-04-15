@@ -93,12 +93,12 @@ void luaxWrap(lua_State *L, const char *str, const struct Close *arg)
 }
 lua_State *luaxInit()
 {
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0,0); luaL_openlibs(luastate);}
 	return luastate;
 }
 int luaxSide(const char *exp)
 { // evaluates expression without arguments
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0,0); luaL_openlibs(luastate);}
 	if (luaxLoad(luastate,exp) != 0) return -2;
 	if (lua_pcall(luastate,0,0,0) != LUA_OK) {luaxErr(); return -1;}
 	return 0;
@@ -121,7 +121,7 @@ void nestFree()
 }
 void nestInit(int siz)
 { // number strings in the repeatable chunk, zero to deallocate
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0,0); luaL_openlibs(luastate);}
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) if (rslt[i]) {free(rslt[i]); rslt[i] = 0;}
 	for (int i = 0; i < lsiz; i++) if (line[i]) {free(line[i]); line[i] = 0;}
@@ -139,7 +139,7 @@ void nestElem(int i, const char *str)
 }
 void nestScan()
 { // get dim %() expressions from the lsiz strings
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0,0); luaL_openlibs(luastate);}
 	if (dim) nestFree();
 	for (int i = 0; i < lsiz; i++) {
 	for (const char *str = line[i]; str && strstr(str,"%(") && *(str = strstr(str,"%(")) && *(str += 2); dim++) {
@@ -165,7 +165,7 @@ int nestEval(int i)
 	int num = 0;
 	int len = 0;
 	if (i < 0 || i >= dim) ERROR();
-	if (!luastate) {luastate = lua_newstate(luaxLua,0); luaL_openlibs(luastate);}
+	if (!luastate) {luastate = lua_newstate(luaxLua,0,0); luaL_openlibs(luastate);}
 	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); if (luaxLoad(fiber[i].lua,fiber[i].exp) != 0) return 0;}
 	ret = lua_resume(fiber[i].lua,0,0,&num);
 	if (ret != LUA_OK && ret != LUA_YIELD) {

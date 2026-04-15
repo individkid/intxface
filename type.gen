@@ -1053,6 +1053,8 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
+-- add MicroFetRel in MicroIns, add RelateRes to MicroFetDrw in MicroIns
+-- add MicroFetDrw as MicIncIns of MicroFillRel MicroFetRel MicroFetDrw in MicroAlt
 MicroIns = {
 	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
