@@ -34,6 +34,7 @@ Memory = {
 	"Indexz", -- fetch buffer indices
 	"Bringupz", -- fetch buffer verticse
 	"Imagez", -- facet decorations
+	"Storagez", -- general purpose
 	"Getintz", -- per fragment read
 	"Getoldz", -- per fragment read
 	"Vectorz", -- displayed framebuffer
@@ -60,6 +61,7 @@ Resrc = { -- per variation of BaseState
 	"PierceRes",
 	"RelateRes",
 	"ColorRes",
+	"StorageRes",
 	"UniformRes",
 	"MatrixRes",
 	"TriangleRes",
@@ -621,9 +623,12 @@ MicroBinding = {
 	--[[lre = {\"UniformRes\",\"PipeRes\"}]]\
 	    lph = {\"UniformPhs\",\"PipePhs\"}\
 	    lbn = {\"0\",         \"0\"      }\
-	--[[dre = {\"SwapRes\",\"ChainRes\",\"ImageRes\" } cre = {\"ColorRes\", \"ImageRes\" } pre = {\"PierceRes\"} rre = {\"RelateRes\"}]]\
-	    dph = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\"} cph = {\"RenderPhs\",\"SamplePhs\"} pph = {\"RenderPhs\"} rph = {\"RenderPhs\"}\
-	    dbn = {\"0\",      \"0\",       \"7\"        } cbn = {\"0\",        \"7\"        } pbn = {\"0\"}         rbn = {\"0\"}\
+	--[[dre = {\"SwapRes\",\"ChainRes\",\"ImageRes\", \"StorageRes\"} cre = {\"ColorRes\", \"ImageRes\", \"StorageRes\"}]]\
+	    dph = {\"SwapPhs\",\"FramePhs\",\"SamplePhs\",\"RelatePhs\" } cph = {\"RenderPhs\",\"SamplePhs\",\"RelatePhs\" }\
+	    dbn = {\"0\",      \"0\",       \"7\",        \"6\"         } cbn = {\"0\",        \"7\",        \"6\"}\
+	--[[pre = {\"PierceRes\"} rre = {\"RelateRes\"}]]\
+	    pph = {\"RenderPhs\"} rph = {\"RenderPhs\"}\
+	    pbn = {\"0\"}         rbn = {\"0\"}\
 	lrm = {\"MicroFilRel\"} lrh = cat(lph,rph,{}) lrn = cat(lbn,rbn,{})\
 	lpm = {\"MicroFilPie\"} lqh = cat(lph,pph,{}) lpn = cat(lbn,pbn,{})\
 	lcm = {\"MicroFilCol\"} lch = cat(lph,cph,{}) lcn = cat(lbn,cbn,{})\
@@ -742,8 +747,8 @@ MemoryIns = {
 	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(aft))"},
 	{"Memory","%(return rnc(mem,0,3))","Int","%(return rng(0,3))","Default","GiveDef"},
 	{"Memory","%(return rnc(mem,0,3))","Int","%(return rng(0,3))","Int","%(return rng(0,3))"},
-	{"%(nem = {\"Bringupz\",  \"Indexz\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"}\
-	    ses = {\"BringupRes\",\"IndexRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
+	{"%(nem = {\"Bringupz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"}\
+	    ses = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
 	return \"Memory\")","%(return fnc(nem))","Int","0","Resrc","%(return fnc(ses))"},
 	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Default","GiveDef"},
 	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
@@ -757,8 +762,8 @@ MemoryIns = {
 	fil_phs = {\"UniformPhs\"}\
 	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\", \"BringupRes\"}\
 	fet_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\", \"FetchPhs\"}\
-	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"IndexRes\",  \"BringupRes\"}\
-	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",  \"FetchPhs\"}"..
+	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"StorageRes\",\"IndexRes\",\"BringupRes\"}\
+	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\", \"IndexPhs\",\"FetchPhs\"}"..
 
 	"def0 = {"..
 	-- MicroFilRel
@@ -776,7 +781,7 @@ MemoryIns = {
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\",\"TrivDef\"".. -- UniformRes.bnd UniformRes.bnd
-	"}".. -- SamplePhs.bnd
+	"}".. -- SamplePhs.bnd RelatePhs.bnd
 	"def1 = {"..
 	"\"TrivDef\",".. -- PipeRes.frc
 	"\"TrivDef\",".. -- SetTagIns.val
@@ -787,7 +792,7 @@ MemoryIns = {
 	"col_arg={"..
 	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
 	"0,12,castMicro(\"MicroFetRel\"),castMicro(\"MicroFetRel\"),0,1,castMicro(\"MicroFetRel\"),"..
-	"1,0,1,0,12,castMicro(\"MicroFetCol\"),castMicro(\"MicroFetCol\"),0,1,7,castMicro(\"MicroFetCol\"),0,"..
+	"1,0,1,0,12,castMicro(\"MicroFetCol\"),castMicro(\"MicroFetCol\"),0,1,7,6,castMicro(\"MicroFetCol\"),0,"..
 	"2,3,"..
 	"}"..
 
@@ -799,7 +804,7 @@ MemoryIns = {
 	"}"..
 
 	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
-	"col_def = cat({def0,{\"TrivDef\"},def1},{})"..
+	"col_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def1},{})"..
 	"pie_def = cat({def0,def1},{})"..
 
 	"\
@@ -854,6 +859,8 @@ MemoryIns = {
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
+
+	-- TODO copy from RelateRes to StorageRes and have MicroFetCol depend on StorageRes
 
 	-- MicroFetCol
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
@@ -1053,14 +1060,14 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
--- add MicroFetRel in MicroIns, add RelateRes to MicroFetDrw in MicroIns
+-- add MicroFetRel in MicroIns, that copies to StorageRes from fetched RelateRes
 -- add MicroFetDrw as MicIncIns of MicroFillRel MicroFetRel MicroFetDrw in MicroAlt
 MicroIns = {
 	-- n==0: departures from NewDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"%(mic = {\"MicroFetDrw\"}\
-	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"IndexRes\",\"BringupRes\"}\
-	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"IndexPhs\",\"FetchPhs\"}\
+	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"StorageRes\",\"IndexRes\",\"BringupRes\"}\
+	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
 	mib = {\"MicroConPie\"}\
 	deb = {\"UniformRes\",\"MatrixRes\"}\
 	phb = {\"UniformPhs\",\"UniformPhs\"}\
@@ -1073,10 +1080,10 @@ MicroIns = {
 	\
 	def = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
-	\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd]]\
+	\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd RelatePhs.bnd]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
-	dv1 = {\"0\",\"1\",\"0\",\"0\",\"1\",\"7\",\"0\",\"0\"}\
+	dv1 = {\"0\",\"1\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\",\"0\"}\
 	\
 	deg = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\"--[[ExtentFrm SizeReq ExtentExt:base/size]],\
@@ -1097,8 +1104,9 @@ MicroIns = {
 	\"TrivDef\",\"TrivDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"TrivDef\",--[[UniformPhs.bnd]]\
 	\"TrivDef\",--[[SamplePhs.bnd]]\
+	\"TrivDef\",--[[RelatePhs.bnd]]\
 	\"BackDef\"}--[[IdxDeeIns PipeRes:idx]]\
-	dt1 = {\"0\",\"1\", \"0\",\"6\",\"0\", \"0\", \"7\", \"0\"}\
+	dt1 = {\"0\",\"1\", \"0\",\"6\",\"0\", \"0\", \"7\", \"6\", \"0\"}\
 	\
 	function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
@@ -1254,6 +1262,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(getint = #%(return count))Getintz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(getold = #%(return count))Getoldz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(vector = #%(return count))Vectorz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(storage = #%(return count))Storagez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(uniform = #%(return count))Uniformz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(matrix = #%(return count))Matrixz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(triangle = #%(return count))Trianglez(siz:0idx:0slf:0)"},
@@ -1669,6 +1678,7 @@ Center = {
 	{"uns","Int32",{["mem"]={["Getintz"]=true}},"siz"},
 	{"old","Old",{["mem"]={["Getoldz"]=true}},"siz"},
 	{"vec","Vector",{["mem"]={["Vectorz"]=true}},"siz"},
+	{"sto","Int32",{["mem"]={["Storagez"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},
 	{"mat","Matrix",{["mem"]={["Matrixz"]=true}},"siz"},
 	{"tri","Triangle",{["mem"]={["Trianglez"]=true}},"siz"},

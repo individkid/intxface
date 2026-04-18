@@ -398,6 +398,7 @@ int centerMod(struct Center *ptr)
     break; case (Getintz): return sizeof(int32_t);
     break; case (Getoldz): return sizeof(float);
     break; case (Vectorz): return sizeof(struct Vector);
+    break; case (Storagez): return sizeof(int32_t);
     break; case (Uniformz): return sizeof(struct Uniform);
     break; case (Matrixz): return sizeof(struct Matrix);
     break; case (Trianglez): return sizeof(struct Triangle);
@@ -1242,6 +1243,11 @@ void initTest()
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
     callCopy(img,Imagez,RptRsp,0,(debug?"image":0));
+
+    struct Center *sto = centerPull(Storagez); freeCenter(sto);
+    sto->mem = Storagez; sto->idx = 0; sto->siz = 1; allocInt32(&sto->sto,sto->siz);
+    sto->sto[0] = 456;
+    callCopy(sto,Storagez,RptRsp,0,(debug?"storage":0));
 
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);

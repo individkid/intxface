@@ -422,6 +422,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (PierceRes): return "PierceRes";
         case (RelateRes): return "RelateRes";
         case (ColorRes): return "ColorRes";
+        case (StorageRes): return "StorageRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -698,10 +699,11 @@ struct BaseState {
         if (adv.adv == FnceAdv) advance(adv,log);}
         safe.post();
     }
-    bool incr(bool elock, int psav, int rsav, int wsav) {
+    bool incr(bool elock, int psav, int rsav, int wsav, SmartState log) {
         safe.wait();
         if (plock < psav || wlock < wsav || rlock < rsav) EXIT
         if (!(valid || psav) || plock-psav || wlock-wsav || (elock && rlock-rsav)) {
+        log << debug << ":fail v:" << valid << " p:" << plock << "-" << psav << " w:" << wlock << "-" << wsav << " e:" << elock << " r:" << rlock << "-" << rsav << '\n';
         safe.post(); return false;}
         (elock ? wlock : rlock) += 1;
         safe.post();
@@ -999,8 +1001,7 @@ struct BindState : public BaseState {
     }
     bool incr(SaveState *sav, bool elock, SmartState log) {
         if (!excl) EXIT
-        if (!sav->buf->incr(elock,sav->psav,sav->rsav,sav->wsav)) {
-        return false;}
+        if (!sav->buf->incr(elock,sav->psav,sav->rsav,sav->wsav,log)) return false;
         if (!sav->sav) lock += 1;
         sav->sav = true;
         (elock ? sav->wsav : sav->rsav) += 1;
@@ -1078,8 +1079,7 @@ struct EnumState {
     Resrc key = Resrcs; StackState *val = 0;
 };
 struct Arg {
-    Instr ins = Instrs;
-    Reloc loc = Relocs; Format fmt = Formats; Quality key = Qualitys;
+    Instr ins = Instrs; Reloc loc = Relocs; Format fmt = Formats; Quality key = Qualitys;
     Resrc res = Resrcs; Memory mem = Memorys; Micro mic = Micros; Phase phs = Phases;
 };
 struct CopyState {
@@ -1087,14 +1087,12 @@ struct CopyState {
     ThreadState *thread;
     StackState *stack[Resrcs];
     ConstState *array;
-    int depth;
     CopyState(ChangeState<Configure,Configures> *change,
         ThreadState *thread, EnumState *stack, ConstState *ary) :
         change(change),
         thread(thread),
         stack{},
-        array(ary),
-        depth(0) {
+        array(ary) {
         // std::cout << "CopyState" << std::endl;
         for (EnumState *i = stack; i->key != Resrcs; i++) this->stack[i->key] = i->val;
     }
@@ -1525,17 +1523,17 @@ struct CopyState {
     void showType(Micro typ, char **str) {
         showMicro(typ,str);
     }
-    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, SmartState log) {
+    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, int dep, SmartState log) {
         int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
-        {char *st0 = 0; showType(typ,&st0); log << st0 << ":push " << " alt:" << ary << " depth:" << depth << '\n'; free(st0);}
+        {char *st0 = 0; showType(typ,&st0); log << st0 << ":push " << " alt:" << ary << " depth:" << dep << '\n'; free(st0);}
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
         Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
         switch (ins.ins) {default: lst << ins;
-        break; case (ResIncIns): depth += 1; push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),log); depth -= 1;
-        break; case (MemIncIns): depth += 1; push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),log); depth -= 1;
-        break; case (MicIncIns): depth += 1; push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),log); depth -= 1;}}
-        {char *st0 = 0; showType(typ,&st0); log << st0 << ":done alt:" << ary << " depth:" << depth << '\n'; free(st0);}
+        break; case (ResIncIns): push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),dep+1,log);
+        break; case (MemIncIns): push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),dep+1,log);
+        break; case (MicIncIns): push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),dep+1,log);}}
+        {char *st0 = 0; showType(typ,&st0); log << st0 << ":done alt:" << ary << " depth:" << dep << '\n'; free(st0);}
     }
     int size(Micro typ, int ary) {
         int siz = 0; while (dflt(typ,siz,ary) != Defaults) siz += 1; return siz;
@@ -1618,7 +1616,7 @@ struct CopyState {
             int idx = fill(typ,i,ary);
             if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
         HeapState<Inst,StackState::instrs> lst;
-        push(lst,typ,dat,vlu,tot,idx,ary,log);
+        push(lst,typ,dat,vlu,tot,idx,ary,0,log);
         if (idx != tot) {std::cerr << "wrong number of int arguments " << idx << "!=" << tot << std::endl; EXIT}
         push(lst,ptr,sub,rsp,log);
     }
@@ -1642,6 +1640,7 @@ struct CopyState {
         int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int); int adx = 0;
         switch (ptr->mem) {default: EXIT
         break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
+        break; case (Storagez): push(ptr->mem,(void*)ptr->sto,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
         break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
         break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
         break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
@@ -1652,15 +1651,18 @@ struct CopyState {
         break; case (Drawz): {
             int mask = 0;
             for (int i = 0; i < ptr->siz; i++) {
+            if (ptr->mem != Drawz) *(int*)0=0;
             push(ptr->drw[i],ptr,sub,rsp,ary,log);
-            if (ptr->slf) mask |= 1<<(i<32?i:31);} ptr->slf = mask;}
+            if (ptr->slf) mask |= 1<<(i<32?i:31);}
+            ptr->slf = mask;}
         break; case (Instrz): {
             HeapState<Inst,StackState::instrs> ins;
             for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
             push(ins,ptr,sub,rsp,log);}
-        break; case (Configurez): {
-            for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);}
-        break; case (Imagez): push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
+        break; case (Configurez):
+            for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);
+        break; case (Imagez):
+            push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
             datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
         break; case (Getintz): case (Getoldz):
             push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
@@ -2261,6 +2263,7 @@ struct MainState {
     ArrayState<ImageState,PierceRes,StackState::piercs> pierceState;
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
     ArrayState<ImageState,ColorRes,StackState::frames> colorState;
+    ArrayState<BufferState,StorageRes,StackState::frames> storageState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2289,6 +2292,7 @@ struct MainState {
             {PierceRes,&pierceState},
             {RelateRes,&relateState},
             {ColorRes,&colorState},
+            {StorageRes,&storageState},
             {UniformRes,&uniformState},
             {MatrixRes,&matrixState},
             {TriangleRes,&triangleState},
@@ -2373,6 +2377,7 @@ struct MainState {
             logicalState.device,logicalState.commandPool,logicalState.renderPass,
             logicalState.imageFormat,logicalState.depthFormat,
             logicalState.graphics,logicalState.present),
+        storageState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
