@@ -746,6 +746,7 @@ struct BaseState {
     virtual void resize(Loc &loc, SmartState log) EXIT
     virtual VkFence setup(Loc &loc, SmartState log) EXIT
     virtual void upset(Loc &loc, SmartState log) EXIT
+    virtual void saveBuffer(Loc &loc, SmartState log) EXIT
     virtual BindState *getBind(SmartState log) EXIT
     virtual VkImage getImage() EXIT
     virtual VkSwapchainKHR getSwapchain() EXIT
@@ -933,17 +934,13 @@ struct BindState : public BaseState {
         bool tmp =  atom[typ]; atom[typ] = false;
         return tmp;
     }
-    SaveState *add(Resrc typ, Phase ref, int bnd, Res res, int fst, Lst lst, SmartState log) { // add resource of type
+    SaveState *add(Resrc typ, int bnd, Res res, int fst, Lst lst, SmartState log) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
-        if (ref < 0 || ref >= Phases) EXIT
         SaveState *sav = &bind[typ].add(1);
         sav->buf = res.resrc; sav->typ = typ; sav->fst = fst; sav->idx = res.index; sav->use = res.reuse;
         set(typ,lst);
-        {char *st0 = 0; char *st1 = 0;
-        showResrc(typ,&st0); showPhase(ref,&st1);
-        log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << " " << st1 << '\n';
-        free(st0); free(st1);}
+        {char *st0 = 0; showResrc(typ,&st0); log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << '\n'; free(st0);}
         return sav;
     }
     Bnd get(Unl &unl, int idx) {
@@ -1189,7 +1186,7 @@ struct CopyState {
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             // remember first and reuse subsequent of the same resource and class
             Lst lst = Lst{Onl{indx,KEY,VAL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
-            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,PHS,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,lst,log));
+            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,lst,log));
             sav->fin = i;
             // prevent chosen from being stolen by different classes in same resource
             switch (INS) {default: break;
@@ -1456,7 +1453,7 @@ struct CopyState {
     }
     bool iterate(Memory typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
+        if (sub == 0) sav = {OldDerIns,MiddleLoc,WholeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
         if (builtin(sav.ins,dot.ins,ary->memins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->memloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->memfmt,typ,sub,Formats,log)) done = false;
@@ -1476,7 +1473,7 @@ struct CopyState {
     }
     bool iterate(Resrc typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
+        if (sub == 0) sav = {OldDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
         if (builtin(sav.ins,dot.ins,ary->resins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->resloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->resfmt,typ,sub,Formats,log)) done = false;
@@ -1496,7 +1493,7 @@ struct CopyState {
     }
     bool iterate(Micro typ, int sub, Arg &sav, Arg &dot, ConstState *ary, SmartState log) {
         bool done = true;
-        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros,DrawPhs};
+        if (sub == 0) sav = {NewDerIns,ResizeLoc,SizeFrm,Qualitys,Resrcs,Memorys,Micros,Phases};
         if (builtin(sav.ins,dot.ins,ary->micins,typ,sub,Instrs,log)) done = false;
         if (builtin(sav.loc,dot.loc,ary->micloc,typ,sub,Relocs,log)) done = false;
         if (builtin(sav.fmt,dot.fmt,ary->micfmt,typ,sub,Formats,log)) done = false;
@@ -1821,7 +1818,7 @@ struct UniformState : public BaseState {
     const VkPhysicalDeviceMemoryProperties memProperties;
     VkBuffer buffer;
     VkDeviceMemory memory;
-    int range;
+    VkDeviceSize bufferSize;
     void* mapped;
     UniformState() :
         BaseState("UniformState",StackState::self),
@@ -1833,16 +1830,16 @@ struct UniformState : public BaseState {
         reset(SmartState());
     }
     VkBuffer getBuffer() override {return buffer;}
-    int getRange() override {return range;}
+    int getRange() override {return bufferSize;}
     void resize(Loc &loc, SmartState log) override {
-        range = loc.max.size;
-        VkDeviceSize bufferSize = loc.max.size;
+        bufferSize = loc.max.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             memProperties, buffer, memory);
         vkMapMemory(device, memory, 0, bufferSize, 0, &mapped);
     }
     void unsize(Loc &loc, SmartState log) override {
+        mapped = 0;
         vkUnmapMemory(device,memory);
         vkFreeMemory(device, memory, nullptr);
         vkDestroyBuffer(device, buffer, nullptr);
@@ -1868,7 +1865,7 @@ struct BufferState : public BaseState {
     const VkBufferUsageFlags flags;
     VkBuffer buffer;
     VkDeviceMemory memory;
-    int range;
+    VkDeviceSize bufferSize;
     BufferState() :
         BaseState("BufferState",StackState::self),
         device(StackState::device),
@@ -1883,11 +1880,10 @@ struct BufferState : public BaseState {
     }
     VkBuffer getBuffer() override {return buffer;}
     VkDeviceMemory getMemory() override {return memory;}
-    int getRange() override {return range;}
+    int getRange() override {return bufferSize;}
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " " << loc.max << '\n';
-        range = loc.max.size;
-        VkDeviceSize bufferSize = loc.max.size;
+        bufferSize = loc.max.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
         loc.commandBuffer = createCommandBuffer(device,commandPool);
         loc.syn.fen = createFence(device);
@@ -1903,8 +1899,9 @@ struct BufferState : public BaseState {
         int tmp = loc.req.idx - loc.max.base;
         if (tmp < 0 || loc.req.siz < 0 || tmp+loc.req.siz > loc.max.size) EXIT
         VkDeviceSize bufferSize = loc.max.size;
-        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
         void* data; vkMapMemory(device, loc.stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy((void*)((char*)data+tmp),loc.req.ptr,loc.req.siz);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
@@ -1938,6 +1935,7 @@ struct ImageState : public BaseState {
     VkDeviceMemory imageMemory;
     VkImageView imageView;
     VkExtent2D extent;
+    VkDeviceSize imageSize;
     VkImage depthImage;
     VkDeviceMemory depthMemory;
     VkImageView depthImageView;
@@ -1949,6 +1947,13 @@ struct ImageState : public BaseState {
     VkExtent2D getExtent() override {return extent;}
     VkSampler getTextureSampler() override {return textureSampler;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
+    void saveBuffer(Loc &loc, SmartState log) override {
+        int texWidth = loc.max.extent.width;
+        int texHeight = loc.max.extent.height;
+        VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
+        VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
+        copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, true);
+    }
     ImageState() :
         BaseState("ImageState",StackState::self),
         device(StackState::device),
@@ -1996,6 +2001,7 @@ struct ImageState : public BaseState {
         int texWidth = loc.max.extent.width;
         int texHeight = loc.max.extent.height;
         extent = loc.max.extent;
+        imageSize = texWidth*texHeight*4*vulkanPixel(ext);
         VkImageUsageFlagBits flags;
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(ext));
         if (ext == ExtentExt) {
@@ -2064,8 +2070,8 @@ struct ImageState : public BaseState {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
-        VkDeviceSize imageSize = texWidth*texHeight*4*vulkanPixel(ext);
-        createBuffer(device, physical, imageSize, (isr(ext) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
+        createBuffer(device, physical, imageSize, (isr(ext) ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
         void* data; if (!isr(ext)) {
         vkMapMemory(device, loc.stagingBufferMemory, 0, imageSize, 0, &data);}
         if (ext == ExtentExt) {
