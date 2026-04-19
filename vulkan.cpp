@@ -746,7 +746,7 @@ struct BaseState {
     virtual void resize(Loc &loc, SmartState log) EXIT
     virtual VkFence setup(Loc &loc, SmartState log) EXIT
     virtual void upset(Loc &loc, SmartState log) EXIT
-    virtual void saveBuffer(Loc &loc, SmartState log) EXIT
+    virtual VkFence stageBuffer(Loc &loc, SmartState log) EXIT
     virtual BindState *getBind(SmartState log) EXIT
     virtual VkImage getImage() EXIT
     virtual VkSwapchainKHR getSwapchain() EXIT
@@ -758,7 +758,7 @@ struct BaseState {
     virtual VkPipelineLayout getPipelineLayout() EXIT
     virtual VkBuffer getBuffer() EXIT
     virtual VkDeviceMemory getMemory() EXIT
-    virtual int getRange() EXIT
+    virtual VkDeviceSize getRange() EXIT
     virtual VkImageView getImageView() EXIT
     virtual VkSampler getTextureSampler() EXIT
     virtual VkDescriptorPool getDescriptorPool() EXIT
@@ -1830,7 +1830,7 @@ struct UniformState : public BaseState {
         reset(SmartState());
     }
     VkBuffer getBuffer() override {return buffer;}
-    int getRange() override {return bufferSize;}
+    VkDeviceSize getRange() override {return bufferSize;}
     void resize(Loc &loc, SmartState log) override {
         bufferSize = loc.max.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -1880,7 +1880,7 @@ struct BufferState : public BaseState {
     }
     VkBuffer getBuffer() override {return buffer;}
     VkDeviceMemory getMemory() override {return memory;}
-    int getRange() override {return bufferSize;}
+    VkDeviceSize getRange() override {return bufferSize;}
     void resize(Loc &loc, SmartState log) override {
         log << "resize " << debug << " " << loc.max << '\n';
         bufferSize = loc.max.size;
@@ -1898,7 +1898,6 @@ struct BufferState : public BaseState {
         log << "setup " << debug << '\n';
         int tmp = loc.req.idx - loc.max.base;
         if (tmp < 0 || loc.req.siz < 0 || tmp+loc.req.siz > loc.max.size) EXIT
-        VkDeviceSize bufferSize = loc.max.size;
         createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             memProperties, loc.stagingBuffer, loc.stagingBufferMemory);
@@ -1915,6 +1914,60 @@ struct BufferState : public BaseState {
         vkDestroyBuffer(device, loc.stagingBuffer, nullptr);
     }
     static void copyBuffer(VkDevice device, VkQueue graphics, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkCommandBuffer commandBuffer, VkFence fence, VkSemaphore before, VkSemaphore after);
+};
+
+struct WrapState : public BaseState {
+    const VkDevice device;
+    const VkPhysicalDevice physical;
+    const VkCommandPool commandPool;
+    const VkPhysicalDeviceMemoryProperties memProperties;
+    const VkBufferUsageFlags flags;
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    VkDeviceSize bufferSize;
+    WrapState() :
+        BaseState("WrapState",StackState::self),
+        device(StackState::device),
+        physical(StackState::physical),
+        commandPool(StackState::commandPool),
+        memProperties(StackState::memProperties),
+        flags(StackState::flags) {
+    }
+    ~WrapState() {
+        reset(SmartState());
+    }
+    VkBuffer getBuffer() override {return buffer;}
+    VkDeviceMemory getMemory() override {return memory;}
+    VkDeviceSize getRange() override {return bufferSize;}
+    BaseState *getDependee(Loc &loc) {
+        BaseState *dee = 0;
+        for (int i = 0; i < loc.unl.siz; i++) {
+        Bnd bnd = get(loc.unl,i);
+        if (bnd.phs == RenderPhs && dee) EXIT
+        if (bnd.phs == RenderPhs) dee = bnd.buf;}
+        return dee;
+    }
+    void resize(Loc &loc, SmartState log) override {
+        BaseState *dee = getDependee(loc);
+        log << "resize " << debug << " " << dee->debug << '\n';
+        bufferSize = dee->getRange();
+        createBuffer(device, physical, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memProperties, buffer, memory);
+        loc.commandBuffer = createCommandBuffer(device,commandPool);
+        loc.stagingBuffer = buffer;
+        loc.stagingBufferMemory = memory;
+    }
+    void unsize(Loc &loc, SmartState log) override {
+        vkFreeCommandBuffers(device, commandPool, 1, &loc.commandBuffer);
+        vkFreeMemory(device, memory, nullptr);
+        vkDestroyBuffer(device, buffer, nullptr);
+    }
+    VkFence setup(Loc &loc, SmartState log) override {
+        BaseState *dee = getDependee(loc);
+        return dee->stageBuffer(loc,log);
+    }
+    void upset(Loc &loc, SmartState log) override {
+    }
 };
 
 struct ImageState : public BaseState {
@@ -1947,12 +2000,13 @@ struct ImageState : public BaseState {
     VkExtent2D getExtent() override {return extent;}
     VkSampler getTextureSampler() override {return textureSampler;}
     VkFramebuffer getFramebuffer() override {return framebuffer;}
-    void saveBuffer(Loc &loc, SmartState log) override {
+    VkFence stageBuffer(Loc &loc, SmartState log) override {
         int texWidth = loc.max.extent.width;
         int texHeight = loc.max.extent.height;
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, true);
+        return VK_NULL_HANDLE;
     }
     ImageState() :
         BaseState("ImageState",StackState::self),
