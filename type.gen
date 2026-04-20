@@ -1,7 +1,7 @@
 dofile("show.lua")
 
 --HERE Enums
-Goal = {
+Goal = { -- file process
 	"NewHub", -- open file
 	"ThdHub",
 	"CfgHub", -- set pid and forward
@@ -13,7 +13,7 @@ Goal = {
 	"ThdErr", -- close and report
 	"HubErr", -- report and exit
 }
-Level = {
+Level = { -- type of line stock
 	"Stock",
 	"First",
 	"Assign",
@@ -22,7 +22,7 @@ Level = {
 	"Timer",
 	"Audio",
 }
-Flow = {
+Flow = { -- type of line flow
 	"Sched",
 	"Back",
 	"Peek",
@@ -30,7 +30,7 @@ Flow = {
 	"Store",
 	"Load",
 }
-Memory = {
+Memory = { -- which structure is in the center struction
 	"Indexz", -- fetch buffer indices
 	"Bringupz", -- fetch buffer verticse
 	"Imagez", -- facet decorations
@@ -62,6 +62,7 @@ Resrc = { -- per variation of BaseState
 	"RelateRes",
 	"ColorRes",
 	"StorageRes",
+	"WrapRes",
 	"UniformRes",
 	"MatrixRes",
 	"TriangleRes",
@@ -117,12 +118,12 @@ Swizzle = { -- fragment shader operand selector
 	"NormalSwz", -- surface normal
 	"UniformSwz", -- uniform value
 }
-Constant = {
+Constant = { -- which constant array to get instructions from
 	"MicroCon",
 	"MemoryCon",
 	"ResrcCon",
 }
-Reloc = {
+Reloc = { -- which argument to pass to separate thread
 	"ResizeLoc",
 	"ReformLoc",
 	"BeforeLoc", -- like Acquire
@@ -145,7 +146,7 @@ Extent = { -- resource initialization done on gpu thread
 	"TrueExt", -- resize once for side effects
 	"FalseExt", -- resize every time for side effects
 }
-Request = {
+Request = { -- what to do on separate thread
 	"BothReq", -- call resize if changed, and call setup
 	"LockReq", -- call setup
 	"SizeReq", -- call resize if changed
@@ -171,7 +172,7 @@ Render = { -- VkFormat
 	"SfloatFrm",
 	"SrgbFrm",
 }
-Format = {
+Format = { -- what to push to separate thread
 	"ImageFrm", -- ExclReq FormExt base(implied:src) size(implied:dst) (undefined to readonly)
 	"WonlyFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to readonly)
@@ -197,7 +198,7 @@ Format = {
 	"FalseFrm", -- SizeReq FalseExt(always resize)
 	"TrueFrm", -- SizeReq TrueExt(resize once)
 }
-Instr = {
+Instr = { -- how to push or bind resources
 	"NewDerIns", -- advance before push to thread
 	"OldDerIns", -- advance an oldest after fence
 	"GetDerIns", -- advance the oldest after fence
@@ -226,7 +227,7 @@ Default = { -- for value, interpret constant array as
 	"BackDef", -- prior
 	"GiveDef", -- given
 }
-Configure = {
+Configure = { -- integer constants for user expressions
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
@@ -287,7 +288,7 @@ Configure = {
 	"ConstantResrcs",
 	"ConstantHandls",
 }
-Transfer = {
+Transfer = { -- what user machine does
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Force", -- machine to configure
@@ -315,7 +316,7 @@ Transfer = {
 	"Jump", -- skip by value
 	"Nest", -- nest by value
 }
-ArgvArg = {
+ArgvArg = { -- arguments for machine operations
 	"ArgvSrc",
 }
 CompArg = {
@@ -438,7 +439,7 @@ Emerg = { -- topology state
 	"Facets", -- Listed -- [[Vertex]] -- per facet vertex triplets
 	"Subsets", -- Int -- [Region] -- in context of space
 }
-Valid = {
+Valid = { --
 	"Toread", -- request for response
 	"Toresp", -- response to request
 	"Towrite", -- overwrite given element
@@ -763,6 +764,7 @@ MemoryIns = {
 	fet_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\", \"FetchPhs\"}\
 	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"StorageRes\",\"IndexRes\",\"BringupRes\"}\
 	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\", \"IndexPhs\",\"FetchPhs\"}"..
+	-- TODO change StorageRes to WrapRes and add push of WrapRes depending on RelateRes before MicroFetCol
 
 	"def0 = {"..
 	-- MicroFilRel
@@ -1436,7 +1438,7 @@ Persist = { -- for file hole side
 		["ThdErr"]=true,["HubErr"]=true
 	}},{}}, -- file or field
 }
-Term0 = {
+Term0 = { -- for line process
 	{"cff","Num",{},{}},
 }
 Term1 = {
@@ -1499,7 +1501,7 @@ Irrex = { -- permutation of permutations
 	{"siz","Int",{},{}}, -- zero for ChrOrd
 	{"sub","Irrex",{},"siz"},
 }
-Express = {
+Express = { -- simple expression
 	{"opr","Operate",{},""},
 	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["CstOp"]=true}},2},
 	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
@@ -1526,7 +1528,7 @@ Express = {
 	{"eub","Int",{["opr"]={["ExtOp"]=true}},{}},
 	{"val","Int",{["opr"]={["IntOp"]=true}},{}},
 }
-Machine = {
+Machine = { -- info for user defined action
 	{"xfr","Transfer",{},""},
 	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
 	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
@@ -1545,7 +1547,7 @@ Machine = {
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
-Uniform = {
+Uniform = { -- how to interpret subscripts into gpu buffers
 	{"all","Int32",{},{}}, -- which subject to use
 	{"one","Int32",{},{}}, -- which element to use
 	{"idx","Int32",{},{}}, -- which plane to manipulate
@@ -1561,19 +1563,19 @@ Uniform = {
 	{"wid","Int32",{},{}}, -- width of image
 	{"hei","Int32",{},{}}, -- height of image
 }
-Triangle = {
+Triangle = { -- facet node
 	{"vtx","Int32",{},{4}}, -- points of triangle
 	{"num","Int32",{},{}}, -- plane of points
 	{"pol","Int32",{},{}}, -- polytope triangle is in
 	{"tex","Int32",{},{}}, -- texture selector
 	{"rot","Int32",{},{}}, -- texture rotation
 }
-Numeric = {
+Numeric = { -- plane in space
 	{"vec","Old",{},{4}}, -- distances above basis
 	{"bas","Int32",{},{}}, -- basis selector
 	{"pad","Int32",{},{3}},
 }
-Vertex = {
+Vertex = { -- point in space
 	{"vec","Old",{},{4}}, -- intersection of planes
 	{"ord","Old",{},{4}}, -- coordinate or color
 	{"ref","Int32",{},{4}}, -- backreference to planes
@@ -1584,22 +1586,22 @@ Vector = {
 Matrix = {
 	{"mat","Old",{},{16}},
 }
-Kernel = {
+Kernel = { -- how to transform points
 	{"saved","Matrix",{},{}},
 	{"local","Matrix",{},{}},
 	{"sent","Matrix",{},{}},
 	{"global","Matrix",{},{}},
 }
-Basis = {
+Basis = { -- how to convert from vector to corners on a plane
 	{"mat","Vector",{},{9}},
 }
-Image = {
+Image = { -- raw image data
 	{"dat","Dat",{},{}},
 	{"wid","Int",{},{}},
 	{"hei","Int",{},{}},
 	{"cha","Int",{},{}},
 }
-Decorate = {
+Decorate = { -- how to produce an image
 	{"dec","Decor",{},{}}, -- operation
 	{"nxt","Int",{},{}}, -- next graph node unless compare fail
 	{"dim","Int",{},{}},
@@ -1607,13 +1609,13 @@ Decorate = {
 	{"idx","Int",{},"dim"}, -- which input or buffer element
 	{"acc","Swizzle",{},{}}, -- which accumulator
 }
-Const = {
+Const = { -- instruction array subscript
 	{"tag","Constant",{},{}},
 	{"mic","Micro",{["tag"]={["MicroCon"]=true}},{}},
 	{"mem","Memory",{["tag"]={["MemoryCon"]=true}},{}},
 	{"res","Resrc",{["tag"]={["ResrcCon"]=true}},{}},
 }
-Draw = {
+Draw = { -- generally modify gpu
 	{"con","Const",{},{}},
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
@@ -1647,14 +1649,14 @@ Incl = { -- include builtin instructions
 	{"mem","Memory",{},{}},
 	{"mic","Micro",{},{}},
 }
-Inst = { -- TODO pack fields
+Inst = { -- setup for vulkan action TODO pack fields
 	{"ins","Instr",{},""},
 	{"req","Requ",{},{}}, -- used by DerIns
 	{"res","Resv",{},{}}, -- used by DerIns DeeIns
 	{"key","Qual",{},{}}, -- used by DerIns DeeIns TagIns
 	{"inc","Incl",{},{}}, -- used by IncIns
 }
-Center = {
+Center = { -- setup for graphics
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},
 	{"idx","Int",{},{}},
@@ -1692,7 +1694,7 @@ Nested = {
 Scalar = {
 	{"num","Old",{},3},
 }
-Change = {
+Change = { -- topology changes
 	{"cfg","Emerg",{},{}},
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
@@ -1704,14 +1706,14 @@ Change = {
 	{"pnt","Scalar",{["vld"]={["Toread"]=true},["cfg"]={["Points"]=true}},"siz"},
 	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
 }
-Argument = {
+Argument = { -- commandline argument
 	{"typ","Program",{},""},
 	{"inp","Int",{},{}},
 	{"out","Int",{},{}},
 	{"idx","Int",{},{}},
 	{"str","Str",{["typ"]={["Holez"]=true}},{}},
 }
-Valve = {
+Valve = { -- setup for system dynamic
 	{"tag","Stream",{},""},
 	{"siz","Int",{["tag"]={["Fanout"]=true}},{}},
 	{"dst","Str",{["tag"]={["Fanout"]=true}},"siz"},

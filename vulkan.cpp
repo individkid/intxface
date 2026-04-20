@@ -423,6 +423,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (RelateRes): return "RelateRes";
         case (ColorRes): return "ColorRes";
         case (StorageRes): return "StorageRes";
+        case (WrapRes): return "WrapRes";
         case (UniformRes): return "UniformRes";
         case (MatrixRes): return "MatrixRes";
         case (TriangleRes): return "TriangleRes";
@@ -2324,6 +2325,7 @@ struct MainState {
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
     ArrayState<ImageState,ColorRes,StackState::frames> colorState;
     ArrayState<BufferState,StorageRes,StackState::frames> storageState;
+    ArrayState<WrapState,WrapRes,StackState::frames> wrapState;
     ArrayState<UniformState,UniformRes,StackState::frames> uniformState;
     ArrayState<UniformState,MatrixRes,StackState::frames> matrixState;
     ArrayState<BufferState,TriangleRes,StackState::frames> triangleState;
@@ -2353,6 +2355,7 @@ struct MainState {
             {RelateRes,&relateState},
             {ColorRes,&colorState},
             {StorageRes,&storageState},
+            {WrapRes,&wrapState},
             {UniformRes,&uniformState},
             {MatrixRes,&matrixState},
             {TriangleRes,&triangleState},
