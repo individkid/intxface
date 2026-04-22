@@ -10,6 +10,7 @@ LIBRARIES = -llua -lportaudio -lglfw -lvulkan
 CXX = g++
 CC = gcc
 GHC = ghc
+RS = rustc
 SWC = oops
 GC = glslc
 endif
@@ -19,6 +20,7 @@ LIBRARIES = -llua -lportaudio
 CXX = clang++
 CC = clang
 GHC = ghc
+RS = rustc
 SWC = swiftc
 GC = xcrun
 endif
@@ -58,6 +60,8 @@ sharer.log:
 	ln -f $< $@
 %: %Hs
 	ln -f $< $@
+%: %Rs
+	ln -f $< $@
 %: %Lua
 	ln -f $< $@
 %: %Sw
@@ -70,6 +74,8 @@ sharer.log:
 %Hs: %.hs
 	$(GHC) -o $@ $(filter %.hs %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 	touch $@
+%Rs: %.rs
+	$(RS) -o $@ $(filter %.rs %C.o %Cpp.o,$^)
 %Lua: %.lua
 	echo '#!/usr/bin/env lua' > $@ ; echo 'dofile "'$<'"' >> $@ ; chmod +x $@
 %Sw: %Sw.o
@@ -132,7 +138,7 @@ clean:
 	rm -f *typer.h *typer.c *typer.hs *typer.lua *typer.sw
 	rm -f typra facer typer filer planra spacra flatten
 	rm -f hole file line metal space share pipe page
-	rm -f *C *M *Cpp *Hs *Lua *Sw *G
+	rm -f *C *M *Cpp *Hs *Rs *Lua *Sw *G
 	rm -f core.* run out *.err *.out *.log *.tmp *.cp *.ls *.rm
 	rm -f *.--; rm -f .*.--; rm -f ..*.--; rm -f ...*.--
 	rm -f *.o *.so *.hi *_stub.h

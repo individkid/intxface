@@ -164,6 +164,7 @@ Phase = { -- how dependee is used
 	"FramePhs", -- display buffer
 	"SwapPhs", -- display queue
 	"RenderPhs", -- frame buffer
+	"WrapPhs", -- other structure
 }
 Render = { -- VkFormat
 	"VecFrm",
@@ -283,7 +284,6 @@ Configure = { -- integer constants for user expressions
 	"ConstantMicros",
 	"ConstantFrames",
 	"ConstantImages",
-	"ConstantPiercs",
 	"ConstantInstrs",
 	"ConstantResrcs",
 	"ConstantHandls",
@@ -762,9 +762,8 @@ MemoryIns = {
 	fil_phs = {\"UniformPhs\"}\
 	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\", \"BringupRes\"}\
 	fet_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\", \"FetchPhs\"}\
-	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"StorageRes\",\"IndexRes\",\"BringupRes\"}\
-	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\", \"IndexPhs\",\"FetchPhs\"}"..
-	-- TODO change StorageRes to WrapRes and add push of WrapRes depending on RelateRes before MicroFetCol
+	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"IndexRes\",\"BringupRes\"}\
+	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}"..
 
 	"def0 = {"..
 	-- MicroFilRel
@@ -858,6 +857,29 @@ MemoryIns = {
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
+
+	-- WrapRes
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NewDerIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","BeforeLoc"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PeekFrm"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NewDerIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","MiddleLoc"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","NullFrm"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NewDerIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","AfterLoc"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","SourceFrm"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
 
 	-- MicroFetCol
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
