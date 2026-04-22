@@ -863,7 +863,7 @@ MemoryIns = {
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","BeforeLoc"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PeekFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NewDerIns"},
@@ -877,7 +877,7 @@ MemoryIns = {
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","AfterLoc"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","SourceFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
 
