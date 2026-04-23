@@ -353,8 +353,7 @@ layout (location = 0) out vec4 outColor;
 void fragmentColor()
 {
     if (fragIdx == -1) outColor = vec4(1.0,2.0,3.0,4.0);
-    else if (fragIdx == 1 && inRel.buf[0] == 456) outColor = vec4(1.0,0.0,0.0,1.0);
-    else if (fragIdx == 1) outColor = vec4(fragColor,1.0);
+    else if (fragIdx == 1) outColor = vec4(gl_FragCoord.xy,inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*1663],1.0);
     else outColor = texture(texSampler, fragTexCoord);
 }
 #endif
