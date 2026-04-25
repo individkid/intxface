@@ -1261,6 +1261,19 @@ void initTest()
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
+    int giv[] = {width,height};
+    int giw[] = {0,12}; // idx,siz
+    for (int i = 0; i < 2; i++) {
+    struct Center *fil = centerPull(Drawz); freeCenter(fil);
+    fil->mem = Drawz; fil->siz = 1; allocDraw(&fil->drw,fil->siz);
+    fil->drw[0].con.tag = MicroCon;
+    fil->drw[0].con.mic = (i?MicroFetRel:MicroFilRel);
+    fil->drw[0].siz = sizeof((i?giw:giv))/sizeof(int);
+    allocInt(&fil->drw[0].arg,fil->drw[0].siz);
+    for (int j = 0; j < fil->drw[0].siz; j++) fil->drw[0].arg[j] = (i?giw:giv)[j];
+    callCopy(fil,Drawz,RetRsp,0,(debug?"relate":0));
+    while (!centerCheck(Drawz)) callWait();}
+
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
 
     break; case (Builtin): case (Regress): case (Release): {}}

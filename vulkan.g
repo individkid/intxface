@@ -140,8 +140,6 @@ layout (location = 1) flat in vec4 fragVec;
 layout (location = 2) flat in uvec4 fragRef;
 layout (location = 3) flat in uint fragIdx;
 layout (location = 4) flat in uint fragTex;
-layout (location = 5) in vec3 fragColor;
-layout (location = 6) in vec2 fragTexCoord;
 #endif
 #if defined(vertexFill) || defined(vertexConst) || defined(vertexFetch) || defined(vertexVertex) || defined(vertexCoplane)
 layout (location = 0) out vec4 fragOrd; // interpolated vertex
@@ -149,8 +147,6 @@ layout (location = 1) out vec4 fragVec; // calculated normal
 layout (location = 2) out uvec4 fragRef; // facet identifiers
 layout (location = 3) out uint fragIdx; // primitive identifier
 layout (location = 4) out uint fragTex; // decoration selector
-layout (location = 5) out vec3 fragColor; // interpolated color
-layout (location = 6) out vec2 fragTexCoord; // primitive space
 #endif
 
 layout (binding = 0) readonly uniform Uniforms {
@@ -182,9 +178,9 @@ layout (binding = 4) readonly buffer Numerics {
 #endif
 
 #if defined(vertexVertex) || defined(vertexCoplane)
-void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
+void index(out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
 {
-    tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
+    uint tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
     cnr = gl_VertexIndex%3; // corner index
     vtx = inTri.buf[tri].vtx[cnr]-inUni.buf.vtx; // vertex index for corner of triangle
     pol = inTri.buf[tri].pol-inUni.buf.mat; // matrix index for polytope vertex is in
@@ -195,12 +191,12 @@ void index(out uint tri, out uint cnr, out uint vtx, out uint pol, out uint num,
     one = inUni.buf.one-inUni.buf.mat; // matrix index for manipulated plane
     use = inUni.buf.use; // basis index for plane feet
 }
-void display(uint tri, uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vtx, vec4 vec)
+void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vtx, vec4 vec)
 {
     if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     fragOrd = inVer.buf[vtx].ord;
-    fragIdx = tri;
+    fragIdx = pol;
     fragTex = tex;
 }
 #endif
@@ -247,10 +243,9 @@ void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
 {
     if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
     else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
-    fragTexCoord = myCoordinate.xy;
-    if (gl_VertexIndex >= lim) fragColor = vec3(0.0,0.0,1.0); // blue
-    else fragColor = vec3(1.0,0.0,0.0); // red
+    fragOrd = vec4(myCoordinate.xy,0.0,0.0);
     fragIdx = (gl_VertexIndex >= lim ? 1 : 0);
+    fragTex = (gl_VertexIndex >= lim ? 1 : 0);
 }
 #endif
 
@@ -274,10 +269,10 @@ void backoff()
 #if defined(vertexVertex)
 void vertex()
 {
-    uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
+    uint cnr,vtx,pol,num,tex,all,idx,one,use;
+    index(cnr,vtx,pol,num,tex,all,idx,one,use);
     vec4 vec = inVer.buf[vtx].vec;
-    display(tri,idx,num,tex,one,pol,all,vtx,vec);
+    display(idx,num,tex,one,pol,all,vtx,vec);
 }
 #endif
 
@@ -292,13 +287,13 @@ void expand(out vec4 res[3], uint ref, uint use)
 }
 void coplane()
 {
-    uint tri,cnr,vtx,pol,num,tex,all,idx,one,use;
-    index(tri,cnr,vtx,pol,num,tex,all,idx,one,use);
+    uint cnr,vtx,pol,num,tex,all,idx,one,use;
+    index(cnr,vtx,pol,num,tex,all,idx,one,use);
     vec4 exp[3/*plane*/][3/*tangent*/];
     for (uint i = 0; i < 3; i++)
     expand(exp[i],inVer.buf[vtx].ref[i],use);
     vec4 vec = intersect(exp[0],exp[1],exp[2]);
-    display(tri,idx,num,tex,one,pol,all,vtx,vec);
+    display(idx,num,tex,one,pol,all,vtx,vec);
 }
 #endif
 
@@ -353,8 +348,8 @@ layout (location = 0) out vec4 outColor;
 void fragmentColor()
 {
     if (fragIdx == -1) outColor = vec4(1.0,2.0,3.0,4.0);
-    else if (fragIdx == 1) outColor = vec4(gl_FragCoord.xy,inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*1663],1.0);
-    else outColor = texture(texSampler, fragTexCoord);
+    else if (fragTex == 1) outColor = vec4(gl_FragCoord.xy,inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*inUni.buf.wid],1.0);
+    else outColor = texture(texSampler, fragOrd.xy);
 }
 #endif
 #if defined(fragmentPierce)
@@ -368,6 +363,6 @@ void fragmentPierce()
 layout (location = 0) out uint outColor;
 void fragmentRelate()
 {
-    outColor = inUni.buf.mod;
+    outColor = fragIdx;
 }
 #endif
