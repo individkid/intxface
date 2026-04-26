@@ -838,12 +838,12 @@ void planeTest(enum Thread tag, int idx)
     allocOld(&eek->old,eek->siz);
     callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
 
-    else if (count%6 == 2 || count%6 == 5) {
+    /*else if (count%6 == 2 || count%6 == 5) {
     struct Center *eek = centerPull(Memorys+5); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocInt(&eek->uns,eek->siz);
-    callCopy(eek,Memorys+5,RptRsp,1,(debug?"ident":0));}
+    callCopy(eek,Memorys+5,RptRsp,1,(debug?"ident":0));}*/
 
     else if (count%6 == 3 || count%6 == 0) {
     struct Center *vec = centerPull(Vectorz); freeCenter(vec);
@@ -1206,11 +1206,11 @@ void initTest()
     for (int i = 0; i < Micros; i++) {
     ptr->drw[i].con.tag = ResrcCon;
     ptr->drw[i].con.res = PipeRes;
-    int val[] = {/*IDerIns*/i,/*Micro*/i};
-    ptr->drw[i].sze = sizeof(val)/sizeof(int);
-    allocInt(&ptr->drw[i].val,ptr->drw[i].sze);
-    for (int j = 0; j < ptr->drw[i].sze; j++) {
-    ptr->drw[i].val[j] = val[j];}}
+    int arg[] = {/*IDerIns*/i,/*Micro*/i};
+    ptr->drw[i].siz = sizeof(arg)/sizeof(int);
+    allocInt(&ptr->drw[i].arg,ptr->drw[i].siz);
+    for (int j = 0; j < ptr->drw[i].siz; j++) {
+    ptr->drw[i].arg[j] = arg[j];}}
     callCopy(ptr,Drawz,MptRsp,0,(debug?"pipe":0));
     while (!centerCheck(Drawz)) usleep(1000);
 

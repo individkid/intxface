@@ -137,14 +137,12 @@ vec4 intersect(vec4 num0[3], vec4 num1[3], vec4 num2[3])
 #if defined(fragmentRelate) || defined(fragmentPierce) || defined(fragmentColor)
 layout (location = 0) in vec4 fragOrd;
 layout (location = 1) flat in vec4 fragVec;
-layout (location = 2) flat in uvec4 fragRef;
 layout (location = 3) flat in uint fragIdx;
 layout (location = 4) flat in uint fragTex;
 #endif
 #if defined(vertexFill) || defined(vertexConst) || defined(vertexFetch) || defined(vertexVertex) || defined(vertexCoplane)
 layout (location = 0) out vec4 fragOrd; // interpolated vertex
 layout (location = 1) out vec4 fragVec; // calculated normal
-layout (location = 2) out uvec4 fragRef; // facet identifiers
 layout (location = 3) out uint fragIdx; // primitive identifier
 layout (location = 4) out uint fragTex; // decoration selector
 #endif
@@ -239,7 +237,7 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vt
 
 #if defined(vertexConst) || defined(vertexFetch)
 // TODO figure out way to identify polytope from fetch data, and use it to decide which matrix(s) to use
-void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
+void share(vec4 myPosition, vec4 myCoordinate, uint lim)
 {
     if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
     else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
@@ -252,17 +250,16 @@ void share(vec4 myPosition, vec4 myCoordinate, uvec4 myColor, uint lim)
 #if defined(vertexFetch)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
-layout (location = 2) in uvec4 inRefer;
 void fetch()
 {
-    share(inPosition,inOrdClr,inRefer,4);
+    share(inPosition,inOrdClr,4);
 }
 #endif
 
 #if defined(vertexConst)
 void backoff()
 {
-    share(vertices[indices[gl_VertexIndex]],coord[indices[gl_VertexIndex]],uvec4(0,0,0,0),6);
+    share(vertices[indices[gl_VertexIndex]],coord[indices[gl_VertexIndex]],6);
 }
 #endif
 

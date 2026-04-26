@@ -1540,16 +1540,16 @@ struct CopyState {
     void showType(Micro typ, char **str) {
         showMicro(typ,str);
     }
-    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *val, int *arg, int siz, int &idx, int ary, int dep, SmartState log) {
+    template <class Type> void recurse(HeapState<Inst,StackState::instrs> &lst, Type typ, void *dat, int *arg, int siz, int &idx, int ary, int dep, SmartState log) {
         int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
         {char *st0 = 0; showType(typ,&st0); log << st0 << ":push " << " alt:" << ary << " depth:" << dep << '\n'; free(st0);}
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
-        Inst ins = instruct(dot,i,typ,val,arg,siz,idx,count,log);
+        Inst ins = instruct(dot,i,typ,dat,arg,siz,idx,count,log);
         switch (ins.ins) {default: lst << ins;
-        break; case (ResIncIns): push(lst,ins.inc.res,val,arg,siz,idx,get(arg,siz,idx,log,"ResIncIns.ary"),dep+1,log);
-        break; case (MemIncIns): push(lst,ins.inc.mem,val,arg,siz,idx,get(arg,siz,idx,log,"MemIncIns.ary"),dep+1,log);
-        break; case (MicIncIns): push(lst,ins.inc.mic,val,arg,siz,idx,get(arg,siz,idx,log,"MicIncIns.ary"),dep+1,log);}}
+        break; case (ResIncIns): push(lst,ins.inc.res,dat,arg,siz,get(arg,siz,idx,log,"ResIncIns.bas"),get(arg,siz,idx,log,"ResIncIns.ary"),dep+1,log);
+        break; case (MemIncIns): push(lst,ins.inc.mem,dat,arg,siz,get(arg,siz,idx,log,"ResIncIns.bas"),get(arg,siz,idx,log,"MemIncIns.ary"),dep+1,log);
+        break; case (MicIncIns): push(lst,ins.inc.mic,dat,arg,siz,get(arg,siz,idx,log,"ResIncIns.bas"),get(arg,siz,idx,log,"MicIncIns.ary"),dep+1,log);}}
         {char *st0 = 0; showType(typ,&st0); log << st0 << ":done alt:" << ary << " depth:" << dep << '\n'; free(st0);}
     }
     int size(Micro typ, int ary) {
@@ -1579,92 +1579,54 @@ struct CopyState {
     int fill(Resrc typ, int idx, int ary) {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
-    template <class Type> void push(Type typ, void *dat, int *arg, int *val, int siz, int sze, int &idx, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *dat, int *arg, int siz, int bas, int ary, int dep, SmartState log) {
         log << "copy";
         for (int i = 0; dflt(typ,i,ary) != Defaults; i++) {
         char *st0 = 0; showDefault(dflt(typ,i,ary),&st0); log << " " << i << ":" << st0 << ":" << fill(typ,i,ary); free(st0);}
-        log << '\n';
-        // profer means GiveDef uses fill value as count into proferred
-        // with both arg/siz and val/sze,
-        //  negative arg means profer the val,
-        //  non-negative means force val at index arg
-        // arg/siz only means profer only
-        // val/sze only means packed force
-        // neither means default only
-        if ((arg == 0) != (siz == 0)) EXIT
-        if ((val == 0) != (sze == 0)) EXIT
-        int tot = 0; int lim = size(typ,ary);
-        if (siz && sze) {
-            tot = lim;
-            // maximum of number of fill values and force index
-            for (int i = 0; i < siz; i++)
-            if (arg[i] >= tot) tot = arg[i]+1;}
-        // maximum of number of fill values and number of packed force values
-        else if (sze) tot = sze;
-        // otherwise number of fill values
-        if (tot < lim) tot = lim;
+        log << " " << dep << '\n';
+        int tot = size(typ,ary);
         int vlu[tot];
-        // initialize with defaults
-        for (int i = 0; i < tot; i++) {
-            // ignore siz sze since TrivDef fill value is an immediate value
-            if (i < lim && dflt(typ,i,ary) == TrivDef) vlu[i] = fill(typ,i,ary);
-            else vlu[i] = 0;}
-        // copy from given
-        if (siz) for (int i = 0; i < tot; i++)
-            // ignore GiveDef if there is nothing proferred
-            if (i < lim && dflt(typ,i,ary) == GiveDef) {
-            int idx = fill(typ,i,ary);
-            // find the proffered val counted by the fill value
-            if (sze) {for (int j = 0; j < tot; j++)
-            if (arg[j] < 0 && idx-- == 0) vlu[i] = val[j];}
-            // siz no sze means all arg would be negative, and arg treated as proferred val
-            else if (idx >= 0 && idx < tot) vlu[i] = arg[idx];}
-        // force from given
-        if (sze) for (int i = 0; i < tot; i++) {
-            // siz and sze means force index is from arg
-            // sze no siz is as if arg are each index in order
-            int idx = (siz ? arg[i] : i);
-            // if arg is not negative it is a force index
-            if (idx >= 0 && idx < tot) vlu[idx] = val[i];}
-        // alias from prior
-        for (int i = 0; i < tot; i++)
-            // ignore siz sze since BackDef fill value is index into result so far
-            if (i < lim && dflt(typ,i,ary) == BackDef) {
-            int idx = fill(typ,i,ary);
-            if (idx >= 0 && idx < i) vlu[i] = vlu[idx];}
-        HeapState<Inst,StackState::instrs> lst;
-        push(lst,typ,dat,vlu,tot,idx,ary,0,log);
+        for (int i = 0; dflt(typ,i,ary) != Defaults; i++) switch (dflt(typ,i,ary)) {default: EXIT
+        break; case (TrivDef): vlu[i] = fill(typ,i,ary);
+        break; case (BackDef): vlu[i] = vlu[fill(typ,i,ary)];
+        break; case (GiveDef): vlu[i] = arg[fill(typ,i,ary)];}
+        int idx = 0;
+        recurse(lst,typ,dat,vlu,tot,idx,ary,dep,log);
         if (idx != tot) {std::cerr << "wrong number of int arguments " << idx << "!=" << tot << std::endl; EXIT}
+    }
+    template <class Type> void push(Type typ, void *dat, int *arg, int siz, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+        HeapState<Inst,StackState::instrs> lst;
+        push(lst,typ,dat,arg,siz,0,ary,0,log);
         push(lst,ptr,sub,rsp,log);
     }
     void push(Draw &drw, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         {char *st0 = 0; showDraw(&drw,&st0); log << "copy " << st0 << '\n'; free(st0);}
-        int idx = 0; switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.val,drw.siz,drw.sze,idx,ptr,sub,rsp,ary,log);}
+        switch (drw.con.tag) {default: ERROR();
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,ptr,sub,rsp,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,ptr,sub,rsp,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,ptr,sub,rsp,ary,log);}
     }
     void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         int mval[] = {
         wid,hei, // OldDerIns ExtentFrm
         idx,siz}; // OldDerIns WholeFrm
-        int msiz = sizeof(mval)/sizeof(int); int midx = 0;
-        push(mem,dat,mval,0,msiz,0,midx,ptr,sub,rsp,ary,log);
+        int msiz = sizeof(mval)/sizeof(int);
+        push(mem,dat,mval,msiz,ptr,sub,rsp,ary,log);
     }
     void push(Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         switch (ptr->mem) {default: {
         int mod = centerMod(ptr); int idx = ptr->idx*mod; int siz = ptr->siz*mod;
-        int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int); int adx = 0;
+        int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int);
         switch (ptr->mem) {default: EXIT
-        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Storagez): push(ptr->mem,(void*)ptr->sto,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Numericz): push(ptr->mem,(void*)ptr->num,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);
-        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,val,0,aiz,0,adx,ptr,sub,rsp,ary,log);}}
+        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Storagez): push(ptr->mem,(void*)ptr->sto,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Numericz): push(ptr->mem,(void*)ptr->num,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,val,aiz,ptr,sub,rsp,ary,log);}}
         break; case (Drawz): {
             int mask = 0;
             for (int i = 0; i < ptr->siz; i++) {

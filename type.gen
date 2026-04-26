@@ -1097,8 +1097,7 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
 }
--- add MicroFetDrw in MicroAlt, as MicIncIns of MicroFillRel MicroFetRel WrapRes MicroFetDrw
--- in MicroFetDrw in MicroIns, change RelatePhs to WrapRes
+-- TODO in MicroFetDrw in MicroIns, change RelatePhs to WrapRes
 MicroIns = {
 	-- n==0: departures from NowDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
@@ -1300,17 +1299,26 @@ MicroIns = {
 	{"Micro","MicroFilCol","Int","0","Int","MicroFilCol"},
 	{"Micro","MicroFilCol","Int","%(return hnc(dt1,1))","Int","%(return fnc(dt1))"},
 }
+-- TODO add MicroFetDrw in MicroAlt, as MicIncIns of MicroFillRel MicroFetRel WrapRes MicroFetDrw
 MicroAlt = {
-	{"Micro","MicroFetDrw","Int","0","Instr","NowDerIns"},
-		{"Micro","MicroFetDrw","Int","0","Resrc","ChainRes"},
-		{"Micro","MicroFetDrw","Int","0","Memory","Memorys"},
-		{"Micro","MicroFetDrw","Int","0","Micro","Micros"},
-		{"Micro","MicroFetDrw","Int","0","Phase","Phases"},
-		{"Micro","MicroFetDrw","Int","0","Reloc","BeforeLoc"},
-		{"Micro","MicroFetDrw","Int","0","Format","MicroFrm"},
-		{"Micro","MicroFetDrw","Int","0","Quality","Qualitys"},
-		{"Micro","MicroFetDrw","Int","0","Default","TrivDef"},
-		{"Micro","MicroFetDrw","Int","0","Int","0"},
+	{"Micro","MicroConPie","Int","0","Instr","NowDerIns"},
+		{"Micro","MicroConPie","Int","0","Resrc","ChainRes"},
+		{"Micro","MicroConPie","Int","0","Memory","Memorys"},
+		{"Micro","MicroConPie","Int","0","Micro","Micros"},
+		{"Micro","MicroConPie","Int","0","Phase","Phases"},
+		{"Micro","MicroConPie","Int","0","Reloc","BeforeLoc"},
+		{"Micro","MicroConPie","Int","0","Format","MicroFrm"},
+		{"Micro","MicroConPie","Int","0","Quality","Qualitys"},
+		{"Micro","MicroConPie","Int","0","Default","TrivDef"},
+		{"Micro","MicroConPie","Int","0","Int","0"},
+	{"Micro","MicroFetDrw","Int","0","Instr","MicIncIns"},
+		{"Micro","MicroFetDrw","Int","0","Micro","MicroFilRel"},
+	{"Micro","MicroFetDrw","Int","1","Instr","MicIncIns"},
+		{"Micro","MicroFetDrw","Int","1","Micro","MicroFetRel"},
+	{"Micro","MicroFetDrw","Int","2","Instr","ResIncIns"},
+		{"Micro","MicroFetDrw","Int","2","Resrc","WrapRes"},
+	{"Micro","MicroFetDrw","Int","3","Instr","MicIncIns"},
+		{"Micro","MicroFetDrw","Int","3","Micro","MicroFetDrw"},
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
@@ -1696,9 +1704,7 @@ Draw = { -- generally modify gpu
 	{"con","Const",{},{}},
 	{"ptr","Dat",{},{}},
 	{"siz","Int",{},{}},
-	{"sze","Int",{},{}},
 	{"arg","Int",{},"siz"},
-	{"val","Int",{},"sze"},
 }
 Requ = { -- queue resource
 	{"tag","Request",{},{}},
