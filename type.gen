@@ -228,6 +228,7 @@ Default = { -- for value, interpret constant array as
 	"BackDef", -- prior
 	"GiveDef", -- given
 	"PushDef", -- TODO append prior to givens
+	"CnstDef", -- TODO append constant to givens
 }
 Configure = { -- integer constants for user expressions
 	"CenterMem", -- staged field
@@ -1094,8 +1095,8 @@ MicroIns = {
 	deb = {\"UniformRes\",\"MatrixRes\"}\
 	phb = {\"UniformPhs\",\"UniformPhs\"}\
 	--[[MicroFilRel--]]\
-	-- dea = {\"UniformRes\"}\
-	-- pha = {\"UniformPhs\"}\
+	dea = {\"UniformRes\"}\
+	pha = {\"UniformPhs\"}\
 	--[[MicroFilCol--]]\
 	ded = {\"UniformRes\",\"ImageRes\"}\
 	phd = {\"UniformPhs\",\"SamplePhs\"}\
@@ -1245,11 +1246,11 @@ MicroIns = {
 		{"Micro","MicroFilRel","Int","3","Resrc","RelateRes"},
 		{"Micro","MicroFilRel","Int","3","Phase","RenderPhs"},
 	{"Micro","MicroFilRel","Int","4","Instr","RdlDeeIns"},
-		{"Micro","MicroFilRel","Int","4","Resrc","UniformRes"},
-		{"Micro","MicroFilRel","Int","4","Phase","UniformPhs"},
-	{"Micro","MicroFilRel","Int","5","Instr","IdxDeeIns"},
-		{"Micro","MicroFilRel","Int","5","Resrc","PipeRes"},
-		{"Micro","MicroFilRel","Int","5","Phase","PipePhs"},
+		{"Micro","MicroFilRel","Int","%(return hnc(dea,4))","Resrc","%(return fnc(dea))"},
+		{"Micro","MicroFilRel","Int","%(return hnc(pha,4))","Phase","%(return fnc(pha))"},
+	{"Micro","MicroFilRel","Int","%(return 4+#dea)","Instr","IdxDeeIns"},
+		{"Micro","MicroFilRel","Int","%(return 4+#dea)","Resrc","PipeRes"},
+		{"Micro","MicroFilRel","Int","%(return 4+#dea)","Phase","PipePhs"},
 	{"Micro","MicroFilRel","Int","%(return hnc(deh,0))","Default","%(return fnc(deh))"},
 	{"Micro","MicroFilRel","Int","0","Int","MicroFilRel"},
 	{"Micro","MicroFilRel","Int","%(return hnc(du1,1))","Int","%(return fnc(du1))"},
@@ -1295,13 +1296,25 @@ MicroAlt = {
 		{"Micro","MicroConPie","Int","0","Default","TrivDef"},
 		{"Micro","MicroConPie","Int","0","Int","0"},
 	{"Micro","MicroFetDrw","Int","0","Instr","MicIncIns"},
-		{"Micro","MicroFetDrw","Int","0","Micro","MicroFilRel"},
+		{"Micro","MicroFetDrw","Int","0","Micro","MicroFilRel"}, -- GiveDef:0/1 ExtentExt:base/size
+		{"Micro","MicroFetDrw","Int","0","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","0","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroFetDrw","Int","1","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","1","Int","0"}, -- MicIncIns.bas
 	{"Micro","MicroFetDrw","Int","1","Instr","MicIncIns"},
-		{"Micro","MicroFetDrw","Int","1","Micro","MicroFetRel"},
+		{"Micro","MicroFetDrw","Int","1","Micro","MicroFetRel"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Micro","MicroFetDrw","Int","2","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","2","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroFetDrw","Int","3","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","3","Int","2"}, -- MicIncIns.bas
 	{"Micro","MicroFetDrw","Int","2","Instr","ResIncIns"},
 		{"Micro","MicroFetDrw","Int","2","Resrc","WrapRes"},
 	{"Micro","MicroFetDrw","Int","3","Instr","MicIncIns"},
-		{"Micro","MicroFetDrw","Int","3","Micro","MicroFetDrw"},
+		{"Micro","MicroFetDrw","Int","3","Micro","MicroFetDrw"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Micro","MicroFetDrw","Int","4","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","4","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroFetDrw","Int","5","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","5","Int","2"}, -- MicIncIns.bas
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer

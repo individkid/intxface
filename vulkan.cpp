@@ -1643,7 +1643,7 @@ struct CopyState {
         break; case (Drawz): {
             int mask = 0;
             for (int i = 0; i < ptr->siz; i++) {
-            if (ptr->mem != Drawz) *(int*)0=0;
+            if (ptr->mem != Drawz) *(int*)0=0; // TODO rewrite in rust
             push(ptr->drw[i],ptr,sub,rsp,ary,log);
             if (ptr->slf) mask |= 1<<(i<32?i:31);}
             ptr->slf = mask;}
