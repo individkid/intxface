@@ -227,6 +227,7 @@ Default = { -- for value, interpret constant array as
 	"TrivDef", -- builtin
 	"BackDef", -- prior
 	"GiveDef", -- given
+	"PushDef", -- TODO append prior to givens
 }
 Configure = { -- integer constants for user expressions
 	"CenterMem", -- staged field
@@ -971,16 +972,10 @@ MemoryAlt = {
 
 	{"%(def={"..
 	"\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\","..-- SetTagIns.val
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",\"TrivDef\",".. -- UniformPhs.bnd UniformPhs.bnd
-	"\"TrivDef\",".. -- IdxDeeIns.idx
-
+	"\"TrivDef\","..-- MicIncIns.bas
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,castMicro(\"MicroConPie\"),0,1,0,12,castMicro(\"MicroConPie\"),0,1,castMicro(\"MicroConPie\"),"..
-	"2,3};"..
+	"arg={0,0,2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
@@ -998,17 +993,12 @@ MemoryAlt = {
 	{"Memory","Getintz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 	{"Memory","Getintz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
 
-	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",".. -- SetTagIns.val
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",".. -- UniformPhs.bnd
-	"\"TrivDef\",".. -- IdxDeeIns.idx
-
+	{"%(def={"..
+	"\"TrivDef\",".. -- MicIncIns.ary
+	"\"TrivDef\","..-- MicIncIns.bas
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,castMicro(\"MicroFilRel\"),0,1,0,6,castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"2,3};"..
+	"arg={0,0,2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
@@ -1026,19 +1016,12 @@ MemoryAlt = {
 	{"Memory","Vectorz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 	{"Memory","Vectorz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
 
-	{"%(def={\"TrivDef\",".. -- MicIncIns.ary
-	"\"TrivDef\",".. -- SetTagIns.val
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",".. -- UniformPhs.bnd
-	"\"TrivDef\",".. -- SamplePhs.bnd
-	"\"TrivDef\",".. -- IdxDeeIns.idx
-
+	{"%(def={"..
+	"\"TrivDef\",".. -- MicIncIns.ary
+	"\"TrivDef\","..-- MicIncIns.bas
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 
-	"arg={0,"..
-	"castMicro(\"MicroFilCol\"), 0,1, 0,6,castMicro(\"MicroFilCol\"), 0, 7, castMicro(\"MicroFilCol\"),"..
-	"2,3};"..
+	"arg={0,0,2,3};"..
 
 	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Vectorz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},

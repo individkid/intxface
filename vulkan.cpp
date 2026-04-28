@@ -1149,7 +1149,7 @@ struct CopyState {
     void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
-        bool goon = true; while (goon) {goon = false; slog.clr();
+        bool goon = true; while (goon) {goon = false;
         log << "count depends" << '\n';
         int count = 0;
         for (int i = 0; i < num; i++) {
@@ -1305,14 +1305,14 @@ struct CopyState {
             SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NowDerIns): case(OldDerIns): case(GetDerIns):
-            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns): {
-            bind->done(sav,log); sav->buf->fail(log);}
-            break; case(WrlDeeIns): case (WidDeeIns): {
-            bind->wdec(sav,log);}
-            break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns): {
-            bind->rdec(sav,log);}}}
+            case(NidDerIns): case(OidDerIns): case(GidDerIns): case(IdxDerIns):
+            bind->done(sav,log); sav->buf->fail(log);
+            break; case(WrlDeeIns): case (WidDeeIns):
+            bind->wdec(sav,log);
+            break; case(RdlDeeIns): case (RidDeeIns): case(IdxDeeIns):
+            bind->rdec(sav,log);}}
         if (bind) bind->done(log);
-        log << "notify fail" << '\n'; slog.clr();
+        log << "notify fail" << '\n';
         switch (rsp) {default:
         break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
         break; case (MltRsp): ptr->slf = -1;
@@ -1411,7 +1411,7 @@ struct CopyState {
         ret.val = get(arg,siz,idx,log,"qualify.val");}
         return ret;
     }
-    template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, int &count, SmartState log) {
+    template <class Type> Inst instruct(HeapState<Arg,0> &dot, int i, Type typ, void *val, int *arg, int siz, int &idx, SmartState log) {
         Instr ins = dot[i].ins;
         switch (ins) {default:
         {char *st0 = 0; showResrc(dot[i].res,&st0);
@@ -1540,16 +1540,25 @@ struct CopyState {
     void showType(Micro typ, char **str) {
         showMicro(typ,str);
     }
-    template <class Type> void recurse(HeapState<Inst,StackState::instrs> &lst, Type typ, void *dat, int *arg, int siz, int &idx, int ary, int dep, SmartState log) {
-        int count = 0; Arg sav; Arg tmp; HeapState<Arg,0> dot;
+    template <class Type> void recurse(HeapState<Inst,StackState::instrs> &lst, int *vlu, int tot, int &idx, Type typ, void *dat, int *arg, int siz, int ary, int dep, SmartState log) {
+        Arg sav; Arg tmp; HeapState<Arg,0> dot;
         {char *st0 = 0; showType(typ,&st0); log << st0 << ":push " << " alt:" << ary << " depth:" << dep << '\n'; free(st0);}
         for (int i = 0; iterate(typ,i,sav,tmp,&array[ary],log); i++) dot << tmp;
         for (int i = 0; i < dot.size(); i++) {
-        Inst ins = instruct(dot,i,typ,dat,arg,siz,idx,count,log);
+        Inst ins = instruct(dot,i,typ,dat,vlu,tot,idx,log);
         switch (ins.ins) {default: lst << ins;
-        break; case (ResIncIns): push(lst,ins.inc.res,dat,arg,siz,get(arg,siz,idx,log,"ResIncIns.bas"),get(arg,siz,idx,log,"ResIncIns.ary"),dep+1,log);
-        break; case (MemIncIns): push(lst,ins.inc.mem,dat,arg,siz,get(arg,siz,idx,log,"ResIncIns.bas"),get(arg,siz,idx,log,"MemIncIns.ary"),dep+1,log);
-        break; case (MicIncIns): push(lst,ins.inc.mic,dat,arg,siz,get(arg,siz,idx,log,"ResIncIns.bas"),get(arg,siz,idx,log,"MicIncIns.ary"),dep+1,log);}}
+        break; case (ResIncIns): {
+            int ary = get(vlu,tot,idx,log,"ResIncIns.ary");
+            int bas = get(vlu,tot,idx,log,"ResIncIns.bas");
+            push(lst,ins.inc.res,dat,arg+bas,siz-bas,ary,dep+1,log);}
+        break; case (MemIncIns): {
+            int ary = get(vlu,tot,idx,log,"MemIncIns.ary");
+            int bas = get(vlu,tot,idx,log,"MemIncIns.bas");
+            push(lst,ins.inc.mem,dat,arg+bas,siz-bas,ary,dep+1,log);}
+        break; case (MicIncIns): {
+            int ary = get(vlu,tot,idx,log,"MicIncIns.ary");
+            int bas = get(vlu,tot,idx,log,"MicIncIns.bas");
+            push(lst,ins.inc.mic,dat,arg+bas,siz-bas,ary,dep+1,log);}}}
         {char *st0 = 0; showType(typ,&st0); log << st0 << ":done alt:" << ary << " depth:" << dep << '\n'; free(st0);}
     }
     int size(Micro typ, int ary) {
@@ -1579,24 +1588,28 @@ struct CopyState {
     int fill(Resrc typ, int idx, int ary) {
         return (array[ary].resval(typ) ? array[ary].resval(typ)(idx) : 0);
     }
-    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *dat, int *arg, int siz, int bas, int ary, int dep, SmartState log) {
+    template <class Type> void push(HeapState<Inst,StackState::instrs> &lst, Type typ, void *dat, int *arg, int siz, int ary, int dep, SmartState log) {
+        if (ary<0||ary>1) EXIT
         log << "copy";
         for (int i = 0; dflt(typ,i,ary) != Defaults; i++) {
         char *st0 = 0; showDefault(dflt(typ,i,ary),&st0); log << " " << i << ":" << st0 << ":" << fill(typ,i,ary); free(st0);}
         log << " " << dep << '\n';
+        log << "given";
+        for (int i = 0; i < siz; i++) log << " " << arg[i];
+        log << '\n';
+        int idx = 0;
         int tot = size(typ,ary);
         int vlu[tot];
         for (int i = 0; dflt(typ,i,ary) != Defaults; i++) switch (dflt(typ,i,ary)) {default: EXIT
         break; case (TrivDef): vlu[i] = fill(typ,i,ary);
         break; case (BackDef): vlu[i] = vlu[fill(typ,i,ary)];
         break; case (GiveDef): vlu[i] = arg[fill(typ,i,ary)];}
-        int idx = 0;
-        recurse(lst,typ,dat,vlu,tot,idx,ary,dep,log);
+        recurse(lst,vlu,tot,idx,typ,dat,arg,siz,ary,dep,log);
         if (idx != tot) {std::cerr << "wrong number of int arguments " << idx << "!=" << tot << std::endl; EXIT}
     }
     template <class Type> void push(Type typ, void *dat, int *arg, int siz, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         HeapState<Inst,StackState::instrs> lst;
-        push(lst,typ,dat,arg,siz,0,ary,0,log);
+        push(lst,typ,dat,arg,siz,ary,0,log);
         push(lst,ptr,sub,rsp,log);
     }
     void push(Draw &drw, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
@@ -1641,14 +1654,11 @@ struct CopyState {
         break; case (Configurez):
             for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);
         break; case (Imagez):
-            push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,
-            datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
+            push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,datxVoids(ptr->img[0].dat),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
         break; case (Getintz): case (Getoldz):
-            push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,
-            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
+            push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
         break; case (Vectorz):
-            push(ptr->mem,(void*)ptr->uns,ptr->idx*4,ptr->siz*4,
-            change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);}
+            push(ptr->mem,(void*)ptr->uns,ptr->idx*4,ptr->siz*4,change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);}
         switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
     }
 };
@@ -2089,7 +2099,7 @@ struct ImageState : public BaseState {
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);
         VkSemaphore before = (loc.lst.ptr!=0?loc.lst.ptr->get(loc.lst.loc).syn.sem:VK_NULL_HANDLE);
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
-        log << "setup " << debug << " location:" << *loc << " before:" << before << " after:" << after << " fence:" << fence << '\n'; slog.clr();
+        log << "setup " << debug << " location:" << *loc << " before:" << before << " after:" << after << " fence:" << fence << '\n';
         VkFormat forms = PhysicalState::vulkanFormat(vulkanRender(ext));
         if (fence != VK_NULL_HANDLE) vkResetFences(device, 1, &fence);
         if (*loc == ReformLoc) {

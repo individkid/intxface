@@ -298,7 +298,7 @@ void coplane()
 void fullscreen()
 {
     gl_Position = extremes[indices[gl_VertexIndex]];
-    fragIdx = -1;
+    fragIdx = 987;
 }
 #endif
 
