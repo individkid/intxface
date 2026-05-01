@@ -1626,7 +1626,8 @@ struct CopyState {
     void push(Memory mem, void *dat, int idx, int siz, int wid, int hei, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
         int mval[] = {
         wid,hei, // OldDerIns ExtentFrm
-        idx,siz}; // OldDerIns WholeFrm
+        idx,siz, // OldDerIns WholeFrm
+        0,12}; // TODO way to get fetch size from Center or Configure
         int msiz = sizeof(mval)/sizeof(int);
         push(mem,dat,mval,msiz,ptr,sub,rsp,ary,log);
     }

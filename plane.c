@@ -848,7 +848,7 @@ void planeTest(enum Thread tag, int idx)
     allocVector(&vec->vec,vec->siz);
     vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
     vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
-    callCopy(vec,Vectorz,RptRsp,0,(debug?"getvec":0));}
+    callCopy(vec,Vectorz,RptRsp,1,(debug?"getvec":0));}
 
     tested = count;}}}
 }

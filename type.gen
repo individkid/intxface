@@ -1006,11 +1006,11 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","1","Default","TrivDef"},
 		{"Memory","Vectorz","Int","1","Int","0"}, -- MicIncIns.bas
 	{"Memory","Vectorz","Int","1","Instr","MicIncIns"},
-		{"Memory","Vectorz","Int","1","Micro","MicroFetRel"}, -- GiveDef:2/3 BothReq:idx/siz -- TODO idx/siz needs to be 4/5 for 0/primitives
+		{"Memory","Vectorz","Int","1","Micro","MicroFetRel"}, -- 0/primitives
 		{"Memory","Vectorz","Int","2","Default","TrivDef"},
 		{"Memory","Vectorz","Int","2","Int","0"}, -- MicIncIns.ary
 		{"Memory","Vectorz","Int","3","Default","TrivDef"},
-		{"Memory","Vectorz","Int","3","Int","2"}, -- MicIncIns.bas
+		{"Memory","Vectorz","Int","3","Int","4"}, -- MicIncIns.bas
 	{"Memory","Vectorz","Int","2","Instr","ResIncIns"},
 		{"Memory","Vectorz","Int","2","Resrc","WrapRes"},
 		{"Memory","Vectorz","Int","4","Default","TrivDef"},
@@ -1018,11 +1018,11 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","5","Default","TrivDef"},
 		{"Memory","Vectorz","Int","5","Int","2"}, -- MicIncIns.bas
 	{"Memory","Vectorz","Int","3","Instr","MicIncIns"},
-		{"Memory","Vectorz","Int","3","Micro","MicroFetCol"}, -- GiveDef:2/3 BothReq:idx/siz -- TODO idx/siz needs to be 4/5 for 0/primitives
+		{"Memory","Vectorz","Int","3","Micro","MicroFetCol"}, -- 0/primitives
 		{"Memory","Vectorz","Int","6","Default","TrivDef"},
 		{"Memory","Vectorz","Int","6","Int","0"}, -- MicIncIns.ary
 		{"Memory","Vectorz","Int","7","Default","TrivDef"},
-		{"Memory","Vectorz","Int","7","Int","2"}, -- MicIncIns.bas
+		{"Memory","Vectorz","Int","7","Int","0"}, -- MicIncIns.bas
 	{"%(key={\"Instr\",    \"Resrc\",   \"Reloc\",    \"Format\"};"..
 	"val={   \"OldDerIns\",\"ColorRes\",\"BeforeLoc\",\"PeekFrm\"};"..
 	"kez={\"Reloc\",    \"Format\"};"..
@@ -1122,10 +1122,11 @@ MicroIns = {
 	\
 	--[[MicroFetCol--]]\
 	der = {\"TrivDef\",--[[TagIns]]\
+	\"GiveDef\",\"GiveDef\",--[[ColorFrm.base/size--]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd RelatePhs.bnd]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
-	dr1 = {\"0\",\"1\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\"}\
+	dr1 = {\"0\",\"1\",\"4\",\"5\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\"}\
 	\
 	--[[MicroFetRel--]]\
 	dej = {\"TrivDef\",--[[TagIns]]\
@@ -1207,19 +1208,26 @@ MicroIns = {
 		{"Micro","MicroFetCol","Int","0","Resrc","DrawRes"},
 		{"Micro","MicroFetCol","Int","0","Quality","RsizQua"},
 	{"Micro","MicroFetCol","Int","1","Instr","NowDerIns"},
-		{"Micro","MicroFetCol","Int","1","Resrc","DrawRes"},
-		{"Micro","MicroFetCol","Int","1","Phase","Phases"},
-		{"Micro","MicroFetCol","Int","1","Memory","Memorys"},
-		{"Micro","MicroFetCol","Int","1","Micro","Micros"},
-		{"Micro","MicroFetCol","Int","1","Reloc","MiddleLoc"},
-		{"Micro","MicroFetCol","Int","1","Format","MicroFrm"},
-		{"Micro","MicroFetCol","Int","1","Quality","Qualitys"},
-	{"Micro","MicroFetCol","Int","2","Instr","RdlDeeIns"},
-		{"Micro","MicroFetCol","Int","%(return hnc(det,2))","Resrc","%(return fnc(det))"},
-		{"Micro","MicroFetCol","Int","%(return hnc(pht,2))","Phase","%(return fnc(pht))"},
-	{"Micro","MicroFetCol","Int","%(return 2+#det)","Instr","IdxDeeIns"},
-		{"Micro","MicroFetCol","Int","%(return 2+#det)","Resrc","PipeRes"},
-		{"Micro","MicroFetCol","Int","%(return 2+#det)","Phase","PipePhs"},
+		{"Micro","MicroFetCol","Int","1","Resrc","ColorRes"},
+		{"Micro","MicroFetCol","Int","1","Reloc","ResizeLoc"},
+		{"Micro","MicroFetCol","Int","1","Format","ColextFrm"},
+	{"Micro","MicroFetCol","Int","2","Instr","NowDerIns"},
+		{"Micro","MicroFetCol","Int","2","Resrc","DrawRes"},
+		{"Micro","MicroFetCol","Int","2","Phase","Phases"},
+		{"Micro","MicroFetCol","Int","2","Memory","Memorys"},
+		{"Micro","MicroFetCol","Int","2","Micro","Micros"},
+		{"Micro","MicroFetCol","Int","2","Reloc","MiddleLoc"},
+		{"Micro","MicroFetCol","Int","2","Format","MicroFrm"},
+		{"Micro","MicroFetCol","Int","2","Quality","Qualitys"},
+	{"Micro","MicroFetCol","Int","3","Instr","WrlDeeIns"},
+		{"Micro","MicroFetCol","Int","3","Resrc","ColorRes"},
+		{"Micro","MicroFetCol","Int","3","Phase","RenderPhs"},
+	{"Micro","MicroFetCol","Int","4","Instr","RdlDeeIns"},
+		{"Micro","MicroFetCol","Int","%(return hnc(det,4))","Resrc","%(return fnc(det))"},
+		{"Micro","MicroFetCol","Int","%(return hnc(pht,4))","Phase","%(return fnc(pht))"},
+	{"Micro","MicroFetCol","Int","%(return 4+#det)","Instr","IdxDeeIns"},
+		{"Micro","MicroFetCol","Int","%(return 4+#det)","Resrc","PipeRes"},
+		{"Micro","MicroFetCol","Int","%(return 4+#det)","Phase","PipePhs"},
 	{"Micro","MicroFetCol","Int","%(return hnc(der,0))","Default","%(return fnc(der))"},
 	{"Micro","MicroFetCol","Int","0","Int","MicroFetCol"},
 	{"Micro","MicroFetCol","Int","%(return hnc(dr1,1))","Int","%(return fnc(dr1))"},
