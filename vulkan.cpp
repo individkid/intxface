@@ -165,7 +165,8 @@ struct StackState {
     static const int handls = 4; // maximum number of classifications
     virtual void wait() = 0;
     virtual void qualify(int hdl, Quality key, int val) = 0;
-    virtual bool compare(Onl one, Onl oth) = 0;
+    virtual bool compare(Onl onl) = 0;
+    virtual void prepare(Onl onl) = 0;
     virtual void show(int hdl, Quality key, int val, char **str) = 0;
     virtual Res newbuf(int hdl, Quality key, int val, SmartState log) = 0;
     virtual Res oldbuf(int hdl, Quality key, int val, SmartState log) = 0;
@@ -285,6 +286,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
     bool excl;
     int idx;
     SimpleState<Size,Qualitys,StackState::resrcs> tag;
+    typename SimpleState<Size,Qualitys,StackState::resrcs>::Only save;
     State state[Size];
     ArrayState(
         ChangeState<Configure,Configures> *change,
@@ -336,9 +338,13 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (!excl) EXIT
         tag.qualify(hdl,key,val);
     }
-    bool compare(Onl one, Onl oth) /*override*/ {
+    void prepare(Onl onl) /*override*/ { // save current tags
         if (!excl) EXIT
-        return (tag.get(one.hdl,one.key,one.val) == tag.get(oth.hdl,oth.key,oth.val));
+        save = tag.get(onl.hdl,onl.key,onl.val);
+    }
+    bool compare(Onl onl) /*override*/ {
+        if (!excl) EXIT
+        return (tag.get(onl.hdl,onl.key,onl.val) == save);
     }
     void show(int hdl, Quality key, int val, char **str) /*override*/ {
         if (!excl) EXIT
@@ -877,7 +883,7 @@ struct Sav {
     SaveState *sav; Instr ins; Phase phs; int bnd;
 };
 struct Lst {
-    Onl onl; Instr ins; int idx;
+    Instr ins; int idx;
 };
 struct BindState : public BaseState {
     // each reserved instance of a resource type assumed to have different qualifiers
@@ -900,21 +906,6 @@ struct BindState : public BaseState {
         if (lock != 0) EXIT
         lock = 1;
         return this;
-    }
-    int vld(Resrc typ, Lst lst, StackState *src) { // same qualification as last
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        if (bind[typ].get() == 0) return false;
-        bool found = false;
-        switch (lst.ins) {default: break; case (IdxDerIns): case (IdxDeeIns): found = true;}
-        switch (last[typ].ins) {default: break; case (IdxDerIns): case (IdxDeeIns): found = true;}
-        if (found) return (last[typ].ins == lst.ins && last[typ].idx == lst.idx);
-        return src->compare(last[typ].onl,lst.onl);
-    }
-    void set(Resrc typ, Lst lst) { // set qualification for subsequent vld
-        if (!excl) EXIT
-        if (typ < 0 || typ >= Resrcs) EXIT
-        last[typ] = lst;
     }
     SaveState *get(Resrc typ) { // current resource of type
         if (!excl) EXIT
@@ -942,13 +933,24 @@ struct BindState : public BaseState {
         bool tmp =  atom[typ]; atom[typ] = false;
         return tmp;
     }
-    SaveState *add(Resrc typ, int bnd, Res res, int fst, Lst lst, SmartState log) { // add resource of type
+    int vld(Resrc typ, StackState *src, Onl onl, Lst lst) { // same qualification as last
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        if (bind[typ].get() == 0) return false;
+        bool found = false;
+        switch (lst.ins) {default: break; case (IdxDerIns): case (IdxDeeIns): found = true;}
+        switch (last[typ].ins) {default: break; case (IdxDerIns): case (IdxDeeIns): found = true;}
+        if (found) return (last[typ].ins == lst.ins && last[typ].idx == lst.idx);
+        return src->compare(onl);
+    }
+    SaveState *add(Resrc typ, int bnd, Res res, int fst, StackState *src, Onl onl, Lst lst, SmartState log) { // add resource of type
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         SaveState *sav = &bind[typ].add(1);
         sav->buf = res.resrc; sav->typ = typ; sav->fst = fst; sav->idx = res.index; sav->use = res.reuse;
-        set(typ,lst);
-        {char *st0 = 0; showResrc(typ,&st0); log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << '\n'; free(st0);}
+        src->prepare(onl); last[typ] = lst;
+        {char *st0 = 0; showResrc(typ,&st0);
+        log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << '\n'; free(st0);}
         return sav;
     }
     Bnd get(Unl &unl, int idx) {
@@ -973,7 +975,7 @@ struct BindState : public BaseState {
         if (!sav->sav) lock += 1;
         sav->sav = true;
         sav->psav += 1;
-        log << sav->buf->debug << ":push lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << '\n';
+        log << sav->buf->debug << ":push lock:" << lock << " psav:" << sav->psav << " rsav:" << sav->rsav << " wsav:" << sav->wsav << " " << req.ptr << "/" << req.idx << "/" << req.siz << '\n';
         return true;
     }
     void push(SaveState *sav, Instr ins, Phase phs, int bnd, SmartState log) {
@@ -1193,8 +1195,10 @@ struct CopyState {
             case(GetDerIns): case(GidDerIns): case(IdxDerIns):
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             // remember first and reuse subsequent of the same resource and class
-            Lst lst = Lst{Onl{indx,KEY,VAL},INS,FRC}; bool cnd = bind->vld(RES,lst,src(RES));
-            SaveState *sav = (cnd?bind->get(RES):bind->add(RES,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,lst,log));
+            Onl onl = Onl{indx,KEY,VAL}; Lst lst = Lst{INS,FRC};
+            bool cnd = bind->vld(RES,src(RES),onl,lst);
+            SaveState *sav = 0; if (cnd) sav = bind->get(RES); else
+            sav = bind->add(RES,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,src(RES),onl,lst,log);
             sav->fin = i;
             // prevent chosen from being stolen by different classes in same resource
             switch (INS) {default: break;
@@ -2243,7 +2247,7 @@ struct DrawState : public BaseState {
         log << "unsize " << debug << '\n';
     }
     VkFence setup(Loc &loc, SmartState log) override {
-        log << "setup " << debug << '\n';
+        log << "setup " << debug << " " << loc.req.ptr << "/" << loc.req.idx << "/" << loc.req.siz << '\n';
         if (loc.req.ptr != 0 || loc.req.idx != 0) EXIT
         if (loc.max.tag != MicroExt) EXIT
         VkFence fence = (loc.nxt.ptr==0?loc.syn.fen:VK_NULL_HANDLE);

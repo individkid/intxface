@@ -373,9 +373,6 @@ void centerDone(struct Center *ptr, int idx)
     centerPlace(ptr,idx);
     if (ptr && ptr->slf == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    /*if (idx==Vectorz) {
-    char *st0 = 0; showCenter(ptr,&st0);
-    fprintf(stderr,"centerDone %s\n",st0); free(st0);}*/
     callJnfo(RegisterPass,(1<<idx),planeWots);}
     else if (ptr) {
     callJnfo(RegisterWake,(1<<FailMsk),planeWots);

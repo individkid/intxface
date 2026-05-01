@@ -546,7 +546,6 @@ MicroStride = {
 MicroOffset = {
 	{"Micro","MicroFetDrw","Int","0","Int","0"},
 	{"Micro","MicroFetDrw","Int","1","Int","16"},
-	{"Micro","MicroFetDrw","Int","2","Int","32"},
 	{"Micro","MicroFetCol","Int","0","Int","0"},
 	{"Micro","MicroFetCol","Int","1","Int","16"},
 	{"Micro","MicroFetCol","Int","2","Int","32"},
@@ -560,30 +559,22 @@ MicroOffset = {
 MicroFormat = {
 	{"Micro","MicroFetDrw","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetDrw","Int","1","Render","VecFrm"},
-	{"Micro","MicroFetDrw","Int","2","Render","UvecFrm"},
 	{"Micro","MicroFetCol","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetCol","Int","1","Render","VecFrm"},
-	{"Micro","MicroFetCol","Int","2","Render","UvecFrm"},
 	{"Micro","MicroFetPie","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetPie","Int","1","Render","VecFrm"},
-	{"Micro","MicroFetPie","Int","2","Render","UvecFrm"},
 	{"Micro","MicroFetRel","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetRel","Int","1","Render","VecFrm"},
-	{"Micro","MicroFetRel","Int","2","Render","UvecFrm"},
 }
 MicroElement = {
 	{"Micro","MicroFetDrw","Int","0","Int","4"},
 	{"Micro","MicroFetDrw","Int","1","Int","4"},
-	{"Micro","MicroFetDrw","Int","2","Int","4"},
 	{"Micro","MicroFetCol","Int","0","Int","4"},
 	{"Micro","MicroFetCol","Int","1","Int","4"},
-	{"Micro","MicroFetCol","Int","2","Int","4"},
 	{"Micro","MicroFetPie","Int","0","Int","4"},
 	{"Micro","MicroFetPie","Int","1","Int","4"},
-	{"Micro","MicroFetPie","Int","2","Int","4"},
 	{"Micro","MicroFetRel","Int","0","Int","4"},
 	{"Micro","MicroFetRel","Int","1","Int","4"},
-	{"Micro","MicroFetRel","Int","2","Int","4"},
 }
 MicroRender = {
     {"Micro","MicroFilRel","Render","UintFrm"},
@@ -718,6 +709,8 @@ FragmentFile = {
 	{"Micro","MicroCopRel","Str","fragmentRelateG"},
 }
 -- queue blobs are per Memory Resrc or Micro
+-- TODO perhaps simplify by removing defaults, requiring expected even if repeated
+-- TODO perhaps simplify by putting Int/Default arguments after second Int subscript
 MemoryIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
@@ -1013,31 +1006,35 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","1","Default","TrivDef"},
 		{"Memory","Vectorz","Int","1","Int","0"}, -- MicIncIns.bas
 	{"Memory","Vectorz","Int","1","Instr","MicIncIns"},
-		{"Memory","Vectorz","Int","1","Micro","MicroFetRel"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Memory","Vectorz","Int","1","Micro","MicroFetRel"}, -- GiveDef:2/3 BothReq:idx/siz -- TODO idx/siz needs to be 4/5 for 0/primitives
 		{"Memory","Vectorz","Int","2","Default","TrivDef"},
 		{"Memory","Vectorz","Int","2","Int","0"}, -- MicIncIns.ary
 		{"Memory","Vectorz","Int","3","Default","TrivDef"},
 		{"Memory","Vectorz","Int","3","Int","2"}, -- MicIncIns.bas
 	{"Memory","Vectorz","Int","2","Instr","ResIncIns"},
 		{"Memory","Vectorz","Int","2","Resrc","WrapRes"},
-	{"Memory","Vectorz","Int","3","Instr","MicIncIns"},
-		{"Memory","Vectorz","Int","3","Micro","MicroFetCol"}, -- GiveDef:2/3 BothReq:idx/siz
 		{"Memory","Vectorz","Int","4","Default","TrivDef"},
 		{"Memory","Vectorz","Int","4","Int","0"}, -- MicIncIns.ary
 		{"Memory","Vectorz","Int","5","Default","TrivDef"},
 		{"Memory","Vectorz","Int","5","Int","2"}, -- MicIncIns.bas
+	{"Memory","Vectorz","Int","3","Instr","MicIncIns"},
+		{"Memory","Vectorz","Int","3","Micro","MicroFetCol"}, -- GiveDef:2/3 BothReq:idx/siz -- TODO idx/siz needs to be 4/5 for 0/primitives
+		{"Memory","Vectorz","Int","6","Default","TrivDef"},
+		{"Memory","Vectorz","Int","6","Int","0"}, -- MicIncIns.ary
+		{"Memory","Vectorz","Int","7","Default","TrivDef"},
+		{"Memory","Vectorz","Int","7","Int","2"}, -- MicIncIns.bas
 	{"%(key={\"Instr\",    \"Resrc\",   \"Reloc\",    \"Format\"};"..
 	"val={   \"OldDerIns\",\"ColorRes\",\"BeforeLoc\",\"PeekFrm\"};"..
 	"kez={\"Reloc\",    \"Format\"};"..
 	"wal={\"MiddleLoc\",\"WholeFrm\","..
 	"     \"AfterLoc\", \"SourceFrm\"};"..
-	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 4; return \"Memory\")","Matrixz","Int","1","Int","1"},
 	{"Memory","Vectorz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 	{"Memory","Vectorz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
-		{"Memory","Vectorz","Int","6","Default","GiveDef"},
-		{"Memory","Vectorz","Int","6","Int","2"}, -- WholeFrm.idx
-		{"Memory","Vectorz","Int","7","Default","GiveDef"},
-		{"Memory","Vectorz","Int","7","Int","3"}, -- WholeFrm.siz
+		{"Memory","Vectorz","Int","8","Default","GiveDef"},
+		{"Memory","Vectorz","Int","8","Int","2"}, -- WholeFrm.idx
+		{"Memory","Vectorz","Int","9","Default","GiveDef"},
+		{"Memory","Vectorz","Int","9","Int","3"}, -- WholeFrm.siz
 }
 ResrcIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
