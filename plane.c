@@ -1180,6 +1180,8 @@ void initTest()
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
     };
+    callInfo(FetchBase,0,planeWcfg);
+    callInfo(FetchSize,sizeof(indices)/sizeof(int16_t),planeWcfg);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
 

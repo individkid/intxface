@@ -265,6 +265,8 @@ Configure = { -- integer constants for user expressions
 	"UniformMod", -- value to fill
 	"UniformWid", -- width of image
 	"UniformHei", -- height of image
+	"FetchBase", -- fetch modify read
+	"FetchSize", -- fetch modify read
 	"PressKey",
 	"ManipFixed",
 	"ManipLeft",
