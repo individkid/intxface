@@ -345,7 +345,16 @@ layout (binding = 8) readonly buffer Decorates {
 layout (location = 0) out vec4 outColor;
 void fragmentColor()
 {
-    if (fragTex == 1) outColor = vec4(gl_FragCoord.xy,inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*inUni.buf.wid],1.0);
+    if (gl_FragCoord.x==0) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (gl_FragCoord.x+1==inUni.buf.wid) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (gl_FragCoord.y==0) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (gl_FragCoord.y+1==inUni.buf.hei) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (fragIdx!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (fragIdx!=inRel.buf[int(gl_FragCoord.x+1)+int(gl_FragCoord.y)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (fragIdx!=inRel.buf[int(gl_FragCoord.x-1)+int(gl_FragCoord.y)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (fragIdx!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y+1)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (fragIdx!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y-1)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
+    else if (fragTex == 1) outColor = vec4(0.0,0.0,inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*inUni.buf.wid],1.0);
     else outColor = texture(texSampler, fragOrd.xy);
 }
 #endif
