@@ -1096,7 +1096,7 @@ MicroIns = {
 	-- n==0: departures from NowDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"%(--[[MicroFetDrw--]]\
-	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"StorageRes\",\"IndexRes\",\"BringupRes\"}\
+	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\"}\
 	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
 	--[[MicroFetCol--]]\
 	det = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\"}\

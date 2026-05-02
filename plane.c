@@ -814,7 +814,7 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
-    callCopy(drw,Memorys+1,RetRsp,0,(debug?"test":0));}
+    callCopy(drw,Memorys+1,RetRsp,1,(debug?"test":0));}
     tested = count;}}
 
     break; case (1): {
