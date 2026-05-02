@@ -2127,6 +2127,7 @@ struct ImageState : public BaseState {
         Loc &got = get(ResizeLoc);
         int texWidth = got.max.extent.width;
         int texHeight = got.max.extent.height;
+        log << "setup MiddleLoc " << isr(ext) << " " << texWidth << "/" << texHeight << '\n';
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
         copyTextureImage(device, graphics, memProperties, getImage(),0,0,texWidth,texHeight, before, after, loc.stagingBuffer, loc.commandBuffer, isr(ext));}
         return fence;

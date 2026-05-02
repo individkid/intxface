@@ -1002,6 +1002,9 @@ MemoryAlt = {
 
 
 	{"Memory","Vectorz","Int","0","Instr","MicIncIns"},
+		-- TODO this is unnecessary because Vulkan clears the display by default
+		-- TODO either remove MicroFilRel and keep the plus one hack in fragmentRelate
+		-- TODO or figure out how to prevent Vulkan from clearing display to zero
 		{"Memory","Vectorz","Int","0","Micro","MicroFilRel"}, -- GiveDef:0/1 ExtentExt:base/size
 		{"Memory","Vectorz","Int","0","Default","TrivDef"},
 		{"Memory","Vectorz","Int","0","Int","0"}, -- MicIncIns.ary
