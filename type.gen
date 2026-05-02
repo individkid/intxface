@@ -1120,7 +1120,7 @@ MicroIns = {
 	\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd RelatePhs.bnd]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
-	dv1 = {\"0\",\"1\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\",\"0\"}\
+	dv1 = {\"2\",\"3\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\",\"0\"}\
 	\
 	--[[MicroFetCol--]]\
 	der = {\"TrivDef\",--[[TagIns]]\
@@ -1344,6 +1344,7 @@ MicroAlt = {
 		{"Micro","MicroConPie","Int","0","Quality","Qualitys"},
 		{"Micro","MicroConPie","Int","0","Default","TrivDef"},
 		{"Micro","MicroConPie","Int","0","Int","0"},
+
 	{"Micro","MicroFetDrw","Int","0","Instr","MicIncIns"},
 		{"Micro","MicroFetDrw","Int","0","Micro","MicroFilRel"}, -- GiveDef:0/1 ExtentExt:base/size
 		{"Micro","MicroFetDrw","Int","0","Default","TrivDef"},
@@ -1358,12 +1359,16 @@ MicroAlt = {
 		{"Micro","MicroFetDrw","Int","3","Int","2"}, -- MicIncIns.bas
 	{"Micro","MicroFetDrw","Int","2","Instr","ResIncIns"},
 		{"Micro","MicroFetDrw","Int","2","Resrc","WrapRes"},
-	{"Micro","MicroFetDrw","Int","3","Instr","MicIncIns"},
-		{"Micro","MicroFetDrw","Int","3","Micro","MicroFetDrw"}, -- GiveDef:2/3 BothReq:idx/siz
 		{"Micro","MicroFetDrw","Int","4","Default","TrivDef"},
 		{"Micro","MicroFetDrw","Int","4","Int","0"}, -- MicIncIns.ary
 		{"Micro","MicroFetDrw","Int","5","Default","TrivDef"},
-		{"Micro","MicroFetDrw","Int","5","Int","2"}, -- MicIncIns.bas
+		{"Micro","MicroFetDrw","Int","5","Int","0"}, -- MicIncIns.bas
+	{"Micro","MicroFetDrw","Int","3","Instr","MicIncIns"},
+		{"Micro","MicroFetDrw","Int","3","Micro","MicroFetDrw"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Micro","MicroFetDrw","Int","6","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","6","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroFetDrw","Int","7","Default","TrivDef"},
+		{"Micro","MicroFetDrw","Int","7","Int","0"}, -- MicIncIns.bas
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer

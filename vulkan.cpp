@@ -933,7 +933,7 @@ struct BindState : public BaseState {
         bool tmp =  atom[typ]; atom[typ] = false;
         return tmp;
     }
-    int vld(Resrc typ, StackState *src, Onl onl, Lst lst) { // same qualification as last
+    int vld(Resrc typ, StackState *src, Onl onl, Lst lst, SmartState log) { // same qualification as last
         if (!excl) EXIT
         if (typ < 0 || typ >= Resrcs) EXIT
         if (bind[typ].get() == 0) return false;
@@ -950,8 +950,13 @@ struct BindState : public BaseState {
         sav->buf = res.resrc; sav->typ = typ; sav->fst = fst; sav->idx = res.index; sav->use = res.reuse;
         src->prepare(onl); last[typ] = lst;
         {char *st0 = 0; showResrc(typ,&st0);
-        log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << '\n'; free(st0);}
+        log << (sav->buf?sav->buf->debug:"nil") << ":add " << st0 << " " << sav << '\n'; free(st0);}
         return sav;
+    }
+    SaveState *add(Resrc typ) { // last added of type
+        if (!excl) EXIT
+        if (typ < 0 || typ >= Resrcs) EXIT
+        return &bind[typ].add();
     }
     Bnd get(Unl &unl, int idx) {
         if (!excl) EXIT
@@ -1113,7 +1118,6 @@ struct CopyState {
     }
     int get(int *arg, int siz, int &idx, SmartState log, const char *str) {
         // next default or given argument
-        log << "get:" << str << ":" << idx << ":" << arg[idx] << '\n';
         if (idx >= siz) {std::cerr << "not enough int arguments " << idx << ">=" << siz << std::endl; EXIT}
         int tmp = idx; idx += 1;
         return arg[tmp];
@@ -1196,8 +1200,8 @@ struct CopyState {
             case(WrlDeeIns): case(WidDeeIns): case(RdlDeeIns): case(RidDeeIns): case(IdxDeeIns): {
             // remember first and reuse subsequent of the same resource and class
             Onl onl = Onl{indx,KEY,VAL}; Lst lst = Lst{INS,FRC};
-            bool cnd = bind->vld(RES,src(RES),onl,lst);
-            SaveState *sav = 0; if (cnd) sav = bind->get(RES); else
+            bool cnd = bind->vld(RES,src(RES),onl,lst,log);
+            SaveState *sav = 0; if (cnd) sav = bind->add(RES); else
             sav = bind->add(RES,BND,get(INS,RES,FRC,indx,KEY,VAL,log),i,src(RES),onl,lst,log);
             sav->fin = i;
             // prevent chosen from being stolen by different classes in same resource

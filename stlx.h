@@ -353,6 +353,11 @@ template <class Type, int Size = 0> struct HeapState {
         {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
         return operator[](i);
     }
+    Type &add() {
+        if (siz < 0 || siz > chk() || bas < 0 || (chk() > 0 && bas >= chk()) || rub < 1)
+        {std::cerr << "invalid bas size!" << std::endl; *(int*)0=0; exit(-1);}
+        return operator[](rub-1);
+    }
     Type &get(int j) {
         int i = spr;
         if (siz == 0) {siz = rub; rub = 0;}

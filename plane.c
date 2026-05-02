@@ -788,7 +788,6 @@ void planeTest(enum Thread tag, int idx)
 
     break; case (0): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
-    int giv[] = {0,12}; // idx,siz
 
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
@@ -804,6 +803,9 @@ void planeTest(enum Thread tag, int idx)
     callCopy(mat,Memorys+0,RptRsp,1,(debug?"matrix":0));
 
     if (count == tested) {
+    int width = callInfo(UniformWid,0,planeRcfg);
+    int height = callInfo(UniformHei,0,planeRcfg);
+    int giv[] = {width,height,0,12}; // idx,siz
     struct Center *drw = centerPull(Memorys+1); if (!drw) {callWait(); continue;}
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
