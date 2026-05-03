@@ -1230,10 +1230,10 @@ void initTest()
     callCopy(uni,Uniformz,RptRsp,0,(debug?"uniform":0));
     callJnfo(UniformHei,height,planeWcfg);
 
-    struct Center *vtx = centerPull(Bringupz); freeCenter(vtx);
-    vtx->mem = Bringupz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ver,vtx->siz);
-    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->ver[i],&vertices[i],sizeof(struct Vertex));
-    callCopy(vtx,Bringupz,RptRsp,0,(debug?"bringup":0));
+    struct Center *bup = centerPull(Bringupz); freeCenter(bup);
+    bup->mem = Bringupz; bup->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ver,bup->siz);
+    for (int i = 0; i < bup->siz; i++) memcpy(&bup->ver[i],&vertices[i],sizeof(struct Vertex));
+    callCopy(bup,Bringupz,RptRsp,0,(debug?"bringup":0));
 
     struct Center *ind = centerPull(Indexz); freeCenter(ind);
     ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);

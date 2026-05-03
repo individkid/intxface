@@ -1098,7 +1098,10 @@ ResrcAlt = {
 MicroIns = {
 	-- n==0: departures from NowDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
 	-- n>0: departures from n-1
-	{"%(--[[MicroFetDrw--]]\
+	{"%(--[[MicroVtxDrw--]]\
+	dex = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"VertexRes\",\"TriangleRes\"}\
+	phx = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"StoragePhs\",\"StoragePhs\"}\
+	--[[MicroFetDrw--]]\
 	dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\"}\
 	phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
 	--[[MicroFetCol--]]\
@@ -1116,6 +1119,14 @@ MicroIns = {
 	--[[MicroFilCol--]]\
 	ded = {\"UniformRes\",\"ImageRes\"}\
 	phd = {\"UniformPhs\",\"SamplePhs\"}\
+	\
+	--[[MicroVtxDrw--]]\
+	dev = {\"TrivDef\",--[[TagIns]]\
+	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
+	\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd RelatePhs.bnd]]\
+	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
+	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
+	dr1 = {\"2\",\"3\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\",\"0\"}\
 	\
 	--[[MicroFetDrw--]]\
 	def = {\"TrivDef\",--[[TagIns]]\
@@ -1170,6 +1181,44 @@ MicroIns = {
 	function gnc (lst,oth) for i,v in ipairs(lst) do for j,w in ipairs(oth) do if i ~= #lst or j~= #oth then coroutine.yield(v) else return v end end end end\
 	function hnc (lst,num) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(i+num-1) else return i+num-1 end end end\
 	return \"Memory\")","Matrixz","Int","1","Int","1"},
+
+	{"Micro","MicroVtxDrw","Int","0","Instr","SetTagIns"},
+		{"Micro","MicroVtxDrw","Int","0","Resrc","DrawRes"},
+		{"Micro","MicroVtxDrw","Int","0","Quality","RsizQua"},
+	{"Micro","MicroVtxDrw","Int","1","Instr","NowDerIns"},
+		{"Micro","MicroVtxDrw","Int","1","Resrc","ChainRes"},
+		{"Micro","MicroVtxDrw","Int","1","Phase","FramePhs"},
+		{"Micro","MicroVtxDrw","Int","1","Memory","Memorys"},
+		{"Micro","MicroVtxDrw","Int","1","Micro","Micros"},
+		{"Micro","MicroVtxDrw","Int","1","Reloc","BeforeLoc"},
+		{"Micro","MicroVtxDrw","Int","1","Format","NullFrm"},
+		{"Micro","MicroVtxDrw","Int","1","Quality","Qualitys"},
+	{"Micro","MicroVtxDrw","Int","2","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxDrw","Int","2","Resrc","SwapRes"},
+		{"Micro","MicroVtxDrw","Int","2","Phase","SwapPhs"},
+	{"Micro","MicroVtxDrw","Int","3","Instr","NowDerIns"},
+		{"Micro","MicroVtxDrw","Int","3","Resrc","DrawRes"},
+		{"Micro","MicroVtxDrw","Int","3","Reloc","MiddleLoc"},
+		{"Micro","MicroVtxDrw","Int","3","Format","MicroFrm"},
+	{"Micro","MicroVtxDrw","Int","4","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return hnc(dex,4))","Resrc","%(return fnc(dex))"},
+		{"Micro","MicroVtxDrw","Int","%(return hnc(phx,4))","Phase","%(return fnc(phx))"},
+	{"Micro","MicroVtxDrw","Int","%(return 4+#dee)","Instr","IdxDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return 4+#dee)","Resrc","PipeRes"},
+		{"Micro","MicroVtxDrw","Int","%(return 4+#dee)","Phase","PipePhs"},
+	{"Micro","MicroVtxDrw","Int","%(return 5+#dee)","Instr","NowDerIns"},
+		{"Micro","MicroVtxDrw","Int","%(return 5+#dee)","Resrc","ChainRes"},
+		{"Micro","MicroVtxDrw","Int","%(return 5+#dee)","Reloc","AfterLoc"},
+		{"Micro","MicroVtxDrw","Int","%(return 5+#dee)","Format","NullFrm"},
+	{"Micro","MicroVtxDrw","Int","%(return 6+#dee)","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return 6+#dee)","Resrc","SwapRes"},
+		{"Micro","MicroVtxDrw","Int","%(return 6+#dee)","Phase","SwapPhs"},
+	{"Micro","MicroVtxDrw","Int","%(return 7+#dee)","Instr","IdxDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return 7+#dee)","Resrc","PipeRes"},
+		{"Micro","MicroVtxDrw","Int","%(return 7+#dee)","Phase","PipePhs"},
+	{"Micro","MicroVtxDrw","Int","%(return hnc(dev,0))","Default","%(return fnc(dev))"},
+	{"Micro","MicroVtxDrw","Int","0","Int","MicroVtxDrw"},
+	{"Micro","MicroVtxDrw","Int","%(return hnc(dr1,1))","Int","%(return fnc(dr1))"},
 
 	{"Micro","MicroFetDrw","Int","0","Instr","SetTagIns"},
 		{"Micro","MicroFetDrw","Int","0","Resrc","DrawRes"},
@@ -1349,6 +1398,7 @@ MicroAlt = {
 		{"Micro","MicroConPie","Int","0","Int","0"},
 
 	{"Micro","MicroFetDrw","Int","0","Instr","MicIncIns"},
+		-- TODO either remove this or prevent Vulkan from initializing and remove +1 in fragmentRelate
 		{"Micro","MicroFetDrw","Int","0","Micro","MicroFilRel"}, -- GiveDef:0/1 ExtentExt:base/size
 		{"Micro","MicroFetDrw","Int","0","Default","TrivDef"},
 		{"Micro","MicroFetDrw","Int","0","Int","0"}, -- MicIncIns.ary
@@ -1372,6 +1422,32 @@ MicroAlt = {
 		{"Micro","MicroFetDrw","Int","6","Int","0"}, -- MicIncIns.ary
 		{"Micro","MicroFetDrw","Int","7","Default","TrivDef"},
 		{"Micro","MicroFetDrw","Int","7","Int","0"}, -- MicIncIns.bas
+
+	{"Micro","MicroVtxDrw","Int","0","Instr","MicIncIns"},
+		-- TODO either remove this or prevent Vulkan from initializing and remove +1 in fragmentRelate
+		{"Micro","MicroVtxDrw","Int","0","Micro","MicroFilRel"}, -- GiveDef:0/1 ExtentExt:base/size
+		{"Micro","MicroVtxDrw","Int","0","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","0","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroVtxDrw","Int","1","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","1","Int","0"}, -- MicIncIns.bas
+	{"Micro","MicroVtxDrw","Int","1","Instr","MicIncIns"},
+		{"Micro","MicroVtxDrw","Int","1","Micro","MicroFetRel"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Micro","MicroVtxDrw","Int","2","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","2","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroVtxDrw","Int","3","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","3","Int","2"}, -- MicIncIns.bas
+	{"Micro","MicroVtxDrw","Int","2","Instr","ResIncIns"},
+		{"Micro","MicroVtxDrw","Int","2","Resrc","WrapRes"},
+		{"Micro","MicroVtxDrw","Int","4","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","4","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroVtxDrw","Int","5","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","5","Int","0"}, -- MicIncIns.bas
+	{"Micro","MicroVtxDrw","Int","3","Instr","MicIncIns"},
+		{"Micro","MicroVtxDrw","Int","3","Micro","MicroVtxDrw"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Micro","MicroVtxDrw","Int","6","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","6","Int","0"}, -- MicIncIns.ary
+		{"Micro","MicroVtxDrw","Int","7","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","7","Int","0"}, -- MicIncIns.bas
 }
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
@@ -1522,15 +1598,19 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","Indexz(siz:0idx:0slf:0)"}, -- scratch
 	{"Int","%(return idx())","Str","!(pass = #0 fail = #0 wake = #0)"..
 		"Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
+		-- vulkanCpp: refactor tutorial: Bringup: no commandline args: RegisterShow == 0
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
+		-- planra.lua: test internals: Builtin: no Argument and any other: (RegisterShow & 1) == 0 && (RegisterShow & 30) != 0
 		"cnd[1]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
 			"opa[0]:CmpOp(cmp:ECCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
 			"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
 			")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) == 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
+		-- planer.lua: end to end: Regress: Argument and any other: (RegisterShow & 1) != 0 && (RegisterShow & 30) != 0
 		"cnd[2]:CmpOp(cmp:EOCmpopc[0]:AddOp("..
 			"opa[0]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(1))opc[1]:IntOp(0))"..
 			"opa[1]:CmpOp(cmp:EOCmpopc[0]:BitOp(bit:AndBitopb[0]:RetOp(RegisterShow)opb[1]:IntOp(30))opc[1]:IntOp(0))"..
 			")opc[1]:IntOp(2))".. -- ((((RegisterShow & 1) != 0) + ((RegisterShow & 30) != 0)) != 2 ? 1 : 0)
+		-- plane.lua: with others: Release: Argument and no other: RegisterShow == 1
 		"cnd[3]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(1))".. -- (RegisterShow != 1 ? 1 : 0)
 		"cnd[4]:IntOp(0)"..
 		"lst[0]:IntOp(%(return castPlan(\"Bringup\")))"..

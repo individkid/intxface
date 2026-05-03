@@ -89,6 +89,18 @@ struct SmartState {
         else if (vld) str << val;
         return *this;
     }
+    SmartState &operator<<(char *val) {
+        for (int i = 0; val[i]; i++) if (i>=200) *(int*)0=0;
+        wait();
+        if (vld) str << val;
+        return *this;
+    }
+    SmartState &operator<<(const char *val) {
+        for (int i = 0; val[i]; i++) if (i>=200) *(int*)0=0;
+        wait();
+        if (vld) str << val;
+        return *this;
+    }
     template<class Type> SmartState &operator<<(Type val) {
         wait();
         if (vld) str << val;
@@ -499,7 +511,7 @@ template <int Size, int Dim, int Min> struct SimpleState {
         remove(idx);
         insert(tmp,idx);
     }
-    Pair reuse(Pool &ign, SmartState log) {
+    Pair reuse(Pool &ign) {
         Pair ret;
         ret.reuse = 1; ret.resrc = find(pool,-1,ign);
         if (ret.resrc < 0) ret.resrc = first(seqing,-1,ign);
@@ -507,27 +519,24 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
-    Pair oldbuf(Only &tmp, Pool &ign, SmartState log) { // used for insert in advance, so no preemptive insert
+    Pair oldbuf(Only &tmp, Pool &ign) { // used for insert in advance, so no preemptive insert
         Pair ret;
-        // log << "oldbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
-        if (ret.resrc < 0) return reuse(ign,log);
+        if (ret.resrc < 0) return reuse(ign);
         if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
-    Pair getbuf(Only &tmp, Pool &ign, SmartState log) { // used for reserve, so returns new oldest if possible
+    Pair getbuf(Only &tmp, Pool &ign) { // used for reserve, so returns new oldest if possible
         Pair ret;
-        // log << "getbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = first(ording[tmp],-1,ign);
-        if (ret.resrc < 0 || ording[tmp].size() < Min) return reuse(ign,log);
+        if (ret.resrc < 0 || ording[tmp].size() < Min) return reuse(ign);
         if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
-    Pair newbuf(Only &tmp, Pool &ign, SmartState log) { // used for depend, so returns result of last advance
+    Pair newbuf(Only &tmp, Pool &ign) { // used for depend, so returns result of last advance
         Pair ret;
-        // log << "newbuf " << tmp[0]; for (int i = 1; i < Dim; i++) log << "/" << tmp[i]; log << '\n';
         ret.reuse = 0; ret.resrc = last(ording[tmp],-1,ign);
-        if (ret.resrc < 0) return reuse(ign,log);
+        if (ret.resrc < 0) return reuse(ign);
         if (ret.resrc < 0) *(int*)0=0;
         return ret;
     }
@@ -542,17 +551,17 @@ template <int Size, int Dim, int Min> struct SimpleState {
     void notice(int idx, int res) {
         idxign[idx].erase(res);
     }
-    Pair oldbuf(int idx, int tag, int val, SmartState log) {
+    Pair oldbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
-        return oldbuf(tmp,idxign[idx],log);
+        return oldbuf(tmp,idxign[idx]);
     }
-    Pair getbuf(int idx, int tag, int val, SmartState log) {
+    Pair getbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
-        return getbuf(tmp,idxign[idx],log);
+        return getbuf(tmp,idxign[idx]);
     }
-    Pair newbuf(int idx, int tag, int val, SmartState log) {
+    Pair newbuf(int idx, int tag, int val) {
         Only tmp = get(idx,tag,val);
-        return newbuf(tmp,idxign[idx],log);
+        return newbuf(tmp,idxign[idx]);
     }
     int get(int idx, int tag) {
         if (keyval.find(idx) == keyval.end()) {*(int*)0=0;exit(-1);}

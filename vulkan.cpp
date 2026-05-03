@@ -168,16 +168,16 @@ struct StackState {
     virtual bool compare(Onl onl) = 0;
     virtual void prepare(Onl onl) = 0;
     virtual void show(int hdl, Quality key, int val, char **str) = 0;
-    virtual Res newbuf(int hdl, Quality key, int val, SmartState log) = 0;
-    virtual Res oldbuf(int hdl, Quality key, int val, SmartState log) = 0;
-    virtual Res getbuf(int hdl, Quality key, int val, SmartState log) = 0;
+    virtual Res newbuf(int hdl, Quality key, int val) = 0;
+    virtual Res oldbuf(int hdl, Quality key, int val) = 0;
+    virtual Res getbuf(int hdl, Quality key, int val) = 0;
     virtual BaseState *idxbuf(int i) = 0;
     virtual BaseState *newbuf() = 0;
     virtual BaseState *oldbuf() = 0;
     virtual void ignore(int hdl, int idx) = 0;
     virtual void post() = 0;
     virtual void notice(int hdl, int idx) = 0;
-    virtual void advance(int hdl, Quality key, int val, int idx, SmartState log) = 0;
+    virtual void advance(int hdl, Quality key, int val, int idx) = 0;
     virtual void advance(int i) = 0;
     virtual void advance() = 0;
     virtual int buftag(int i, Quality t) = 0;
@@ -350,19 +350,19 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         if (!excl) EXIT
         tag.show(hdl,key,val,str);
     }
-    Res newbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
+    Res newbuf(int hdl, Quality key, int val) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.newbuf(hdl,key,val,log);
+        auto idx = tag.newbuf(hdl,key,val);
         return {&state[idx.resrc],idx.reuse,idx.resrc};
     }
-    Res oldbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
+    Res oldbuf(int hdl, Quality key, int val) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.oldbuf(hdl,key,val,log);
+        auto idx = tag.oldbuf(hdl,key,val);
         return {&state[idx.resrc],idx.reuse,idx.resrc};
     }
-    Res getbuf(int hdl, Quality key, int val, SmartState log) /*override*/ {
+    Res getbuf(int hdl, Quality key, int val) /*override*/ {
         if (!excl) EXIT
-        auto idx = tag.getbuf(hdl,key,val,log);
+        auto idx = tag.getbuf(hdl,key,val);
         return {&state[idx.resrc],idx.reuse,idx.resrc};
     }
     BaseState *idxbuf(int i) /*override*/ {
@@ -391,7 +391,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         tag.notice(hdl,idx);
         safe.post();
     }
-    void advance(int hdl, Quality key, int val, int idx, SmartState log) /*override*/ {
+    void advance(int hdl, Quality key, int val, int idx) /*override*/ {
         // make oldbuf into newbuf
         safe.wait();
         auto tmp = tag.get(hdl,key,val);
@@ -691,7 +691,7 @@ struct BaseState {
     }
     void unlock(Unl &unl, SmartState log);
     void advance(Adv &adv, SmartState log) {
-        item->advance(adv.hdl,adv.key,adv.val,adv.idx,log);
+        item->advance(adv.hdl,adv.key,adv.val,adv.idx);
     }
     void baseups(Reloc loc, SmartState log) {
         // after fence triggered
@@ -1128,12 +1128,12 @@ struct CopyState {
         switch (ins) {default: break;
         case(WrlDeeIns): case(WidDeeIns):
         case(RdlDeeIns): case(RidDeeIns):
-        ptr = src(res)->newbuf(hdl,key,val,log);
+        ptr = src(res)->newbuf(hdl,key,val);
         break; case(OldDerIns): case(OidDerIns):
         case(NowDerIns): case(NidDerIns):
-        ptr = src(res)->oldbuf(hdl,key,val,log);
+        ptr = src(res)->oldbuf(hdl,key,val);
         break; case(GetDerIns): case(GidDerIns):
-        ptr = src(res)->getbuf(hdl,key,val,log);
+        ptr = src(res)->getbuf(hdl,key,val);
         break; case(IdxDerIns): case(IdxDeeIns):
         ptr = Res{src(res)->idxbuf(idx),0,idx};}
         return ptr;
@@ -1168,7 +1168,7 @@ struct CopyState {
         BindState *bind = 0; int indx = 0; int min = 0;
         if (count > min) {
         stack[BindRes]->wait();
-        Res ptr = stack[BindRes]->getbuf(0,Qualitys,0,log);
+        Res ptr = stack[BindRes]->getbuf(0,Qualitys,0);
         bind = ptr.resrc->getBind(log); indx = ptr.index;
         stack[BindRes]->post();}
         int lim = num; // number checked for reservation
@@ -1292,7 +1292,7 @@ struct CopyState {
             SaveState *sav = get(INS,RES,i,bind,log);
             switch (INS) {default:
             break; case(NowDerIns): case(NidDerIns): {
-            if (sav->fst == i) src(RES)->advance(indx,KEY,VAL,sav->idx,log);
+            if (sav->fst == i) src(RES)->advance(indx,KEY,VAL,sav->idx);
             log << "NowDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}
             break; case(OldDerIns): case(GetDerIns): case(OidDerIns): case(GidDerIns): {
@@ -1306,7 +1306,7 @@ struct CopyState {
         ptr->slf = 0;
         switch (rsp) {default:
         break; case (RetRsp): case (RptRsp): thread->push(log,ptr,sub);}
-        if (bind) stack[BindRes]->advance(0,Qualitys,0,indx,log);
+        if (bind) stack[BindRes]->advance(0,Qualitys,0,indx);
         } else {
         log << "release reserved " << num << ">" << lim << '\n';
         for (int i = 0; i < lim; i++) {
@@ -1631,7 +1631,7 @@ struct CopyState {
         int mval[] = {
         wid,hei, // OldDerIns ExtentFrm
         idx,siz, // OldDerIns WholeFrm
-        bas,fet}; // TODO way to get fetch size from Center or Configure
+        bas,fet}; // fetch size
         int msiz = sizeof(mval)/sizeof(int);
         push(mem,dat,mval,msiz,ptr,sub,rsp,ary,log);
     }
