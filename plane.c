@@ -36,7 +36,6 @@ int *machine = 0;
 void *safeSem = 0; // protect machine and wakeSem
 float times[Threads] = {0};
 // initialized before threads so safe
-struct Argument argument = {0}; // constant from commandline
 void *chrq = 0; // temporary queue to convert chars to str
 void *evalSem = 0;
 uftype callCopy = 0;
@@ -447,13 +446,13 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
     if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
     centerPlace(ptr,src);
 }
-void planeArgv(int argc, char **argv, int cmnds);
+void planeArgv(int argc, char **argv);
 void machineArgv(int sig, int *arg)
 {
     if (sig != ArgvArgs) ERROR();
     int src = arg[ArgvSrc];
     struct Center *ptr = centerPull(src);
-    planeArgv(ptr->siz,ptr->str,0);
+    planeArgv(ptr->siz,ptr->str);
     centerPlace(ptr,src);
 }
 // manipulation C
@@ -577,7 +576,6 @@ void machineQopy(int sig, int *arg)
 }
 void machineStage(enum Configure cfg, int idx)
 {
-    switch (cfg) {default: {
     centerSize(idx);
     if (waitSafe(copySem) != 0) ERROR();
     struct Center *ptr = center[idx];
@@ -587,22 +585,17 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterSiz): callJnfo(cfg,ptr->siz,planeWcfg); break;
     case (CenterIdx): callJnfo(cfg,ptr->idx,planeWcfg); break;
     case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;}
-    if (postSafe(copySem) != 1) ERROR();}
-    case (ArgumentInp): callJnfo(cfg,argument.inp,planeWcfg); break;
-    case (ArgumentOut): callJnfo(cfg,argument.out,planeWcfg); break;}
+    if (postSafe(copySem) != 1) ERROR();
 }
 void machineTsage(enum Configure cfg, int idx)
 {
-    if (cfg != ArgumentInp && cfg != ArgumentOut) {
     struct Center *ptr = centerPull(idx);
     switch (cfg) {default: ERROR();
     case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break; // TODO deallocat and zero out siz
     case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break; // TODO reallocate with new siz
     case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
     case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
-    centerPlace(ptr,idx);} else switch (cfg) {default: ERROR();
-    case (ArgumentInp): argument.inp = callInfo(cfg,0,planeRcfg); break;
-    case (ArgumentOut): argument.out = callInfo(cfg,0,planeRcfg); break;}
+    centerPlace(ptr,idx);
 }
 void machineEval(struct Express *exp, int idx)
 {
@@ -788,6 +781,7 @@ void planeTest(enum Thread tag, int idx)
 
     break; case (0): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
+    int mode = (callInfo(RegisterPlan,0,planeRcfg)==Bringup);
 
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
@@ -810,7 +804,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
-    drw->drw[0].con.mic = MicroFetDrw;
+    drw->drw[0].con.mic = (mode?MicroFetDrw:MicroVtxDrw);
     drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
@@ -893,7 +887,7 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if (cfg != RegisterOpen) ERROR();
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         extdone = openPipe();
-        if ((external = argument.idx = rdwrInit(argument.inp,argument.out)) < 0) ERROR();
+	// initialize external if necessary
         safeInit(PipeThd,1,0);
         callFork(PipeThd,0,planeCenter,planeClose,planeJoin,planeWake);
         callFork(PipeThd,1,planeExternal,planeClose,planeJoin,planeWake);}
@@ -1058,32 +1052,25 @@ int planeSugval(const char *str)
     free(exp);
     return ret;
 }
-void planeArgv(int argc, char **argv, int cmnds)
+void planeArgv(int argc, char **argv)
 {
-    for (int i = 0; i < argc; i++) {
-    sugarRepl(&argv[i],'$'); // replace $() by Express
-    sugarEval(planeSugar,argv[i],'!'); // evaluate !() in the embedding
-    sugarFilt(&argv[i],'!');} // filter out !() before hide and process below
     for (int i = 0; i < argc; i++) {
     // fprintf(stderr,"argv--%s--\n",argv[i]);
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, argv[i], &asiz)) {
-    copyArgument(&argument,&arg); freeArgument(&arg);
-    if (i < cmnds) callInfo(RegisterShow,1,planeWots);}
+    // add callback for ArgumentInp/Out to initialize file descriptors in external
+    callInfo(ArgumentInp,arg.inp,planeWcfg);
+    callInfo(ArgumentOut,arg.out,planeWcfg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Center *ptr = 0;
-    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);
-    if (i < cmnds) callInfo(RegisterShow,2,planeWots);}
+    allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);}
     else if (hideMachine(&mchn, argv[i], &msiz)) {
-    machineSwitch(&mchn); freeMachine(&mchn);
-    if (i < cmnds) callInfo(RegisterShow,4,planeWots);}
+    machineSwitch(&mchn); freeMachine(&mchn);}
     else if (hideExpress(&expr, argv[i], &esiz)) {
-    machineVoid(&expr); freeExpress(&expr);
-    if (i < cmnds) callInfo(RegisterShow,8,planeWots);}
+    machineVoid(&expr); freeExpress(&expr);}
     else if (hideStr(&str,argv[i],&ssiz)) {
-    planePutstr(str); freeStr(&str,1);
-    if (i < cmnds) callInfo(RegisterShow,16,planeWots);}
+    planePutstr(str); freeStr(&str,1);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,argv[i]); exit(-1);}}
 }
 
@@ -1122,9 +1109,8 @@ void initSafe()
 }
 void initBoot()
 {
-    // Bootstrap is after Cmnd so it can elaborate on Cmnd and Cmnd can configure Bootstrap
-    int size = 0; int cmnds = 0;
-    for (int i = 0; callCmnd(i); i++) {size++; cmnds++;}
+    int size = 0; int cmnd = 0;
+    for (int i = 0; callCmnd(i); i++) {size++; cmnd++;}
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
     const char **temp = malloc(size*sizeof(const char *)); size = 0;
     for (int i = 0; callCmnd(i); i++) temp[size++] = callCmnd(i);
@@ -1134,11 +1120,24 @@ void initBoot()
     int len = strlen(temp[i]);
     boot[i] = malloc(len+1);
     strncpy(boot[i],temp[i],len); boot[i][len] = 0;}
-    planeArgv(size,boot,cmnds);
-    for (int i = 0; i < size; i++) free(boot[i]); free(boot);
-}
-void initPlan()
-{
+    // change strings according to sugar
+    for (int i = 0; i < size; i++) {
+    sugarRepl(&boot[i],'$'); // replace $() by Express
+    sugarEval(planeSugar,boot[i],'!'); // evaluate !() in the embedding
+    sugarFilt(&boot[i],'!');} // filter out !() before hide and process below
+    // record which kinds of boot strings there are
+    for (int i = 0; i < cmnd; i++) {
+    int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
+    struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
+    struct Express expr = {0}; char *str = 0;
+    if (hideArgument(&arg, callCmnd(i), &asiz)) callInfo(RegisterShow,1,planeWots);
+    else if (hideCenter(&cntr, callCmnd(i), &csiz)) callInfo(RegisterShow,2,planeWots);
+    else if (hideMachine(&mchn, callCmnd(i), &msiz)) callInfo(RegisterShow,4,planeWots);
+    else if (hideExpress(&expr, callCmnd(i), &esiz)) callInfo(RegisterShow,8,planeWots);
+    else if (hideStr(&str,callCmnd(i),&ssiz)) callInfo(RegisterShow,16,planeWots);
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,boot[i]); exit(-1);}}
+    // Bootstrap first to initialize RegisterPlan
+    planeArgv(size-cmnd,boot+cmnd);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): // no commandline arguments
@@ -1153,6 +1152,7 @@ void initPlan()
     break; case (Builtin): // choose what to test from commandline
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
+    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Regress): // choose how to interpret centers from pipe
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
@@ -1162,6 +1162,8 @@ void initPlan()
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);}
+    // callCmnd strings after so threads are started
+    planeArgv(cmnd,boot);
 }
 void initTest()
 {
@@ -1187,7 +1189,7 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
 
-    break; case (Bringup): {
+    break; case (Bringup): case (Builtin): {
     int frames = callInfo(ConstantFrames,0,planeRcfg);
 
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
@@ -1230,16 +1232,6 @@ void initTest()
     callCopy(uni,Uniformz,RptRsp,0,(debug?"uniform":0));
     callJnfo(UniformHei,height,planeWcfg);
 
-    struct Center *bup = centerPull(Bringupz); freeCenter(bup);
-    bup->mem = Bringupz; bup->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ver,bup->siz);
-    for (int i = 0; i < bup->siz; i++) memcpy(&bup->ver[i],&vertices[i],sizeof(struct Vertex));
-    callCopy(bup,Bringupz,RptRsp,0,(debug?"bringup":0));
-
-    struct Center *ind = centerPull(Indexz); freeCenter(ind);
-    ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
-    memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
-    callCopy(ind,Indexz,RptRsp,0,(debug?"index":0));
-
     struct Center *img = centerPull(Imagez); freeCenter(img);
     img->mem = Imagez; img->idx = 0; img->siz = 1; allocImage(&img->img,img->siz);
     fmtxStbi(&img->img[0].dat,&img->img[0].wid,&img->img[0].hei,&img->img[0].cha,"texture.jpg");
@@ -1277,7 +1269,36 @@ void initTest()
 
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
 
-    break; case (Builtin): case (Regress): case (Release): {}}
+    break; case (Regress): case (Release): {}}
+
+    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    default: ERROR();
+
+    break; case (Bringup): {
+    struct Center *bup = centerPull(Bringupz); freeCenter(bup);
+    bup->mem = Bringupz; bup->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ver,bup->siz);
+    for (int i = 0; i < bup->siz; i++) memcpy(&bup->ver[i],&vertices[i],sizeof(struct Vertex));
+    callCopy(bup,Bringupz,RptRsp,0,(debug?"bringup":0));
+
+    struct Center *ind = centerPull(Indexz); freeCenter(ind);
+    ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
+    memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
+    callCopy(ind,Indexz,RptRsp,0,(debug?"index":0));}
+
+    break; case (Builtin): {
+    struct Center *vtx = centerPull(Vertexz); freeCenter(vtx);
+    vtx->mem = Vertexz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->vtx,vtx->siz);
+    for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->vtx[i],&vertices[i],sizeof(struct Vertex));
+    callCopy(vtx,Vertexz,RptRsp,0,(debug?"vertex":0));
+
+    struct Center *tri = centerPull(Trianglez); freeCenter(tri);
+    tri->mem = Trianglez; tri->siz = (sizeof(indices)/sizeof(uint16_t))/3; allocTriangle(&tri->tri,tri->siz);
+    for (int i = 0; i < tri->siz; i++) for (int j = 0; j < 3; j++) {
+    int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
+    tri->tri[i].vtx[j] = indices[ind]; tri->tri[i].tex = tri->tri[i].pol = i/2;}
+    callCopy(tri,Trianglez,RptRsp,0,(debug?"triangle":0));}
+
+    break; case (Regress): case (Release): {}}
 }
 
 void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
@@ -1293,7 +1314,6 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, 
     callWait = wait;
     initSafe();
     initBoot();
-    initPlan();
     initTest();
 }
 int planeLoop()
