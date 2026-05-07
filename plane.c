@@ -1061,8 +1061,7 @@ void planeArgv(int argc, char **argv)
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, argv[i], &asiz)) {
     // add callback for ArgumentInp/Out to initialize file descriptors in external
-    callInfo(ArgumentInp,arg.inp,planeWcfg);
-    callInfo(ArgumentOut,arg.out,planeWcfg);}
+    callInfo(ArgumentInp,arg.inp,planeWcfg); callInfo(ArgumentOut,arg.out,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Center *ptr = 0;
     allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);}
     else if (hideMachine(&mchn, argv[i], &msiz)) {
@@ -1071,7 +1070,7 @@ void planeArgv(int argc, char **argv)
     machineVoid(&expr); freeExpress(&expr);}
     else if (hideStr(&str,argv[i],&ssiz)) {
     planePutstr(str); freeStr(&str,1);}
-    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,argv[i]); exit(-1);}}
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,argv[i]); exit(-1);}}
 }
 
 void initSafe()
@@ -1130,12 +1129,12 @@ void initBoot()
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
-    if (hideArgument(&arg, callCmnd(i), &asiz)) callInfo(RegisterShow,1,planeWots);
-    else if (hideCenter(&cntr, callCmnd(i), &csiz)) callInfo(RegisterShow,2,planeWots);
-    else if (hideMachine(&mchn, callCmnd(i), &msiz)) callInfo(RegisterShow,4,planeWots);
-    else if (hideExpress(&expr, callCmnd(i), &esiz)) callInfo(RegisterShow,8,planeWots);
-    else if (hideStr(&str,callCmnd(i),&ssiz)) callInfo(RegisterShow,16,planeWots);
-    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,ssiz,boot[i]); exit(-1);}}
+    if (hideArgument(&arg, boot[i], &asiz)) {callInfo(RegisterShow,1,planeWots); freeArgument(&arg);}
+    else if (hideCenter(&cntr, boot[i], &csiz)) callInfo(RegisterShow,2,planeWots);
+    else if (hideMachine(&mchn, boot[i], &msiz)) callInfo(RegisterShow,4,planeWots);
+    else if (hideExpress(&expr, boot[i], &esiz)) callInfo(RegisterShow,8,planeWots);
+    else if (hideStr(&str,boot[i],&ssiz)) callInfo(RegisterShow,16,planeWots);
+    else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,boot[i]); exit(-1);}}
     // Bootstrap first to initialize RegisterPlan
     planeArgv(size-cmnd,boot+cmnd);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
@@ -1186,10 +1185,11 @@ void initTest()
     };
     callInfo(FetchBase,0,planeWcfg);
     callInfo(FetchSize,sizeof(indices)/sizeof(int16_t),planeWcfg);
+    int mode = false;
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
 
-    break; case (Bringup): case (Builtin): {
+    break; case (Bringup): mode = true; case (Builtin): {
     int frames = callInfo(ConstantFrames,0,planeRcfg);
 
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
@@ -1254,27 +1254,6 @@ void initTest()
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
-    int giv[] = {width,height};
-    int giw[] = {0,12}; // idx,siz
-    for (int i = 0; i < 2; i++) {
-    struct Center *fil = centerPull(Drawz); freeCenter(fil);
-    fil->mem = Drawz; fil->siz = 1; allocDraw(&fil->drw,fil->siz);
-    fil->drw[0].con.tag = MicroCon;
-    fil->drw[0].con.mic = (i?MicroFetRel:MicroFilRel);
-    fil->drw[0].siz = sizeof((i?giw:giv))/sizeof(int);
-    allocInt(&fil->drw[0].arg,fil->drw[0].siz);
-    for (int j = 0; j < fil->drw[0].siz; j++) fil->drw[0].arg[j] = (i?giw:giv)[j];
-    callCopy(fil,Drawz,RetRsp,0,(debug?"relate":0));
-    while (!centerCheck(Drawz)) callWait();}
-
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
-
-    break; case (Regress): case (Release): {}}
-
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
-    default: ERROR();
-
-    break; case (Bringup): {
     struct Center *bup = centerPull(Bringupz); freeCenter(bup);
     bup->mem = Bringupz; bup->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ver,bup->siz);
     for (int i = 0; i < bup->siz; i++) memcpy(&bup->ver[i],&vertices[i],sizeof(struct Vertex));
@@ -1283,9 +1262,8 @@ void initTest()
     struct Center *ind = centerPull(Indexz); freeCenter(ind);
     ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
     memcpy(ind->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
-    callCopy(ind,Indexz,RptRsp,0,(debug?"index":0));}
+    callCopy(ind,Indexz,RptRsp,0,(debug?"index":0));
 
-    break; case (Builtin): {
     struct Center *vtx = centerPull(Vertexz); freeCenter(vtx);
     vtx->mem = Vertexz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->vtx[i],&vertices[i],sizeof(struct Vertex));
@@ -1296,7 +1274,22 @@ void initTest()
     for (int i = 0; i < tri->siz; i++) for (int j = 0; j < 3; j++) {
     int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
     tri->tri[i].vtx[j] = indices[ind]; tri->tri[i].tex = tri->tri[i].pol = i/2;}
-    callCopy(tri,Trianglez,RptRsp,0,(debug?"triangle":0));}
+    callCopy(tri,Trianglez,RptRsp,0,(debug?"triangle":0));
+
+    int giv[] = {width,height};
+    int giw[] = {0,12}; // idx,siz
+    for (int i = 0; i < 2; i++) {
+    struct Center *fil = centerPull(Drawz); freeCenter(fil);
+    fil->mem = Drawz; fil->siz = 1; allocDraw(&fil->drw,fil->siz);
+    fil->drw[0].con.tag = MicroCon;
+    fil->drw[0].con.mic = (i?(mode?MicroFetRel:MicroVtxRel):MicroFilRel);
+    fil->drw[0].siz = sizeof((i?giw:giv))/sizeof(int);
+    allocInt(&fil->drw[0].arg,fil->drw[0].siz);
+    for (int j = 0; j < fil->drw[0].siz; j++) fil->drw[0].arg[j] = (i?giw:giv)[j];
+    callCopy(fil,Drawz,RetRsp,0,(debug?"relate":0));
+    while (!centerCheck(Drawz)) callWait();}
+
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
 
     break; case (Regress): case (Release): {}}
 }

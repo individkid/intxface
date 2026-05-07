@@ -789,9 +789,7 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"End",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		char *raw = malloc(2);
-		raw[0] = '\n'; raw[1] = 0;
-		sugarGetval(lst,StrOp,raw,str,idx);		
+		sugarZeroary(lst,EndOp);
 		skipSugar("Op",str,idx);
 		sav = *idx;
 		continue;}

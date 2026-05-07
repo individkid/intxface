@@ -795,6 +795,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (StrOp): {
 		if (typ == -1) typ = TYPEStr; if (typ != TYPEStr) ERROR();
 		datxStr(dat,exp->key);} break;
+	case (EndOp): {
+		if (typ == -1) typ = TYPEStr; if (typ != TYPEStr) ERROR();
+		datxStr(dat,"\n");} break;
 	default: ERROR();}
 	// debug--;
 	return typ;

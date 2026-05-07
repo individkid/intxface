@@ -717,51 +717,50 @@ MemoryIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
 	{"%("..
-	"mem={\"Imagez\",   \"Getintz\"}"..
-	"res={\"ImageRes\", \"RelateRes\"}"..
-	"siz={\"ExtentFrm\",\"PieextFrm\"}"..
-	"ref={\"ImageFrm\", \"PierceFrm\"}"..
-	"bef={\"WonlyFrm\", \"PeekFrm\"}"..
-	"mid={\"WholeFrm\", \"WholeFrm\"}"..
-	"aft={\"RonlyFrm\", \"SourceFrm\"}"..
 	"function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
-	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;"..
-	"return \"Memory\")","%(return fnc(mem))","Int","0","Instr","OldDerIns"},
-	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
-	{"Memory","%(return fnc(mem))","Int","0","Memory","Memorys"},
-	{"Memory","%(return fnc(mem))","Int","0","Micro","Micros"},
-	{"Memory","%(return fnc(mem))","Int","0","Phase","Phases"},
-	{"Memory","%(return fnc(mem))","Int","0","Reloc","ResizeLoc"},
-	{"Memory","%(return fnc(mem))","Int","0","Format","%(return fnc(siz))"},
-	{"Memory","%(return fnc(mem))","Int","1","Reloc","ReformLoc"},
-	{"Memory","%(return fnc(mem))","Int","1","Format","%(return fnc(ref))"},
-	{"Memory","%(return fnc(mem))","Int","2","Reloc","BeforeLoc"},
-	{"Memory","%(return fnc(mem))","Int","2","Format","%(return fnc(bef))"},
-	{"Memory","%(return fnc(mem))","Int","3","Reloc","MiddleLoc"},
-	{"Memory","%(return fnc(mem))","Int","3","Format","%(return fnc(mid))"},
-	{"Memory","%(return fnc(mem))","Int","4","Reloc","AfterLoc"},
-	{"Memory","%(return fnc(mem))","Int","4","Format","%(return fnc(aft))"},
-	{"Memory","%(return rnc(mem,0,3))","Int","%(return rng(0,3))","Default","GiveDef"},
-	{"Memory","%(return rnc(mem,0,3))","Int","%(return rng(0,3))","Int","%(return rng(0,3))"},
-	{"%(nem = {\"Bringupz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"}\
-	    ses = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
-	return \"Memory\")","%(return fnc(nem))","Int","0","Resrc","%(return fnc(ses))"},
-	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Default","GiveDef"},
-	{"Memory","%(return rnc(nem,0,1))","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
+	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;)"},
 
+	{"Memory","Imagez","Int","0","Instr","OldDerIns"},
+	{"Memory","Imagez","Int","0","Resrc","ImageRes"},
+	{"Memory","Imagez","Int","0","Memory","Memorys"},
+	{"Memory","Imagez","Int","0","Micro","Micros"},
+	{"Memory","Imagez","Int","0","Phase","Phases"},
+	{"Memory","Imagez","Int","0","Reloc","ResizeLoc"},
+	{"Memory","Imagez","Int","0","Format","ExtentFrm"},
+	{"Memory","Imagez","Int","1","Reloc","ReformLoc"},
+	{"Memory","Imagez","Int","1","Format","ImageFrm"},
+	{"Memory","Imagez","Int","2","Reloc","BeforeLoc"},
+	{"Memory","Imagez","Int","2","Format","WonlyFrm"},
+	{"Memory","Imagez","Int","3","Reloc","MiddleLoc"},
+	{"Memory","Imagez","Int","3","Format","WholeFrm"},
+	{"Memory","Imagez","Int","4","Reloc","AfterLoc"},
+	{"Memory","Imagez","Int","4","Format","RonlyFrm"},
+	{"Memory","Imagez","Int","%(return rng(0,3))","Default","GiveDef"},
+	{"Memory","Imagez","Int","%(return rng(0,3))","Int","%(return rng(0,3))"},
+
+	-- this is where all the defaults are used
+	{"%(\
+	mem = {\"Bringupz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"};\
+	res = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};)"},
+	{"Memory","%(return fnc(mem))","Int","0","Resrc","%(return fnc(res))"},
+	{"Memory","%(return rnc(mem,0,1))","Int","%(return rng(0,1))","Default","GiveDef"},
+	{"Memory","%(return rnc(mem,0,1))","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
 
 	{"%(\
-	mem = {\"Vectorz\",  \"Getoldz\"}\
-	res = {\"ColorRes\", \"PierceRes\"}\
-	frm = {\"ColextFrm\",\"PieextFrm\"}\
+	mem = {\"Vectorz\",  \"Getoldz\",  \"Getintz\"}\
+	res = {\"ColorRes\", \"PierceRes\",\"RelateRes\"}\
+	frm = {\"ColextFrm\",\"PieextFrm\",\"RelextFrm\"}\
 	fil_dep = {\"UniformRes\"}\
 	fil_phs = {\"UniformPhs\"}\
 	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\", \"BringupRes\"}\
 	fet_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\", \"FetchPhs\"}\
 	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"IndexRes\",\"BringupRes\"}\
-	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}"..
+	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
+	vtx_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"VertexRes\",\"TriangleRes\"}\
+	vtx_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"StoragePhs\",\"StoragePhs\"}"..
 
+	-- TODO figure way to have VertexRes.bnd and TriangleRes.bnd for Getintz
 	"def0 = {"..
 	-- MicroFilRel
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
@@ -771,19 +770,29 @@ MemoryIns = {
 	-- MicroFetRel
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",".. -- NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd PipeRes.frc
+	"\"TrivDef\",\"TrivDef\"".. -- UniformRes.bnd UniformRes.bnd
+	"}".. -- [StoragePhs.bnd StoragePhs.bnd]
+	"def1 = {"..
+	"\"TrivDef\",".. -- PipeRes.frc
 	-- MicroFetCol
 	"\"TrivDef\",".. -- SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
 	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
 	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\",\"TrivDef\"".. -- UniformRes.bnd UniformRes.bnd
-	"}".. -- SamplePhs.bnd RelatePhs.bnd
-	"def1 = {"..
+	"}".. -- [SamplePhs.bnd RelatePhs.bnd] [StoragePhs.bnd StoragePhs.bnd]
+	"def2 = {"..
 	"\"TrivDef\",".. -- PipeRes.frc
 	"\"TrivDef\",".. -- SetTagIns.val
 	-- Vectorz
 	"\"GiveDef\",\"GiveDef\"".. -- WholeFrm.idx WholeFrm.siz
+	"}"..
+
+	"vtx_arg={"..
+	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
+	"0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),0,1,5,3,castMicro(\"MicroVtxRel\"),"..
+	"1,0,1,0,12,castMicro(\"MicroVtxCol\"),castMicro(\"MicroVtxCol\"),0,1,7,6,5,3,castMicro(\"MicroVtxCol\"),0,"..
+	"2,3,"..
 	"}"..
 
 	"col_arg={"..
@@ -801,8 +810,9 @@ MemoryIns = {
 	"}"..
 
 	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
-	"col_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def1},{})"..
-	"pie_def = cat({def0,def1},{})"..
+	"vtx_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def1,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"col_def = cat({def0,def1,{\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"pie_def = cat({def0,def1,def2},{})"..
 
 	"\
 	function fun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(u) else return u end end end\
@@ -811,7 +821,7 @@ MemoryIns = {
 	function gnc (mem) for j,u in ipairs(mem) do save[u] = count[u]; count[u] = count[u] + 1; if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
 	function hnc (mem,lst) count[mem] = save[mem]; for i,j in ipairs(lst) do temp = count[mem]; count[mem] = count[mem] + 1; if i ~= #lst then coroutine.yield(temp) else return temp end end end\
 	function fnc (mem) save[mem] = count[mem]; return save[mem] end\
-	count = {}; save = {}; hun(mem); return \"Memory\")","Matrixz","Int","1","Int","1"},
+	count = {}; save = {}; hun(mem);)"},
 
 	-- MicroFilRel
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NowDerIns"},
@@ -832,6 +842,9 @@ MemoryIns = {
 	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fil_dep))","Resrc","%(return fun(fil_dep))"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fil_phs))","Phase","%(return fun(fil_phs))"},
+	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vtx_dep))","Resrc","%(return fun(vtx_dep))"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vtx_phs))","Phase","%(return fun(vtx_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
@@ -851,6 +864,9 @@ MemoryIns = {
 	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
+	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vtx_dep))","Resrc","%(return fun(vtx_dep))"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vtx_phs))","Phase","%(return fun(vtx_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
@@ -903,6 +919,9 @@ MemoryIns = {
 	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
+	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vtx_dep))","Resrc","%(return fun(vtx_dep))"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vtx_phs))","Phase","%(return fun(vtx_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
@@ -923,18 +942,22 @@ MemoryIns = {
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","SourceFrm"},
 
 	-- Default/Int
-	{"%(\
-	function dun () save = count; count = count + 1; return save end\
-	count = 0; save = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"%(function dun () save = count; count = count + 1; return save end; count = 0;)"},
 	{"Memory","Vectorz","Int","%(return dun())","Default","%(return fun(col_def))"},
-	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"%(count = 0;)"},
 	{"Memory","Vectorz","Int","%(return dun())","Int","%(return fun(col_arg))"},
 
 	-- Default/Int
-	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"%(count = 0;)"},
 	{"Memory","Getoldz","Int","%(return dun())","Default","%(return fun(pie_def))"},
-	{"%(count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	{"%(count = 0;)"},
 	{"Memory","Getoldz","Int","%(return dun())","Int","%(return fun(pie_arg))"},
+
+	-- Default/Int
+	{"%(count = 0;)"},
+	{"Memory","Getintz","Int","%(return dun())","Default","%(return fun(vtx_def))"},
+	{"%(count = 0;)"},
+	{"Memory","Getintz","Int","%(return dun())","Int","%(return fun(vtx_arg))"},
 }
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},
@@ -948,55 +971,56 @@ MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Default","GiveDef"},
 	{"Memory","Matrixz","Int","0","Int","0"},
 	{"Memory","Matrixz","Int","1","Default","GiveDef"},
+	{"Memory","Matrixz","Int","1","Int","1"},
 
 
 	{"%(function fnc (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end "..
 	"function gnc(sub,sup) for i = 1,(#sup//#sub) do count = count + 1; for j = 1,#sub do if (i<(#sup//#sub)) or (j<#sub) then coroutine.yield(count-1) else return (count-1) end end end end "..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end "..
-	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 0;)"},
 
 	{"Memory","Getoldz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getoldz","Int","0","Micro","MicroConPie"},
+
 	{"%(key={\"Instr\",    \"Resrc\",    \"Reloc\",    \"Format\"};"..
 	"val={   \"OldDerIns\",\"PierceRes\",\"BeforeLoc\",\"PeekFrm\"};"..
-	"kez={\"Reloc\",    \"Format\"};"..
-	"wal={\"MiddleLoc\",\"WholeFrm\","..
-	"     \"AfterLoc\", \"SourceFrm\"};"..
-	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 1;)"},
 	{"Memory","Getoldz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
-	{"Memory","Getoldz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
+
+	{"%(key={\"Reloc\",    \"Format\"};"..
+	"val={\"MiddleLoc\",\"WholeFrm\","..
+	"     \"AfterLoc\", \"SourceFrm\"};)"},
+	{"Memory","Getoldz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 
 	{"%(def={"..
 	"\"TrivDef\",".. -- MicIncIns.ary
 	"\"TrivDef\","..-- MicIncIns.bas
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
-
 	"arg={0,0,2,3};"..
-
-	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 0;)"},
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
 	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
 
 
 	{"Memory","Getintz","Int","0","Instr","MicIncIns"},
 	{"Memory","Getintz","Int","0","Micro","MicroFilRel"},
+
 	{"%(key={\"Instr\",    \"Resrc\",    \"Reloc\",    \"Format\"};"..
 	"val={   \"OldDerIns\",\"RelateRes\",\"BeforeLoc\",\"PeekFrm\"};"..
-	"kez={\"Reloc\",    \"Format\"};"..
-	"wal={\"MiddleLoc\",\"WholeFrm\","..
-	"     \"AfterLoc\", \"SourceFrm\"};"..
-	"count = 1; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 1;)"},
 	{"Memory","Getintz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
-	{"Memory","Getintz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
+
+	{"%(key={\"Reloc\",    \"Format\"};"..
+	"val={\"MiddleLoc\",\"WholeFrm\","..
+	"     \"AfterLoc\", \"SourceFrm\"};)"},
+	{"Memory","Getintz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 
 	{"%(def={"..
 	"\"TrivDef\",".. -- MicIncIns.ary
 	"\"TrivDef\","..-- MicIncIns.bas
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
-
 	"arg={0,0,2,3};"..
-
-	"count = 0; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 0;)"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Default","%(return fnc(def))"},
 	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Int","%(return fnc(arg))"},
 
@@ -1028,14 +1052,16 @@ MemoryAlt = {
 		{"Memory","Vectorz","Int","6","Int","0"}, -- MicIncIns.ary
 		{"Memory","Vectorz","Int","7","Default","TrivDef"},
 		{"Memory","Vectorz","Int","7","Int","0"}, -- MicIncIns.bas
+
 	{"%(key={\"Instr\",    \"Resrc\",   \"Reloc\",    \"Format\"};"..
 	"val={   \"OldDerIns\",\"ColorRes\",\"BeforeLoc\",\"PeekFrm\"};"..
-	"kez={\"Reloc\",    \"Format\"};"..
-	"wal={\"MiddleLoc\",\"WholeFrm\","..
-	"     \"AfterLoc\", \"SourceFrm\"};"..
-	"count = 4; return \"Memory\")","Matrixz","Int","1","Int","1"},
+	"count = 4;)"},
 	{"Memory","Vectorz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
-	{"Memory","Vectorz","Int","%(return gnc(kez,wal))","%(return fnc(kez))","%(return fnc(wal))"},
+
+	{"%(key={\"Reloc\",    \"Format\"};"..
+	"val={\"MiddleLoc\",\"WholeFrm\","..
+	"     \"AfterLoc\", \"SourceFrm\"};)"},
+	{"Memory","Vectorz","Int","%(return gnc(key,val))","%(return fnc(key))","%(return fnc(val))"},
 		{"Memory","Vectorz","Int","8","Default","GiveDef"},
 		{"Memory","Vectorz","Int","8","Int","2"}, -- WholeFrm.idx
 		{"Memory","Vectorz","Int","9","Default","GiveDef"},
@@ -1107,6 +1133,9 @@ MicroIns = {
 	--[[MicroFetCol--]]\
 	det = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\"}\
 	pht = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
+	--[[MicroVtxRel--]]\
+	dey = {\"UniformRes\",\"MatrixRes\",\"VertexRes\",\"TriangleRes\"}\
+	phy = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\"}\
 	--[[MicroFetRel--]]\
 	dec = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
 	phc = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\"}\
@@ -1124,9 +1153,10 @@ MicroIns = {
 	dev = {\"TrivDef\",--[[TagIns]]\
 	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
 	\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd RelatePhs.bnd]]\
+	\"TrivDef\",\"TrivDef\",--[[StoragePhs.bnd,StoragePhs.bnd]]\
 	\"BackDef\",--[[IdxDeeIns PipeRes:idx]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
-	dr1 = {\"2\",\"3\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\",\"0\"}\
+	vv1 = {\"2\",\"3\",\"0\",\"0\",\"1\",\"7\",\"6\",\"5\",\"3\",\"0\",\"0\"}\
 	\
 	--[[MicroFetDrw--]]\
 	def = {\"TrivDef\",--[[TagIns]]\
@@ -1143,6 +1173,14 @@ MicroIns = {
 	\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd SamplePhs.bnd RelatePhs.bnd]]\
 	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
 	dr1 = {\"0\",\"1\",\"4\",\"5\",\"0\",\"0\",\"1\",\"7\",\"6\",\"0\"}\
+	\
+	--[[MicroVtxRel--]]\
+	dew = {\"TrivDef\",--[[TagIns]]\
+	\"GiveDef\",\"GiveDef\",\"BackDef\",--[[MicroFrm BothReq:idx/siz MicroExt:base]]\
+	\"TrivDef\",\"TrivDef\",--[[UniformPhs.bnd UniformPhs.bnd]]\
+	\"TrivDef\",\"TrivDef\",--[[StoragePhs.bnd,StoragePhs.bnd]]\
+	\"BackDef\"--[[IdxDeeIns PipeRes:idx]]}\
+	vw1 = {\"0\",\"1\",\"0\",\"0\",\"1\",\"5\",\"3\",\"0\"}\
 	\
 	--[[MicroFetRel--]]\
 	dej = {\"TrivDef\",--[[TagIns]]\
@@ -1218,7 +1256,7 @@ MicroIns = {
 		{"Micro","MicroVtxDrw","Int","%(return 7+#dee)","Phase","PipePhs"},
 	{"Micro","MicroVtxDrw","Int","%(return hnc(dev,0))","Default","%(return fnc(dev))"},
 	{"Micro","MicroVtxDrw","Int","0","Int","MicroVtxDrw"},
-	{"Micro","MicroVtxDrw","Int","%(return hnc(dr1,1))","Int","%(return fnc(dr1))"},
+	{"Micro","MicroVtxDrw","Int","%(return hnc(vv1,1))","Int","%(return fnc(vv1))"},
 
 	{"Micro","MicroFetDrw","Int","0","Instr","SetTagIns"},
 		{"Micro","MicroFetDrw","Int","0","Resrc","DrawRes"},
@@ -1431,7 +1469,7 @@ MicroAlt = {
 		{"Micro","MicroVtxDrw","Int","1","Default","TrivDef"},
 		{"Micro","MicroVtxDrw","Int","1","Int","0"}, -- MicIncIns.bas
 	{"Micro","MicroVtxDrw","Int","1","Instr","MicIncIns"},
-		{"Micro","MicroVtxDrw","Int","1","Micro","MicroFetRel"}, -- GiveDef:2/3 BothReq:idx/siz
+		{"Micro","MicroVtxDrw","Int","1","Micro","MicroVtxRel"}, -- GiveDef:2/3 BothReq:idx/siz
 		{"Micro","MicroVtxDrw","Int","2","Default","TrivDef"},
 		{"Micro","MicroVtxDrw","Int","2","Int","0"}, -- MicIncIns.ary
 		{"Micro","MicroVtxDrw","Int","3","Default","TrivDef"},

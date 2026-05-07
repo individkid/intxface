@@ -1120,6 +1120,7 @@ struct CopyState {
         // next default or given argument
         if (idx >= siz) {std::cerr << "not enough int arguments " << idx << ">=" << siz << std::endl; EXIT}
         int tmp = idx; idx += 1;
+        log << "get " << str << " " << idx << "<=" << siz << " " << arg[tmp] << '\n';
         return arg[tmp];
     }
     Res get(Instr ins, Resrc res, int idx, int hdl, Quality key, int val, SmartState log) {
