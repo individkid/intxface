@@ -1267,6 +1267,7 @@ void initTest()
     struct Center *vtx = centerPull(Vertexz); freeCenter(vtx);
     vtx->mem = Vertexz; vtx->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->vtx,vtx->siz);
     for (int i = 0; i < vtx->siz; i++) memcpy(&vtx->vtx[i],&vertices[i],sizeof(struct Vertex));
+    // for (int i = 4; i < 8; i++) vtx->vtx[i].vec[2] = 0.9;
     callCopy(vtx,Vertexz,RptRsp,0,(debug?"vertex":0));
 
     struct Center *tri = centerPull(Trianglez); freeCenter(tri);
@@ -1274,6 +1275,12 @@ void initTest()
     for (int i = 0; i < tri->siz; i++) for (int j = 0; j < 3; j++) {
     int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
     tri->tri[i].vtx[j] = indices[ind]; tri->tri[i].tex = tri->tri[i].pol = i/2;}
+    /*for (int i = 0; i < tri->siz; i++) {
+    fprintf(stderr,"triangle number:%d texture:%d polytope:%d\n",i,tri->tri[i].tex,tri->tri[i].pol);
+    for (int j = 0; j < 4; j++) {fprintf(stderr,"corner number:%d",tri->tri[i].vtx[j]);
+    fprintf(stderr," %f",vtx->vtx[tri->tri[i].vtx[j]].vec[0]);
+    for (int k = 1; k < 4; k++) fprintf(stderr,"/%f",vtx->vtx[tri->tri[i].vtx[j]].vec[k]);
+    fprintf(stderr,"\n");}}*/
     callCopy(tri,Trianglez,RptRsp,0,(debug?"triangle":0));
 
     int giv[] = {width,height};

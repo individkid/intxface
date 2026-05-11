@@ -655,7 +655,7 @@ struct BaseState {
         mask &= ~msk;
         if (mask == 0) {safe.wait(); valid = false; safe.post();}
         unsize(loc,log);}
-        log << "recall " << max << '\n';
+        log << "recall " << debug << " " << max << '\n';
         loc.max = max;
         if (loc.max == ini); else {
         resize(loc,log);
@@ -2331,10 +2331,10 @@ struct DrawState : public BaseState {
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),bnd.bnd,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
         log << "record " << debug << " " << framePtr->debug << '\n';
-        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE));
+        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE),debug,log);
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
         VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
-        drawFrame(loc.commandBuffer,graphics,loc.req.ptr,loc.req.idx,loc.req.siz,acquire,release,fence,before,after);
+        drawFrame(loc.commandBuffer,graphics,acquire,release,fence,before,after);
         return fence;
     }
     void upset(Loc &loc, SmartState log) override {
@@ -2348,8 +2348,8 @@ struct DrawState : public BaseState {
     static void updateTextureDescriptor(VkDevice device,
         VkImageView textureImageView, VkSampler textureSampler,
         int index, VkDescriptorSet descriptorSet);
-    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkBuffer vertexBuffer, VkBuffer indexBuffer);
-    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
+    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkBuffer vertexBuffer, VkBuffer indexBuffer, const char *str, SmartState log);
+    static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
 struct MainState {
@@ -3513,11 +3513,10 @@ void DrawState::updateTextureDescriptor(VkDevice device,
 void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
     VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices,
     VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
-    VkBuffer vertexBuffer, VkBuffer indexBuffer) {
+    VkBuffer vertexBuffer, VkBuffer indexBuffer, const char *str, SmartState log) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-    EXIT
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) EXIT
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = renderPass;
@@ -3548,13 +3547,15 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     if (vertexBuffer!=VK_NULL_HANDLE) vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
     if (indexBuffer!=VK_NULL_HANDLE) vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-    if (vertexBuffer!=VK_NULL_HANDLE && indexBuffer!=VK_NULL_HANDLE) vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);
-    else vkCmdDraw(commandBuffer,indices,indices/3,0,0);
+    if (vertexBuffer!=VK_NULL_HANDLE && indexBuffer!=VK_NULL_HANDLE) {
+    log << "draw indexed " << str << " " << indices << '\n';
+    vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);}
+    else {log << "draw " << str << " " << indices << '\n';
+    vkCmdDraw(commandBuffer,indices,indices/3,0,0);}
     vkCmdEndRenderPass(commandBuffer);
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-    EXIT
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) EXIT
 }
-void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, void *ptr, int loc, int siz,
+void DrawState::drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics,
     VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after) {
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

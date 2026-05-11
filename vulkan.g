@@ -191,8 +191,11 @@ void index(out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex,
 }
 void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vtx, vec4 vec)
 {
-    if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * vec;
-    else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * vec;
+    if (gl_VertexIndex >= 6) gl_Position = inMat.buf[2].buf * vec;
+    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * vec;
+    // gl_Position = vec;
+    // if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * vec;
+    // else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     fragOrd = inVer.buf[vtx].ord;
     fragIdx = pol;
     fragTex = tex;
