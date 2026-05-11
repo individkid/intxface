@@ -469,11 +469,14 @@ template <int Size, int Dim, int Min> struct SimpleState {
         if (ign.find(*i) == ign.end()) return *i;
         return def;
     }
+    void show(Only onl, char **str) {
+        std::stringstream sst; sst << onl[0];
+        for (int i = 1; i < Dim; i++) sst << "/" << onl[i];
+        *str = (char*)realloc((void*)*str,sst.str().size()+1); strcpy(*str,sst.str().c_str());
+    }
     void show(int idx, int tag, int val, char **str) {
         Only tmp = get(idx,tag,val);
-        std::stringstream sst; sst << tmp[0];
-        for (int i = 1; i < Dim; i++) sst << "/" << tmp[i];
-        *str = (char*)realloc((void*)*str,sst.str().size()+1); strcpy(*str,sst.str().c_str());
+        show(tmp,str);
     }
     // TODO add resize function
     void remove(int idx) {

@@ -836,7 +836,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(eek);
     eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocInt(&eek->uns,eek->siz);
-    callCopy(eek,Memorys+5,RptRsp,1,(debug?"ident":0));}
+    callCopy(eek,Memorys+5,RptRsp,0,(debug?"ident":0));}
 
     else if (count%6 == 3 || count%6 == 0) {
     struct Center *vec = centerPull(Vectorz); freeCenter(vec);
