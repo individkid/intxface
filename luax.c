@@ -169,7 +169,7 @@ int nestEval(int i)
 	if (!fiber[i].lua) {fiber[i].lua = lua_newthread(luastate); fiber[i].top = lua_gettop(luastate); if (luaxLoad(fiber[i].lua,fiber[i].exp) != 0) return 0;}
 	ret = lua_resume(fiber[i].lua,0,0,&num);
 	if (ret != LUA_OK && ret != LUA_YIELD) {
-		printf("lua %s\n",lua_tostring(fiber[i].lua,-1));
+		printf("lua %s\n%s\n",lua_tostring(fiber[i].lua,-1),fiber[i].exp);
 		ERROR();}
 	for (int j = 0; j < num; j++) if (!lua_tostring(fiber[i].lua,j-num)) {
 		printf("lua returned null: %s\n",fiber[i].exp);
