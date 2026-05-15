@@ -781,6 +781,7 @@ MemoryIns = {
 	"fil_rel_def={\"TrivDef\",\"TrivDef\"}"..
 	"vtx_rel_def={\"TrivDef\",\"TrivDef\"}"..
 	"fet_rel_def={\"TrivDef\",\"TrivDef\"}"..
+	"wrp_def={\"TrivDef\",\"TrivDef\"}"..
 	"def0 = {"..
 	-- MicroFetCol
 	"\"TrivDef\",".. -- SetTagIns.val
@@ -807,6 +808,7 @@ MemoryIns = {
 	"fil_rel_inc={1,0}"..
 	"vtx_rel_inc={1,0}"..
 	"fet_rel_inc={1,0}"..
+	"wrp_inc={1,0}"..
 
 	"rel_oth_arg={"..
 	"1,0,1,1,1,0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),1,0,1,-3,5,3,-4,castMicro(\"MicroVtxRel\"),0,"..
@@ -823,13 +825,13 @@ MemoryIns = {
 	"1,2,3,1,1,"..
 	"}"..
 
-	"rel_arg = cat({fil_rel_inc,vtx_rel_inc,rel_oth_arg},{})"..
-	"col_arg = cat({fil_rel_inc,vtx_rel_inc,col_oth_arg},{})"..
-	"pie_arg = cat({fil_rel_inc,fet_rel_inc,pie_oth_arg},{})"..
+	"rel_arg = cat({fil_rel_inc,vtx_rel_inc,wrp_inc,rel_oth_arg},{})"..
+	"col_arg = cat({fil_rel_inc,vtx_rel_inc,wrp_inc,col_oth_arg},{})"..
+	"pie_arg = cat({fil_rel_inc,fet_rel_inc,wrp_inc,pie_oth_arg},{})"..
 
-	"rel_def = cat({fil_rel_def,vtx_rel_def,def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"col_def = cat({fil_rel_def,vtx_rel_def,def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"pie_def = cat({fil_rel_def,fet_rel_def,def0,def2},{})"..
+	"rel_def = cat({fil_rel_def,vtx_rel_def,wrp_def,def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"col_def = cat({fil_rel_def,vtx_rel_def,wrp_def,def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"pie_def = cat({fil_rel_def,fet_rel_def,wrp_def,def0,def2},{})"..
 
 	"rel_mic = {\"MicroVtxRel\",\"MicroFetRel\",\"MicroVtxRel\"}"..
 
@@ -848,29 +850,9 @@ MemoryIns = {
 	-- Micro(Fet/Vtx)Rel
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","MicIncIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","%(return fun(rel_mic))"},
-
 	-- WrapRes
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NowDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","BeforeLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PeekFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NowDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","MiddleLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","NullFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","RdlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NowDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","WrapRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","AfterLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","SourceFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","WrapPhs"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","ResIncIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","WrapRes"},
 
 	-- Micro(Fet/Vtx)(Col/Pie/Rel)
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
@@ -1096,6 +1078,28 @@ ResrcAlt = {
 	 {"Resrc","SwapRes","Int","0","Quality","Qualitys"},
 	 {"Resrc","SwapRes","Int","0","Default","TrivDef"},
 	 {"Resrc","SwapRes","Int","0","Int","0"},
+
+	{"Resrc","WrapRes","Int","%(return savini())","Instr","NowDerIns"},
+		{"Resrc","WrapRes","Int","%(return savget())","Resrc","WrapRes"},
+		{"Resrc","WrapRes","Int","%(return savget())","Reloc","BeforeLoc"},
+		{"Resrc","WrapRes","Int","%(return savget())","Format","PeekFrm"},
+	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","WrlDeeIns"},
+		{"Resrc","WrapRes","Int","%(return savget())","Resrc","RelateRes"},
+		{"Resrc","WrapRes","Int","%(return savget())","Phase","WrapPhs"},
+	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","NowDerIns"},
+		{"Resrc","WrapRes","Int","%(return savget())","Resrc","WrapRes"},
+		{"Resrc","WrapRes","Int","%(return savget())","Reloc","MiddleLoc"},
+		{"Resrc","WrapRes","Int","%(return savget())","Format","NullFrm"},
+	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","RdlDeeIns"},
+		{"Resrc","WrapRes","Int","%(return savget())","Resrc","RelateRes"},
+		{"Resrc","WrapRes","Int","%(return savget())","Phase","WrapPhs"},
+	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","NowDerIns"},
+		{"Resrc","WrapRes","Int","%(return savget())","Resrc","WrapRes"},
+		{"Resrc","WrapRes","Int","%(return savget())","Reloc","AfterLoc"},
+		{"Resrc","WrapRes","Int","%(return savget())","Format","SourceFrm"},
+	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","WrlDeeIns"},
+		{"Resrc","WrapRes","Int","%(return savget())","Resrc","RelateRes"},
+		{"Resrc","WrapRes","Int","%(return savget())","Phase","WrapPhs"},
 }
 MicroIns = {
 	-- n==0: departures from NowDerIns,Resrcs,Memorys,Micros,ResizeLoc,SizeFrm,Qualitys
