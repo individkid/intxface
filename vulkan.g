@@ -193,7 +193,6 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vt
 {
     if (gl_VertexIndex >= 6) gl_Position = inMat.buf[2].buf * vec;
     else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * vec;
-    // gl_Position = vec;
     // if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     // else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * vec;
     fragOrd = inVer.buf[vtx].ord;
@@ -361,7 +360,7 @@ void fragmentColor()
     else if (fragIdx+1!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y+1)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
     else if (fragIdx+1!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y-1)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
     else if (fragTex == 1) outColor = vec4(0.0,0.0,1.0,1.0);
-    else outColor = texture(texSampler, fragOrd.xy);
+    else outColor = fragOrd;// texture(texSampler, fragOrd.xy);
 }
 #endif
 #if defined(fragmentPierce)

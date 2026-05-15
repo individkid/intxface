@@ -735,7 +735,9 @@ MemoryIns = {
 	{"%("..
 	"function fng (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
 	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
-	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;)"},
+	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;"..
+	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
+	")"},
 
 	{"Memory","Imagez","Int","0","Instr","OldDerIns"},
 	{"Memory","Imagez","Int","0","Resrc","ImageRes"},
@@ -771,28 +773,15 @@ MemoryIns = {
 	fil_phs = {\"UniformPhs\"}\
 	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",  \"BringupRes\"}\
 	fet_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",  \"FetchPhs\"}\
-	vet_dep = {\"UniformRes\",\"MatrixRes\",\"VertexRes\", \"TriangleRes\"}\
-	vet_phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\"}\
-	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"IndexRes\",\"BringupRes\"}\
-	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
-	vtx_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"VertexRes\",\"TriangleRes\"}\
-	vtx_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"StoragePhs\",\"StoragePhs\"}"..
+	rel_dep = {\"UniformRes\",\"MatrixRes\", \"VertexRes\", \"TriangleRes\"}\
+	rel_phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\"}\
+	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"VertexRes\", \"TriangleRes\"}\
+	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"StoragePhs\",\"StoragePhs\"}"..
 
+	"fil_rel_def={\"TrivDef\",\"TrivDef\"}"..
+	"vtx_rel_def={\"TrivDef\",\"TrivDef\"}"..
+	"fet_rel_def={\"TrivDef\",\"TrivDef\"}"..
 	"def0 = {"..
-	-- MicroFilRel
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",".. -- NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd PipeRes.frc
-	-- MicroFetRel
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",".. -- NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd
-	"\"CmntDef\""..
-	"}".. -- [StoragePhs.bnd StoragePhs.bnd]
-	"def1 = {"..
-	"\"CmntDef\","..
-	"\"TrivDef\",".. -- PipeRes.frc
 	-- MicroFetCol
 	"\"TrivDef\",".. -- SetTagIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
@@ -815,39 +804,34 @@ MemoryIns = {
 	"\"TrivDef\"".. -- NidDerIns.val
 	"}"..
 
-	"vtx_arg={"..
-	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),0,1,-1,7,6,5,3,-2,castMicro(\"MicroVtxRel\"),"..
-	"1,0,1,1,1,0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),1,0,1,-3,7,6,5,3,-4,castMicro(\"MicroVtxRel\"),0,"..
-	"1,2,3,1,1,"..
-	"}"..
+	"fil_rel_inc={1,0}"..
+	"vtx_rel_inc={1,0}"..
+	"fet_rel_inc={1,0}"..
 
-	"vec_arg={"..
-	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),0,1,-1,5,3,-2,castMicro(\"MicroVtxRel\"),"..
+	"rel_oth_arg={"..
 	"1,0,1,1,1,0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),1,0,1,-3,5,3,-4,castMicro(\"MicroVtxRel\"),0,"..
 	"1,2,3,1,1,"..
 	"}"..
 
-	"col_arg={"..
-	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,12,castMicro(\"MicroFetRel\"),castMicro(\"MicroFetRel\"),0,1,-1,-2,castMicro(\"MicroFetRel\"),"..
-	"1,0,1,1,1,0,12,castMicro(\"MicroFetCol\"),castMicro(\"MicroFetCol\"),1,0,1,-3,7,6,-4,castMicro(\"MicroFetCol\"),0,"..
+	"col_oth_arg={"..
+	"1,0,1,1,1,0,12,castMicro(\"MicroVtxCol\"),castMicro(\"MicroVtxCol\"),1,0,1,-3,7,6,5,3,-4,castMicro(\"MicroVtxCol\"),0,"..
 	"1,2,3,1,1,"..
 	"}"..
 
-	"pie_arg={"..
-	"0,1,0,6,castMicro(\"MicroFilRel\"),castMicro(\"MicroFilRel\"),0,castMicro(\"MicroFilRel\"),"..
-	"0,12,castMicro(\"MicroFetRel\"),castMicro(\"MicroFetRel\"),0,1,-1,-2,castMicro(\"MicroFetRel\"),"..
+	"pie_oth_arg={"..
 	"1,0,1,1,1,0,12,castMicro(\"MicroFetPie\"),castMicro(\"MicroFetPie\"),1,0,1,-3,-4,castMicro(\"MicroFetPie\"),0,"..
 	"1,2,3,1,1,"..
 	"}"..
 
-	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
-	"vtx_def = cat({def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def1,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"vec_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def1,{\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"col_def = cat({def0,def1,{\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"pie_def = cat({def0,def1,def2},{})"..
+	"rel_arg = cat({fil_rel_inc,vtx_rel_inc,rel_oth_arg},{})"..
+	"col_arg = cat({fil_rel_inc,vtx_rel_inc,col_oth_arg},{})"..
+	"pie_arg = cat({fil_rel_inc,fet_rel_inc,pie_oth_arg},{})"..
+
+	"rel_def = cat({fil_rel_def,vtx_rel_def,def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"col_def = cat({fil_rel_def,vtx_rel_def,def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"pie_def = cat({fil_rel_def,fet_rel_def,def0,def2},{})"..
+
+	"rel_mic = {\"MicroVtxRel\",\"MicroFetRel\",\"MicroVtxRel\"}"..
 
 	"\
 	function fun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(u) else return u end end end\
@@ -859,52 +843,11 @@ MemoryIns = {
 	count = {}; save = {}; hun(mem);)"},
 
 	-- MicroFilRel
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NowDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","ResizeLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","RelextFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","MiddleLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","MicroFrm"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RsizQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","RenderPhs"},
-	{"Memory","Vectorz","Int","%(return fnc(\"Vectorz\"))","Instr","RdlDeeIns"},
-		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fil_dep))","Resrc","%(return fun(fil_dep))"},
-		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fil_phs))","Phase","%(return fun(fil_phs))"},
-	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fil_dep))","Resrc","%(return fun(fil_dep))"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fil_phs))","Phase","%(return fun(fil_phs))"},
-	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",fil_dep))","Resrc","%(return fun(fil_dep))"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",fil_phs))","Phase","%(return fun(fil_phs))"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
-
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","MicIncIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","MicroFilRel"},
 	-- Micro(Fet/Vtx)Rel
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","MiddleLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","MicroFrm"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RsizQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WrlDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","RelateRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","RenderPhs"},
-	{"Memory","Vectorz","Int","%(return fnc(\"Vectorz\"))","Instr","RdlDeeIns"},
-		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
-		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",fet_phs))","Phase","%(return fun(fet_phs))"},
-	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
-	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vet_dep))","Resrc","%(return fun(vet_dep))"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vet_phs))","Phase","%(return fun(vet_phs))"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
+	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","MicIncIns"},
+		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","%(return fun(rel_mic))"},
 
 	-- WrapRes
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NowDerIns"},
@@ -958,8 +901,8 @@ MemoryIns = {
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
 		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
 	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vet_dep))","Resrc","%(return fun(vet_dep))"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",vet_phs))","Phase","%(return fun(vet_phs))"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",rel_dep))","Resrc","%(return fun(rel_dep))"},
+		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",rel_phs))","Phase","%(return fun(rel_phs))"},
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
@@ -992,8 +935,8 @@ MemoryIns = {
 
 	-- Default/Int
 	{"%(count = 0; acount = 0;)"},
-	{"Memory","Getintz","Int","%(return lrgini(vec_def))","Default","%(return lrgval(vec_def))"},
-	{"Memory","Getintz","Int","%(return lrgint(vec_arg))","Int","%(return lrgval(vec_arg))"},
+	{"Memory","Getintz","Int","%(return lrgini(rel_def))","Default","%(return lrgval(rel_def))"},
+	{"Memory","Getintz","Int","%(return lrgint(rel_arg))","Int","%(return lrgval(rel_arg))"},
 }
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},
@@ -1513,6 +1456,108 @@ MicroAlt = {
 		{"Micro","MicroConPie","Int","0","Quality","Qualitys"},
 		{"Micro","MicroConPie","Int","0","Default","TrivDef"},
 		{"Micro","MicroConPie","Int","0","Int","0"},
+
+	{"Micro","MicroFilRel","Int","%(return savini())","Instr","NowDerIns"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Resrc","RelateRes"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Reloc","ResizeLoc"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Format","RelextFrm"},
+		{"Micro","MicroFilRel","Int","%(return argini())","Default","GiveDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","0"},
+		{"Micro","MicroFilRel","Int","%(return arginc())","Default","GiveDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","1"},
+	{"Micro","MicroFilRel","Int","%(return savinc())","Instr","NidDerIns"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Resrc","DrawRes"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Reloc","MiddleLoc"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Format","MicroFrm"},
+		{"Micro","MicroFilRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","0"},
+		{"Micro","MicroFilRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","6"},
+		{"Micro","MicroFilRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","MicroFilRel"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Quality","RsizQua"},
+		{"Micro","MicroFilRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","MicroFilRel"},
+	{"Micro","MicroFilRel","Int","%(return savinc())","Instr","WrlDeeIns"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Resrc","RelateRes"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Phase","RenderPhs"},
+	{"Micro","MicroFilRel","Int","%(return lstini(fil_dep))","Instr","RdlDeeIns"},
+		{"Micro","MicroFilRel","Int","%(return lstint(fil_dep))","Resrc","%(return lstval(fil_dep))"},
+		{"Micro","MicroFilRel","Int","%(return lstint(fil_phs))","Phase","%(return lstval(fil_phs))"},
+		{"Micro","MicroFilRel","Int","%(return lrgini(fil_rel_arg))","Default","TrivDef"},
+		{"Micro","MicroFilRel","Int","%(return lrgint(fil_rel_arg))","Int","%(return lrgval(fil_rel_arg))"},
+	{"Micro","MicroFilRel","Int","%(return savinc())","Instr","IdxDeeIns"},
+		{"Micro","MicroFilRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFilRel","Int","%(return argget())","Int","MicroFilRel"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Resrc","PipeRes"},
+		{"Micro","MicroFilRel","Int","%(return savget())","Phase","PipePhs"},
+
+	-- MicroFetRel
+	--[["\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
+	"\"TrivDef\",".. -- NidDerIns.val
+	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd
+	"\"CmntDef\""..
+	"}".. -- [StoragePhs.bnd StoragePhs.bnd]
+	"def1 = {"..
+	"\"CmntDef\","..
+	"\"TrivDef\",".. -- PipeRes.frc
+	"0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),0,1,-1,5,3,-2,castMicro(\"MicroVtxRel\"),"..
+	"0,12,castMicro(\"MicroFetRel\"),castMicro(\"MicroFetRel\"),0,1,-1,-2,castMicro(\"MicroFetRel\"),"..]]
+	{"Micro","MicroVtxRel","Int","%(return savini())","Instr","NidDerIns"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Resrc","DrawRes"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Reloc","MiddleLoc"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Format","MicroFrm"},
+		{"Micro","MicroVtxRel","Int","%(return argini())","Default","TrivDef"},
+		{"Micro","MicroVtxRel","Int","%(return argget())","Int","0"},
+		{"Micro","MicroVtxRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroVtxRel","Int","%(return argget())","Int","12"},
+		{"Micro","MicroVtxRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroVtxRel","Int","%(return argget())","Int","MicroVtxRel"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Quality","RsizQua"},
+		{"Micro","MicroVtxRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroVtxRel","Int","%(return argget())","Int","MicroVtxRel"},
+	{"Micro","MicroVtxRel","Int","%(return savinc())","Instr","WrlDeeIns"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Resrc","RelateRes"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Phase","RenderPhs"},
+	{"Micro","MicroVtxRel","Int","%(return lstini(rel_dep))","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxRel","Int","%(return lstint(rel_dep))","Resrc","%(return lstval(rel_dep))"},
+		{"Micro","MicroVtxRel","Int","%(return lstint(rel_phs))","Phase","%(return lstval(rel_phs))"},
+		{"Micro","MicroVtxRel","Int","%(return lrgini(vtx_rel_arg))","Default","TrivDef"},
+		{"Micro","MicroVtxRel","Int","%(return lrgint(vtx_rel_arg))","Int","%(return lrgval(vtx_rel_arg))"},
+	{"Micro","MicroVtxRel","Int","%(return savinc())","Instr","IdxDeeIns"},
+		{"Micro","MicroVtxRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroVtxRel","Int","%(return argget())","Int","MicroVtxRel"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Resrc","PipeRes"},
+		{"Micro","MicroVtxRel","Int","%(return savget())","Phase","PipePhs"},
+
+	{"Micro","MicroFetRel","Int","%(return savini())","Instr","NidDerIns"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Resrc","DrawRes"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Reloc","MiddleLoc"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Format","MicroFrm"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Quality","RsizQua"},
+		{"Micro","MicroFetRel","Int","%(return argini())","Default","TrivDef"},
+		{"Micro","MicroFetRel","Int","%(return argget())","Int","0"},
+		{"Micro","MicroFetRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFetRel","Int","%(return argget())","Int","12"},
+		{"Micro","MicroFetRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFetRel","Int","%(return argget())","Int","MicroFetRel"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Quality","RsizQua"},
+		{"Micro","MicroFetRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFetRel","Int","%(return argget())","Int","MicroFetRel"},
+	{"Micro","MicroFetRel","Int","%(return savinc())","Instr","WrlDeeIns"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Resrc","RelateRes"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Phase","RenderPhs"},
+	{"Micro","MicroFetRel","Int","%(return lstini(fet_dep))","Instr","RdlDeeIns"},
+		{"Micro","MicroFetRel","Int","%(return lstint(fet_dep))","Resrc","%(return lstval(fet_dep))"},
+		{"Micro","MicroFetRel","Int","%(return lstint(fet_phs))","Phase","%(return lstval(fet_phs))"},
+		{"Micro","MicroFetRel","Int","%(return lrgini(fet_rel_arg))","Default","TrivDef"},
+		{"Micro","MicroFetRel","Int","%(return lrgint(fet_rel_arg))","Int","%(return lrgval(fet_rel_arg))"},
+	{"Micro","MicroFetRel","Int","%(return savinc())","Instr","IdxDeeIns"},
+		{"Micro","MicroFetRel","Int","%(return arginc())","Default","TrivDef"},
+		{"Micro","MicroFetRel","Int","%(return argget())","Int","MicroFetRel"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Resrc","PipeRes"},
+		{"Micro","MicroFetRel","Int","%(return savget())","Phase","PipePhs"},
+
 
 	{"Micro","MicroFetDrw","Int","0","Instr","MicIncIns"},
 		-- TODO either remove MicroFilRel or prevent Vulkan from initializing and remove +1 in fragmentRelate

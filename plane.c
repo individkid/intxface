@@ -844,7 +844,7 @@ void planeTest(enum Thread tag, int idx)
     allocVector(&vec->vec,vec->siz);
     vec->vec[0].vec[0] = 1.0; vec->vec[0].vec[1] = 2.0;
     vec->vec[0].vec[2] = 3.0; vec->vec[0].vec[3] = 4.0;
-    callCopy(vec,Vectorz,RptRsp,1,(debug?"getvec":0));}
+    callCopy(vec,Vectorz,RptRsp,0,(debug?"getvec":0));}
 
     tested = count;}}}
 }
@@ -1139,7 +1139,7 @@ void initBoot()
     planeArgv(size-cmnd,boot+cmnd);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
-    break; case (Bringup): // no commandline arguments
+    break; case (Bringup): case (Builtin): // no commandline arguments
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|MachThd),planeWcfg);
@@ -1147,10 +1147,6 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,500<<8,planeWcfg);
-    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
-    break; case (Builtin): // choose what to test from commandline
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Regress): // choose how to interpret centers from pipe
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
@@ -1320,9 +1316,9 @@ int planeLoop()
 {
     int fever = 0;
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
-    break; case (Bringup):
+    break; case (Bringup): case (Builtin):
     if (fever || (processTime()-start)*1000 < 2000) return 1;
-    break; case (Builtin): case (Regress): case (Release):
+    break; case (Regress): case (Release):
     if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
 }
