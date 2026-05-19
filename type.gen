@@ -854,7 +854,7 @@ MemoryIns = {
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","ResIncIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","WrapRes"},
 
-	-- Micro(Fet/Vtx)(Col/Pie/Rel)
+	-- Micro(col/fet/rel)(Col/Pie/Rel)(Vtx/Fet/Vtx)
 	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
 		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
@@ -1083,21 +1083,21 @@ ResrcAlt = {
 		{"Resrc","WrapRes","Int","%(return savget())","Resrc","WrapRes"},
 		{"Resrc","WrapRes","Int","%(return savget())","Reloc","BeforeLoc"},
 		{"Resrc","WrapRes","Int","%(return savget())","Format","PeekFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","WrlDeeIns"},
+	{"Resrc","WrapRes","Int","%(return savinc())","Instr","WrlDeeIns"},
 		{"Resrc","WrapRes","Int","%(return savget())","Resrc","RelateRes"},
 		{"Resrc","WrapRes","Int","%(return savget())","Phase","WrapPhs"},
-	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","NowDerIns"},
+	{"Resrc","WrapRes","Int","%(return savinc())","Instr","NowDerIns"},
 		{"Resrc","WrapRes","Int","%(return savget())","Resrc","WrapRes"},
 		{"Resrc","WrapRes","Int","%(return savget())","Reloc","MiddleLoc"},
 		{"Resrc","WrapRes","Int","%(return savget())","Format","NullFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","RdlDeeIns"},
+	{"Resrc","WrapRes","Int","%(return savinc())","Instr","RdlDeeIns"},
 		{"Resrc","WrapRes","Int","%(return savget())","Resrc","RelateRes"},
 		{"Resrc","WrapRes","Int","%(return savget())","Phase","WrapPhs"},
-	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","NowDerIns"},
+	{"Resrc","WrapRes","Int","%(return savinc())","Instr","NowDerIns"},
 		{"Resrc","WrapRes","Int","%(return savget())","Resrc","WrapRes"},
 		{"Resrc","WrapRes","Int","%(return savget())","Reloc","AfterLoc"},
 		{"Resrc","WrapRes","Int","%(return savget())","Format","SourceFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return savinc())","Instr","WrlDeeIns"},
+	{"Resrc","WrapRes","Int","%(return savinc())","Instr","WrlDeeIns"},
 		{"Resrc","WrapRes","Int","%(return savget())","Resrc","RelateRes"},
 		{"Resrc","WrapRes","Int","%(return savget())","Phase","WrapPhs"},
 }
@@ -1136,55 +1136,106 @@ MicroIns = {
 	fil_col_dee = {\"UniformRes\",\"ImageRes\"}\
 	fil_col_phs = {\"UniformPhs\",\"SamplePhs\"}\
 	fil_col_arg = {\"0\",\"7\",\"6\"})"},
-	
-	{"Micro","MicroVtxDrw","Int","%(return savini())","Instr","SetTagIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","DrawRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Quality","RsizQua"},
-		{"Micro","MicroVtxDrw","Int","%(return argini())","Default","TrivDef"},
-		{"Micro","MicroVtxDrw","Int","%(return argget())","Int","MicroVtxDrw"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","NowDerIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","ChainRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Phase","FramePhs"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Memory","Memorys"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Micro","Micros"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Reloc","BeforeLoc"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Format","NullFrm"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Quality","Qualitys"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","RdlDeeIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","SwapRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Phase","SwapPhs"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","NowDerIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","DrawRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Reloc","MiddleLoc"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Format","MicroFrm"},
-		{"Micro","MicroVtxDrw","Int","%(return arginc())","Default","GiveDef"},
-		{"Micro","MicroVtxDrw","Int","%(return argget())","Int","2"},
-		{"Micro","MicroVtxDrw","Int","%(return arginc())","Default","GiveDef"},
-		{"Micro","MicroVtxDrw","Int","%(return argget())","Int","3"},
-		{"Micro","MicroVtxDrw","Int","%(return arginc())","Default","BackDef"},
-		{"Micro","MicroVtxDrw","Int","%(return argget())","Int","0"},
-	{"Micro","MicroVtxDrw","Int","%(return lstini(vtx_drw_dee))","Instr","RdlDeeIns"},
-		{"Micro","MicroVtxDrw","Int","%(return lstint(vtx_drw_dee))","Resrc","%(return lstval(vtx_drw_dee))"},
-		{"Micro","MicroVtxDrw","Int","%(return lstint(vtx_drw_phs))","Phase","%(return lstval(vtx_drw_phs))"},
-		{"Micro","MicroVtxDrw","Int","%(return lrgini(vtx_drw_arg))","Default","TrivDef"},
-		{"Micro","MicroVtxDrw","Int","%(return lrgint(vtx_drw_arg))","Int","%(return lrgval(vtx_drw_arg))"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","IdxDeeIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","PipeRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Phase","PipePhs"},
-		{"Micro","MicroVtxDrw","Int","%(return arginc())","Default","BackDef"},
-		{"Micro","MicroVtxDrw","Int","%(return argget())","Int","0"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","NowDerIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","ChainRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Reloc","AfterLoc"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Format","NullFrm"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","RdlDeeIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","SwapRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Phase","SwapPhs"},
-	{"Micro","MicroVtxDrw","Int","%(return savinc())","Instr","IdxDeeIns"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Resrc","PipeRes"},
-		{"Micro","MicroVtxDrw","Int","%(return savget())","Phase","PipePhs"},
-		{"Micro","MicroVtxDrw","Int","%(return arginc())","Default","BackDef"},
-		{"Micro","MicroVtxDrw","Int","%(return argget())","Int","0"},
+
+	{"%(orders = {}; aorders = {};\
+	function ConGetKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConGetOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConGetVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConIncKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then orders[v] = orders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConIncOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j; if j == #val then orders[v] = orders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConIncVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then orders[v] = orders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgGetKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgGetOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgGetVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConGetKeyOne(key) return ConGetKey({key},{\"\"}) end\
+	function ConGetOrdOne(key) return ConGetOrd({key},{\"\"}) end\
+	function ConGetValOne(key) return ConGetVal({key},{\"\"}) end\
+	function ConIncKeyOne(key) return ConIncKey({key},{\"\"}) end\
+	function ConIncOrdOne(key) return ConIncOrd({key},{\"\"}) end\
+	function ConIncValOne(key) return ConIncVal({key},{\"\"}) end\
+	function ArgGetKeyOne(key) return ArgGetKey({key},{\"\"}) end\
+	function ArgGetOrdOne(key) return ArgGetOrd({key},{\"\"}) end\
+	function ArgGetValOne(key) return ArgGetVal({key},{\"\"}) end\
+	function ArgIncKeyOne(key) return ArgIncKey({key},{\"\"}) end\
+	function ArgIncOrdOne(key) return ArgIncOrd({key},{\"\"}) end\
+	function ArgIncValOne(key) return ArgIncVal({key},{\"\"}) end\
+	function ConGetKeyLst(lst) return ConGetKey(lst,{\"\"}) end\
+	function ConGetOrdLst(lst) return ConGetOrd(lst,{\"\"}) end\
+	function ConGetValLst(lst) return ConGetVal(lst,{\"\"}) end\
+	function ConIncKeyLst(lst) return ConIncKey(lst,{\"\"}) end\
+	function ConIncOrdLst(lst) return ConIncOrd(lst,{\"\"}) end\
+	function ConIncValLst(lst) return ConIncVal(lst,{\"\"}) end\
+	function ArgGetKeyLst(lst) return ArgGetKey(lst,{\"\"}) end\
+	function ArgGetOrdLst(lst) return ArgGetOrd(lst,{\"\"}) end\
+	function ArgGetValLst(lst) return ArgGetVal(lst,{\"\"}) end\
+	function ArgIncKeyLst(lst) return ArgIncKey(lst,{\"\"}) end\
+	function ArgIncOrdLst(lst) return ArgIncOrd(lst,{\"\"}) end\
+	function ArgIncValLst(lst) return ArgIncVal(lst,{\"\"}) end\
+	function ConGetKeyPer(key,lst) return ConGetKey({key},lst) end\
+	function ConGetOrdPer(key,lst) return ConGetOrd({key},lst) end\
+	function ConGetValPer(key,lst) return ConGetVal({key},lst) end\
+	function ConIncKeyPer(key,lst) return ConIncKey({key},lst) end\
+	function ConIncOrdPer(key,lst) return ConIncOrd({key},lst) end\
+	function ConIncValPer(key,lst) return ConIncVal({key},lst) end\
+	function ArgGetKeyPer(key,lst) return ArgGetKey({key},lst) end\
+	function ArgGetOrdPer(key,lst) return ArgGetOrd({key},lst) end\
+	function ArgGetValPer(key,lst) return ArgGetVal({key},lst) end\
+	function ArgIncKeyPer(key,lst) return ArgIncKey({key},lst) end\
+	function ArgIncOrdPer(key,lst) return ArgIncOrd({key},lst) end\
+	function ArgIncValPer(key,lst) return ArgIncVal({key},lst) end\
+	)"},
+
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","SetTagIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","DrawRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Quality","RsizQua"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgIncOrdOne(\"MicroVtxDrw\"))","Int","MicroVtxDrw"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","NowDerIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","ChainRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Phase","FramePhs"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Memory","Memorys"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Micro","Micros"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Reloc","BeforeLoc"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Format","NullFrm"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Quality","Qualitys"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","SwapRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Phase","SwapPhs"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","NowDerIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","DrawRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Reloc","MiddleLoc"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Format","MicroFrm"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Default","GiveDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Int","2"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Default","GiveDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Int","3"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Default","BackDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgIncOrdOne(\"MicroVtxDrw\"))","Int","0"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdPer(\"MicroVtxDrw\",vtx_drw_dee))","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdPer(\"MicroVtxDrw\",vtx_drw_dee))","Resrc","%(return ConGetValPer(\"MicroVtxDrw\",vtx_drw_dee))"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdPer(\"MicroVtxDrw\",vtx_drw_phs))","Phase","%(return ConGetValPer(\"MicroVtxDrw\",vtx_drw_phs))"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdPer(\"MicroVtxDrw\",vtx_drw_arg))","Default","TrivDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgIncOrdPer(\"MicroVtxDrw\",vtx_drw_arg))","Int","%(return ArgGetValPer(\"MicroVtxDrw\",vtx_drw_arg))"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","IdxDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","PipeRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Phase","PipePhs"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Default","BackDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgIncOrdOne(\"MicroVtxDrw\"))","Int","0"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","NowDerIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","ChainRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Reloc","AfterLoc"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Format","NullFrm"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","RdlDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","SwapRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Phase","SwapPhs"},
+	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","IdxDeeIns"},
+		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","PipeRes"},
+		{"Micro","MicroVtxDrw","Int","%(return ConIncOrdOne(\"MicroVtxDrw\"))","Phase","PipePhs"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Default","BackDef"},
+		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Int","0"},
 
 	{"Micro","MicroFetDrw","Int","%(return savini())","Instr","SetTagIns"},
 		{"Micro","MicroFetDrw","Int","%(return savget())","Resrc","DrawRes"},
