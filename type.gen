@@ -739,6 +739,57 @@ MemoryIns = {
 	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
 	")"},
 
+	{"%(\
+	function ConGetKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConGetOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j-1; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConGetVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConIncKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then orders[v] = orders[v] + #val end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConIncOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j-1; if j == #val then orders[v] = orders[v] + #val end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConIncVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then orders[v] = orders[v] + #val end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgGetKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgGetOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j-1; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgGetVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j-1; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ConGetKeyOne(key) return ConGetKey({key},{\"\"}) end\
+	function ConGetOrdOne(key) return ConGetOrd({key},{\"\"}) end\
+	function ConGetValOne(key) return ConGetVal({key},{\"\"}) end\
+	function ConIncKeyOne(key) return ConIncKey({key},{\"\"}) end\
+	function ConIncOrdOne(key) return ConIncOrd({key},{\"\"}) end\
+	function ConIncValOne(key) return ConIncVal({key},{\"\"}) end\
+	function ArgGetKeyOne(key) return ArgGetKey({key},{\"\"}) end\
+	function ArgGetOrdOne(key) return ArgGetOrd({key},{\"\"}) end\
+	function ArgGetValOne(key) return ArgGetVal({key},{\"\"}) end\
+	function ArgIncKeyOne(key) return ArgIncKey({key},{\"\"}) end\
+	function ArgIncOrdOne(key) return ArgIncOrd({key},{\"\"}) end\
+	function ArgIncValOne(key) return ArgIncVal({key},{\"\"}) end\
+	function ConGetKeyLst(lst) return ConGetKey(lst,{\"\"}) end\
+	function ConGetOrdLst(lst) return ConGetOrd(lst,{\"\"}) end\
+	function ConGetValLst(lst) return ConGetVal(lst,{\"\"}) end\
+	function ConIncKeyLst(lst) return ConIncKey(lst,{\"\"}) end\
+	function ConIncOrdLst(lst) return ConIncOrd(lst,{\"\"}) end\
+	function ConIncValLst(lst) return ConIncVal(lst,{\"\"}) end\
+	function ArgGetKeyLst(lst) return ArgGetKey(lst,{\"\"}) end\
+	function ArgGetOrdLst(lst) return ArgGetOrd(lst,{\"\"}) end\
+	function ArgGetValLst(lst) return ArgGetVal(lst,{\"\"}) end\
+	function ArgIncKeyLst(lst) return ArgIncKey(lst,{\"\"}) end\
+	function ArgIncOrdLst(lst) return ArgIncOrd(lst,{\"\"}) end\
+	function ArgIncValLst(lst) return ArgIncVal(lst,{\"\"}) end\
+	function ConGetKeyPer(key,lst) return ConGetKey({key},lst) end\
+	function ConGetOrdPer(key,lst) return ConGetOrd({key},lst) end\
+	function ConGetValPer(key,lst) return ConGetVal({key},lst) end\
+	function ConIncKeyPer(key,lst) return ConIncKey({key},lst) end\
+	function ConIncOrdPer(key,lst) return ConIncOrd({key},lst) end\
+	function ConIncValPer(key,lst) return ConIncVal({key},lst) end\
+	function ArgGetKeyPer(key,lst) return ArgGetKey({key},lst) end\
+	function ArgGetOrdPer(key,lst) return ArgGetOrd({key},lst) end\
+	function ArgGetValPer(key,lst) return ArgGetVal({key},lst) end\
+	function ArgIncKeyPer(key,lst) return ArgIncKey({key},lst) end\
+	function ArgIncOrdPer(key,lst) return ArgIncOrd({key},lst) end\
+	function ArgIncValPer(key,lst) return ArgIncVal({key},lst) end\
+	)"},
+
 	{"Memory","Imagez","Int","0","Instr","OldDerIns"},
 	{"Memory","Imagez","Int","0","Resrc","ImageRes"},
 	{"Memory","Imagez","Int","0","Memory","Memorys"},
@@ -845,65 +896,66 @@ MemoryIns = {
 	count = {}; save = {}; hun(mem);)"},
 
 	-- MicroFilRel
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","MicIncIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","MicroFilRel"},
+	{"%(orders={};aorders={};)"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","MicIncIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Micro","MicroFilRel"},
 	-- Micro(Fet/Vtx)Rel
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","MicIncIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","%(return fun(rel_mic))"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","MicIncIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Micro","%(return ConIncKeyLst(rel_mic))"},
 	-- WrapRes
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","ResIncIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Micro","WrapRes"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","ResIncIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Resrc","WrapRes"},
 
 	-- Micro(col/fet/rel)(Col/Pie/Rel)(Vtx/Fet/Vtx)
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","ResizeLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","%(return fun(frm))"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","ReformLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PierceFrm"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","MiddleLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","MicroFrm"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RsizQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","WidDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","RenderPhs"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
-	{"Memory","Vectorz","Int","%(return fnc(\"Vectorz\"))","Instr","RdlDeeIns"},
-		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",col_dep))","Resrc","%(return fun(col_dep))"},
-		{"Memory","Vectorz","Int","%(return hnc(\"Vectorz\",col_phs))","Phase","%(return fun(col_phs))"},
-	{"Memory","Getoldz","Int","%(return fnc(\"Getoldz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_dep))","Resrc","%(return fun(fet_dep))"},
-		{"Memory","Getoldz","Int","%(return hnc(\"Getoldz\",fet_phs))","Phase","%(return fun(fet_phs))"},
-	{"Memory","Getintz","Int","%(return fnc(\"Getintz\"))","Instr","RdlDeeIns"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",rel_dep))","Resrc","%(return fun(rel_dep))"},
-		{"Memory","Getintz","Int","%(return hnc(\"Getintz\",rel_phs))","Phase","%(return fun(rel_phs))"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","IdxDeeIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","PipeRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Phase","PipePhs"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","SetTagIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","DrawRes"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","SetTagIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","DrawRes"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","%(return ConGetKeyLst(res))"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","ResizeLoc"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","%(return ConGetKeyLst(frm))"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","ReformLoc"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","PierceFrm"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","DrawRes"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","MiddleLoc"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","MicroFrm"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RsizQua"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","WidDeeIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","%(return ConGetKeyLst(res))"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Phase","RenderPhs"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+	{"Memory","Vectorz","Int","%(return ConGetOrdPer(\"Vectorz\",col_dep))","Instr","RdlDeeIns"},
+		{"Memory","Vectorz","Int","%(return ConGetOrdPer(\"Vectorz\",col_dep))","Resrc","%(return ConGetValPer(\"Vectorz\",col_dep))"},
+		{"Memory","Vectorz","Int","%(return ConGetOrdPer(\"Vectorz\",col_phs))","Phase","%(return ConIncValPer(\"Vectorz\",col_phs))"},
+	{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_dep))","Instr","RdlDeeIns"},
+		{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_dep))","Resrc","%(return ConGetValPer(\"Getoldz\",fet_dep))"},
+		{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_phs))","Phase","%(return ConIncValPer(\"Getoldz\",fet_phs))"},
+	{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_dep))","Instr","RdlDeeIns"},
+		{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_dep))","Resrc","%(return ConGetValPer(\"Getintz\",rel_dep))"},
+		{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_phs))","Phase","%(return ConIncValPer(\"Getintz\",rel_phs))"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","IdxDeeIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","PipeRes"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Phase","PipePhs"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","SetTagIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","DrawRes"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
 
 	-- Vectorz/Getoldz/Getintz
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Resrc","%(return fun(res))"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","BeforeLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","PeekFrm"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Quality","RuseQua"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","MiddleLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","WholeFrm"},
-	{"Memory","%(return fun(mem))","Int","%(return gnc(mem))","Instr","NidDerIns"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Reloc","AfterLoc"},
-		{"Memory","%(return fun(mem))","Int","%(return gun(mem))","Format","SourceFrm"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","%(return ConGetKeyLst(res))"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","BeforeLoc"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","PeekFrm"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","MiddleLoc"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Format","WholeFrm"},
+	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","AfterLoc"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Format","SourceFrm"},
 
 	-- Default/Int
 	{"%(count = 0; acount = 0;)"},
@@ -1136,57 +1188,6 @@ MicroIns = {
 	fil_col_dee = {\"UniformRes\",\"ImageRes\"}\
 	fil_col_phs = {\"UniformPhs\",\"SamplePhs\"}\
 	fil_col_arg = {\"0\",\"7\",\"6\"})"},
-
-	{"%(orders = {}; aorders = {};\
-	function ConGetKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ConGetOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ConGetVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ConIncKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then orders[v] = orders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ConIncOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j; if j == #val then orders[v] = orders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ConIncVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then orders[v] = orders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgGetKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgGetOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgGetVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgIncKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgIncOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgIncVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ConGetKeyOne(key) return ConGetKey({key},{\"\"}) end\
-	function ConGetOrdOne(key) return ConGetOrd({key},{\"\"}) end\
-	function ConGetValOne(key) return ConGetVal({key},{\"\"}) end\
-	function ConIncKeyOne(key) return ConIncKey({key},{\"\"}) end\
-	function ConIncOrdOne(key) return ConIncOrd({key},{\"\"}) end\
-	function ConIncValOne(key) return ConIncVal({key},{\"\"}) end\
-	function ArgGetKeyOne(key) return ArgGetKey({key},{\"\"}) end\
-	function ArgGetOrdOne(key) return ArgGetOrd({key},{\"\"}) end\
-	function ArgGetValOne(key) return ArgGetVal({key},{\"\"}) end\
-	function ArgIncKeyOne(key) return ArgIncKey({key},{\"\"}) end\
-	function ArgIncOrdOne(key) return ArgIncOrd({key},{\"\"}) end\
-	function ArgIncValOne(key) return ArgIncVal({key},{\"\"}) end\
-	function ConGetKeyLst(lst) return ConGetKey(lst,{\"\"}) end\
-	function ConGetOrdLst(lst) return ConGetOrd(lst,{\"\"}) end\
-	function ConGetValLst(lst) return ConGetVal(lst,{\"\"}) end\
-	function ConIncKeyLst(lst) return ConIncKey(lst,{\"\"}) end\
-	function ConIncOrdLst(lst) return ConIncOrd(lst,{\"\"}) end\
-	function ConIncValLst(lst) return ConIncVal(lst,{\"\"}) end\
-	function ArgGetKeyLst(lst) return ArgGetKey(lst,{\"\"}) end\
-	function ArgGetOrdLst(lst) return ArgGetOrd(lst,{\"\"}) end\
-	function ArgGetValLst(lst) return ArgGetVal(lst,{\"\"}) end\
-	function ArgIncKeyLst(lst) return ArgIncKey(lst,{\"\"}) end\
-	function ArgIncOrdLst(lst) return ArgIncOrd(lst,{\"\"}) end\
-	function ArgIncValLst(lst) return ArgIncVal(lst,{\"\"}) end\
-	function ConGetKeyPer(key,lst) return ConGetKey({key},lst) end\
-	function ConGetOrdPer(key,lst) return ConGetOrd({key},lst) end\
-	function ConGetValPer(key,lst) return ConGetVal({key},lst) end\
-	function ConIncKeyPer(key,lst) return ConIncKey({key},lst) end\
-	function ConIncOrdPer(key,lst) return ConIncOrd({key},lst) end\
-	function ConIncValPer(key,lst) return ConIncVal({key},lst) end\
-	function ArgGetKeyPer(key,lst) return ArgGetKey({key},lst) end\
-	function ArgGetOrdPer(key,lst) return ArgGetOrd({key},lst) end\
-	function ArgGetValPer(key,lst) return ArgGetVal({key},lst) end\
-	function ArgIncKeyPer(key,lst) return ArgIncKey({key},lst) end\
-	function ArgIncOrdPer(key,lst) return ArgIncOrd({key},lst) end\
-	function ArgIncValPer(key,lst) return ArgIncVal({key},lst) end\
-	)"},
 
 	{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Instr","SetTagIns"},
 		{"Micro","MicroVtxDrw","Int","%(return ConGetOrdOne(\"MicroVtxDrw\"))","Resrc","DrawRes"},
