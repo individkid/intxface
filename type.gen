@@ -717,8 +717,7 @@ FragmentFile = {
 MemoryIns = {
 	-- n==0: departures from OldDerIns,Resrcs,Memorys,Micros,MiddleLoc,WholeFrm,Qualitys
 	-- n>0: departures from n-1
-	{"%(saves = {}\
-	asaves = {}\
+	{"%(saves = {}; asaves = {}\
 	function savini () save = 0; count = 1; return save end\
 	function savinc () save = count; count = count + 1; return save end\
 	function savget () return save end\
@@ -819,8 +818,7 @@ MemoryIns = {
 	{"%(\
 	mem = {\"Bringupz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"};\
 	res = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
-	def_inc={\"TrivDef\",\"TrivDef\"};\
-	arg_inc={1,0};)"},
+	def_inc={\"TrivDef\",\"TrivDef\"}; arg_inc={1,0};)"},
 	{"Memory","%(return fng(mem))","Int","0","Resrc","%(return fng(res))"},
 	{"Memory","%(return rnc(mem,0,1))","Int","%(return range(0,1))","Default","GiveDef"},
 	{"Memory","%(return rnc(mem,0,1))","Int","%(return range(0,1))","Int","%(return range(0,1))"},
@@ -830,6 +828,7 @@ MemoryIns = {
 	res = {\"ColorRes\", \"PierceRes\",\"RelateRes\"}\
 	frm = {\"ColextFrm\",\"PieextFrm\",\"RelextFrm\"}\
 	mic = {\"MicroVtxRel\",\"MicroFetRel\",\"MicroVtxRel\"}\
+	cmp = {\"MicroVtxCol\",\"MicroFetPie\",\"MicroVtxRel\"}\
 	fil_dep = {\"UniformRes\"}\
 	fil_phs = {\"UniformPhs\"}\
 	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",  \"BringupRes\"}\
@@ -842,41 +841,28 @@ MemoryIns = {
 
 	"def0 = {"..
 	-- MicroFetCol
-	"\"TrivDef\",".. -- SetTagIns.val
-	"\"GiveDef\",\"GiveDef\",".. -- ExtentFrm.base ExtentFrm.size
-	"\"TrivDef\",".. -- NidDerIns.val
-	"\"TrivDef\",".. -- NidDerIns.val
-	"\"TrivDef\",\"TrivDef\",\"TrivDef\",".. -- MicroFrm.idx MicroFrm.siz MicroFrm.base
-	"\"TrivDef\",".. -- NidDerIns.val
-	"\"TrivDef\",".. -- WidDeeIns.val
 	"\"TrivDef\",\"TrivDef\",".. -- UniformRes.bnd UniformRes.bnd
 	"\"CmntDef\""..
 	"}".. -- [SamplePhs.bnd RelatePhs.bnd] [StoragePhs.bnd StoragePhs.bnd]
 	"def2 = {"..
-	"\"CmntDef\","..
-	"\"TrivDef\",".. -- PipeRes.frc
-	"\"TrivDef\",".. -- SetTagIns.val
+	"\"CmntDef\""..
+	"}"..
+	"rel_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"col_def = cat({def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"pie_def = cat({def0,def2},{})"..
+	"rel_arg={0,1,-3,5,3,-4}"..
+	"col_arg={0,1,-3,7,6,5,3,-4}"..
+	"pie_arg={0,1,-3,-4}"..
+
+	"chk_def={"..
 	-- Vectorz
 	"\"TrivDef\",".. -- NidDerIns.val
 	"\"GiveDef\",\"GiveDef\",".. -- WholeFrm.idx WholeFrm.siz
 	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\"".. -- NidDerIns.val
 	"}"..
-	"rel_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"col_def = cat({def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"pie_def = cat({def0,def2},{})"..
-
-	"rel_arg={"..
-	"1,0,1,1,1,0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),1,0,1,-3,5,3,-4,castMicro(\"MicroVtxRel\"),0,"..
-	"1,2,3,1,1,"..
-	"}"..
-	"col_arg={"..
-	"1,0,1,1,1,0,12,castMicro(\"MicroVtxCol\"),castMicro(\"MicroVtxCol\"),1,0,1,-3,7,6,5,3,-4,castMicro(\"MicroVtxCol\"),0,"..
-	"1,2,3,1,1,"..
-	"}"..
-	"pie_arg={"..
-	"1,0,1,1,1,0,12,castMicro(\"MicroFetPie\"),castMicro(\"MicroFetPie\"),1,0,1,-3,-4,castMicro(\"MicroFetPie\"),0,"..
-	"1,2,3,1,1,"..
+	"chk_arg={"..
+	"1,2,3,1,1"..
 	"}"..
 	")"},
 
@@ -901,39 +887,69 @@ MemoryIns = {
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","SetTagIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","DrawRes"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","1"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","%(return ConGetKeyLst(res))"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","ResizeLoc"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","%(return ConGetKeyLst(frm))"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","GiveDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","0"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","GiveDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","1"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","1"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","ReformLoc"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","PierceFrm"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","1"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","DrawRes"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","MiddleLoc"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Format","MicroFrm"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","0"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","12"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","%(return ArgGetKeyLst(cmp))"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RsizQua"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","%(return ArgGetKeyLst(cmp))"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","WidDeeIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","%(return ConGetKeyLst(res))"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Phase","RenderPhs"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","1"},
 	{"Memory","Vectorz","Int","%(return ConGetOrdPer(\"Vectorz\",col_dep))","Instr","RdlDeeIns"},
 		{"Memory","Vectorz","Int","%(return ConGetOrdPer(\"Vectorz\",col_dep))","Resrc","%(return ConGetValPer(\"Vectorz\",col_dep))"},
 		{"Memory","Vectorz","Int","%(return ConGetOrdPer(\"Vectorz\",col_phs))","Phase","%(return ConIncValPer(\"Vectorz\",col_phs))"},
+		{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",col_def))","Default","%(return ArgGetValPer(\"Vectorz\",col_def))"},
+		{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",col_arg))","Int","%(return ArgIncValPer(\"Vectorz\",col_arg))"},
 	{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_dep))","Instr","RdlDeeIns"},
 		{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_dep))","Resrc","%(return ConGetValPer(\"Getoldz\",fet_dep))"},
 		{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_phs))","Phase","%(return ConIncValPer(\"Getoldz\",fet_phs))"},
+		{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_def))","Default","%(return ArgGetValPer(\"Getoldz\",pie_def))"},
+		{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_arg))","Int","%(return ArgIncValPer(\"Getoldz\",pie_arg))"},
 	{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_dep))","Instr","RdlDeeIns"},
 		{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_dep))","Resrc","%(return ConGetValPer(\"Getintz\",rel_dep))"},
 		{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_phs))","Phase","%(return ConIncValPer(\"Getintz\",rel_phs))"},
+		{"Memory","Getintz","Int","%(return ArgGetOrdPer(\"Getintz\",rel_def))","Default","%(return ArgGetValPer(\"Getintz\",rel_def))"},
+		{"Memory","Getintz","Int","%(return ArgGetOrdPer(\"Getintz\",rel_arg))","Int","%(return ArgIncValPer(\"Getintz\",rel_arg))"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","IdxDeeIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","PipeRes"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Phase","PipePhs"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","%(return ArgGetKeyLst(cmp))"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","SetTagIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Resrc","DrawRes"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Quality","RuseQua"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgGetOrdLst(mem))","Default","TrivDef"},
+		{"Memory","%(return ArgGetKeyLst(mem))","Int","%(return ArgIncOrdLst(mem))","Int","0"},
 
 	-- Vectorz/Getoldz/Getintz
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
@@ -947,18 +963,8 @@ MemoryIns = {
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","NidDerIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Reloc","AfterLoc"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Format","SourceFrm"},
-
-	-- Default/Int
-	{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",col_def))","Default","%(return ArgGetValPer(\"Vectorz\",col_def))"},
-	{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",col_arg))","Int","%(return ArgIncValPer(\"Vectorz\",col_arg))"},
-
-	-- Default/Int
-	{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_def))","Default","%(return ArgGetValPer(\"Getoldz\",pie_def))"},
-	{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_arg))","Int","%(return ArgIncValPer(\"Getoldz\",pie_arg))"},
-
-	-- Default/Int
-	{"Memory","Getintz","Int","%(return ArgGetOrdPer(\"Getintz\",rel_def))","Default","%(return ArgGetValPer(\"Getintz\",rel_def))"},
-	{"Memory","Getintz","Int","%(return ArgGetOrdPer(\"Getintz\",rel_arg))","Int","%(return ArgIncValPer(\"Getintz\",rel_arg))"},
+	{"Memory","%(return ArgGetKey(mem,chk_def))","Int","%(return ArgGetOrd(mem,chk_def))","Default","%(return ArgGetVal(mem,chk_def))"},
+	{"Memory","%(return ArgGetKey(mem,chk_arg))","Int","%(return ArgGetOrd(mem,chk_arg))","Int","%(return ArgIncVal(mem,chk_arg))"},
 }
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},
