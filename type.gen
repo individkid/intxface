@@ -732,14 +732,21 @@ MemoryIns = {
 	function lrgint (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(asaves[i]) else return asaves[i] end end end\
 	function lrgval (lst) for i,v in ipairs (lst) do if i ~= #lst then coroutine.yield(v) else return v end end end)"},
 
-	{"%("..
-	"function fng (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end;"..
-	"function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end;"..
-	"function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end;"..
-	"function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end "..
-	")"},
+	{"%(\
+	function fun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(u) else return u end end end\
+	function gun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
+	function hun (mem) for j,u in ipairs(mem) do count[u] = 0 end end\
+	function gnc (mem) for j,u in ipairs(mem) do save[u] = count[u]; count[u] = count[u] + 1; if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
+	function hnc (mem,lst) count[mem] = save[mem]; for i,j in ipairs(lst) do temp = count[mem]; count[mem] = count[mem] + 1; if i ~= #lst then coroutine.yield(temp) else return temp end end end\
+	function fnc (mem) save[mem] = count[mem]; return save[mem] end\
+	function fng (lst) for i,v in ipairs(lst) do if i ~= #lst then coroutine.yield(v) else return v end end end\
+	function rng (bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end\
+	function rnc (lst,bas,max) for i,v in ipairs(lst) do for j = bas,max do if (i ~= #lst) or (j ~= max) then coroutine.yield(v) else return v end end end end\
+	function cat (src,dst) for i,v in ipairs(src) do for j,u in ipairs(v) do dst[#dst+1] = u end end return dst end \
+	)"},
 
 	{"%(\
+	function range(bas,max) for i = bas,max do if i ~= max then coroutine.yield(i) else return i end end end\
 	function ConGetKey(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
 	function ConGetOrd(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = orders[v]+j-1; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
 	function ConGetVal(key,val) for i,v in ipairs(key) do if orders[v] == nil then orders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
@@ -749,9 +756,9 @@ MemoryIns = {
 	function ArgGetKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
 	function ArgGetOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j-1; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
 	function ArgGetVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgIncKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgIncOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j-1; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
-	function ArgIncVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then aorders[v] = aorders[v] + 1 end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncKey(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = v; if j == #val then aorders[v] = aorders[v] + #val end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncOrd(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = aorders[v]+j-1; if j == #val then aorders[v] = aorders[v] + #val end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
+	function ArgIncVal(key,val) for i,v in ipairs(key) do if aorders[v] == nil then aorders[v] = 0 end for j,u in ipairs(val) do local temp = u; if j == #val then aorders[v] = aorders[v] + #val end if i ~= #key or j ~= #val then coroutine.yield(temp) else return temp end end end end\
 	function ConGetKeyOne(key) return ConGetKey({key},{\"\"}) end\
 	function ConGetOrdOne(key) return ConGetOrd({key},{\"\"}) end\
 	function ConGetValOne(key) return ConGetVal({key},{\"\"}) end\
@@ -805,21 +812,24 @@ MemoryIns = {
 	{"Memory","Imagez","Int","3","Format","WholeFrm"},
 	{"Memory","Imagez","Int","4","Reloc","AfterLoc"},
 	{"Memory","Imagez","Int","4","Format","RonlyFrm"},
-	{"Memory","Imagez","Int","%(return rng(0,3))","Default","GiveDef"},
-	{"Memory","Imagez","Int","%(return rng(0,3))","Int","%(return rng(0,3))"},
+	{"Memory","Imagez","Int","%(return range(0,3))","Default","GiveDef"},
+	{"Memory","Imagez","Int","%(return range(0,3))","Int","%(return range(0,3))"},
 
 	-- this is where all the defaults are used
 	{"%(\
 	mem = {\"Bringupz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"};\
-	res = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};)"},
+	res = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
+	def_inc={\"TrivDef\",\"TrivDef\"};\
+	arg_inc={1,0};)"},
 	{"Memory","%(return fng(mem))","Int","0","Resrc","%(return fng(res))"},
-	{"Memory","%(return rnc(mem,0,1))","Int","%(return rng(0,1))","Default","GiveDef"},
-	{"Memory","%(return rnc(mem,0,1))","Int","%(return rng(0,1))","Int","%(return rng(0,1))"},
+	{"Memory","%(return rnc(mem,0,1))","Int","%(return range(0,1))","Default","GiveDef"},
+	{"Memory","%(return rnc(mem,0,1))","Int","%(return range(0,1))","Int","%(return range(0,1))"},
 
 	{"%(\
 	mem = {\"Vectorz\",  \"Getoldz\",  \"Getintz\"}\
 	res = {\"ColorRes\", \"PierceRes\",\"RelateRes\"}\
 	frm = {\"ColextFrm\",\"PieextFrm\",\"RelextFrm\"}\
+	mic = {\"MicroVtxRel\",\"MicroFetRel\",\"MicroVtxRel\"}\
 	fil_dep = {\"UniformRes\"}\
 	fil_phs = {\"UniformPhs\"}\
 	fet_dep = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",  \"BringupRes\"}\
@@ -827,12 +837,9 @@ MemoryIns = {
 	rel_dep = {\"UniformRes\",\"MatrixRes\", \"VertexRes\", \"TriangleRes\"}\
 	rel_phs = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\",\"StoragePhs\"}\
 	col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"VertexRes\", \"TriangleRes\"}\
-	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"StoragePhs\",\"StoragePhs\"}"..
+	col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"StoragePhs\",\"StoragePhs\"}\
+	count = {}; save = {}; hun(mem);"..
 
-	"fil_rel_def={\"TrivDef\",\"TrivDef\"}"..
-	"vtx_rel_def={\"TrivDef\",\"TrivDef\"}"..
-	"fet_rel_def={\"TrivDef\",\"TrivDef\"}"..
-	"wrp_def={\"TrivDef\",\"TrivDef\"}"..
 	"def0 = {"..
 	-- MicroFetCol
 	"\"TrivDef\",".. -- SetTagIns.val
@@ -855,56 +862,40 @@ MemoryIns = {
 	"\"TrivDef\",".. -- NidDerIns.val
 	"\"TrivDef\"".. -- NidDerIns.val
 	"}"..
+	"rel_def = cat({def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"col_def = cat({def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
+	"pie_def = cat({def0,def2},{})"..
 
-	"fil_rel_inc={1,0}"..
-	"vtx_rel_inc={1,0}"..
-	"fet_rel_inc={1,0}"..
-	"wrp_inc={1,0}"..
-
-	"rel_oth_arg={"..
+	"rel_arg={"..
 	"1,0,1,1,1,0,12,castMicro(\"MicroVtxRel\"),castMicro(\"MicroVtxRel\"),1,0,1,-3,5,3,-4,castMicro(\"MicroVtxRel\"),0,"..
 	"1,2,3,1,1,"..
 	"}"..
-
-	"col_oth_arg={"..
+	"col_arg={"..
 	"1,0,1,1,1,0,12,castMicro(\"MicroVtxCol\"),castMicro(\"MicroVtxCol\"),1,0,1,-3,7,6,5,3,-4,castMicro(\"MicroVtxCol\"),0,"..
 	"1,2,3,1,1,"..
 	"}"..
-
-	"pie_oth_arg={"..
+	"pie_arg={"..
 	"1,0,1,1,1,0,12,castMicro(\"MicroFetPie\"),castMicro(\"MicroFetPie\"),1,0,1,-3,-4,castMicro(\"MicroFetPie\"),0,"..
 	"1,2,3,1,1,"..
 	"}"..
-
-	"rel_arg = cat({fil_rel_inc,vtx_rel_inc,wrp_inc,rel_oth_arg},{})"..
-	"col_arg = cat({fil_rel_inc,vtx_rel_inc,wrp_inc,col_oth_arg},{})"..
-	"pie_arg = cat({fil_rel_inc,fet_rel_inc,wrp_inc,pie_oth_arg},{})"..
-
-	"rel_def = cat({fil_rel_def,vtx_rel_def,wrp_def,def0,{\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"col_def = cat({fil_rel_def,vtx_rel_def,wrp_def,def0,{\"TrivDef\",\"TrivDef\",\"TrivDef\",\"TrivDef\"},def2},{})"..
-	"pie_def = cat({fil_rel_def,fet_rel_def,wrp_def,def0,def2},{})"..
-
-	"rel_mic = {\"MicroVtxRel\",\"MicroFetRel\",\"MicroVtxRel\"}"..
-
-	"\
-	function fun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(u) else return u end end end\
-	function gun (mem) for j,u in ipairs(mem) do if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
-	function hun (mem) for j,u in ipairs(mem) do count[u] = 0 end end\
-	function gnc (mem) for j,u in ipairs(mem) do save[u] = count[u]; count[u] = count[u] + 1; if j ~= #mem then coroutine.yield(save[u]) else return save[u] end end end\
-	function hnc (mem,lst) count[mem] = save[mem]; for i,j in ipairs(lst) do temp = count[mem]; count[mem] = count[mem] + 1; if i ~= #lst then coroutine.yield(temp) else return temp end end end\
-	function fnc (mem) save[mem] = count[mem]; return save[mem] end\
-	count = {}; save = {}; hun(mem);)"},
+	")"},
 
 	-- MicroFilRel
 	{"%(orders={};aorders={};)"},
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","MicIncIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Micro","MicroFilRel"},
+		{"Memory","%(return ArgGetKey(mem,def_inc))","Int","%(return ArgGetOrd(mem,def_inc))","Default","%(return ArgGetVal(mem,def_inc))"},
+		{"Memory","%(return ArgGetKey(mem,arg_inc))","Int","%(return ArgGetOrd(mem,arg_inc))","Int","%(return ArgIncVal(mem,arg_inc))"},
 	-- Micro(Fet/Vtx)Rel
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","MicIncIns"},
-		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Micro","%(return ConIncKeyLst(rel_mic))"},
+		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Micro","%(return ConIncKeyLst(mic))"},
+		{"Memory","%(return ArgGetKey(mem,def_inc))","Int","%(return ArgGetOrd(mem,def_inc))","Default","%(return ArgGetVal(mem,def_inc))"},
+		{"Memory","%(return ArgGetKey(mem,arg_inc))","Int","%(return ArgGetOrd(mem,arg_inc))","Int","%(return ArgIncVal(mem,arg_inc))"},
 	-- WrapRes
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","ResIncIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Resrc","WrapRes"},
+		{"Memory","%(return ArgGetKey(mem,def_inc))","Int","%(return ArgGetOrd(mem,def_inc))","Default","%(return ArgGetVal(mem,def_inc))"},
+		{"Memory","%(return ArgGetKey(mem,arg_inc))","Int","%(return ArgGetOrd(mem,arg_inc))","Int","%(return ArgIncVal(mem,arg_inc))"},
 
 	-- Micro(col/fet/rel)(Col/Pie/Rel)(Vtx/Fet/Vtx)
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","SetTagIns"},
@@ -958,19 +949,16 @@ MemoryIns = {
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Format","SourceFrm"},
 
 	-- Default/Int
-	{"%(count = 0; acount = 0;)"},
-	{"Memory","Vectorz","Int","%(return lrgini(col_def))","Default","%(return lrgval(col_def))"},
-	{"Memory","Vectorz","Int","%(return lrgint(col_arg))","Int","%(return lrgval(col_arg))"},
+	{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",col_def))","Default","%(return ArgGetValPer(\"Vectorz\",col_def))"},
+	{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",col_arg))","Int","%(return ArgIncValPer(\"Vectorz\",col_arg))"},
 
 	-- Default/Int
-	{"%(count = 0; acount = 0;)"},
-	{"Memory","Getoldz","Int","%(return lrgini(pie_def))","Default","%(return lrgval(pie_def))"},
-	{"Memory","Getoldz","Int","%(return lrgint(pie_arg))","Int","%(return lrgval(pie_arg))"},
+	{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_def))","Default","%(return ArgGetValPer(\"Getoldz\",pie_def))"},
+	{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_arg))","Int","%(return ArgIncValPer(\"Getoldz\",pie_arg))"},
 
 	-- Default/Int
-	{"%(count = 0; acount = 0;)"},
-	{"Memory","Getintz","Int","%(return lrgini(rel_def))","Default","%(return lrgval(rel_def))"},
-	{"Memory","Getintz","Int","%(return lrgint(rel_arg))","Int","%(return lrgval(rel_arg))"},
+	{"Memory","Getintz","Int","%(return ArgGetOrdPer(\"Getintz\",rel_def))","Default","%(return ArgGetValPer(\"Getintz\",rel_def))"},
+	{"Memory","Getintz","Int","%(return ArgGetOrdPer(\"Getintz\",rel_arg))","Int","%(return ArgIncValPer(\"Getintz\",rel_arg))"},
 }
 MemoryAlt = {
 	{"Memory","Matrixz","Int","0","Instr","OldDerIns"},
@@ -1009,8 +997,8 @@ MemoryAlt = {
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 	"arg={0,0,2,3};"..
 	"count = 0;)"},
-	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Default","%(return fun(def))"},
-	{"Memory","Getoldz","Int","%(return rng(0,#arg-1))","Int","%(return fun(arg))"},
+	{"Memory","Getoldz","Int","%(return range(0,#arg-1))","Default","%(return fun(def))"},
+	{"Memory","Getoldz","Int","%(return range(0,#arg-1))","Int","%(return fun(arg))"},
 
 
 	{"Memory","Getintz","Int","0","Instr","MicIncIns"},
@@ -1032,8 +1020,8 @@ MemoryAlt = {
 	"\"GiveDef\",\"GiveDef\"};".. -- WholeFrm.idx WholeFrm.siz
 	"arg={0,0,2,3};"..
 	"count = 0;)"},
-	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Default","%(return fun(def))"},
-	{"Memory","Getintz","Int","%(return rng(0,#arg-1))","Int","%(return fun(arg))"},
+	{"Memory","Getintz","Int","%(return range(0,#arg-1))","Default","%(return fun(def))"},
+	{"Memory","Getintz","Int","%(return range(0,#arg-1))","Int","%(return fun(arg))"},
 
 
 	{"Memory","Vectorz","Int","0","Instr","MicIncIns"},
