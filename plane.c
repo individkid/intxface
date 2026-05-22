@@ -829,7 +829,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz);
-    callCopy(eek,Memorys+3,RptRsp,1,(debug?"peek":0));}
+    callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
 
     else if (count%6 == 2 || count%6 == 5) {
     struct Center *eek = centerPull(Memorys+5); if (!eek) {callWait(); continue;}

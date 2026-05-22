@@ -843,11 +843,11 @@ MemoryIns = {
 	")"},
 
 	{"%(\
-	cmp_mem = {\"Getoldz\",  \"Getintz\"}\
-	cmp_res = {\"PierceRes\",\"RelateRes\"}\
-	cmp_frm = {\"PieextFrm\",\"RelextFrm\"}\
-	cmp_mic = {\"MicroFetRel\",\"MicroVtxRel\"}\
-	cmp_cmp = {\"MicroFetPie\",\"MicroVtxRel\"}\
+	cmp_mem = {\"Getintz\"}\
+	cmp_res = {\"RelateRes\"}\
+	cmp_frm = {\"RelextFrm\"}\
+	cmp_mic = {\"MicroVtxRel\"}\
+	cmp_cmp = {\"MicroVtxRel\"}\
 	)"},
 
 	-- MicroFilRel
@@ -868,9 +868,14 @@ MemoryIns = {
 		{"Memory","%(return ArgGetKey(mem,arg_inc))","Int","%(return ArgGetOrd(mem,arg_inc))","Int","%(return ArgIncVal(mem,arg_inc))"},
 	-- Micro(Fet/Vtx)Col
 	{"Memory","Vectorz","Int","%(return ConGetOrdOne(\"Vectorz\"))","Instr","MicIncIns"},
-		{"Memory","Vectorz","Int","%(return ConIncOrdOne(\"Vectorz\"))","Micro","MicroFetCol"},
+		{"Memory","Vectorz","Int","%(return ConIncOrdOne(\"Vectorz\"))","Micro","MicroVtxCol"},
 		{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",def_inc))","Default","%(return ArgGetValPer(\"Vectorz\",def_inc))"},
 		{"Memory","Vectorz","Int","%(return ArgGetOrdPer(\"Vectorz\",arg_inc))","Int","%(return ArgIncValPer(\"Vectorz\",arg_inc))"},
+	-- Micro(Fet/Vtx)Pie
+	{"Memory","Getoldz","Int","%(return ConGetOrdOne(\"Getoldz\"))","Instr","MicIncIns"},
+		{"Memory","Getoldz","Int","%(return ConIncOrdOne(\"Getoldz\"))","Micro","MicroFetPie"},
+		{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",def_inc))","Default","%(return ArgGetValPer(\"Getoldz\",def_inc))"},
+		{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",arg_inc))","Int","%(return ArgIncValPer(\"Getoldz\",arg_inc))"},
 
 	{"%("..
 	"def0 = {"..
@@ -932,11 +937,6 @@ MemoryIns = {
 		{"Memory","%(return ConGetKeyLst(cmp_mem))","Int","%(return ConIncOrdLst(cmp_mem))","Quality","RuseQua"},
 		{"Memory","%(return ArgGetKeyLst(cmp_mem))","Int","%(return ArgGetOrdLst(cmp_mem))","Default","TrivDef"},
 		{"Memory","%(return ArgGetKeyLst(cmp_mem))","Int","%(return ArgIncOrdLst(cmp_mem))","Int","1"},
-	{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_dep))","Instr","RdlDeeIns"},
-		{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_dep))","Resrc","%(return ConGetValPer(\"Getoldz\",fet_dep))"},
-		{"Memory","Getoldz","Int","%(return ConGetOrdPer(\"Getoldz\",fet_phs))","Phase","%(return ConIncValPer(\"Getoldz\",fet_phs))"},
-		{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_def))","Default","%(return ArgGetValPer(\"Getoldz\",pie_def))"},
-		{"Memory","Getoldz","Int","%(return ArgGetOrdPer(\"Getoldz\",pie_arg))","Int","%(return ArgIncValPer(\"Getoldz\",pie_arg))"},
 	{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_dep))","Instr","RdlDeeIns"},
 		{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_dep))","Resrc","%(return ConGetValPer(\"Getintz\",rel_dep))"},
 		{"Memory","Getintz","Int","%(return ConGetOrdPer(\"Getintz\",rel_phs))","Phase","%(return ConIncValPer(\"Getintz\",rel_phs))"},
@@ -1652,6 +1652,53 @@ MicroAlt = {
 		{"Micro","MicroFetRel","Int","%(return argget())","Int","MicroFetRel"},
 		{"Micro","MicroFetRel","Int","%(return savget())","Resrc","PipeRes"},
 		{"Micro","MicroFetRel","Int","%(return savget())","Phase","PipePhs"},
+
+	{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Instr","NidDerIns"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Resrc","PierceRes"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Reloc","ResizeLoc"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Format","PieextFrm"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","GiveDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","0"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","GiveDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","1"},
+		{"Micro","MicroFetPie","Int","%(return ConIncOrdOne(\"MicroFetPie\"))","Quality","RuseQua"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","1"},
+	{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Instr","NidDerIns"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Reloc","ReformLoc"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Format","PierceFrm"},
+		{"Micro","MicroFetPie","Int","%(return ConIncOrdOne(\"MicroFetPie\"))","Quality","RuseQua"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","1"},
+	{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Instr","NidDerIns"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Resrc","DrawRes"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Reloc","MiddleLoc"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Format","MicroFrm"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","0"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","12"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","MicroFetPie"},
+		{"Micro","MicroFetPie","Int","%(return ConIncOrdOne(\"MicroFetPie\"))","Quality","RsizQua"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","MicroFetPie"},
+	{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Instr","WidDeeIns"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Resrc","PierceRes"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Phase","RenderPhs"},
+		{"Micro","MicroFetPie","Int","%(return ConIncOrdOne(\"MicroFetPie\"))","Quality","RuseQua"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","1"},
+	{"Micro","MicroFetPie","Int","%(return ConGetOrdPer(\"MicroFetPie\",fet_dep))","Instr","RdlDeeIns"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdPer(\"MicroFetPie\",fet_dep))","Resrc","%(return ConGetValPer(\"MicroFetPie\",fet_dep))"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdPer(\"MicroFetPie\",fet_phs))","Phase","%(return ConIncValPer(\"MicroFetPie\",fet_phs))"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdPer(\"MicroFetPie\",pie_def))","Default","%(return ArgGetValPer(\"MicroFetPie\",pie_def))"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdPer(\"MicroFetPie\",pie_arg))","Int","%(return ArgIncValPer(\"MicroFetPie\",pie_arg))"},
+	{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Instr","IdxDeeIns"},
+		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Resrc","PipeRes"},
+		{"Micro","MicroFetPie","Int","%(return ConIncOrdOne(\"MicroFetPie\"))","Phase","PipePhs"},
+		{"Micro","MicroFetPie","Int","%(return ArgGetOrdOne(\"MicroFetPie\"))","Default","TrivDef"},
+		{"Micro","MicroFetPie","Int","%(return ArgIncOrdOne(\"MicroFetPie\"))","Int","MicroFetPie"},
 
 	{"Micro","MicroFetCol","Int","%(return ConGetOrdOne(\"MicroFetCol\"))","Instr","NidDerIns"},
 		{"Micro","MicroFetCol","Int","%(return ConGetOrdOne(\"MicroFetCol\"))","Resrc","ColorRes"},
