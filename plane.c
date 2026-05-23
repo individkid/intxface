@@ -322,7 +322,7 @@ void planeDebug(float *debug)
 {
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
-    break; case (Bringup): {
+    break; case (Bringup): case (Builtin): {
     identmat(debug,4);
     float time = processTime();
     float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
@@ -334,9 +334,7 @@ void planeDebug(float *debug)
     float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
     planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
-    break; case (Builtin): {
-    // TODO call machineIval or callInfo for which transformation or projection to use
-    }}
+    }
 }
 
 // resource accessors
