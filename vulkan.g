@@ -347,9 +347,6 @@ layout (binding = 8) readonly buffer Decorates {
 layout (location = 0) out vec4 outColor;
 void fragmentColor()
 {
-    /*if (inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*inUni.buf.wid]==1) outColor = vec4(0.0,0.0,1.0,1.0);
-    else if (inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y)*inUni.buf.wid]==0) outColor = vec4(1.0,0.0,0.0,1.0);
-    else outColor = vec4(0.0,1.0,0.0,1.0);*/
     if (gl_FragCoord.x==0) outColor = vec4(1.0,1.0,1.0,1.0);
     else if (gl_FragCoord.x+1==inUni.buf.wid) outColor = vec4(1.0,1.0,1.0,1.0);
     else if (gl_FragCoord.y==0) outColor = vec4(1.0,1.0,1.0,1.0);
@@ -360,7 +357,7 @@ void fragmentColor()
     else if (fragIdx+1!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y+1)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
     else if (fragIdx+1!=inRel.buf[int(gl_FragCoord.x)+int(gl_FragCoord.y-1)*inUni.buf.wid]) outColor = vec4(1.0,1.0,1.0,1.0);
     else if (fragTex == 1) outColor = vec4(0.0,0.0,1.0,1.0);
-    else outColor = fragOrd;// texture(texSampler, fragOrd.xy);
+    else outColor = texture(texSampler, fragOrd.xy);
 }
 #endif
 #if defined(fragmentPierce)
