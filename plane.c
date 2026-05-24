@@ -14,6 +14,7 @@
 struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 void *copySem = 0; // protect centers
+int loopback = 0; // whether external valid
 int external = 0; // pipe to planeExternal
 int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
@@ -724,14 +725,16 @@ void planeCenter(enum Thread tag, int idx)
     if (self < 0) pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     if (center && self >= 0) {
-    if (external) writeCenter(center,external);
+    if (loopback) writeCenter(center,external);
     // TODO else set bit in RegisterMask
     freeCenter(center); allocCenter(&center,0);}}
 }
 void planeExternal(enum Thread tag, int idx)
 {
     while (1) {
-    int sub = waitRead(0.0,(external?(1<<external):0)|(1<<extdone));
+    if ((callInfo(RegisterShow,0,planeRcfg) & 1) == 0) {
+    external = openPipe(); loopback = 1;}
+    int sub = waitRead(0.0,(1<<external)|(1<<extdone));
     if (sub == extdone) break;
     if (sub == external) {
     struct Center *center = 0;
@@ -874,7 +877,10 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {if (external) freeIdent(external); closeIdent(extdone);}
+    break; case (PipeThd): if (idx) {
+    if (loopback < 0) freeIdent(external);
+    else if (loopback > 0) closeIdent(external);
+    loopback = 0; closeIdent(extdone);}
     break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
     break; case (MachThd): case (TimeThd): case (TestThd):}
 }
@@ -1004,10 +1010,10 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
 }
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
-    if (external && cfg == ArgumentInp) external = rdfdInit(val,openWrfd(external));
-    else if (external && cfg == ArgumentOut) external = wrfdInit(val,openRdfd(external));
-    else if (!external && cfg == ArgumentInp) external = rdwrInit(val,0);
-    else if (!external && cfg == ArgumentOut) external = rdwrInit(0,val);
+    if (loopback < 0 && cfg == ArgumentInp) external = rdfdInit(val,openWrfd(external));
+    else if (loopback < 0 && cfg == ArgumentOut) external = wrfdInit(val,openRdfd(external));
+    else if (!loopback && cfg == ArgumentInp) {external = rdwrInit(val,0); loopback = -1;}
+    else if (!loopback && cfg == ArgumentOut) {external = rdwrInit(0,val); loopback = -1;}
     else ERROR();
 }
 
@@ -1155,10 +1161,10 @@ void initBoot()
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, boot[i], &asiz)) {callInfo(RegisterShow,1,planeWots); freeArgument(&arg);}
-    else if (hideCenter(&cntr, boot[i], &csiz)) callInfo(RegisterShow,2,planeWots);
-    else if (hideMachine(&mchn, boot[i], &msiz)) callInfo(RegisterShow,4,planeWots);
-    else if (hideExpress(&expr, boot[i], &esiz)) callInfo(RegisterShow,8,planeWots);
-    else if (hideStr(&str,boot[i],&ssiz)) callInfo(RegisterShow,16,planeWots);
+    else if (hideCenter(&cntr, boot[i], &csiz)) {callInfo(RegisterShow,2,planeWots); freeCenter(&cntr);}
+    else if (hideMachine(&mchn, boot[i], &msiz)) {callInfo(RegisterShow,4,planeWots); freeMachine(&mchn);}
+    else if (hideExpress(&expr, boot[i], &esiz)) {callInfo(RegisterShow,8,planeWots); freeExpress(&expr);}
+    else if (hideStr(&str,boot[i],&ssiz)) {callInfo(RegisterShow,16,planeWots); freeStr(&str,1);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,boot[i]); exit(-1);}}
     // Bootstrap first to initialize RegisterPlan
     planeArgv(size-cmnd,boot+cmnd);

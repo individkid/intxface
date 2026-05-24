@@ -2798,7 +2798,7 @@ VkDevice LogicalState::createDevice(VkPhysicalDevice physicalDevice, uint32_t gr
     createInfo.enabledExtensionCount = 0;
     for (const char **name = deviceExtensions; *name; name++) createInfo.enabledExtensionCount++;
     createInfo.ppEnabledExtensionNames = deviceExtensions;
-    if (validationLayers) {
+    if (0 && validationLayers) {
         createInfo.enabledLayerCount = 0;
         for (const char **name = validationLayers; *name; name++) createInfo.enabledLayerCount++;
         createInfo.ppEnabledLayerNames = validationLayers;}
