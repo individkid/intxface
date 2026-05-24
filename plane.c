@@ -459,13 +459,20 @@ void machineArgv(int sig, int *arg)
 // Kernel.sent S
 // Kernal.global G
 // Matrix M
+// upon cursor or roller move, send machineComp to gpu
+// upon change between cursor and roller, call machineForm
+// periodically send machineSend to pipe
+// upon pipe back from self call machineSelf on it
+// upon pipe from other call machineGlob on it
 void machineComp(int sig, int *arg)
 {
     struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Center *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
-    // TODO compose for draw -- T = C; M = GSLT
+    // compose for draw -- T = C; M = GSLT
+    float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
+    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
     machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
 }
@@ -473,7 +480,10 @@ void machineForm(int sig, int *arg)
 {
     struct Center *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub);
     struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
-    // TODO change manipulation matrix -- L = LTC'; T = C
+    // change manipulation matrix -- L = LTC'; T = C
+    float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
+    timesmat(timesmat(kernel->local.mat,kernel->saved.mat,4),inv,4); // L = LTC'
+    copymat(kernel->saved.mat,mat,4); // T = C
     machinePlace(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
 }
 void machineSend(int sig, int *arg)
@@ -482,7 +492,11 @@ void machineSend(int sig, int *arg)
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Center *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
-    // TODO move local to sent -- T = C; M = L; S = SL; L = I
+    // move local to sent -- T = C; M = L; S = SL; L = I
+    float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
+    copymat(matrix->mat,kernel->local.mat,4); // M = L
+    timesmat(kernel->sent.mat,kernel->local.mat,4); // S = SL
+    identmat(kernel->local.mat,4); // L = I
     machinePlace(dst,sig,arg,SendArgs,SendDst,SendDstSub);
     machinePlace(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
 }
@@ -492,7 +506,9 @@ void machineSelf(int sig, int *arg)
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
-    // TODO move portion of sent to global -- G = GM; S = M'S
+    // move portion of sent to global -- G = GM; S = M'S
+    timesmat(kernel->global.mat,matrix->mat,4); // G = GM
+    float inv[16]; jumpmat(kernel->sent.mat,invmat(copymat(inv,matrix->mat,4),4),4); // S = M'S
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
@@ -502,7 +518,8 @@ void machineGlob(int sig, int *arg)
     struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Center *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
-    // TODO absorb discontinuous change -- G = GM
+    // absorb discontinuous change -- G = GM
+    timesmat(kernel->global.mat,matrix->mat,4); // G = GM
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
 }
@@ -707,12 +724,14 @@ void planeCenter(enum Thread tag, int idx)
     if (self < 0) pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     if (center && self >= 0) {
-    writeCenter(center,external); freeCenter(center); allocCenter(&center,0);}}
+    if (external) writeCenter(center,external);
+    // TODO else set bit in RegisterMask
+    freeCenter(center); allocCenter(&center,0);}}
 }
 void planeExternal(enum Thread tag, int idx)
 {
     while (1) {
-    int sub = waitRead(0.0,(1<<external)|(1<<extdone));
+    int sub = waitRead(0.0,(external?(1<<external):0)|(1<<extdone));
     if (sub == extdone) break;
     if (sub == external) {
     struct Center *center = 0;
@@ -855,7 +874,7 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {freeIdent(external); closeIdent(extdone);}
+    break; case (PipeThd): if (idx) {if (external) freeIdent(external); closeIdent(extdone);}
     break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
     break; case (MachThd): case (TimeThd): case (TestThd):}
 }
@@ -885,7 +904,6 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if (cfg != RegisterOpen) ERROR();
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         extdone = openPipe();
-	// initialize external if necessary
         safeInit(PipeThd,1,0);
         callFork(PipeThd,0,planeCenter,planeClose,planeJoin,planeWake);
         callFork(PipeThd,1,planeExternal,planeClose,planeJoin,planeWake);}
@@ -984,6 +1002,14 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
 {
     callKnfo(RegisterWake,(1<<UnifMsk),planeWots);
 }
+void registerArgument(enum Configure cfg, int sav, int val, int act)
+{
+    if (external && cfg == ArgumentInp) external = rdfdInit(val,openWrfd(external));
+    else if (external && cfg == ArgumentOut) external = wrfdInit(val,openRdfd(external));
+    else if (!external && cfg == ArgumentInp) external = rdwrInit(val,0);
+    else if (!external && cfg == ArgumentOut) external = rdwrInit(0,val);
+    else ERROR();
+}
 
 // expression callbacks
 const char *planeGetstr()
@@ -1058,8 +1084,7 @@ void planeArgv(int argc, char **argv)
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, argv[i], &asiz)) {
-    // add callback for ArgumentInp/Out to initialize file descriptors in external
-    callInfo(ArgumentInp,arg.inp,planeWcfg); callInfo(ArgumentOut,arg.out,planeWcfg); freeArgument(&arg);}
+    callInfo(ArgumentInp,arg.inp,planeWcfg); callJnfo(ArgumentOut,arg.out,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Center *ptr = 0;
     allocCenter(&ptr,1); copyCenter(ptr,&cntr); freeCenter(&cntr); centerPlace(ptr,centers);}
     else if (hideMachine(&mchn, argv[i], &msiz)) {
@@ -1101,6 +1126,8 @@ void initSafe()
     callBack(UniformMod,registerUniform);
     callBack(UniformWid,registerUniform);
     callBack(UniformHei,registerUniform);
+    callBack(ArgumentInp,registerArgument);
+    callBack(ArgumentOut,registerArgument);
     datxFnptr(planeRetcfg,planeTopcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
