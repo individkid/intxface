@@ -562,8 +562,7 @@ void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
-    struct Center *ptr = centerPull(src);
-    callCopy(ptr,src,RetRsp,0,0);
+    callCopy(centerPull(src),src,RetRsp,0,0);
 }
 void machineDopy(int sig, int *arg)
 {
@@ -687,20 +686,17 @@ void machineSwitch(struct Machine *mptr)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
-    int next = 0;
-    while (next >= 0) {
+    int next = 0; while (next >= 0) {next = 0;
     int index = -1;
     struct Center *current = 0;
-    if (current == 0) {
     waitSafe(safeSem);
     index = machine[idx];
     postSafe(safeSem);
     if (index < 0) break;
     current = centerPull(index);
     if (current == 0) break;
-    if (current->mem != Machinez) break;
-    if (current->siz <= 0) break;
-    next = 0;}
+    if (current->mem != Machinez) next = -1;
+    if (current->siz <= 0) next = -1;
     while (next >= 0 && next < current->siz) {
     struct Machine *mptr = &current->mch[next];
     /*{char *opr = 0; showMachine(mptr,&opr);

@@ -555,10 +555,8 @@ struct Loc {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     Requ *operator->() {return &req;}
+    Reloc &operator*() {return req.loc;}
 };
-Reloc &operator*(Loc &loc) {
-    return loc.req.loc;
-}
 struct BindState;
 struct BaseState {
     StackState *item;

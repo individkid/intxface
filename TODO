@@ -1,5 +1,3 @@
-Bringup: Add coincidence color.
-
 Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
 
 Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.

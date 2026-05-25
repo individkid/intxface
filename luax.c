@@ -187,6 +187,7 @@ int nestPass()
 	for (int i = 0; i < dim; i++) retval |= nestEval(i);
 	return retval;
 }
+const char *nestPost(int i);
 const char *nestRepl(int i)
 { // get given string with expressions replaced
 	int length = 0;
@@ -205,6 +206,68 @@ const char *nestRepl(int i)
 		else {strncpy(rslt[i]+length,line[i]+pos,exp); length += exp;}
 		pos += exp;}
 	strcpy(rslt[i]+length,line[i]+pos);
+	return nestPost(i);
+}
+char *temp = 0;
+char *nestCopy(char *dst, const char *src, int len)
+{
+	dst = realloc(dst,len+1); strncpy(dst,src,len); dst[len] = 0;
+	return dst;
+}
+int nestExpr(const char *str, const char *chs)
+{
+	int dim = 0;
+	for (const char *i = str; i && strstr(i,chs) && *(i = strstr(i,chs)) && *(i += 2); dim++) {
+	for (int nst = 1; nst; nst += nestSkip(&i)) {}}
+	return dim;
+}
+const char *nestSubs(char **txt, char **exp, int siz, const char *str, const char *chs)
+{
+	int dim = 0;
+	const char *lst = str;
+	for (const char *nxt = str; nxt && strstr(nxt,chs) && *(nxt = strstr(nxt,chs)) && *(nxt += 2); dim++) {
+	const char *bas = nxt; // bas is first of expression
+	const char *fin = nxt-2; // fin is after last from lst
+	for (int nst = 1; nst; nst += nestSkip(&nxt)) {}
+	const char *lim = nxt-1; // lim is after last of expression
+	if (dim == siz) return 0;
+	txt[dim] = nestCopy(txt[dim],lst,fin-lst);
+	exp[dim] = nestCopy(exp[dim],bas,lim-bas);
+	lst = nxt;}
+	return lst;
+}
+char *nestCall(char *dst, const char *exp) {
+	if (!luastate) {luastate = lua_newstate(luaxLua,0,0); luaL_openlibs(luastate);}
+	if (luaxLoad(luastate,exp) != 0) {luaxErr(); return 0;}
+	if (lua_pcall(luastate,0,1,0) != LUA_OK) {luaxErr(); return 0;}
+	int len = strlen(lua_tostring(luastate,-1));
+	dst = realloc(dst,len+1); strncpy(dst,lua_tostring(luastate,-1),len+1);
+	fprintf(stderr,"nestCall %s\n",dst);
+	lua_pop(luastate,1);
+	return dst;
+}
+const char *nestPost(int i)
+{ // replace ^() by evaluation of expression
+	int dim = nestExpr(rslt[i],"^(");
+	char *txt[dim]; char *exp[dim]; char *val[dim];
+	for (int i = 0; i < dim; i++) txt[i] = exp[i] = val[i] = 0;
+	const char *lst = nestSubs(txt,exp,dim,rslt[i],"^(");
+	for (int i = 0; i < dim; i++) val[i] = nestCall(val[i],exp[i]);
+	int tot = 0; for (int i = 0; i < dim; i++) {
+	tot += strlen(txt[i]); tot += strlen(val[i]);}
+	tot += strlen(lst);
+	char *sav = malloc(strlen(lst)+1);
+	stpncpy(sav,lst,strlen(lst)+1);
+	rslt[i] = realloc(rslt[i],tot+1);
+	char *ptr = rslt[i];
+	for (int i = 0; i < dim; i++) {
+	ptr = stpncpy(ptr,txt[i],strlen(txt[i]));
+	ptr = stpncpy(ptr,val[i],strlen(val[i]));
+	free(txt[i]); free(exp[i]); free(val[i]);}
+	ptr = stpncpy(ptr,sav,strlen(sav)+1);
+	free(sav);
+	if (ptr-rslt[i] != tot) return 0;
+	if (*ptr != 0) return 0;
 	return rslt[i];
 }
 void wrapFace(lua_State *L);
