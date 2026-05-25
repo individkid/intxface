@@ -208,7 +208,6 @@ const char *nestRepl(int i)
 	strcpy(rslt[i]+length,line[i]+pos);
 	return nestPost(i);
 }
-char *temp = 0;
 char *nestCopy(char *dst, const char *src, int len)
 {
 	dst = realloc(dst,len+1); strncpy(dst,src,len); dst[len] = 0;
