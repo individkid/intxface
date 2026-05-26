@@ -14,7 +14,7 @@
 struct Center **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 void *copySem = 0; // protect centers
-int loopback = 0; // whether external valid
+int extvalid = 0; // pipe is open
 int external = 0; // pipe to planeExternal
 int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
@@ -445,15 +445,6 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
     if (srcSub < 0 || srcSub >= ptr->siz) ERROR();
     centerPlace(ptr,src);
 }
-void planeArgv(int argc, char **argv);
-void machineArgv(int sig, int *arg)
-{
-    if (sig != ArgvArgs) ERROR();
-    int src = arg[ArgvSrc];
-    struct Center *ptr = centerPull(src);
-    planeArgv(ptr->siz,ptr->str);
-    centerPlace(ptr,src);
-}
 // manipulation C
 // Kernel.saved T
 // Kernel.local L
@@ -596,15 +587,16 @@ void machineStage(enum Configure cfg, int idx)
     struct Center *ptr = center[idx];
     switch (cfg) {default: ERROR();
     case (CenterPtr): callJnfo(cfg,(ptr!=0),planeWcfg); break;
-    case (CenterMem): callJnfo(cfg,ptr->mem,planeWcfg); break;
-    case (CenterSiz): callJnfo(cfg,ptr->siz,planeWcfg); break;
-    case (CenterIdx): callJnfo(cfg,ptr->idx,planeWcfg); break;
-    case (CenterSlf): callJnfo(cfg,ptr->slf,planeWcfg); break;}
+    case (CenterMem): callJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
+    case (CenterSiz): callJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
+    case (CenterIdx): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterSlf): callJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
     if (postSafe(copySem) != 1) ERROR();
 }
 void machineTsage(enum Configure cfg, int idx)
 {
     struct Center *ptr = centerPull(idx);
+    if (!ptr) allocCenter(&ptr,1);
     switch (cfg) {default: ERROR();
     case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break; // TODO deallocat and zero out siz
     case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break; // TODO reallocate with new siz
@@ -630,6 +622,21 @@ void machineEval(struct Express *exp, int idx)
     if (postSafe(evalSem) != 1) ERROR();
     centerPlace(ptr,idx);
 }
+void machineVoid(struct Express *exp)
+{
+    if (!callHnfo() && waitSafe(evalSem) != 0) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
+    if (!callHnfo() && postSafe(evalSem) != 1) ERROR();
+}
+void planeArgv(int argc, char **argv);
+void machineArgv(int sig, int *arg)
+{
+    if (sig != ArgvArgs) ERROR();
+    int src = arg[ArgvSrc];
+    struct Center *ptr = centerPull(src);
+    planeArgv(ptr->siz,ptr->str);
+    centerPlace(ptr,src);
+}
 int machineIval(struct Express *exp)
 {
     if (waitSafe(evalSem) != 0) ERROR();
@@ -639,12 +646,6 @@ int machineIval(struct Express *exp)
     free(dat);
     if (postSafe(evalSem) != 1) ERROR();
     return val;
-}
-void machineVoid(struct Express *exp)
-{
-    if (!callHnfo() && waitSafe(evalSem) != 0) ERROR();
-    void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    if (!callHnfo() && postSafe(evalSem) != 1) ERROR();
 }
 int machineEscape(struct Center *current, int level, int next)
 {
@@ -717,30 +718,30 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Center *center = maybeCenterq(0,response);
-    int self = center->slf;
-    if (self < 0) pushCenterq(center,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (center && self >= 0) {
-    if (loopback) writeCenter(center,external);
-    // TODO else set bit in RegisterMask
-    freeCenter(center); allocCenter(&center,0);}}
+    if (center && center->slf < 0) pushCenterq(center,internal);
+    int vld = extvalid;
+    if (center && center->slf >= 0 && vld) {
+    writeCenter(center,external);
+    freeCenter(center); allocCenter(&center,0);}
+    if (postSafe(pipeSem) != 1) ERROR();}
 }
 void planeExternal(enum Thread tag, int idx)
 {
     while (1) {
-    if ((callInfo(RegisterShow,0,planeRcfg) & 1) == 0) {
-    external = openPipe(); loopback = 1;}
-    int sub = waitRead(0.0,(1<<external)|(1<<extdone));
-    if (sub == extdone) break;
-    if (sub == external) {
+    if (waitSafe(pipeSem) != 0) ERROR();
+    int mask = (extvalid?(1<<external):0)|(1<<extdone);
+    if (postSafe(pipeSem) != 1) ERROR();
+    int sub = waitRead(0.0,mask);
+    if (waitSafe(pipeSem) != 0) ERROR();
+    if (sub == extdone) {
+    if (readChr(extdone)) break; else continue;}
+    if (sub != external) ERROR();
     struct Center *center = 0;
     allocCenter(&center,1);
     readCenter(center,external);
-    if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
-    else ERROR();}
+    callJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    if (postSafe(pipeSem) != 1) ERROR();}
 }
 void planeString(enum Thread tag, int idx)
 {
@@ -803,20 +804,20 @@ void planeTest(enum Thread tag, int idx)
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
 
-    struct Center *mat = centerPull(Memorys+0); if (!mat) {callWait(); continue;}
+    struct Center *mat = centerPull(Matrixz); if (!mat) {callWait(); continue;}
     freeCenter(mat);
     mat->mem = Matrixz; mat->idx = 2; mat->siz = 2; allocMatrix(&mat->mat,mat->siz);
     float proj[16]; planeWindow(proj);
     float dbg[16]; planeDebug(dbg);
     memcpy(&mat->mat[0],proj,sizeof(struct Matrix));
     memcpy(&mat->mat[1],dbg,sizeof(struct Matrix));
-    callCopy(mat,Memorys+0,RptRsp,1,(debug?"matrix":0));
+    callCopy(mat,Matrixz,RptRsp,1,(debug?"matrix":0));
 
     if (count == tested) {
     int width = callInfo(UniformWid,0,planeRcfg);
     int height = callInfo(UniformHei,0,planeRcfg);
     int giv[] = {width,height,0,12}; // idx,siz
-    struct Center *drw = centerPull(Memorys+1); if (!drw) {callWait(); continue;}
+    struct Center *drw = centerPull(Drawz); if (!drw) {callWait(); continue;}
     freeCenter(drw);
     drw->mem = Drawz; drw->idx = 0; drw->siz = 1; allocDraw(&drw->drw,drw->siz);
     drw->drw[0].con.tag = MicroCon;
@@ -824,7 +825,7 @@ void planeTest(enum Thread tag, int idx)
     drw->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->drw[0].arg,drw->drw[0].siz);
     for (int i = 0; i < drw->drw[0].siz; i++) drw->drw[0].arg[i] = giv[i];
-    callCopy(drw,Memorys+1,RetRsp,1,(debug?"test":0));}
+    callCopy(drw,Drawz,RetRsp,1,(debug?"test":0));}
     tested = count;}}
 
     break; case (1): {
@@ -841,18 +842,18 @@ void planeTest(enum Thread tag, int idx)
     if (count == tested) {}
 
     else if (count%6 == 1 || count%6 == 4) {
-    struct Center *eek = centerPull(Memorys+3); if (!eek) {callWait(); continue;}
+    struct Center *eek = centerPull(Getoldz); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getoldz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocOld(&eek->old,eek->siz);
-    callCopy(eek,Memorys+3,RptRsp,0,(debug?"peek":0));}
+    callCopy(eek,Getoldz,RptRsp,0,(debug?"peek":0));}
 
     else if (count%6 == 2 || count%6 == 5) {
-    struct Center *eek = centerPull(Memorys+5); if (!eek) {callWait(); continue;}
+    struct Center *eek = centerPull(Getintz); if (!eek) {callWait(); continue;}
     freeCenter(eek);
     eek->mem = Getintz; eek->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->siz = 1;
     allocInt(&eek->uns,eek->siz);
-    callCopy(eek,Memorys+5,RptRsp,0,(debug?"ident":0));}
+    callCopy(eek,Getintz,RptRsp,0,(debug?"ident":0));}
 
     else if (count%6 == 3 || count%6 == 0) {
     struct Center *vec = centerPull(Vectorz); freeCenter(vec);
@@ -873,10 +874,7 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {
-    if (loopback < 0) freeIdent(external);
-    else if (loopback > 0) closeIdent(external);
-    loopback = 0; closeIdent(extdone);}
+    break; case (PipeThd): if (idx) {if (extvalid) freeIdent(external); closeIdent(extdone);}
     break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
     break; case (MachThd): case (TimeThd): case (TestThd):}
 }
@@ -911,7 +909,7 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         callFork(PipeThd,1,planeExternal,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         doneSafe(safeSafe(PipeThd,0));
-        writeChr(0,extdone);}
+        writeChr(1,extdone);}
     if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
         condone = openPipe();
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
@@ -1006,11 +1004,15 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
 }
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
-    if (loopback < 0 && cfg == ArgumentInp) external = rdfdInit(val,openWrfd(external));
-    else if (loopback < 0 && cfg == ArgumentOut) external = wrfdInit(val,openRdfd(external));
-    else if (!loopback && cfg == ArgumentInp) {external = rdwrInit(val,0); loopback = -1;}
-    else if (!loopback && cfg == ArgumentOut) {external = rdwrInit(0,val); loopback = -1;}
-    else ERROR();
+    if (cfg != ArgumentInp && cfg != ArgumentOut) ERROR();
+    if (waitSafe(pipeSem) != 0) ERROR();
+    if (!extvalid && cfg == ArgumentInp) {external = rdwrInit(val,0); extvalid = 1;}
+    else if (!extvalid && cfg == ArgumentOut) {external = rdwrInit(0,val); extvalid = 1;}
+    else if (extvalid && cfg == ArgumentInp) external = rdfdInit(val,openWrfd(external));
+    else if (extvalid && cfg == ArgumentOut) external = wrfdInit(val,openRdfd(external));
+    postSafe(safeSafe(PipeThd,0));
+    writeChr(0,extdone);
+    if (postSafe(pipeSem) != 1) ERROR();
 }
 
 // expression callbacks
