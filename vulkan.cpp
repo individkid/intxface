@@ -429,6 +429,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (PipeRes): return "PipeRes";
         case (IndexRes): return "IndexRes";
         case (BringupRes): return "BringupRes";
+        case (PrimitiveRes): return "PrimitiveRes";
         case (ImageRes): return "ImageRes";
         case (PierceRes): return "PierceRes";
         case (RelateRes): return "RelateRes";
@@ -2307,8 +2308,9 @@ struct DrawState : public BaseState {
         VkSemaphore after = (loc.nxt.ptr!=0?loc.syn.sem:VK_NULL_HANDLE);
         vkResetFences(device, 1, &loc.syn.fen);
         vkResetCommandBuffer(loc.commandBuffer, /*VkCommandBufferResetFlagBits*/ 0);
-        BaseState *pipePtr, *swapPtr, *framePtr, *indexPtr, *fetchPtr;
-        pipePtr = swapPtr = framePtr = indexPtr = fetchPtr = 0;
+        BaseState *pipePtr, *swapPtr, *framePtr, *indexPtr;
+        pipePtr = swapPtr = framePtr = indexPtr = 0;
+        HeapState<VkBuffer> fetchBuf; HeapState<VkDeviceSize> fetchOfs;
         for (int i = 0; i < loc.unl.siz; i++) {
         Bnd bnd = get(loc.unl,i);
         {char *st0 = 0; showPhase(bnd.phs,&st0); log << "setup " << st0 << " " << bnd.bnd << " " << bnd.buf->debug << '\n'; free(st0);}
@@ -2318,18 +2320,17 @@ struct DrawState : public BaseState {
         break; case(FramePhs): if (framePtr) EXIT; framePtr = bnd.buf;
         break; case(RenderPhs): if (swapPtr || framePtr) EXIT; swapPtr = framePtr = bnd.buf;
         break; case(IndexPhs): if (indexPtr) EXIT; indexPtr = bnd.buf;
-        break; case(FetchPhs): if (fetchPtr) EXIT; fetchPtr = bnd.buf;
+        break; case(FetchPhs): {BaseState *ptr = bnd.buf;
+        fetchBuf << ptr->getBuffer(); fetchOfs << 0;}
         break; case(UniformPhs): {BaseState *ptr = bnd.buf;
         updateUniformDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
-        break; case(StoragePhs): {BaseState *ptr = bnd.buf;
-        updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
-        break; case(RelatePhs): {BaseState *ptr = bnd.buf;
+        break; case(StoragePhs): case(RelatePhs): {BaseState *ptr = bnd.buf;
         updateStorageDescriptor(device,ptr->getBuffer(),ptr->getRange(),bnd.bnd,descriptorSet);}
         break; case(SamplePhs): {BaseState *ptr = bnd.buf;
         updateTextureDescriptor(device,ptr->getImageView(),ptr->getTextureSampler(),bnd.bnd,descriptorSet);}}}
         if (!pipePtr || !swapPtr || !framePtr) EXIT
         log << "record " << debug << " " << framePtr->debug << '\n';
-        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),(fetchPtr?fetchPtr->getBuffer():VK_NULL_HANDLE),(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE),debug,log);
+        recordCommandBuffer(loc.commandBuffer,pipePtr->getRenderPass(),descriptorSet,swapPtr->getExtent(),loc.req.siz,framePtr->getFramebuffer(),pipePtr->getPipeline(),pipePtr->getPipelineLayout(),fetchBuf,fetchOfs,(indexPtr?indexPtr->getBuffer():VK_NULL_HANDLE),debug,log);
         VkSemaphore acquire = (framePtr != swapPtr ? framePtr->getAcquireSem() : VK_NULL_HANDLE);
         VkSemaphore release = (framePtr != swapPtr ? framePtr->getPresentSem() : VK_NULL_HANDLE);
         drawFrame(loc.commandBuffer,graphics,acquire,release,fence,before,after);
@@ -2346,7 +2347,7 @@ struct DrawState : public BaseState {
     static void updateTextureDescriptor(VkDevice device,
         VkImageView textureImageView, VkSampler textureSampler,
         int index, VkDescriptorSet descriptorSet);
-    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, VkBuffer vertexBuffer, VkBuffer indexBuffer, const char *str, SmartState log);
+    static void recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices, VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout, HeapState<VkBuffer> &buffers, HeapState<VkDeviceSize> &offsets, VkBuffer indexBuffer, const char *str, SmartState log);
     static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
@@ -2361,6 +2362,7 @@ struct MainState {
     ArrayState<PipeState,PipeRes,StackState::micros> pipelineState;
     ArrayState<BufferState,IndexRes,StackState::frames> indexState;
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
+    ArrayState<BufferState,PrimitiveRes,StackState::frames> primitiveState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
@@ -2391,6 +2393,7 @@ struct MainState {
             {PipeRes,&pipelineState},
             {IndexRes,&indexState},
             {BringupRes,&bringupState},
+            {PrimitiveRes,&primitiveState},
             {ImageRes,&imageState},
             {PierceRes,&pierceState},
             {RelateRes,&relateState},
@@ -2485,6 +2488,7 @@ struct MainState {
         wrapState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        primitiveState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&changeState),
         copyState(&changeState,&threadState,enumState,constState) {
@@ -3511,7 +3515,7 @@ void DrawState::updateTextureDescriptor(VkDevice device,
 void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass renderPass,
     VkDescriptorSet descriptorSet, VkExtent2D renderArea, uint32_t indices,
     VkFramebuffer framebuffer, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout,
-    VkBuffer vertexBuffer, VkBuffer indexBuffer, const char *str, SmartState log) {
+    HeapState<VkBuffer> &buffers, HeapState<VkDeviceSize> &offsets, VkBuffer indexBuffer, const char *str, SmartState log) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) EXIT
@@ -3540,12 +3544,11 @@ void DrawState::recordCommandBuffer(VkCommandBuffer commandBuffer, VkRenderPass 
     scissor.offset = {0, 0};
     scissor.extent = renderArea;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-    VkBuffer buffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    if (vertexBuffer!=VK_NULL_HANDLE) vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+    if (buffers.size() != offsets.size()) EXIT
+    if (buffers.size()) vkCmdBindVertexBuffers(commandBuffer, 0, buffers.size(), buffers.data(), offsets.data());
     if (indexBuffer!=VK_NULL_HANDLE) vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-    if (vertexBuffer!=VK_NULL_HANDLE && indexBuffer!=VK_NULL_HANDLE) {
+    if (buffers.size() && indexBuffer!=VK_NULL_HANDLE) {
     log << "draw indexed " << str << " " << indices << '\n';
     vkCmdDrawIndexed(commandBuffer, indices, 1, 0, 0, 0);}
     else {log << "draw " << str << " " << indices << '\n';
