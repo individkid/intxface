@@ -195,11 +195,13 @@ template <class Conf, int Size> struct ChangeState {
         int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         // would not block if called from jnfo, but thread safe since pthread_equal to calling jnfo
         std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+        nest.wait(); depth++; nest.post();
         for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val,config[cfg]);
+        nest.wait(); depth--; nest.post();
         return ret;
     }
     int hnfo() { // whether in callback
-        nest.wait(); int ret = (depth && pthread_equal(self,pthread_self())); nest.post();
+        nest.wait(); int ret = (pthread_equal(self,pthread_self())?depth:0); nest.post();
         return ret;
     }
     static int readFn(int *ref, int val) {return *ref;}

@@ -608,7 +608,7 @@ void machineEval(struct Express *exp, int idx)
 {
     struct Center *ptr = centerPull(idx);
     if (!ptr) allocCenter(&ptr,1);
-    if (waitSafe(evalSem) != 0) ERROR();
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0)); freeCenter(ptr); allocCenter(&ptr,0);
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -619,14 +619,14 @@ void machineEval(struct Express *exp, int idx)
     allocCenter(&ptr,1);
     readCenter(ptr,datxPut(0,dat));
     free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
     centerPlace(ptr,idx);
 }
 void machineVoid(struct Express *exp)
 {
-    if (!callHnfo() && waitSafe(evalSem) != 0) ERROR();
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    if (!callHnfo() && postSafe(evalSem) != 1) ERROR();
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
 void planeArgv(int argc, char **argv);
 void machineArgv(int sig, int *arg)
@@ -639,12 +639,12 @@ void machineArgv(int sig, int *arg)
 }
 int machineIval(struct Express *exp)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
     if (typ != identType("Int")) ERROR();
     int val = readInt(datxPut(0,dat));
     free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
     return val;
 }
 int machineEscape(struct Center *current, int level, int next)

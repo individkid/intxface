@@ -1,4 +1,4 @@
-Builtin: Test manipulate matrix with Force Comp Form Send Self Glob through Bootstrap configured from commandline.
+Builtin: Reuse Bringup freerunning test that changes polytope matrix. Add to Builtin freerunning test to check commandline Center at Memorys for initial actions. First add random change to global matrix from commandline. Then use configure changes from commandline to change cursor/roler location and transformation mode to calculate the global matrix. Then loopback Memorys center to internal pipe. Then change to loopback from timer event in Bootstrap machine. Then use Force Copy Comp Form Send Self Glob to modify global matrix.
 
 Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.
 
