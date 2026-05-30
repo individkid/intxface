@@ -33,6 +33,7 @@ Flow = { -- type of line flow
 Memory = { -- which structure is in the center struction
 	"Indexz", -- fetch buffer indices
 	"Bringupz", -- fetch buffer verticse
+	"Identz", -- fetch buffer polytope
 	"Imagez", -- facet decorations
 	"Storagez", -- general purpose
 	"Getintz", -- per fragment read
@@ -57,7 +58,7 @@ Resrc = { -- per variation of BaseState
 	"PipeRes",
 	"IndexRes",
 	"BringupRes",
-	"PrimitiveRes",
+	"IdentRes",
 	"ImageRes",
 	"PierceRes",
 	"RelateRes",
@@ -543,7 +544,7 @@ Tag = { -- type of data piped between processes
 --HERE Constants
 MicroStride = { -- micro -> binding -> stride
 	{"Micro","MicroFetDrw","Int","0","Int","48"}, -- VertexRes
-	{"Micro","MicroFetDrw","Int","1","Int","4"}, -- PrimitiveRes
+	{"Micro","MicroFetDrw","Int","1","Int","4"}, -- IdentRes
 	{"Micro","MicroFetCol","Int","0","Int","48"},
 	{"Micro","MicroFetCol","Int","1","Int","4"},
 	{"Micro","MicroFetPie","Int","0","Int","48"},
@@ -554,44 +555,44 @@ MicroStride = { -- micro -> binding -> stride
 MicroFetch = { -- micro -> location -> binding
 	{"Micro","MicroFetDrw","Int","0","Int","0"},
 	{"Micro","MicroFetDrw","Int","1","Int","0"},
-	-- {"Micro","MicroFetDrw","Int","2","Int","1"},
+	{"Micro","MicroFetDrw","Int","2","Int","1"},
 	{"Micro","MicroFetCol","Int","0","Int","0"},
 	{"Micro","MicroFetCol","Int","1","Int","0"},
-	-- {"Micro","MicroFetCol","Int","2","Int","1"},
+	{"Micro","MicroFetCol","Int","2","Int","1"},
 	{"Micro","MicroFetPie","Int","0","Int","0"},
 	{"Micro","MicroFetPie","Int","1","Int","0"},
-	-- {"Micro","MicroFetPie","Int","2","Int","1"},
+	{"Micro","MicroFetPie","Int","2","Int","1"},
 	{"Micro","MicroFetRel","Int","0","Int","0"},
 	{"Micro","MicroFetRel","Int","1","Int","0"},
-	-- {"Micro","MicroFetRel","Int","2","Int","1"},
+	{"Micro","MicroFetRel","Int","2","Int","1"},
 }
 MicroOffset = { -- micro -> location -> offset
 	{"Micro","MicroFetDrw","Int","0","Int","0"}, -- vec
 	{"Micro","MicroFetDrw","Int","1","Int","16"}, -- ord
-	-- {"Micro","MicroFetDrw","Int","2","Int","0",}, -- primitive
+	{"Micro","MicroFetDrw","Int","2","Int","0",}, -- primitive
 	{"Micro","MicroFetCol","Int","0","Int","0"},
 	{"Micro","MicroFetCol","Int","1","Int","16"},
-	-- {"Micro","MicroFetCol","Int","2","Int","0"},
+	{"Micro","MicroFetCol","Int","2","Int","0"},
 	{"Micro","MicroFetPie","Int","0","Int","0"},
 	{"Micro","MicroFetPie","Int","1","Int","16"},
-	-- {"Micro","MicroFetPie","Int","2","Int","0"},
+	{"Micro","MicroFetPie","Int","2","Int","0"},
 	{"Micro","MicroFetRel","Int","0","Int","0"},
 	{"Micro","MicroFetRel","Int","1","Int","16"},
-	-- {"Micro","MicroFetRel","Int","2","Int","0"},
+	{"Micro","MicroFetRel","Int","2","Int","0"},
 }
 MicroFormat = { -- micro -> location -> format
 	{"Micro","MicroFetDrw","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetDrw","Int","1","Render","VecFrm"},
-	-- {"Micro","MicroFetDrw","Int","2","Render","UintFrm"},
+	{"Micro","MicroFetDrw","Int","2","Render","UintFrm"},
 	{"Micro","MicroFetCol","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetCol","Int","1","Render","VecFrm"},
-	-- {"Micro","MicroFetCol","Int","2","Render","UintFrm"},
+	{"Micro","MicroFetCol","Int","2","Render","UintFrm"},
 	{"Micro","MicroFetPie","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetPie","Int","1","Render","VecFrm"},
-	-- {"Micro","MicroFetPie","Int","2","Render","UintFrm"},
+	{"Micro","MicroFetPie","Int","2","Render","UintFrm"},
 	{"Micro","MicroFetRel","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetRel","Int","1","Render","VecFrm"},
-	-- {"Micro","MicroFetRel","Int","2","Render","UintFrm"},
+	{"Micro","MicroFetRel","Int","2","Render","UintFrm"},
 }
 MicroRender = {
     {"Micro","MicroFilRel","Render","UintFrm"},
@@ -624,9 +625,9 @@ MicroBinding = {
 	--[[vre = {\"UniformRes\",\"MatrixRes\", \"TriangleRes\",\"VertexRes\", \"PipeRes\"}]]\
 	    vph = {\"UniformPhs\",\"UniformPhs\",\"StoragePhs\", \"StoragePhs\",\"PipePhs\"}\
 	    vbn = {\"0\",         \"1\",         \"3\",          \"5\",         \"0\"      }\
-	--[[fre = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"PipeRes\"}]]\
-	    fph = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"PipePhs\"}\
-	    fbn = {\"0\",         \"1\",         \"0\",       \"0\",         \"0\"      }\
+	--[[fre = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",\"BringupRes\",\"IdentRes\",\"PipeRes\"}]]\
+	    fph = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",  \"FetchPhs\",\"PipePhs\"}\
+	    fbn = {\"0\",         \"1\",         \"0\",       \"0\",         \"1\",           \"0\"      }\
 	--[[nre = {\"UniformRes\",\"MatrixRes\", \"PipeRes\"}]]\
 	    nph = {\"UniformPhs\",\"UniformPhs\",\"PipePhs\"}\
 	    nbn = {\"0\",         \"1\",         \"0\"      }\
@@ -809,8 +810,8 @@ MemoryIns = {
 
 	-- this is where all the defaults are used
 	{"%(\
-	mem = {\"Bringupz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"};\
-	res = {\"BringupRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
+	mem = {\"Bringupz\",  \"Identz\",  \"Indexz\",  \"Storagez\",  \"Uniformz\",  \"Matrixz\",  \"Trianglez\",  \"Numericz\",  \"Vertexz\",  \"Basisz\"};\
+	res = {\"BringupRes\",\"IdentRes\",\"IndexRes\",\"StorageRes\",\"UniformRes\",\"MatrixRes\",\"TriangleRes\",\"NumericRes\",\"VertexRes\",\"BasisRes\"};\
 	)"},
 	{"Memory","%(return func(mem))","Int","0","Resrc","%(return func(res))"},
 	{"Memory","%(return func(mem))","Int","%(return nest(0,1,#mem))","Default","GiveDef"},
@@ -1118,8 +1119,8 @@ MicroIns = {
 		{"Micro","MicroVtxDrw","Int","%(return ArgGetOrdOne(\"MicroVtxDrw\"))","Int","0"},
 
 	{"%(--[[MicroFetDrw--]]\
-	fet_drw_dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\"}\
-	fet_drw_phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
+	fet_drw_dee = {\"SwapRes\",\"ChainRes\",\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\",\"IdentRes\"}\
+	fet_drw_phs = {\"SwapPhs\",\"FramePhs\",\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\",\"FetchPhs\"}\
 	fet_drw_arg = {\"0\",\"1\",\"7\",\"6\"})"},
 	{"Micro","MicroFetDrw","Int","%(return ConGetOrdOne(\"MicroFetDrw\"))","Instr","SetTagIns"},
 		{"Micro","MicroFetDrw","Int","%(return ConGetOrdOne(\"MicroFetDrw\"))","Resrc","DrawRes"},
@@ -1170,8 +1171,8 @@ MicroIns = {
 		{"Micro","MicroFetDrw","Int","%(return ArgIncOrdOne(\"MicroFetDrw\"))","Int","0"},
 
 	{"%(--[[MicroFetCol--]]\
-	fet_col_dee = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\"}\
-	fet_col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\"}\
+	fet_col_dee = {\"UniformRes\",\"MatrixRes\",\"ImageRes\",\"WrapRes\",\"IndexRes\",\"BringupRes\",\"IdentRes\"}\
+	fet_col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",\"FetchPhs\",\"FetchPhs\"}\
 	fet_col_arg = {\"0\",\"1\",\"7\",\"6\"})"},
 	{"Micro","MicroFetCol","Int","%(return ConGetOrdOne(\"MicroFetCol\"))","Instr","SetTagIns"},
 		{"Micro","MicroFetCol","Int","%(return ConGetOrdOne(\"MicroFetCol\"))","Resrc","DrawRes"},
@@ -1289,8 +1290,8 @@ MicroIns = {
 		{"Micro","MicroVtxRel","Int","%(return ConIncOrdOne(\"MicroVtxRel\"))","Phase","PipePhs"},
 
 	{"%(--[[MicroFetRel--]]\
-	fet_rel_dee = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
-	fet_rel_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\"}\
+	fet_rel_dee = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\",\"IdentRes\"}\
+	fet_rel_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",\"FetchPhs\"}\
 	fet_rel_arg = {\"0\",\"1\"})"},
 	{"Micro","MicroFetRel","Int","%(return ConGetOrdOne(\"MicroFetRel\"))","Instr","NidDerIns"},
 		{"Micro","MicroFetRel","Int","%(return ConGetOrdOne(\"MicroFetRel\"))","Resrc","DrawRes"},
@@ -1502,8 +1503,8 @@ MicroAlt = {
 		{"Micro","MicroFilRel","Int","%(return ConIncOrdOne(\"MicroFilRel\"))","Phase","PipePhs"},
 
 	{"%(--[[MicroFetRel--]]\
-	fet_rel_dee = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\"}\
-	fet_rel_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\"}\
+	fet_rel_dee = {\"UniformRes\",\"MatrixRes\",\"IndexRes\",\"BringupRes\",\"IdentRes\"}\
+	fet_rel_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",\"FetchPhs\",\"FetchPhs\"}\
 	fet_rel_arg = {\"0\",\"1\"})"},
 	{"Micro","MicroFetRel","Int","%(return ConGetOrdOne(\"MicroFetRel\"))","Instr","SetTagIns"},
 		{"Micro","MicroFetRel","Int","%(return ConGetOrdOne(\"MicroFetRel\"))","Resrc","DrawRes"},
@@ -1624,8 +1625,8 @@ MicroAlt = {
 		{"Micro","MicroVtxRel","Int","%(return ArgIncOrdOne(\"MicroVtxRel\"))","Int","0"},
 
 	{"%(--[[MicroFetPie--]]\
-	fet_pie_dee = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",  \"BringupRes\"}\
-	fet_pie_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",  \"FetchPhs\"}\
+	fet_pie_dee = {\"UniformRes\",\"MatrixRes\", \"IndexRes\",  \"BringupRes\",\"IdentRes\"}\
+	fet_pie_phs = {\"UniformPhs\",\"UniformPhs\",\"IndexPhs\",  \"FetchPhs\",  \"FetchPhs\"}\
 	fet_pie_arg = {\"0\",\"1\"})"},
 	{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Instr","NidDerIns"},
 		{"Micro","MicroFetPie","Int","%(return ConGetOrdOne(\"MicroFetPie\"))","Resrc","PierceRes"},
@@ -1726,8 +1727,8 @@ MicroAlt = {
 		{"Micro","MicroVtxPie","Int","%(return ArgIncOrdOne(\"MicroVtxPie\"))","Int","MicroVtxPie"},
 
 	{"%(--[[MicroFetCol]]\
-	fet_col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"IndexRes\",  \"BringupRes\"}\
-	fet_col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",  \"FetchPhs\"}\
+	fet_col_dep = {\"UniformRes\",\"MatrixRes\", \"ImageRes\", \"WrapRes\",  \"IndexRes\",  \"BringupRes\",\"IdentRes\"}\
+	fet_col_phs = {\"UniformPhs\",\"UniformPhs\",\"SamplePhs\",\"RelatePhs\",\"IndexPhs\",  \"FetchPhs\",  \"FetchPhs\"}\
 	fet_col_arg={0,1,7,6})"},
 	{"Micro","MicroFetCol","Int","%(return ConGetOrdOne(\"MicroFetCol\"))","Instr","NidDerIns"},
 		{"Micro","MicroFetCol","Int","%(return ConGetOrdOne(\"MicroFetCol\"))","Resrc","ColorRes"},
@@ -2315,6 +2316,7 @@ Center = { -- setup for graphics
 	{"slf","Int",{},{}},
 	{"ind","Int32",{["mem"]={["Indexz"]=true}},"siz"},
 	{"ver","Vertex",{["mem"]={["Bringupz"]=true}},"siz"},
+	{"idt","Int32",{["mem"]={["Identz"]=true}},"siz"},
 	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
 	{"uns","Int32",{["mem"]={["Getintz"]=true}},"siz"},
 	{"old","Old",{["mem"]={["Getoldz"]=true}},"siz"},

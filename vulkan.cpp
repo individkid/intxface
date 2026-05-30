@@ -429,7 +429,7 @@ template <class State, Resrc Type, int Size> struct ArrayState : public StackSta
         case (PipeRes): return "PipeRes";
         case (IndexRes): return "IndexRes";
         case (BringupRes): return "BringupRes";
-        case (PrimitiveRes): return "PrimitiveRes";
+        case (IdentRes): return "IdentRes";
         case (ImageRes): return "ImageRes";
         case (PierceRes): return "PierceRes";
         case (RelateRes): return "RelateRes";
@@ -1690,6 +1690,7 @@ struct CopyState {
         break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,aiz,ptr,sub,rsp,ary,log);
         break; case (Storagez): push(ptr->mem,(void*)ptr->sto,val,aiz,ptr,sub,rsp,ary,log);
         break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,aiz,ptr,sub,rsp,ary,log);
+        break; case (Identz): push(ptr->mem,(void*)ptr->idt,val,aiz,ptr,sub,rsp,ary,log);
         break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,aiz,ptr,sub,rsp,ary,log);
         break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,aiz,ptr,sub,rsp,ary,log);
         break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,val,aiz,ptr,sub,rsp,ary,log);
@@ -2362,7 +2363,7 @@ struct MainState {
     ArrayState<PipeState,PipeRes,StackState::micros> pipelineState;
     ArrayState<BufferState,IndexRes,StackState::frames> indexState;
     ArrayState<BufferState,BringupRes,StackState::frames> bringupState;
-    ArrayState<BufferState,PrimitiveRes,StackState::frames> primitiveState;
+    ArrayState<BufferState,IdentRes,StackState::frames> identState;
     ArrayState<ImageState,ImageRes,StackState::images> imageState;
     ArrayState<ImageState,PierceRes,StackState::frames> pierceState;
     ArrayState<ImageState,RelateRes,StackState::frames> relateState;
@@ -2393,7 +2394,7 @@ struct MainState {
             {PipeRes,&pipelineState},
             {IndexRes,&indexState},
             {BringupRes,&bringupState},
-            {PrimitiveRes,&primitiveState},
+            {IdentRes,&identState},
             {ImageRes,&imageState},
             {PierceRes,&pierceState},
             {RelateRes,&relateState},
@@ -2488,7 +2489,7 @@ struct MainState {
         wrapState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         indexState(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
         bringupState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
-        primitiveState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+        identState(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
         triangleState(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
         threadState(logicalState.device,&changeState),
         copyState(&changeState,&threadState,enumState,constState) {

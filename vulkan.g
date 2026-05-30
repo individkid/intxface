@@ -256,7 +256,7 @@ void share(vec4 myPosition, vec4 myCoordinate, uint lim)
 #if defined(vertexFetch)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
-// layout (location = 2) in uint inPrimitive;
+layout (location = 2) in uint inPrimitive;
 void fetch()
 {
     share(inPosition,inOrdClr,4);

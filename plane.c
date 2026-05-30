@@ -389,6 +389,7 @@ int centerMod(struct Center *ptr)
     switch (ptr->mem) {default: ERROR();
     break; case (Indexz): return sizeof(int32_t);
     break; case (Bringupz): return sizeof(struct Vertex);
+    break; case (Identz): return sizeof(int32_t);
     break; case (Imagez): return sizeof(struct Image);
     break; case (Getintz): return sizeof(int32_t);
     break; case (Getoldz): return sizeof(float);
@@ -1287,6 +1288,11 @@ void initTest()
     bup->mem = Bringupz; bup->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ver,bup->siz);
     for (int i = 0; i < bup->siz; i++) memcpy(&bup->ver[i],&vertices[i],sizeof(struct Vertex));
     callCopy(bup,Bringupz,RptRsp,0,(debug?"bringup":0));
+
+    struct Center *idt = centerPull(Identz); freeCenter(idt);
+    idt->mem = Identz; idt->siz = sizeof(primitive)/sizeof(uint32_t); allocInt32(&idt->idt,idt->siz);
+    for (int i = 0; i < idt->siz; i++) memcpy(&idt->idt[i],&primitive[i],sizeof(uint32_t));
+    callCopy(idt,Bringupz,RptRsp,0,(debug?"ident":0));
 
     struct Center *ind = centerPull(Indexz); freeCenter(ind);
     ind->mem = Indexz; ind->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ind,ind->siz);
