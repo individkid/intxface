@@ -1206,8 +1206,8 @@ void initTest()
         //
     };
     const uint32_t primitive[] = {
-        0, 0, 0, 0,
-        1, 1, 1, 1,
+        3, 3, 3, 3,
+        4, 4, 4, 4,
     };
     const uint16_t indices[] = {
         0, 1, 2, 2, 3, 0,
@@ -1258,7 +1258,8 @@ void initTest()
 
     struct Center *uni = centerPull(Uniformz); freeCenter(uni);
     uni->mem = Uniformz; uni->siz = 1; allocUniform(&uni->uni,uni->siz);
-    uni->uni[0].wid = width; uni->uni[0].hei = height; uni->uni[0].mod = 123;
+    uni->uni[0].all = 0; uni->uni[0].one = 1; uni->uni[0].pro = 2;
+    uni->uni[0].wid = width; uni->uni[0].hei = height;
     callCopy(uni,Uniformz,RptRsp,0,(debug?"uniform":0));
     callJnfo(UniformHei,height,planeWcfg);
 
@@ -1274,13 +1275,14 @@ void initTest()
 
     for (int i = 0; i < frames; i++) {
     struct Center *mat = centerPull(Matrixz); freeCenter(mat);
-    mat->mem = Matrixz; mat->slf = frames; mat->siz = 4; allocMatrix(&mat->mat,mat->siz);
+    mat->mem = Matrixz; mat->slf = frames; mat->siz = 5; allocMatrix(&mat->mat,mat->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; planeWindow(proj);
-    memcpy(&mat->mat[0],ident,sizeof(struct Matrix));
-    memcpy(&mat->mat[1],ident,sizeof(struct Matrix));
+    memcpy(&mat->mat[0],ident,sizeof(struct Matrix)); // uni.all
+    memcpy(&mat->mat[1],ident,sizeof(struct Matrix)); // uni.one
     memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
-    memcpy(&mat->mat[3],ident,sizeof(struct Matrix));
+    memcpy(&mat->mat[3],ident,sizeof(struct Matrix)); // tri.pol
+    memcpy(&mat->mat[4],ident,sizeof(struct Matrix)); // tri.pol
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
@@ -1309,7 +1311,7 @@ void initTest()
     tri->mem = Trianglez; tri->siz = (sizeof(indices)/sizeof(uint16_t))/3; allocTriangle(&tri->tri,tri->siz);
     for (int i = 0; i < tri->siz; i++) for (int j = 0; j < 3; j++) {
     int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
-    tri->tri[i].vtx[j] = indices[ind]; tri->tri[i].tex = tri->tri[i].pol = i/2;}
+    tri->tri[i].vtx[j] = indices[ind]; tri->tri[i].tex = i/2; tri->tri[i].pol = (i/2?4:3);}
     /*for (int i = 0; i < tri->siz; i++) {
     fprintf(stderr,"triangle number:%d texture:%d polytope:%d\n",i,tri->tri[i].tex,tri->tri[i].pol);
     for (int j = 0; j < 4; j++) {fprintf(stderr,"corner number:%d",tri->tri[i].vtx[j]);

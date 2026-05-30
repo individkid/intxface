@@ -2214,7 +2214,7 @@ Uniform = { -- how to interpret subscripts into gpu buffers
 	{"mat","Int32",{},{}}, -- base of matrices
 
 	{"bas","Int32",{},{}}, -- base of basises
-	{"mod","Int32",{},{}}, -- fetch/storage vertices/planes
+	{"pro","Int32",{},{}}, -- which projection to use
 	{"wid","Int32",{},{}}, -- width of image
 	{"hei","Int32",{},{}}, -- height of image
 }

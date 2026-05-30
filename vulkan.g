@@ -12,7 +12,7 @@ struct Uniform {
     uint mat; // base of matrices
 
     uint bas; // base of basises
-    uint mod; // fill constant
+    uint pro; // which projection to use
     uint wid; // width of image
     uint hei; // height of image
 };
@@ -176,7 +176,7 @@ layout (binding = 4) readonly buffer Numerics {
 #endif
 
 #if defined(vertexVertex) || defined(vertexCoplane)
-void index(out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint all, out uint idx, out uint one, out uint use)
+void index(out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex, out uint pro, out uint all, out uint idx, out uint one, out uint use)
 {
     uint tri = gl_VertexIndex/3-inUni.buf.tri; // triangle index
     cnr = gl_VertexIndex%3; // corner index
@@ -184,17 +184,16 @@ void index(out uint cnr, out uint vtx, out uint pol, out uint num, out uint tex,
     pol = inTri.buf[tri].pol-inUni.buf.mat; // matrix index for polytope vertex is in
     num = inTri.buf[tri].num-inUni.buf.num; // plane index for plane vertex is on
     tex = inTri.buf[tri].tex; // decoration type
+    pro = inUni.buf.pro-inUni.buf.mat; // matrix index for projection
     all = inUni.buf.all-inUni.buf.mat; // matrix index for everything
     idx = inUni.buf.idx-inUni.buf.num; // plane index for manipulated plane
     one = inUni.buf.one-inUni.buf.mat; // matrix index for manipulated plane
     use = inUni.buf.use; // basis index for plane feet
 }
-void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vtx, vec4 vec)
+void display(uint idx, uint num, uint tex, uint one, uint pol, uint pro, uint all, uint vtx, vec4 vec)
 {
-    if (gl_VertexIndex >= 6) gl_Position = inMat.buf[2].buf * vec;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * vec;
-    // if (idx == num) gl_Position = inMat.buf[one].buf * inMat.buf[pol].buf * inMat.buf[all].buf * vec;
-    // else gl_Position = inMat.buf[pol].buf * inMat.buf[all].buf * vec;
+    if (idx==num) gl_Position = inMat.buf[pro].buf*inMat.buf[all].buf*inMat.buf[pol].buf*inMat.buf[one].buf*vec;
+    else gl_Position = inMat.buf[pro].buf*inMat.buf[all].buf*inMat.buf[pol].buf*vec;
     fragOrd = inVer.buf[vtx].ord;
     fragIdx = pol;
     fragTex = tex;
@@ -226,8 +225,8 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vt
         //
     };
     const uint primitive[] = {
-        0,0,0,0,
-        1,1,1,1,
+        3, 3, 3, 3,
+        4, 4, 4, 4,
     };
     const uint indices[] = {
         0, 1, 2, 2, 3, 0,
@@ -242,14 +241,12 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vt
 #endif
 
 #if defined(vertexConst) || defined(vertexFetch)
-// TODO figure out way to identify polytope from fetch data, and use it to decide which matrix(s) to use
-void share(vec4 myPosition, vec4 myCoordinate, uint primitive)
+void share(vec4 myPosition, vec4 myCoordinate, uint myPrimitive)
 {
-    if (primitive >= 1) gl_Position = inMat.buf[2].buf * myPosition;
-    else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
+    gl_Position = inMat.buf[inUni.buf.pro].buf*inMat.buf[inUni.buf.all].buf*inMat.buf[myPrimitive].buf*myPosition;
     fragOrd = vec4(myCoordinate.xy,0.0,0.0);
-    fragIdx = primitive;
-    fragTex = primitive;
+    fragIdx = myPrimitive;
+    fragTex = (myPrimitive>3?1:0);
 }
 #endif
 
@@ -273,10 +270,10 @@ void backoff()
 #if defined(vertexVertex)
 void vertex()
 {
-    uint cnr,vtx,pol,num,tex,all,idx,one,use;
-    index(cnr,vtx,pol,num,tex,all,idx,one,use);
+    uint cnr,vtx,pol,num,tex,pro,all,idx,one,use;
+    index(cnr,vtx,pol,num,tex,pro,all,idx,one,use);
     vec4 vec = inVer.buf[vtx].vec;
-    display(idx,num,tex,one,pol,all,vtx,vec);
+    display(idx,num,tex,one,pol,pro,all,vtx,vec);
 }
 #endif
 
@@ -291,13 +288,13 @@ void expand(out vec4 res[3], uint ref, uint use)
 }
 void coplane()
 {
-    uint cnr,vtx,pol,num,tex,all,idx,one,use;
-    index(cnr,vtx,pol,num,tex,all,idx,one,use);
+    uint cnr,vtx,pol,num,tex,pro,all,idx,one,use;
+    index(cnr,vtx,pol,num,tex,pro,all,idx,one,use);
     vec4 exp[3/*plane*/][3/*tangent*/];
     for (uint i = 0; i < 3; i++)
     expand(exp[i],inVer.buf[vtx].ref[i],use);
     vec4 vec = intersect(exp[0],exp[1],exp[2]);
-    display(idx,num,tex,one,pol,all,vtx,vec);
+    display(idx,num,tex,one,pol,pro,all,vtx,vec);
 }
 #endif
 
