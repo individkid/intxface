@@ -541,44 +541,57 @@ Tag = { -- type of data piped between processes
 	"Valvez", -- share
 }
 --HERE Constants
-MicroStride = {
-	{"Micro","MicroFetDrw","Int","48"},
-	{"Micro","MicroFetCol","Int","48"},
-	{"Micro","MicroFetPie","Int","48"},
-	{"Micro","MicroFetRel","Int","48"},
+MicroStride = { -- micro -> binding -> stride
+	{"Micro","MicroFetDrw","Int","0","Int","48"}, -- VertexRes
+	{"Micro","MicroFetDrw","Int","1","Int","4"}, -- PrimitiveRes
+	{"Micro","MicroFetCol","Int","0","Int","48"},
+	{"Micro","MicroFetCol","Int","1","Int","4"},
+	{"Micro","MicroFetPie","Int","0","Int","48"},
+	{"Micro","MicroFetPie","Int","1","Int","4"},
+	{"Micro","MicroFetRel","Int","0","Int","48"},
+	{"Micro","MicroFetRel","Int","1","Int","4"},
 }
-MicroOffset = {
+MicroFetch = { -- micro -> location -> binding
 	{"Micro","MicroFetDrw","Int","0","Int","0"},
-	{"Micro","MicroFetDrw","Int","1","Int","16"},
+	{"Micro","MicroFetDrw","Int","1","Int","0"},
+	-- {"Micro","MicroFetDrw","Int","2","Int","1"},
+	{"Micro","MicroFetCol","Int","0","Int","0"},
+	{"Micro","MicroFetCol","Int","1","Int","0"},
+	-- {"Micro","MicroFetCol","Int","2","Int","1"},
+	{"Micro","MicroFetPie","Int","0","Int","0"},
+	{"Micro","MicroFetPie","Int","1","Int","0"},
+	-- {"Micro","MicroFetPie","Int","2","Int","1"},
+	{"Micro","MicroFetRel","Int","0","Int","0"},
+	{"Micro","MicroFetRel","Int","1","Int","0"},
+	-- {"Micro","MicroFetRel","Int","2","Int","1"},
+}
+MicroOffset = { -- micro -> location -> offset
+	{"Micro","MicroFetDrw","Int","0","Int","0"}, -- vec
+	{"Micro","MicroFetDrw","Int","1","Int","16"}, -- ord
+	-- {"Micro","MicroFetDrw","Int","2","Int","0",}, -- primitive
 	{"Micro","MicroFetCol","Int","0","Int","0"},
 	{"Micro","MicroFetCol","Int","1","Int","16"},
-	{"Micro","MicroFetCol","Int","2","Int","32"},
+	-- {"Micro","MicroFetCol","Int","2","Int","0"},
 	{"Micro","MicroFetPie","Int","0","Int","0"},
 	{"Micro","MicroFetPie","Int","1","Int","16"},
-	{"Micro","MicroFetPie","Int","2","Int","32"},
+	-- {"Micro","MicroFetPie","Int","2","Int","0"},
 	{"Micro","MicroFetRel","Int","0","Int","0"},
 	{"Micro","MicroFetRel","Int","1","Int","16"},
-	{"Micro","MicroFetRel","Int","2","Int","32"},
+	-- {"Micro","MicroFetRel","Int","2","Int","0"},
 }
-MicroFormat = {
+MicroFormat = { -- micro -> location -> format
 	{"Micro","MicroFetDrw","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetDrw","Int","1","Render","VecFrm"},
+	-- {"Micro","MicroFetDrw","Int","2","Render","UintFrm"},
 	{"Micro","MicroFetCol","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetCol","Int","1","Render","VecFrm"},
+	-- {"Micro","MicroFetCol","Int","2","Render","UintFrm"},
 	{"Micro","MicroFetPie","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetPie","Int","1","Render","VecFrm"},
+	-- {"Micro","MicroFetPie","Int","2","Render","UintFrm"},
 	{"Micro","MicroFetRel","Int","0","Render","VecFrm"},
 	{"Micro","MicroFetRel","Int","1","Render","VecFrm"},
-}
-MicroElement = {
-	{"Micro","MicroFetDrw","Int","0","Int","4"},
-	{"Micro","MicroFetDrw","Int","1","Int","4"},
-	{"Micro","MicroFetCol","Int","0","Int","4"},
-	{"Micro","MicroFetCol","Int","1","Int","4"},
-	{"Micro","MicroFetPie","Int","0","Int","4"},
-	{"Micro","MicroFetPie","Int","1","Int","4"},
-	{"Micro","MicroFetRel","Int","0","Int","4"},
-	{"Micro","MicroFetRel","Int","1","Int","4"},
+	-- {"Micro","MicroFetRel","Int","2","Render","UintFrm"},
 }
 MicroRender = {
     {"Micro","MicroFilRel","Render","UintFrm"},

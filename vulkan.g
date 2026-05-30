@@ -225,6 +225,10 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vt
         {1.0f, 1.0f, 0.0f, 0.0f},
         //
     };
+    const uint primitive[] = {
+        0,0,0,0,
+        1,1,1,1,
+    };
     const uint indices[] = {
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
@@ -252,6 +256,7 @@ void share(vec4 myPosition, vec4 myCoordinate, uint lim)
 #if defined(vertexFetch)
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) in vec4 inOrdClr;
+// layout (location = 2) in uint inPrimitive;
 void fetch()
 {
     share(inPosition,inOrdClr,4);

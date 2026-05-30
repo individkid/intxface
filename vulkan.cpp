@@ -3184,22 +3184,31 @@ VkPipeline PipeState::createGraphicsPipeline(VkDevice device, VkRenderPass rende
     HeapState<VkVertexInputAttributeDescription> attributeDescriptions;
     /*{char *st2 = 0; showMicro(micro,&st2);
     fprintf(stderr,"micro:%s\n",st2);}*/
+
+    // binding description per fetch buffer, unaware of location
     for (int i = 0; MicroBinding__Micro__Int__Phase(micro)(i) != Phases; i++) {
-    switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default:
-    break; case (FetchPhs): {
+    switch (MicroBinding__Micro__Int__Phase(micro)(i)) {default: break; case (FetchPhs): {
+    int bnd = MicroBinding__Micro__Int__Int(micro)(i);
+    int siz = MicroStride__Micro__Int__Int(micro)(bnd);
     VkVertexInputBindingDescription bindingDescription{};
-    bindingDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
-    bindingDescription.stride = MicroStride__Micro__Int(micro);
+    bindingDescription.binding = bnd;
+    bindingDescription.stride = siz;
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    bindingDescriptions << bindingDescription;
-    for (int j = 0; MicroFormat__Micro__Int__Render(micro)(j) != Renders; j++) {
-    // fprintf(stderr,"render:%d\n",j);
+    bindingDescriptions << bindingDescription;}}}
+
+    // attribute description per location, aware of binding
+    if (MicroFormat__Micro__Int__Render(micro)) {
+    for (int i = 0; MicroFormat__Micro__Int__Render(micro)(i) != Renders; i++) {
+    int bnd = MicroFetch__Micro__Int__Int(micro)(i);
+    int ofs = MicroOffset__Micro__Int__Int(micro)(i);
+    Render frm = MicroFormat__Micro__Int__Render(micro)(i);
     VkVertexInputAttributeDescription attributeDescription{};
-    attributeDescription.binding = MicroBinding__Micro__Int__Int(micro)(i);
-    attributeDescription.location = j;
-    attributeDescription.format = PhysicalState::vulkanFormat(MicroFormat__Micro__Int__Render(micro)(j));
-    attributeDescription.offset = MicroOffset__Micro__Int__Int(micro)(j);
-    attributeDescriptions << attributeDescription;}}}}
+    attributeDescription.binding = bnd;
+    attributeDescription.location = i;
+    attributeDescription.format = PhysicalState::vulkanFormat(frm);
+    attributeDescription.offset = ofs;
+    attributeDescriptions << attributeDescription;}}
+
     vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
