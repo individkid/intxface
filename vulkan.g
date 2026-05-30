@@ -243,13 +243,13 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint all, uint vt
 
 #if defined(vertexConst) || defined(vertexFetch)
 // TODO figure out way to identify polytope from fetch data, and use it to decide which matrix(s) to use
-void share(vec4 myPosition, vec4 myCoordinate, uint lim)
+void share(vec4 myPosition, vec4 myCoordinate, uint primitive)
 {
-    if (gl_VertexIndex >= lim) gl_Position = inMat.buf[2].buf * myPosition;
+    if (primitive >= 1) gl_Position = inMat.buf[2].buf * myPosition;
     else gl_Position = inMat.buf[2].buf * inMat.buf[3].buf * myPosition;
     fragOrd = vec4(myCoordinate.xy,0.0,0.0);
-    fragIdx = (gl_VertexIndex >= lim ? 1 : 0);
-    fragTex = (gl_VertexIndex >= lim ? 1 : 0);
+    fragIdx = primitive;
+    fragTex = primitive;
 }
 #endif
 
@@ -259,14 +259,14 @@ layout (location = 1) in vec4 inOrdClr;
 layout (location = 2) in uint inPrimitive;
 void fetch()
 {
-    share(inPosition,inOrdClr,4);
+    share(inPosition,inOrdClr,inPrimitive);
 }
 #endif
 
 #if defined(vertexConst)
 void backoff()
 {
-    share(vertices[indices[gl_VertexIndex]],coord[indices[gl_VertexIndex]],6);
+    share(vertices[indices[gl_VertexIndex]],coord[indices[gl_VertexIndex]],primitive[indices[gl_VertexIndex]]);
 }
 #endif
 
