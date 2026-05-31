@@ -212,22 +212,14 @@ unsigned char *sculptCursor(int e)
     return pixels;
 }
 
-// matrix manipulation
-float *vectorThree(float *vec, enum Configure left, enum Configure base, enum Configure deep)
-{
-    vec[0] = callInfo(left,0,planeRcfg);
-    vec[1] = callInfo(base,0,planeRcfg);
-    vec[2] = callInfo(deep,0,planeRcfg);
-    return vec;
-}
-float *vectorTwo(float *vec, enum Configure left, enum Configure base)
-{
-    vec[0] = callInfo(left,0,planeRcfg);
-    vec[1] = callInfo(base,0,planeRcfg);
-    return vec;
-}
-
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
+float *planeVector(float *vec, enum Configure left, enum Configure base, enum Configure deep)
+{
+    vec[0] = (float)callInfo(left,0,planeRcfg)/1000.0;
+    vec[1] = (float)callInfo(base,0,planeRcfg)/1000.0;
+    vec[2] = (float)callInfo(deep,0,planeRcfg)/1000.0;
+    return vec;
+}
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
     float *src2, float *dst2, float *src3, float *dst3)
 {
@@ -235,7 +227,7 @@ float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *
     copyvec(src,src0,4); copyvec(src+4,src1,4); copyvec(src+8,src2,4); copyvec(src+12,src3,4);
     copyvec(dst,dst0,4); copyvec(dst+4,dst1,4); copyvec(dst+8,dst2,4); copyvec(dst+12,dst3,4);
     invmat(copymat(inv,src,4),4);
-    return jumpmat(mat,timesmat(dst,inv,4),4);
+    return copymat(mat,timesmat(dst,inv,4),4);
 }
 float *planeSolve(float *mat, float *domain, float *range, int dim)
 {
@@ -287,12 +279,11 @@ float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, f
 }
 float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
-    float u[2]; scalevec(copyvec(u,org,2),-1.0,2);
-    float v[2]; plusvec(copyvec(v,cur,2),u,2);
-    float h0[4], h1[4]; unitvec(h0,3,0); h0[3] = 0.0; plusvec(copyvec(h1,h0,4),v,2);
-    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,2);
-    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,2);
-    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,2);
+    float v[4]; zerovec(v,4); v[0] = cur[0]-org[0]; v[1] = cur[1]-org[1];
+    float h0[4], h1[4]; zerovec(h0,3); h0[3] = 1.0; plusvec(copyvec(h1,h0,4),v,4);
+    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,4);
+    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,4);
+    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,4);
     return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
 }
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
@@ -302,12 +293,12 @@ float *planeMatrix(float *mat)
     tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeSlideOrthoMouse;
     tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeRotateFocalMouse;
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) fnc = planeRotateCursorRoller;
-    if (!fnc) return 0; float fix[3]; float nrm[3]; float org[2]; float cur[2];
+    if (!fnc) return 0; float fix[3]; float nrm[3]; float org[3]; float cur[3];
     return fnc(identmat(mat,4),
-    vectorThree(fix,FixedLeft,FixedBase,FixedDeep),
-    vectorThree(nrm,NormalLeft,NormalBase,NormalDeep),
-    vectorTwo(org,ClickLeft,ClickBase),
-    vectorTwo(cur,ManipLeft,ManipBase));
+    planeVector(fix,FixedLeft,FixedBase,FixedDeep),
+    planeVector(nrm,NormalLeft,NormalBase,NormalDeep),
+    planeVector(org,ClickLeft,ClickBase,ClickAngle),
+    planeVector(cur,ManipLeft,ManipBase,ManipAngle));
 }
 float *planeWindow(float *mat)
 {
@@ -1278,11 +1269,16 @@ void initTest()
     mat->mem = Matrixz; mat->slf = frames; mat->siz = 5; allocMatrix(&mat->mat,mat->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; planeWindow(proj);
-    memcpy(&mat->mat[0],ident,sizeof(struct Matrix)); // uni.all
-    memcpy(&mat->mat[1],ident,sizeof(struct Matrix)); // uni.one
-    memcpy(&mat->mat[2],proj,sizeof(struct Matrix));
-    memcpy(&mat->mat[3],ident,sizeof(struct Matrix)); // tri.pol
-    memcpy(&mat->mat[4],ident,sizeof(struct Matrix)); // tri.pol
+    // TODO do following with center from commandline after delay
+    /*callInfo(ClickLeft,0,planeWcfg); callInfo(ClickBase,0,planeWcfg);
+    callInfo(ManipLeft,250,planeWcfg); callInfo(ManipBase,250,planeWcfg);
+    callInfo(ManipFixed,(1<<Slide)|(1<<Ortho)|(1<<Mouse),planeWcfg);
+    planeMatrix(mat->mat[0].mat);*/
+    memcpy(mat->mat[0].mat,ident,sizeof(struct Matrix)); // uni.all
+    memcpy(mat->mat[1].mat,ident,sizeof(struct Matrix)); // uni.one
+    memcpy(mat->mat[2].mat,proj,sizeof(struct Matrix));
+    memcpy(mat->mat[3].mat,ident,sizeof(struct Matrix)); // tri.pol
+    memcpy(mat->mat[4].mat,ident,sizeof(struct Matrix)); // tri.pol
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
