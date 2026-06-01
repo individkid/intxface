@@ -28,7 +28,6 @@ void *stdioSem = 0; // protect strin and strout
 void *maskq = 0; // map from event to thread mask
 void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
-void *wakeq = 0; // queue of wakeup threads
 void *timeSem = 0; // protect wakeup queues
 void **wakeSem[Threads] = {0};
 int keepSem[Threads] = {0};
@@ -293,7 +292,8 @@ float *planeMatrix(float *mat)
     tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeSlideOrthoMouse;
     tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeRotateFocalMouse;
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) fnc = planeRotateCursorRoller;
-    if (!fnc) return 0; float fix[3]; float nrm[3]; float org[3]; float cur[3];
+    if (!fnc) return identmat(mat,4);
+    float fix[3]; float nrm[3]; float org[3]; float cur[3];
     return fnc(identmat(mat,4),
     planeVector(fix,FixedLeft,FixedBase,FixedDeep),
     planeVector(nrm,NormalLeft,NormalBase,NormalDeep),
@@ -773,14 +773,13 @@ void planeTime(enum Thread tag, int idx)
     if (sizeTimeq(timeq) == 0) {
     if (postSafe(timeSem) != 1) ERROR();
     if (timeSafe(safeSafe(TimeThd,0),0.0) < 0) break; else continue;}
-    if (sizeTimeq(timeq) != sizeWakeq(wakeq)) ERROR();
-    float time = frontTimeq(timeq); int wake = frontWakeq(wakeq);
+    float time = frontTimeq(timeq);
     if (postSafe(timeSem) != 1) ERROR();
     float delta = time-(float)processTime(); // how long to wait
     if (timeSafe(safeSafe(TimeThd,0),delta) < 0) break;
     if ((float)processTime() >= time) {
     if (waitSafe(timeSem) != 0) ERROR();
-    dropTimeq(timeq); dropWakeq(wakeq);
+    dropTimeq(timeq);
     if (postSafe(timeSem) != 1) ERROR();
     callJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
 }
@@ -789,7 +788,7 @@ void planeTest(enum Thread tag, int idx)
     switch (idx) {default: ERROR();
 
     break; case (0): {
-    int debug = 0; int count = 0; float time = 0.0; int tested = 0;
+    int debug = 0; int count = 0; float time = 0.0; int tested = 0; int alt = 0;
     int mode = (callInfo(RegisterPlan,0,planeRcfg)==Bringup);
 
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
@@ -797,13 +796,14 @@ void planeTest(enum Thread tag, int idx)
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
 
     struct Center *mat = centerPull(Matrixz); if (!mat) {callWait(); continue;}
-    freeCenter(mat);
-    mat->mem = Matrixz; mat->idx = 2; mat->siz = 2; allocMatrix(&mat->mat,mat->siz);
-    float proj[16]; planeWindow(proj);
-    float dbg[16]; planeDebug(dbg);
-    memcpy(&mat->mat[0],proj,sizeof(struct Matrix));
-    memcpy(&mat->mat[1],dbg,sizeof(struct Matrix));
+    freeCenter(mat); mat->mem = Matrixz;
+    if (alt) {mat->idx = 2; mat->siz = 2;}
+    else {mat->idx = 0; mat->siz = 1;}
+    allocMatrix(&mat->mat,mat->siz);
+    if (alt) {planeWindow(mat->mat[0].mat); planeDebug(mat->mat[1].mat);}
+    else planeMatrix(mat->mat[0].mat);
     callCopy(mat,Matrixz,RptRsp,1,(debug?"matrix":0));
+    if (alt) alt = 0; else alt = 1;
 
     if (count == tested) {
     int width = callInfo(UniformWid,0,planeRcfg);
@@ -969,12 +969,9 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     pushTimeq(backTimeq(timeq),timeq);
     int idx = sizeTimeq(timeq)-2;
     while (idx > 0 && *ptrTimeq(idx,timeq) > time) {idx--;
-    *ptrTimeq(idx+1,timeq) = *ptrTimeq(idx,timeq);
-    *ptrWakeq(idx+1,wakeq) = *ptrWakeq(idx,wakeq);}
-    *ptrTimeq(idx,timeq) = time;
-    *ptrWakeq(idx,wakeq) = wake;} else {
-    pushTimeq(time,timeq);
-    pushWakeq(wake,wakeq);}
+    *ptrTimeq(idx+1,timeq) = *ptrTimeq(idx,timeq);}
+    *ptrTimeq(idx,timeq) = time;} else {
+    pushTimeq(time,timeq);}
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
@@ -1102,8 +1099,7 @@ void initSafe()
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
-    timeq = allocTimeq(); wakeq = allocWakeq();
-    ableq = allocAbleq(); maskq = allocMaskq();
+    timeq = allocTimeq(); ableq = allocAbleq(); maskq = allocMaskq();
     callBack(RegisterCall,registerCall);
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
@@ -1167,7 +1163,7 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterTime,500<<8,planeWcfg);
+    callJnfo(RegisterTime,1000<<8,planeWcfg);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Regress): // choose how to interpret centers from pipe
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
@@ -1274,11 +1270,11 @@ void initTest()
     callInfo(ManipLeft,250,planeWcfg); callInfo(ManipBase,250,planeWcfg);
     callInfo(ManipFixed,(1<<Slide)|(1<<Ortho)|(1<<Mouse),planeWcfg);
     planeMatrix(mat->mat[0].mat);*/
-    memcpy(mat->mat[0].mat,ident,sizeof(struct Matrix)); // uni.all
-    memcpy(mat->mat[1].mat,ident,sizeof(struct Matrix)); // uni.one
-    memcpy(mat->mat[2].mat,proj,sizeof(struct Matrix));
-    memcpy(mat->mat[3].mat,ident,sizeof(struct Matrix)); // tri.pol
-    memcpy(mat->mat[4].mat,ident,sizeof(struct Matrix)); // tri.pol
+    copymat(mat->mat[0].mat,ident,4); // uni.all
+    copymat(mat->mat[1].mat,ident,4); // uni.one
+    copymat(mat->mat[2].mat,proj,4);
+    copymat(mat->mat[3].mat,ident,4); // tri.pol
+    copymat(mat->mat[4].mat,ident,4); // tri.pol
     callCopy(mat,Matrixz,RptRsp,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
@@ -1393,8 +1389,7 @@ void planeDone()
     callBack(RegisterAble,0);
     callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
-    freeMaskq(maskq); freeAbleq(ableq);
-    freeWakeq(wakeq); freeTimeq(timeq);
+    freeMaskq(maskq); freeAbleq(ableq);freeTimeq(timeq);
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();

@@ -1949,6 +1949,13 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
+		"mch[%(return jdx())]:Force(num:5"..
+		 "cfg[0]:ClickLeftcfg[1]:ClickBasecfg[2]:ManipLeftcfg[3]:ManipBasecfg[4]:ManipFixed"..
+		 "val[0]:$(#0)val[1]:$(#0)val[2]:$(#-20)val[3]:$(#-20)"..
+		 "val[4]:BitOp(bit:OrBitopb[0]:BitOp(bit:OrBit"..
+		  "opb[0]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Slide\"))))"..
+		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Ortho\")))))"..
+		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Mouse\"))))))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
 		-- Eval to change Center at Memorys+1 to single empty string
 		-- Bopy to move head of Center at Memorys to Memorys+1
