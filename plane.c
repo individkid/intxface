@@ -34,7 +34,7 @@ int keepSem[Threads] = {0};
 int sizeSem[Threads] = {0};
 int *machine = 0;
 void *safeSem = 0; // protect machine and wakeSem
-float times[Threads] = {0};
+float times = 0.0;
 // initialized before threads so safe
 void *chrq = 0; // temporary queue to convert chars to str
 void *evalSem = 0;
@@ -958,13 +958,9 @@ void registerAble(enum Configure cfg, int sav, int val, int act)
 void registerTime(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterTime) ERROR();
-    int lwr = val & 0xff; // time to advance
-    int upr = val >> 8; // amount to advance
-    if (lwr < 0 || lwr >= Threads) ERROR();
     if (waitSafe(timeSem) != 0) ERROR();
-    if (times[lwr] < start) times[lwr] = processTime();
-    float time = times[lwr] + (float)upr/1000.0; times[lwr] = time;
-    enum Thread wake = lwr;
+    if (times < start) times = processTime();
+    float time = times + (float)val/1000.0; times = time;
     if (sizeTimeq(timeq) && backTimeq(timeq) > time) {
     pushTimeq(backTimeq(timeq),timeq);
     int idx = sizeTimeq(timeq)-2;
@@ -1163,7 +1159,7 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterTime,1000<<8,planeWcfg);
+    callJnfo(RegisterTime,1000,planeWcfg);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Regress): // choose how to interpret centers from pipe
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
