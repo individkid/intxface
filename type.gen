@@ -256,6 +256,7 @@ Configure = { -- integer constants for user expressions
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterEval", -- expression center index
+	"RegisterSelf", -- self for loopback
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
 	"UniformIdx", -- which plane to manipulate
@@ -1940,7 +1941,7 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSlctMskOp , EndOp Op))"..
-		-- depending on memory type of Center from internal, do Copy Self or Glob
+		-- depending on memory type of Center from internal, do Copy Self Glob or Argv
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -1948,7 +1949,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
 		"mch[%(return jdx())]:Force(num:5"..
 		 "cfg[0]:ClickLeftcfg[1]:ClickBasecfg[2]:ManipLeftcfg[3]:ManipBasecfg[4]:ManipFixed"..
 		 "val[0]:$(#0)val[1]:$(#0)val[2]:$(#-20)val[3]:$(#-20)"..
@@ -2034,7 +2035,7 @@ Bootstrap = {
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
-		"RegisterTime := #750 "..
+		"RegisterTime := #750 << #8 "..
 		"count = @count + #1 "..
 		"Put Imm TimOp Op EndOp Op "..
 		"Op))"},

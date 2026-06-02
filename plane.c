@@ -28,13 +28,14 @@ void *stdioSem = 0; // protect strin and strout
 void *maskq = 0; // map from event to thread mask
 void *ableq = 0; // map from thread to vector mask
 void *timeq = 0; // queue of wakeup times
+void *wakeq = 0; // queue of wakeup threads
+void *timep = 0; // map from thread to time
 void *timeSem = 0; // protect wakeup queues
 void **wakeSem[Threads] = {0};
 int keepSem[Threads] = {0};
 int sizeSem[Threads] = {0};
 int *machine = 0;
 void *safeSem = 0; // protect machine and wakeSem
-float times = 0.0;
 // initialized before threads so safe
 void *chrq = 0; // temporary queue to convert chars to str
 void *evalSem = 0;
@@ -53,9 +54,11 @@ DECLARE_DEQUE(struct Center *,Centerq)
 DECLARE_DEQUE(char *,Strq)
 DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
-DECLARE_DEQUE(enum Thread, Wakeq)
+DECLARE_DEQUE(int, Wakeq)
 DECLARE_DEQUE(int, Ableq)
 DECLARE_DEQUE(int, Maskq)
+
+DECLARE_MAP(int,float,Timep)
 
 int planeWots(int *ref, int val)
 {
@@ -710,9 +713,11 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Center *center = maybeCenterq(0,response);
-    if (center && center->slf < 0) pushCenterq(center,internal);
-    int vld = extvalid;
-    if (center && center->slf >= 0 && vld) {
+    if (center && center->slf < 0) {
+    center->slf = callJnfo(RegisterSelf,0,planeRcfg);
+    pushCenterq(center,internal);
+    callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
+    if (center && center->slf >= 0 && extvalid) {
     writeCenter(center,external);
     freeCenter(center); allocCenter(&center,0);}
     if (postSafe(pipeSem) != 1) ERROR();}
@@ -773,15 +778,17 @@ void planeTime(enum Thread tag, int idx)
     if (sizeTimeq(timeq) == 0) {
     if (postSafe(timeSem) != 1) ERROR();
     if (timeSafe(safeSafe(TimeThd,0),0.0) < 0) break; else continue;}
-    float time = frontTimeq(timeq);
+    if (sizeTimeq(timeq) != sizeWakeq(wakeq)) ERROR();
+    float time = frontTimeq(timeq); int wake = frontWakeq(wakeq);
     if (postSafe(timeSem) != 1) ERROR();
     float delta = time-(float)processTime(); // how long to wait
     if (timeSafe(safeSafe(TimeThd,0),delta) < 0) break;
     if ((float)processTime() >= time) {
     if (waitSafe(timeSem) != 0) ERROR();
-    dropTimeq(timeq);
+    dropTimeq(timeq); dropWakeq(wakeq);
     if (postSafe(timeSem) != 1) ERROR();
-    callJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
+    callJnfo(RegisterWake,(1<<TimeMsk),planeWots);
+    postSafe(safeSafe(MachThd,wake));}}
 }
 void planeTest(enum Thread tag, int idx)
 {
@@ -958,16 +965,23 @@ void registerAble(enum Configure cfg, int sav, int val, int act)
 void registerTime(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterTime) ERROR();
+    int lwr = val & 0xff; // machine thread to wake
+    int upr = val >> 8; // amount to advance
+    if (lwr < 0 || lwr >= Threads) ERROR();
     if (waitSafe(timeSem) != 0) ERROR();
-    if (times < start) times = processTime();
-    float time = times + (float)val/1000.0; times = time;
+    if (!existTimep(lwr,timep)) insertTimep(lwr,0.0,timep);
+    if (*ptrTimep(lwr,timep) < start) *ptrTimep(lwr,timep) = processTime();
+    float time = *ptrTimep(lwr,timep) + (float)upr/1000.0; *ptrTimep(lwr,timep) = time;
     if (sizeTimeq(timeq) && backTimeq(timeq) > time) {
     pushTimeq(backTimeq(timeq),timeq);
     int idx = sizeTimeq(timeq)-2;
     while (idx > 0 && *ptrTimeq(idx,timeq) > time) {idx--;
-    *ptrTimeq(idx+1,timeq) = *ptrTimeq(idx,timeq);}
-    *ptrTimeq(idx,timeq) = time;} else {
-    pushTimeq(time,timeq);}
+    *ptrTimeq(idx+1,timeq) = *ptrTimeq(idx,timeq);
+    *ptrWakeq(idx+1,wakeq) = *ptrWakeq(idx,wakeq);}
+    *ptrTimeq(idx,timeq) = time;
+    *ptrWakeq(idx,wakeq) = lwr;} else {
+    pushTimeq(time,timeq);
+    pushWakeq(lwr,wakeq);}
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
@@ -999,6 +1013,7 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
     writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();
 }
+// TODO add callbacks to set wake mask bits when relevant registers change
 
 // expression callbacks
 const char *planeGetstr()
@@ -1095,7 +1110,8 @@ void initSafe()
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
-    timeq = allocTimeq(); ableq = allocAbleq(); maskq = allocMaskq();
+    timeq = allocTimeq(); wakeq = allocWakeq(); timep = allocTimep();
+    ableq = allocAbleq(); maskq = allocMaskq();
     callBack(RegisterCall,registerCall);
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
@@ -1159,7 +1175,7 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterTime,1000,planeWcfg);
+    callJnfo(RegisterTime,1000<<8,planeWcfg);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Regress): // choose how to interpret centers from pipe
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
@@ -1385,7 +1401,8 @@ void planeDone()
     callBack(RegisterAble,0);
     callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
-    freeMaskq(maskq); freeAbleq(ableq);freeTimeq(timeq);
+    freeMaskq(maskq); freeAbleq(ableq);
+    freeTimep(timep); freeTimeq(timeq);
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
     closeIdent(idx1); closeIdent(idx0); datxNon();
