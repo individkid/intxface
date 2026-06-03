@@ -1958,11 +1958,23 @@ Bootstrap = {
 		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Ortho\")))))"..
 		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Mouse\"))))))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
+		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@memorys))"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterPtr != #1 , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterMem != #%(return castMemory(\"Stringz\")) , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz == #0 , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- Eval to change Center at Memorys+1 to single empty string
 		-- Bopy to move head of Center at Memorys to Memorys+1
 		-- Eval to drop head of Center at Memorys
 		-- Eval to cast string at Memorys+1 to Center
 		-- Qopy to push Center at Memorys+1 to response queue
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2041,7 +2053,7 @@ Bootstrap = {
 		"Op))"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(pass = #0 fail = #0 wake = #0)"..
+	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
 		"Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
 		-- vulkanCpp: refactor tutorial: Bringup: no commandline args: RegisterShow == 0
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
