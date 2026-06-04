@@ -1969,14 +1969,12 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz == #0 , #1 ; #0 , #2 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- Eval a Dopy of Center at Memorys to cast to Center of string number @bootstr in Memorys+1
-		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@memorys)arg[1]:$(@memorys + #1))"..
-		-- TODO change ExtOp subscript to expression
-		-- "mch[%(return jdx())]:Eval(res[0]:$(@memorys + #1)fnc[0]:$(ImmOp(ExtOp(ext[0]: @_ ext[1]: @bootstr eid:Str(str)))))"..
-		-- Void to increment @bootstr
+		-- Eval a Dopy of Center at Memorys to cast to Center of string number @bootstr in Memorys+1 and Void to increment @bootstr
+		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@memorys)arg[1]:$(@memorys+#1))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys+#1)fnc[0]:ImmOp(put[0]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(str))))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
-		-- Void slf at Memorys+1 to RegisterSelf and set slf at Memorys+1 to -1
-		-- "mch[%(return jdx())]:Eval(res[0]:$()fnc[0]:$(Non RegisterSelf := ExtOp(ext[0]: @_ ext[1]: #0 eid:Str(slf)) , FldOp(fld[0]: @_ fld[1]: #-1 fld[2]: #0 fid:Str(slf)) , @_ Op))"..
+		-- Void copy slf at Memorys+1 to RegisterSelf and set slf at Memorys+1 to -1
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys+#1)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#0)fld[2]:$(#-1)fid:Str(slf)) non[2]:$(@_) ))"..
 		-- Qopy to push Center at Memorys+1 to response queue
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
