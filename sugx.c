@@ -118,27 +118,33 @@ void sugarUnary(void *lst, enum Operate opr, const char *str, int *idx)
 	sugarFront(&exp->put[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
 }
+void hideSugar(char **idt, const char *str, int *idx);
 struct Express *sugarTrinary(void *lst, enum Operate opr, const char *str, int *idx)
 {
 	void *nst = allocExpr();
 	sugarRecurse(nst,1,str,idx);
-	if (sizeExpr(nst) != 1) ERROR();
+	char *idt = 0; hideSugar(&idt,str,idx);
+	sugarRecurse(nst,1,str,idx);
+	if (sizeExpr(nst) != 2) ERROR();
 	struct Express *exp = 0; allocExpress(&exp,1);
-	exp->opr = opr;
-	allocExpress(&exp->ext,1);
-	sugarFront(&exp->ext[0],nst);
+	exp->opr = opr; exp->eid = idt;
+	allocExpress(&exp->ext,2);
+	for (int i = 0; i < 2; i++) {
+	sugarFront(&exp->ext[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
 	return exp;
 }
 struct Express *sugarQuadary(void *lst, enum Operate opr, const char *str, int *idx)
 {
 	void *nst = allocExpr();
+	sugarRecurse(nst,1,str,idx);
+	char *idt = 0; hideSugar(&idt,str,idx);
 	sugarRecurse(nst,2,str,idx);
-	if (sizeExpr(nst) != 2) ERROR();
+	if (sizeExpr(nst) != 3) ERROR();
 	struct Express *exp = 0; allocExpress(&exp,1);
-	exp->opr = opr;
-	allocExpress(&exp->fld,2);
-	for (int i = 0; i < 2; i++) {
+	exp->opr = opr; exp->fid = idt;
+	allocExpress(&exp->fld,3);
+	for (int i = 0; i < 3; i++) {
 	sugarFront(&exp->fld[i],nst);}
 	freeExpr(nst); pushExpr(exp,lst);
 	return exp;
@@ -178,12 +184,15 @@ void sugarCmpfix(void *lst, enum Operate opr, enum Compare cmp, const char *str,
 }
 struct Express *sugarTrifix(void *lst, enum Operate opr, const char *str, int *idx)
 {
-	void *nst = allocExpr();
 	struct Express *exp = 0; allocExpress(&exp,1);
 	exp->opr = opr;
-	allocExpress(&exp->ext,1);
+	void *nst = allocExpr();
+	sugarRecurse(nst,1,str,idx);
+	allocExpress(&exp->ext,2);
+	if (sizeExpr(lst) < 1 || sizeExpr(nst) != 1) ERROR();
 	sugarBack(&exp->ext[0],lst);
-	pushExpr(exp,lst);
+	sugarFront(&exp->ext[1],nst);
+	freeExpr(nst); pushExpr(exp,lst);
 	return exp;
 }
 void sugarCondit(void *lst, enum Operate opr, const char *str, int *idx)
@@ -717,29 +726,22 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"Fld",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		struct Express *exp = sugarQuadary(lst,FldOp,str,idx);
-		char *idt = 0; hideSugar(&idt,str,idx);
-		int sub; scanSugar(&sub,str,idx);
-		exp->fid = idt; exp->fub = sub;
+		sugarQuadary(lst,FldOp,str,idx);
 		skipSugar("Op",str,idx);
 		sav = *idx;
 		continue;}
 	if (strncmp(str+*idx,"Ext",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;
-		struct Express *exp = sugarTrinary(lst,ExtOp,str,idx);
-		char *idt = 0; hideSugar(&idt,str,idx);
-		int sub; scanSugar(&sub,str,idx);
-		exp->eid = idt; exp->eub = sub;
+		sugarTrinary(lst,ExtOp,str,idx);
 		skipSugar("Op",str,idx);
 		sav = *idx;
 		continue;}
 	if (strncmp(str+*idx,".",1)==0) {
 		*idx += 1;
-		struct Express *exp = sugarTrifix(lst,ExtOp,str,idx);
 		char *idt = 0; hideSugar(&idt,str,idx);
-		int sub; scanSugar(&sub,str,idx);
-		exp->eid = idt; exp->eub = sub;
+		struct Express *exp = sugarTrifix(lst,ExtOp,str,idx);
+		exp->eid = idt;
 		sav = *idx;
 		continue;}
 	if (strncmp(str+*idx,"Tim",3)==0) {

@@ -1907,7 +1907,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:^(return dount+1)idx:0slf:0"..
+	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterWake @mask Op))"..
@@ -1969,11 +1969,16 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz == #0 , #1 ; #0 , #2 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- Eval to change Center at Memorys+1 to single empty string
-		-- Bopy to move head of Center at Memorys to Memorys+1
-		-- Eval to drop head of Center at Memorys
-		-- Eval to cast string at Memorys+1 to Center
+		-- Eval a Dopy of Center at Memorys to cast to Center of string number @bootstr in Memorys+1
+		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@memorys)arg[1]:$(@memorys + #1))"..
+		-- TODO change ExtOp subscript to expression
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@memorys + #1)fnc[0]:$(ImmOp(ExtOp(ext[0]: @_ ext[1]: @bootstr eid:Str(str)))))"..
+		-- Void to increment @bootstr
+		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
+		-- Void slf at Memorys+1 to RegisterSelf and set slf at Memorys+1 to -1
+		-- "mch[%(return jdx())]:Eval(res[0]:$()fnc[0]:$(Non RegisterSelf := ExtOp(ext[0]: @_ ext[1]: #0 eid:Str(slf)) , FldOp(fld[0]: @_ fld[1]: #-1 fld[2]: #0 fid:Str(slf)) , @_ Op))"..
 		-- Qopy to push Center at Memorys+1 to response queue
+		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
@@ -1984,12 +1989,12 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd "..
-		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str old:Op , Imm @_ . old 0 Op , EndOp Op ; @_ Op "..
-		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str uns:Op , Imm @_ . uns 0 Op , EndOp Op ; @_ Op "..
-		 "EO @_ . slf 0 #0 Cmp | EO Cst @_ . mem 0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz 0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem 0 Op , Str vec:Op , Imm @_ . vec 0 Op , EndOp Op ; @_ Op "..
+		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str old:Op , Imm @_ . old #0 Op , EndOp Op ; @_ Op "..
+		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str uns:Op , Imm @_ . uns #0 Op , EndOp Op ; @_ Op "..
+		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2195,12 +2200,10 @@ Express = { -- simple expression
 	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
 	{"put","Express",{["opr"]={["SrcOp"]=true,["ImmOp"]=true}},1},
-	{"fld","Express",{["opr"]={["FldOp"]=true}},2},
+	{"fld","Express",{["opr"]={["FldOp"]=true}},3},
 	{"fid","Str",{["opr"]={["FldOp"]=true}},{}},
-	{"fub","Int",{["opr"]={["FldOp"]=true}},{}},
-	{"ext","Express",{["opr"]={["ExtOp"]=true}},1},
+	{"ext","Express",{["opr"]={["ExtOp"]=true}},2},
 	{"eid","Str",{["opr"]={["ExtOp"]=true}},{}},
-	{"eub","Int",{["opr"]={["ExtOp"]=true}},{}},
 	{"val","Int",{["opr"]={["IntOp"]=true}},{}},
 }
 Machine = { -- info for user defined action

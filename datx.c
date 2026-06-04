@@ -752,17 +752,21 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (FldOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->fld[0],-1);
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
+		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],-1);
 		int num = identField(typ0,exp->fid);
 		if (identSubtype(typ0,num) != typ1) ERROR();
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
-		datxField(dat,dat0,dat1,num,exp->fub,typ0,typ1);
+		if (typ2 != TYPEInt) ERROR();
+		datxField(dat,dat0,dat1,num,*datxIntz(0,dat2),typ0,typ1);
 		free(dat0); free(dat1);} break;
 	case (ExtOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
+		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->ext[1],-1);
 		int num = identField(typ0,exp->eid);
 		int typ1 = identSubtype(typ0,num);
 		if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
-		datxExtract(dat,dat0,num,exp->eub,typ0,typ1);
+		if (typ2 != TYPEInt) ERROR();
+		datxExtract(dat,dat0,num,*datxIntz(0,dat2),typ0,typ1);
 		free(dat0);} break;
 	case (TimOp): {
 		struct timespec ts;

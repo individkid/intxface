@@ -512,8 +512,8 @@ void machineGlob(int sig, int *arg)
 }
 void machineBopy(int sig, int *arg)
 {
-    int count = arg[BopyCount];
     if (sig != BopyArgs) ERROR();
+    int count = arg[BopyCount];
     int src = arg[BopySrc]; int srcSub = arg[BopySrcSub];
     int dst = arg[BopyDst]; int dstSub = arg[BopyDstSub];
     struct Center *srcPtr = centerPull(src);
