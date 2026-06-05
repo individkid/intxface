@@ -309,7 +309,7 @@ Transfer = { -- what user machine does
 	-- Kernel.sent S
 	-- Kernel.global G
 	-- input output matrix M
-	"Size", -- M = GSLT
+	"Size", -- output M depends on UniformWid/Hei
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
 	"Send", -- M = L; S = SL; L = I
@@ -326,6 +326,10 @@ Transfer = { -- what user machine does
 }
 ArgvArg = { -- arguments for machine operations
 	"ArgvSrc",
+}
+SizeArg = {
+	"SizeDst",
+	"SizeDstSub",
 }
 CompArg = {
 	"CompSrc",
