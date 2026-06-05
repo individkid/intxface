@@ -361,10 +361,7 @@ GlobArg = {
 }
 BopyArg = {
 	"BopySrc",
-	"BopySrcSub",
 	"BopyDst",
-	"BopyDstSub",
-	"BopyCount",
 }
 CopyArg = {
 	"CopySrc",
