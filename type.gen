@@ -309,6 +309,7 @@ Transfer = { -- what user machine does
 	-- Kernel.sent S
 	-- Kernel.global G
 	-- input output matrix M
+	"Size", -- M = GSLT
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
 	"Send", -- M = L; S = SL; L = I
@@ -1984,6 +1985,7 @@ Bootstrap = {
 		-- Qopy to push Center at Memorys+1 to response queue
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		-- TODO for Regress and Release, do Send
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2000,6 +2002,7 @@ Bootstrap = {
 		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
+		 -- TODO for pierce returns, change pierce registers, enable manipulation, and do Form
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterPass @nask Op))"..
@@ -2027,12 +2030,12 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
-		-- do Void to change manipulation; do Form
+		-- do Void to change manipulation; do Form if enabled
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSizeMskOp , EndOp Op))"..
-		-- change window matrix
+		-- change window matrix; do Size
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2042,17 +2045,17 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
-		-- do Void to manipulate; do Form if last manipulate was roller
+		-- do Void to change manipulate registers; do Form if enabled and last manipulate was roller; do Comp if enabled
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
-		-- do Void to change manipulation; do Form
+		-- do Void to disable manipulation if enabled, or do pierce to enable
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
-		-- do Void to manipulate; do Form if last manipulate was move
+		-- do Void to change manipulate registers; do Form if enabled and last manipulate was move; do Comp if enabled
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2223,10 +2226,10 @@ Machine = { -- info for user defined action
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"sig","Int",{["xfr"]={["Argv"]=true,
-		["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Size"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={["Argv"]=true,
-		["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Size"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},

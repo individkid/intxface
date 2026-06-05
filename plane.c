@@ -446,11 +446,25 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
 // Kernel.sent S
 // Kernal.global G
 // Matrix M
-// upon cursor or roller move, send machineComp to gpu
-// upon change between cursor and roller, call machineForm
+// upon pipe from other, cursor, or roller, send machineComp to gpu
+// upon change between cursor and roller, or change to manipulation mode, call machineForm
 // periodically send machineSend to pipe
 // upon pipe back from self call machineSelf on it
 // upon pipe from other call machineGlob on it
+// T goes to I without changing Comp, when C is I upon Form
+// L goes to I without changing Comp, upon Send
+// S goes to I without changing Comp, upon last outstanding Self
+void machineSize(int sig, int *arg)
+{
+    struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Center *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
+    // compose for resize -- M = GSLT
+    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
+    machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
+    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
+}
 void machineComp(int sig, int *arg)
 {
     struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
@@ -558,7 +572,8 @@ void machineDopy(int sig, int *arg)
     struct Center *ptr = centerPull(src);
     struct Center *cpy = 0; allocCenter(&cpy,1);
     copyCenter(cpy,ptr);
-    centerPlace(ptr,src); centerPlace(cpy,dst);
+    centerPlace(ptr,src);
+    centerPlace(cpy,dst);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -669,6 +684,7 @@ void machineSwitch(struct Machine *mptr)
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Argv): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineArgv(mptr->sig,arg);} break;
+    case (Size): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSize(mptr->sig,arg);} break;
     case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
     case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
