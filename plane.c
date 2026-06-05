@@ -555,7 +555,10 @@ void machineDopy(int sig, int *arg)
     if (sig != DopyArgs) ERROR();
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
-    centerPlace(centerPull(src),dst);
+    struct Center *ptr = centerPull(src);
+    struct Center *cpy = 0; allocCenter(&cpy,1);
+    copyCenter(cpy,ptr);
+    centerPlace(ptr,src); centerPlace(cpy,dst);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -1168,7 +1171,7 @@ void initBoot()
     planeArgv(size-cmnd,boot+cmnd);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
-    break; case (Bringup): case (Builtin): // no commandline arguments
+    break; case (Bringup): case (Builtin):
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|MachThd),planeWcfg);
@@ -1177,11 +1180,11 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,1000<<8,planeWcfg);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
-    break; case (Regress): // choose how to interpret centers from pipe
+    break; case (Regress):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
-    break; case (Release): // use builtin machine to handle user and pipe
+    break; case (Release):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);

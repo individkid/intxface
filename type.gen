@@ -1947,10 +1947,12 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp , EndOp Op))"..
+		-- this is same as PrssMsk
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
+		-- TODO after SlctMsk above is done, move following config writes to a Center(Str()) on commandline
 		"mch[%(return jdx())]:Void(exp[0]:NonOp(num:5"..
 		 "non[0]:$(SetClickLeft#0Op)"..
 		 "non[1]:$(SetClickBase#0Op)"..
