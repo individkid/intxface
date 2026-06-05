@@ -2244,13 +2244,13 @@ struct ChainState : public BaseState {
         swp->getSwapchain(), UINT64_MAX, acquire, VK_NULL_HANDLE, &imageIndex);
         imageLoc = (Reloc)imageIndex;
         if (imageLoc < 0 || imageLoc >= Relocs) EXIT
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterWake,1<<SizeMsk);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) change->wots(RegisterWake,1<<EoodMsk);
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) EXIT
         framebuffer = swp->getFramebuffer(imageIndex);}
         if (*loc == AfterLoc) {
         // prior depender must interpret location as swap chain semaphore
         if (!presentFrame(present,swp->getSwapchain(),imageIndex,get(imageLoc).syn.sem))
-        change->wots(RegisterWake,1<<SizeMsk);}
+        change->wots(RegisterWake,1<<EoodMsk);}
         // TODO presentFrame might block and signals no fence
         // TODO perhaps run on separate thread and allow block on progress in that thread instead of on fence
         return VK_NULL_HANDLE; // no resources to release, use NullReq

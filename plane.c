@@ -663,7 +663,6 @@ void machineSwitch(struct Machine *mptr)
     switch (mptr->xfr) {default: ERROR();
     case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
-    case (Force): for (int i = 0; i < mptr->num; i++) callJnfo(mptr->cfg[i],machineIval(&mptr->val[i]),planeWcfg); break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Argv): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineArgv(mptr->sig,arg);} break;
@@ -1058,6 +1057,7 @@ int planeRetcfg(int sub)
 }
 int planeTopcfg(int sub)
 {
+    if (callHnfo()) return callKnfo((enum Configure)sub,0,planeRcfg);
     return callJnfo((enum Configure)sub,0,planeRcfg);
 }
 void planeSugar(const char *str)

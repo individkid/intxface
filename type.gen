@@ -53,7 +53,7 @@ Memory = { -- which structure is in the center struction
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
-Resrc = { -- per variation of BaseState
+Resrc = { -- variation of BaseState
 	"SwapRes",
 	"PipeRes",
 	"IndexRes",
@@ -76,22 +76,22 @@ Resrc = { -- per variation of BaseState
 	"BindRes",
 }
 Micro = { -- what runs on gpu
-	"MicroFilRel", -- lr -- MicroFill
-	"MicroFilPie", -- lp
-	"MicroFilCol", -- lc
-	"MicroConPie", -- np -- MicroDebug
-	"MicroFetDrw", -- fd -- MicroTest
-	"MicroFetCol", -- fc
-	"MicroFetPie", -- fp
-	"MicroFetRel", -- fr
-	"MicroVtxDrw", -- vd
-	"MicroVtxCol", -- vc
-	"MicroVtxPie", -- vp
-	"MicroVtxRel", -- vr
-	"MicroCopDrw", -- bd
-	"MicroCopCol", -- bc
-	"MicroCopPie", -- bp
-	"MicroCopRel", -- br
+	"MicroFilRel",
+	"MicroFilPie",
+	"MicroFilCol",
+	"MicroConPie",
+	"MicroFetDrw",
+	"MicroFetCol",
+	"MicroFetPie",
+	"MicroFetRel",
+	"MicroVtxDrw",
+	"MicroVtxCol",
+	"MicroVtxPie",
+	"MicroVtxRel",
+	"MicroCopDrw",
+	"MicroCopCol",
+	"MicroCopPie",
+	"MicroCopRel",
 }
 Decor = { -- fragment shader graph operation
 	"MoveDec", -- move only
@@ -125,7 +125,7 @@ Constant = { -- which constant array to get instructions from
 	"MemoryCon",
 	"ResrcCon",
 }
-Reloc = { -- which argument to pass to separate thread
+Reloc = { -- which argument to pass to gpu thread
 	"ResizeLoc",
 	"ReformLoc",
 	"BeforeLoc", -- like Acquire
@@ -148,7 +148,7 @@ Extent = { -- resource initialization done on gpu thread
 	"TrueExt", -- resize once for side effects
 	"FalseExt", -- resize every time for side effects
 }
-Request = { -- what to do on separate thread
+Request = { -- what to do on gpu thread
 	"BothReq", -- call resize if changed, and call setup
 	"LockReq", -- call setup
 	"SizeReq", -- call resize if changed
@@ -175,7 +175,7 @@ Render = { -- VkFormat
 	"SfloatFrm",
 	"SrgbFrm",
 }
-Format = { -- what to push to separate thread
+Format = { -- what to push to gpu thread
 	"ImageFrm", -- ExclReq FormExt base(implied:src) size(implied:dst) (undefined to readonly)
 	"WonlyFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (readonly to dst)
 	"RonlyFrm", -- BothReq FormExt base(implied:src) size(implied:dst) (dst to readonly)
@@ -219,13 +219,13 @@ Instr = { -- how to push or bind resources
 	"MemIncIns", -- include instructions from Memory
 	"MicIncIns", -- include instructions from Micro
 }
-Quality = { -- quality of service tags for *TagIns
+Quality = { -- quality of service
 	"SnumQua", -- sequence number to depend on resources that depend on same original resource
 	"RbutQua", -- to use resource only after it progresses
 	"RsizQua", -- to resize resources only once
 	"RuseQua", -- resource use qualifier
 }
-Default = { -- for value, interpret constant array as
+Default = { -- constant array value interpretation
 	"TrivDef", -- builtin
 	"BackDef", -- prior
 	"GiveDef", -- given
@@ -299,7 +299,6 @@ Configure = { -- integer constants for user expressions
 Transfer = { -- what user machine does
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
-	"Force", -- machine to configure
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
 	"Argv", -- hide and process
@@ -309,7 +308,7 @@ Transfer = { -- what user machine does
 	-- Kernel.local L
 	-- Kernel.sent S
 	-- Kernel.global G
-	-- Matrix M
+	-- input output matrix M
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
 	"Send", -- M = L; S = SL; L = I
@@ -434,6 +433,7 @@ Mask = { -- signals between threads
 	"PollMsk", -- every glfw wakeup
 	"PrssMsk", -- glfw key pressed
 	"SizeMsk", -- glfw window resized
+	"EoodMsk", -- present frame failed
 	"MoveMsk",
 	"ClckMsk",
 	"RollMsk",
@@ -1915,10 +1915,10 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = Top RegisterWake Op ; tmp = #0 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:14)"..
+		"mch[%(return jdx())]:Nest(lvl:15)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
-		" @tmp != @fns , #0-#15"..
+		" @tmp != @fns , #0-#16"..
 		" EO @tmp - #1 #%(return castMask(\"FnceMsk\")) Cmp , #1"..
 		" EO @tmp - #1 #%(return castMask(\"SlctMsk\")) Cmp , #2"..
 		" EO @tmp - #1 #%(return castMask(\"CnslMsk\")) Cmp , #3"..
@@ -1929,10 +1929,11 @@ Bootstrap = {
 		" EO @tmp - #1 #%(return castMask(\"PollMsk\")) Cmp , #8"..
 		" EO @tmp - #1 #%(return castMask(\"PrssMsk\")) Cmp , #9"..
 		" EO @tmp - #1 #%(return castMask(\"SizeMsk\")) Cmp , #10"..
-		" EO @tmp - #1 #%(return castMask(\"MoveMsk\")) Cmp , #11"..
-		" EO @tmp - #1 #%(return castMask(\"ClckMsk\")) Cmp , #12"..
-		" EO @tmp - #1 #%(return castMask(\"RollMsk\")) Cmp , #13"..
-		" EO @tmp - #1 #%(return castMask(\"UnifMsk\")) Cmp , #14"..
+		" EO @tmp - #1 #%(return castMask(\"EoodMsk\")) Cmp , #11"..
+		" EO @tmp - #1 #%(return castMask(\"MoveMsk\")) Cmp , #12"..
+		" EO @tmp - #1 #%(return castMask(\"ClckMsk\")) Cmp , #13"..
+		" EO @tmp - #1 #%(return castMask(\"RollMsk\")) Cmp , #14"..
+		" EO @tmp - #1 #%(return castMask(\"UnifMsk\")) Cmp , #15"..
 		"Op))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -1950,13 +1951,16 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
-		"mch[%(return jdx())]:Force(num:5"..
-		 "cfg[0]:ClickLeftcfg[1]:ClickBasecfg[2]:ManipLeftcfg[3]:ManipBasecfg[4]:ManipFixed"..
-		 "val[0]:$(#0)val[1]:$(#0)val[2]:$(#-20)val[3]:$(#-20)"..
-		 "val[4]:BitOp(bit:OrBitopb[0]:BitOp(bit:OrBit"..
+		"mch[%(return jdx())]:Void(exp[0]:NonOp(num:5"..
+		 "non[0]:$(SetClickLeft#0Op)"..
+		 "non[1]:$(SetClickBase#0Op)"..
+		 "non[2]:$(SetManipLeft#-20Op)"..
+		 "non[3]:$(SetManipBase#-20Op)"..
+		 "non[4]:SetOp(cgs:ManipFixedset[0]:BitOp(bit:OrBitopb[0]:BitOp(bit:OrBit"..
 		  "opb[0]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Slide\"))))"..
 		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Ortho\")))))"..
 		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Mouse\"))))))"..
+		"))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
 		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
@@ -2030,6 +2034,11 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
+		-- wait for window resize
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
 		-- do Void to manipulate; do Form if last manipulate was roller
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
@@ -2057,7 +2066,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
-		"Force(num:1cfg[0]:RegisterPlanval[0]:CndOp(siz:5"..
+		"Void(exp[0]:NonOp(num:1non[0]:SetOp(cgs:RegisterPlanset[0]:CndOp(siz:5"..
 		-- vulkanCpp: refactor tutorial: Bringup: no commandline args: RegisterShow == 0
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
 		-- planra.lua: test internals: Builtin: no Argument and any other: (RegisterShow & 1) == 0 && (RegisterShow & 30) != 0
@@ -2077,7 +2086,7 @@ Bootstrap = {
 		"lst[1]:IntOp(%(return castPlan(\"Builtin\")))"..
 		"lst[2]:IntOp(%(return castPlan(\"Regress\")))"..
 		"lst[3]:IntOp(%(return castPlan(\"Release\")))"..
-		"lst[4]:IntOp(-1)))"},
+		"lst[4]:IntOp(-1)))))"},
 }
 Execname = {
 	{"Program","Filez","Str","./file"},
@@ -2209,9 +2218,6 @@ Machine = { -- info for user defined action
 	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
 	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
 	{"idx","Express",{["xfr"]={["Stage"]=true,["Tsage"]=true}},1},
-	{"num","Int",{["xfr"]={["Force"]=true}},{}},
-	{"cfg","Configure",{["xfr"]={["Force"]=true}},"num"},
-	{"val","Express",{["xfr"]={["Force"]=true}},"num"},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"sig","Int",{["xfr"]={["Argv"]=true,
