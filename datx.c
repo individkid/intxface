@@ -12,7 +12,6 @@
 void *prefix = 0;
 rktype datxNoteFp = 0;
 retfp retptr = 0;
-retfp topptr = 0;
 setfp setptr = 0;
 setfp wosptr = 0;
 setfp wocptr = 0;
@@ -671,10 +670,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		free(dat0); free(dat1);} break;
 	case (CndOp): {
 		if (exp->siz <= 0) ERROR();
-		for (int i = 0; i < exp->siz; i++) {
+		int tmp = 1; for (int i = 0; i >= 0 && i < exp->siz; i += tmp) {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->cnd[i],-1);
 		if (typ0 != TYPEInt) ERROR();
-		int tmp = *datxIntz(0,dat0); free(dat0);
+		tmp = *datxIntz(0,dat0); free(dat0);
 		if (tmp == 0) {typ = datxEval(dat,&exp->lst[i],typ); break;}}} break;
 	case (NonOp): {
 		int typ0 = TYPEDat; datxNone(dat);
@@ -686,10 +685,6 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (!retptr) ERROR();
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
 		datxInt(dat,retptr(exp->cfg));} break;
-	case (TopOp): {
-		if (!topptr) ERROR();
-		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
-		datxInt(dat,topptr(exp->cfg));} break;
 	case (SetOp): {
 		if (!setptr) ERROR();
 		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
@@ -814,12 +809,9 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxFnptr(retfp ret, retfp top,
-	setfp set, setfp wos, setfp woc, rawfp raw,
-	getfp get, putfp put)
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put)
 {
 	retptr = ret;
-	topptr = top;
 	setptr = set;
 	wosptr = wos;
 	wocptr = woc;

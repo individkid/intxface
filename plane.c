@@ -653,7 +653,7 @@ void machineSwitch(struct Machine *mptr)
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Argv): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineArgv(mptr->sig,arg);} break;
-    case (Size): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSize(mptr->sig,arg);} break;
+    case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSize(mptr->sig,arg);} break;
     case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
     case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
@@ -1043,11 +1043,6 @@ int planeRetcfg(int sub)
 {
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
-int planeTopcfg(int sub)
-{
-    if (callHnfo()) return callKnfo((enum Configure)sub,0,planeRcfg);
-    return callJnfo((enum Configure)sub,0,planeRcfg);
-}
 void planeSugar(const char *str)
 {
     struct Express **exp = 0;
@@ -1120,7 +1115,7 @@ void initSafe()
     callBack(UniformHei,registerUniform);
     callBack(ArgumentInp,registerArgument);
     callBack(ArgumentOut,registerArgument);
-    datxFnptr(planeRetcfg,planeTopcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
 void initBoot()

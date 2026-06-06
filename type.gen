@@ -309,7 +309,7 @@ Transfer = { -- what user machine does
 	-- Kernel.sent S
 	-- Kernel.global G
 	-- input output matrix M
-	"Size", -- output M depends on UniformWid/Hei
+	"Proj", -- output M depends on UniformWid/Hei
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
 	"Send", -- M = L; S = SL; L = I
@@ -473,7 +473,6 @@ Operate = { -- little language expressions
 	"CndOp", -- touring machine
 	"NonOp", -- discard list of values
 	"RetOp", -- config from callback
-	"TopOp", -- blocking ret callback
 	"SetOp", -- callback with config
 	"WosOp", -- callback setbits config
 	"WocOp", -- callback clearbits config
@@ -1884,8 +1883,7 @@ MicroAlt = {
 		{"Micro","MicroVtxDrw","Int","7","Int","0"}, -- MicIncIns.bas
 }
 -- i<Memorys centerPull(i)->mem==i
--- i>=Memorys&&i<Memorys+4 scratchpad as src or dest of Transfer
--- i>Memorys+4 Machine arrays as callable procedures
+-- i>=Memorys scratchpad as src or dest of Transfer
 -- i==Machinez is main machine that waits for bit MachThd in RegisterWake
 -- TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
 -- TODO in Regress, use Center pipe instead of planeTest.
@@ -1916,7 +1914,7 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = Top RegisterWake Op ; tmp = #0 Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = Ret RegisterWake Op ; tmp = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:15)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
@@ -2036,7 +2034,7 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSizeMskOp , EndOp Op))"..
-		-- change window matrix; do Size
+		-- change window matrix; do Proj
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2206,7 +2204,7 @@ Express = { -- simple expression
 	{"lst","Express",{["opr"]={["CndOp"]=true}},"siz"},
 	{"num","Int",{["opr"]={["NonOp"]=true,["PutOp"]=true}},{}},
 	{"non","Express",{["opr"]={["NonOp"]=true,["PutOp"]=true}},"num"},
-	{"cfg","Configure",{["opr"]={["RetOp"]=true,["TopOp"]=true}},{}},
+	{"cfg","Configure",{["opr"]={["RetOp"]=true}},{}},
 	{"cgs","Configure",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},{}},
 	{"set","Express",{["opr"]={["SetOp"]=true,["WosOp"]=true,["WocOp"]=true,["RawOp"]=true}},1},
 	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["StrOp"]=true}},{}},
@@ -2227,10 +2225,10 @@ Machine = { -- info for user defined action
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"sig","Int",{["xfr"]={["Argv"]=true,
-		["Size"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={["Argv"]=true,
-		["Size"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
