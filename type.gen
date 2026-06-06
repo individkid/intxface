@@ -233,13 +233,13 @@ Default = { -- constant array value interpretation
 	"CnstDef", -- TODO append constant to givens
 	"CmntDef",
 }
-Configure = { -- integer constants for user expressions
+Configure = { -- integer variables for user expressions
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
 	"CenterSlf",
 	"CenterPtr", -- whether staged
-	"ArgumentInp", -- staged field
+	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"RegisterCall", -- start wake stop
 	"RegisterMain", -- main machine center
@@ -271,23 +271,23 @@ Configure = { -- integer constants for user expressions
 	"UniformHei", -- height of image
 	"FetchBase", -- fetch modify read
 	"FetchSize", -- fetch modify read
-	"PressKey",
-	"ManipFixed",
-	"ManipLeft",
-	"ManipBase",
-	"ManipAngle",
-	"ClickLeft",
-	"ClickBase",
-	"ClickAngle",
-	"FixedLeft",
-	"FixedBase",
-	"FixedDeep",
-	"NormalLeft",
-	"NormalBase",
-	"NormalDeep",
-	"FocalDepth",
-	"FocalSlope",
-	-- following are scratch registers
+	"PressKey", -- queued keyboard
+	"ManipFixed", -- configured mode
+	"ManipLeft", -- volatile mouse
+	"ManipBase", -- volatile mouse
+	"ManipAngle", -- volatile roller
+	"ClickLeft", -- queued Manip
+	"ClickBase", -- queued Manip
+	"ClickAngle", -- queued Manip
+	"FixedLeft", -- pierce to choose
+	"FixedBase", -- pierce to choose
+	"FixedDeep", -- return from pierce
+	"NormalLeft", -- return from vector
+	"NormalBase", -- return from vector
+	"NormalDeep", -- return from vector
+	"FocalDepth", -- configure for window
+	"FocalSlope", -- configure for window
+	-- following are scratch registers initialized with resource limits
 	"ConstantDescrs",
 	"ConstantMicros",
 	"ConstantFrames",
@@ -1947,10 +1947,10 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp , EndOp Op))"..
-		-- this is same as PrssMsk
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
 		-- TODO after SlctMsk above is done, move following config writes to a Center(Str()) on commandline
 		"mch[%(return jdx())]:Void(exp[0]:NonOp(num:5"..
@@ -1958,10 +1958,11 @@ Bootstrap = {
 		 "non[1]:$(SetClickBase#0Op)"..
 		 "non[2]:$(SetManipLeft#-20Op)"..
 		 "non[3]:$(SetManipBase#-20Op)"..
-		 "non[4]:SetOp(cgs:ManipFixedset[0]:BitOp(bit:OrBitopb[0]:BitOp(bit:OrBit"..
-		  "opb[0]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Slide\"))))"..
-		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Ortho\")))))"..
-		  "opb[1]:BitOp(bit:ShlBitopb[0]:IntOp(1)opb[1]:IntOp(%(return castFixed(\"Mouse\"))))))"..
+		 "non[4]:SetOp(cgs:ManipFixedset[0]:$("..
+		  "(#1<<#%(return castFixed(\"Slide\")))|"..
+		  "(#1<<#%(return castFixed(\"Ortho\")))|"..
+		  "(#1<<#%(return castFixed(\"Mouse\")))"..
+		 "))"..
 		"))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
 		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@memorys))"..
@@ -2002,6 +2003,7 @@ Bootstrap = {
 		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
 		 -- TODO for pierce returns, change pierce registers, enable manipulation, and do Form
+		 -- TODO for relate returns, change sculpt registers, and do Qopy
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterPass @nask Op))"..
@@ -2049,7 +2051,8 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
-		-- do Void to disable manipulation if enabled, or do pierce to enable
+		-- do Void to disable manipulation if enabled, or do pierce with consume of Click registers to enable
+		-- depending on mode, do relate instead of pierce to send instead of enable
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..

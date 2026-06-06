@@ -2504,7 +2504,10 @@ MainState *mptr = 0;
 // glfw callbacks
 void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
+    // TODO queue up if PressKey is nonzero, and have callback deque when PressKey goes zero
+    // TODO set PrssMsk whenever PressKey goes from zero to nonzero
 }
+// TODO queue up click like key, but no need to queue up move or roller
 void glfwResize(GLFWwindow* window, int width, int height) {
     mptr->changeState.poke(UniformWid,width);
     mptr->changeState.write(UniformHei,height);
