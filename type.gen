@@ -1958,11 +1958,11 @@ Bootstrap = {
 		 "non[1]:$(SetClickBase#0Op)"..
 		 "non[2]:$(SetManipLeft#-20Op)"..
 		 "non[3]:$(SetManipBase#-20Op)"..
-		 "non[4]:SetOp(cgs:ManipFixedset[0]:$("..
+		 "non[4]:$(SetManipFixed"..
 		  "(#1<<#%(return castFixed(\"Slide\")))|"..
 		  "(#1<<#%(return castFixed(\"Ortho\")))|"..
 		  "(#1<<#%(return castFixed(\"Mouse\")))"..
-		 "))"..
+		 "Op)"..
 		"))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
 		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@memorys))"..
