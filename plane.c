@@ -456,6 +456,7 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
 // S goes to I without changing Comp, upon last outstanding Self
 void machineSize(int sig, int *arg)
 {
+    if (sig != SizeArgs) ERROR();
     struct Center *dst = machineCenter(sig,arg,SizeArgs,SizeDst,SizeDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SizeArgs,SizeDst,SizeDstSub);
     planeWindow(matrix->mat);
@@ -463,6 +464,7 @@ void machineSize(int sig, int *arg)
 }
 void machineComp(int sig, int *arg)
 {
+    if (sig != CompArgs) ERROR();
     struct Center *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Center *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
@@ -475,6 +477,7 @@ void machineComp(int sig, int *arg)
 }
 void machineForm(int sig, int *arg)
 {
+    if (sig != FormArgs) ERROR();
     struct Center *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub);
     struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
     // change manipulation matrix -- L = LTC'; T = C
@@ -485,6 +488,7 @@ void machineForm(int sig, int *arg)
 }
 void machineSend(int sig, int *arg)
 {
+    if (sig != SendArgs) ERROR();
     struct Center *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Center *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub);
@@ -499,6 +503,7 @@ void machineSend(int sig, int *arg)
 }
 void machineSelf(int sig, int *arg)
 {
+    if (sig != SelfArgs) ERROR();
     struct Center *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Center *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
@@ -511,6 +516,7 @@ void machineSelf(int sig, int *arg)
 }
 void machineGlob(int sig, int *arg)
 {
+    if (sig != GlobArgs) ERROR();
     struct Center *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Center *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub);
@@ -569,6 +575,7 @@ void machineStage(enum Configure cfg, int idx)
     struct Center *ptr = center[idx];
     switch (cfg) {default: ERROR();
     case (CenterPtr): callJnfo(cfg,(ptr!=0),planeWcfg); break;
+    case (CenterInt): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
     case (CenterMem): callJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
     case (CenterSiz): callJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
     case (CenterIdx): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
@@ -580,6 +587,7 @@ void machineTsage(enum Configure cfg, int idx)
     struct Center *ptr = centerPull(idx);
     if (!ptr) allocCenter(&ptr,1);
     switch (cfg) {default: ERROR();
+    case (CenterInt): break; // TODO reallocate so CenterInt is in range
     case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break; // TODO deallocat and zero out siz
     case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break; // TODO reallocate with new siz
     case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;

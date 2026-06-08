@@ -239,6 +239,7 @@ Configure = { -- integer variables for user expressions
 	"CenterIdx",
 	"CenterSlf",
 	"CenterPtr", -- whether staged
+	"CenterInt", -- sample in range
 	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"RegisterCall", -- start wake stop
@@ -1905,6 +1906,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(vertex = #%(return count))Vertexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
+	-- TODO initialize Drawz with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)Machinez(siz:^(return dount+1)idx:0slf:0"..
@@ -1941,9 +1943,38 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSlctMskOp , EndOp Op))"..
-		-- depending on memory type of Center from internal, do Copy Self Glob or Argv
+		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
+		"mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys + #1))"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz == #1) & (?CenterMem == #%(return castMemory(\"Matrixz\"))) & (?CenterSlf == #-1)) , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Tsage(siz:2sav[0]:CenterMemsav[1]:CenterSizidx[0]:$(@memorys + #2))"..
+		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterIntidx[0]:$(@kernel))"..
+		 -- do Self from memorys+1 to kernel[idx], Comp from kernel[idx] to memorys+2, Copy from memorys+2, and Copy from draw
+		 "mch[%(return jdx())]:Self(sig:4arg[0]:$(@memorys + #1)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
+		 "mch[%(return jdx())]:Comp(sig:4arg[0]:$(@kernel)arg[1]:$(?CenterIdx)arg[2]:$(@memorys + #2)arg[3]:$(#0))"..
+		 "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@memorys + #2))"..
+		 "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@draw))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz > #0) & (?CenterMem == #%(return castMemory(\"Matrixz\"))) & (?CenterSlf >= #0)) , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- do Glob from memorys+1 to memorys+2, Copy as matrix number CenterIdx, and Draw
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz > #0) & (?CenterMem == #%(return castMemory(\"Configurez\")))) , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- do Copy from memorys+1
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz > #0) & (?CenterMem == #%(return castMemory(\"Stringz\")))) , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- do Argv from memorys+1
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Nest(lvl:-1)"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp , EndOp Op))"..
@@ -2031,12 +2062,12 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
-		-- do Void to change manipulation; do Form if enabled
+		-- do Void to disable and change manipulation; do Form
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSizeMskOp , EndOp Op))"..
-		-- change window matrix; do Proj
+		-- change window matrix; do Proj and Draw
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2046,7 +2077,7 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
-		-- do Void to change manipulate registers; do Form if enabled and last manipulate was roller; do Comp if enabled
+		-- do Void to change manipulate registers; do Form if enabled and last manipulate was roller; do Comp and Draw if enabled
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2057,7 +2088,7 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
-		-- do Void to change manipulate registers; do Form if enabled and last manipulate was move; do Comp if enabled
+		-- do Void to change manipulate registers; do Form if enabled and last manipulate was move; do Comp and Draw if enabled
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
