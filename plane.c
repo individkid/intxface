@@ -582,14 +582,80 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterSlf): callJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
     if (postSafe(copySem) != 1) ERROR();
 }
+struct initCenter {
+    int siz;
+    struct Center *src;
+    struct Center *dst;
+};
+#define INITSTRUCT(NAME,NUM,TYPE)\
+void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
+{struct initCenter *cst = (struct initCenter *)arg;\
+int ofs = (char*)dst-(char*)cst->dst;\
+TYPE *src = (TYPE *)((char*)cst->src+ofs);\
+if (idx >= 0 && idx < cst->src->siz) {copy ## NAME(dst,src);}\
+else {TYPE init = {0}; *dst = init;}}
+#define INITPOINTER(NAME,NUM,TYPE)\
+void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
+{struct initCenter *cst = (struct initCenter *)arg;\
+int ofs = (char*)dst-(char*)cst->dst;\
+TYPE *src = (TYPE *)((char*)cst->src+ofs);\
+if (idx >= 0 && idx < cst->src->siz) {assign ## NAME(dst,*src);}\
+else {TYPE init = {0}; *dst = init;}}
+#define INITBASIC(NAME,NUM,TYPE)\
+void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
+{struct initCenter *cst = (struct initCenter *)arg;\
+int ofs = (char*)dst-(char*)cst->dst;\
+TYPE *src = (TYPE *)((char*)cst->src+ofs);\
+if (idx >= 0 && idx < cst->src->siz) {*dst = *src;}\
+else {*dst = 0;}}
+FOREACH_INNER(INITBASIC)
+FOREACH_POINTER(INITPOINTER)
+FOREACH_ENUM(INITBASIC)
+FOREACH_STRUCT(INITSTRUCT)
+#define INITFUNC(NAME,NUM,TYPE) machineInit ## NAME,
+struct initFunc tsage = {
+FOREACH_INNER(INITFUNC)
+FOREACH_POINTER(INITFUNC)
+FOREACH_ENUM(INITFUNC)
+FOREACH_STRUCT(INITFUNC)
+};
+void machineInt(int *dst, int fld, int idx, struct initFunc *ptr, void *arg)
+{
+    struct initCenter *cst = (struct initCenter *)arg;
+    int ofs = (char*)dst-(char*)cst->dst;
+    int *src = (int*)((char*)cst->src+ofs);
+    if (fld == 1) *dst = cst->siz;
+    else if (fld < 4) *dst = *src;
+    else if (idx >= 0 && idx < cst->src->siz) *dst = *src;
+    else *dst = 0;
+}
+void machineKer(struct Kernel *dst, int fld, int idx, struct initFunc *fnc, void *arg)
+{
+    struct initCenter *cst = (struct initCenter *)arg;
+    if (idx >= 0 && idx < cst->src->siz) {
+    copyKernel(dst,&cst->src->ker[idx]);}
+    else {
+    identmat(dst->saved.mat,4);
+    identmat(dst->local.mat,4);
+    identmat(dst->sent.mat,4);
+    identmat(dst->global.mat,4);}
+}
+void machineInit(struct Center **ptr, int siz)
+{
+    struct initCenter init = {}; init.siz = siz; init.src = *ptr; init.dst = 0;
+    tsage.initInt = machineInt; tsage.initKernel = machineKer;
+    allocCenter(&init.dst,1); initCenter(init.dst,0,0,&tsage,&init);
+    tsage.initInt = machineInitInt; tsage.initKernel = machineInitKernel;
+    freeCenter(*ptr); allocCenter(ptr,0); *ptr = init.dst;
+}
 void machineTsage(enum Configure cfg, int idx)
 {
     struct Center *ptr = centerPull(idx);
     if (!ptr) allocCenter(&ptr,1);
     switch (cfg) {default: ERROR();
-    case (CenterInt): break; // TODO reallocate so CenterInt is in range
-    case (CenterMem): ptr->mem = callInfo(cfg,0,planeRcfg); break; // TODO deallocat and zero out siz
-    case (CenterSiz): ptr->siz = callInfo(cfg,0,planeRcfg); break; // TODO reallocate with new siz
+    case (CenterInt): {int idx = callInfo(cfg,0,planeRcfg); if (idx >= ptr->siz) machineInit(&ptr,idx);} break;
+    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = callInfo(cfg,0,planeRcfg); break;
+    case (CenterSiz): machineInit(&ptr,callInfo(cfg,0,planeRcfg)); break;
     case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
     case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
     centerPlace(ptr,idx);

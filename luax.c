@@ -241,7 +241,6 @@ char *nestCall(char *dst, const char *exp) {
 	if (lua_pcall(luastate,0,1,0) != LUA_OK) {luaxErr(); return 0;}
 	int len = strlen(lua_tostring(luastate,-1));
 	dst = realloc(dst,len+1); strncpy(dst,lua_tostring(luastate,-1),len+1);
-	fprintf(stderr,"nestCall %s\n",dst);
 	lua_pop(luastate,1);
 	return dst;
 }

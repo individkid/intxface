@@ -1120,6 +1120,19 @@ function showDefine(list)
 	end
 	return result
 end
+function showInit(list)
+	local result = ""
+	result = result.."struct initFunc;\n"
+	for k,v in ipairs(list) do
+		result = result.."typedef void (*FUNC"..v..")("..showTypeCF(v).." *ptr, int fld, int idx, struct initFunc *fnc, void *arg);\n"
+	end
+	result = result.."struct initFunc {\n"
+	for k,v in ipairs(list) do
+		result = result..showIndent(1).."FUNC"..v.." init"..v..";\n"
+	end
+	result = result.."};"
+	return result
+end
 function showForeach(list)
 	local result = ""
 	result = result.."#define FOREACH_BASIC(APPLY)"
@@ -1220,6 +1233,64 @@ function showCopyC(name,struct)
 			result = result..showIndent(depth).."assignDat(&"..lval..","..rval..");\n"
 		else
 			result = result..showIndent(depth)..lval.." = "..rval..";\n"
+		end
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+	end
+	result = result.."}"
+	return result
+end
+function showInitC(name,struct)
+	local result = ""
+	result = result.."void init"..name.."(struct "..name.." *ptr, int fld, int idx, struct initFunc *fnc, void *arg)"
+	if prototype then return result..";\n" end
+	result = result.."\n{\n"
+	result = result..showIndent(1).."if (fnc == 0 || ptr == 0) ERROR();\n"
+	result = result..showIndent(1).."free"..name.."(ptr);\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limits = showLimitsC(vl)
+		local depth = 1
+		local lval = "ptr->"..vl[1] -- NOTE expects size field before array fields
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+		end
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number") then
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..","..vl[4]..");\n"
+		elseif (type(vl[4]) == "string" and vl[4] ~= "") then
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (not (Structz[vl[2]] == nil)) then
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."else {struct "..vl[2].." init = {0}; "..lval.." = init;}\n"
+		elseif (not (Enumz[vl[2]] == nil)) then
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."else "..lval.." = 0;\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."else assignStr(&"..lval..",\"\");\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."else assignDat(&"..lval..",0);\n"
+		else
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."else "..lval.." = 0;\n"
 		end
 		for key,val in ipairs(limits) do
 			depth = depth - 1
@@ -2655,6 +2726,7 @@ function showFuncC(args)
 	result = result..showLtypeC(types).."\n"
 	result = result..showIdentC(types).."\n" end
 	result = result..showCall(Structs,Structz,showCopyC,args,"copy").."\n"
+	result = result..showCall(Structs,Structz,showInitC,args,"init").."\n"
 	result = result..showCall(Structs,Structz,showFvalidC,args,"fvalid").."\n"
 	result = result..showCall(Structs,Structz,showFreadC,args,"fread").."\n"
 	result = result..showCall(Structs,Structz,showFwriteC,args,"fwrite").."\n"
@@ -2670,6 +2742,7 @@ function showCallH()
 	local types = listFlatten({{"Chr","Int","Int32","New","Num","Old","Str","Dat"},Enums,Structs})
 	result = result..showCall(Enums,Enumz,showEnumC).."\n"
 	result = result..showCall(Structs,Structz,showStructC).."\n"
+	result = result..showInit(types).."\n"
 	result = result..showDefine(types).."\n"
 	result = result..showForeach(types).."\n"
 	prototype = true
