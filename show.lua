@@ -1124,7 +1124,7 @@ function showInit(list)
 	local result = ""
 	result = result.."struct initFunc;\n"
 	for k,v in ipairs(list) do
-		result = result.."typedef void (*FUNC"..v..")("..showTypeCF(v).." *ptr, int fld, int idx, struct initFunc *fnc, void *arg);\n"
+		result = result.."typedef void (*FUNC"..v..")("..showTypeCF(v).." *ptr, int num, int fld, int sub, struct initFunc *fnc, void *arg);\n"
 	end
 	result = result.."struct initFunc {\n"
 	for k,v in ipairs(list) do
@@ -1280,19 +1280,19 @@ function showInitC(name,struct)
 			depth = depth + 1
 		end
 		if (not (Structz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else {struct "..vl[2].." init = {0}; "..lval.." = init;}\n"
 		elseif (not (Enumz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else "..lval.." = 0;\n"
 		elseif (vl[2] == "Str") then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else assignStr(&"..lval..",\"\");\n"
 		elseif (vl[2] == "Dat") then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else assignDat(&"..lval..",0);\n"
 		else
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else "..lval.." = 0;\n"
 		end
 		for key,val in ipairs(limits) do

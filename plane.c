@@ -588,25 +588,25 @@ struct initCenter {
     struct Center *dst;
 };
 #define INIT_STRUCT(NAME,NUM,TYPE)\
-void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
+void machineInit ## NAME(TYPE *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)\
 {struct initCenter *cst = (struct initCenter *)arg;\
 int ofs = (char*)dst-(char*)cst->dst;\
 TYPE *src = (TYPE *)((char*)cst->src+ofs);\
-if (idx >= 0 && idx < cst->src->siz) {copy ## NAME(dst,src);}\
+if (sub >= 0 && sub < cst->src->siz) {copy ## NAME(dst,src);}\
 else {TYPE init = {0}; *dst = init;}}
 #define INIT_POINTER(NAME,NUM,TYPE)\
-void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
+void machineInit ## NAME(TYPE *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)\
 {struct initCenter *cst = (struct initCenter *)arg;\
 int ofs = (char*)dst-(char*)cst->dst;\
 TYPE *src = (TYPE *)((char*)cst->src+ofs);\
-if (idx >= 0 && idx < cst->src->siz) {assign ## NAME(dst,*src);}\
+if (sub >= 0 && sub < cst->src->siz) {assign ## NAME(dst,*src);}\
 else {TYPE init = {0}; *dst = init;}}
 #define INIT_BASIC(NAME,NUM,TYPE)\
-void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
+void machineInit ## NAME(TYPE *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)\
 {struct initCenter *cst = (struct initCenter *)arg;\
 int ofs = (char*)dst-(char*)cst->dst;\
 TYPE *src = (TYPE *)((char*)cst->src+ofs);\
-if (idx >= 0 && idx < cst->src->siz) {*dst = *src;}\
+if (sub >= 0 && sub < cst->src->siz) {*dst = *src;}\
 else {*dst = 0;}}
 FOREACH_INNER(INIT_BASIC)
 FOREACH_POINTER(INIT_POINTER)
@@ -619,26 +619,26 @@ FOREACH_POINTER(INIT_FUNC)
 FOREACH_ENUM(INIT_FUNC)
 FOREACH_STRUCT(INIT_FUNC)
 };
-void machineMem(enum Memory *dst, int fld, int idx, struct initFunc *ptr, void *arg)
+void machineMem(enum Memory *dst, int num, int fld, int sub, struct initFunc *ptr, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
     *dst = cst->src->mem;
 }
-void machineInt(int *dst, int fld, int idx, struct initFunc *ptr, void *arg)
+void machineInt(int *dst, int num, int fld, int sub, struct initFunc *ptr, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
     int ofs = (char*)dst-(char*)cst->dst;
     int *src = (int*)((char*)cst->src+ofs);
     if (fld == 1) *dst = cst->siz;
     else if (fld < 4) *dst = *src;
-    else if (idx >= 0 && idx < cst->src->siz) *dst = *src;
+    else if (sub >= 0 && sub < cst->src->siz) *dst = *src;
     else *dst = 0;
 }
-void machineKer(struct Kernel *dst, int fld, int idx, struct initFunc *fnc, void *arg)
+void machineKer(struct Kernel *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
-    if (idx >= 0 && idx < cst->src->siz) {
-    copyKernel(dst,&cst->src->ker[idx]);}
+    if (sub >= 0 && sub < cst->src->siz) {
+    copyKernel(dst,&cst->src->ker[sub]);}
     else {
     identmat(dst->saved.mat,4);
     identmat(dst->local.mat,4);
