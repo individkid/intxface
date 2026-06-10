@@ -1122,15 +1122,7 @@ function showDefine(list)
 end
 function showInit(list)
 	local result = ""
-	result = result.."struct initFunc;\n"
-	for k,v in ipairs(list) do
-		result = result.."typedef void (*FUNC"..v..")("..showTypeCF(v).." *ptr, int num, int fld, int sub, struct initFunc *fnc, void *arg);\n"
-	end
-	result = result.."struct initFunc {\n"
-	for k,v in ipairs(list) do
-		result = result..showIndent(1).."FUNC"..v.." init"..v..";\n"
-	end
-	result = result.."};"
+	result = result.."typedef void (*initFunc)(int num, int fld, int sub, int typ, void *arg);\n"
 	return result
 end
 function showForeach(list)
@@ -1248,7 +1240,7 @@ function showCopyC(name,struct)
 end
 function showInitC(name,struct)
 	local result = ""
-	result = result.."void init"..name.."(struct "..name.." *ptr, struct initFunc *fnc, void *arg)"
+	result = result.."void init"..name.."(struct "..name.." *ptr, initFunc fnc, void *arg)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."if (fnc == 0 || ptr == 0) ERROR();\n"
@@ -1280,30 +1272,25 @@ function showInitC(name,struct)
 			depth = depth + 1
 		end
 		if (not (Structz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
-			result = result..showIndent(depth).."else {struct "..vl[2].." init = {0}; "..lval.." = init;}\n"
+			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
 		elseif (not (Enumz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
-			result = result..showIndent(depth).."else "..lval.." = 0;\n"
+			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
 		elseif (vl[2] == "Str") then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
-			result = result..showIndent(depth).."else assignStr(&"..lval..",\"\");\n"
+			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
 		elseif (vl[2] == "Dat") then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
-			result = result..showIndent(depth).."else assignDat(&"..lval..",0);\n"
+			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
 		else
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",TYPE"..name..",fld,"..sub..",fnc,arg);\n"
-			result = result..showIndent(depth).."else "..lval.." = 0;\n"
+			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
 		end
 		for key,val in ipairs(limits) do
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
+		result = result..showIndent(depth).."fld += 1;\n"
 		if (condit ~= "") then
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
-		result = result..showIndent(depth).."fld += 1;\n"
 	end
 	result = result.."}"
 	return result

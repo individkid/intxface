@@ -583,74 +583,37 @@ void machineStage(enum Configure cfg, int idx)
     if (postSafe(copySem) != 1) ERROR();
 }
 struct initCenter {
-    int siz;
+    int siz, idx;
     struct Center *src;
     struct Center *dst;
 };
-#define INIT_STRUCT(NAME,NUM,TYPE)\
-void machineInit ## NAME(TYPE *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)\
-{struct initCenter *cst = (struct initCenter *)arg;\
-int ofs = (char*)dst-(char*)cst->dst;\
-TYPE *src = (TYPE *)((char*)cst->src+ofs);\
-if (sub >= 0 && sub < cst->src->siz) {copy ## NAME(dst,src);}\
-else {TYPE init = {0}; *dst = init;}}
-#define INIT_POINTER(NAME,NUM,TYPE)\
-void machineInit ## NAME(TYPE *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)\
-{struct initCenter *cst = (struct initCenter *)arg;\
-int ofs = (char*)dst-(char*)cst->dst;\
-TYPE *src = (TYPE *)((char*)cst->src+ofs);\
-if (sub >= 0 && sub < cst->src->siz) {assign ## NAME(dst,*src);}\
-else {TYPE init = {0}; *dst = init;}}
-#define INIT_BASIC(NAME,NUM,TYPE)\
-void machineInit ## NAME(TYPE *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)\
-{struct initCenter *cst = (struct initCenter *)arg;\
-int ofs = (char*)dst-(char*)cst->dst;\
-TYPE *src = (TYPE *)((char*)cst->src+ofs);\
-if (sub >= 0 && sub < cst->src->siz) {*dst = *src;}\
-else {*dst = 0;}}
-FOREACH_INNER(INIT_BASIC)
-FOREACH_POINTER(INIT_POINTER)
-FOREACH_ENUM(INIT_BASIC)
-FOREACH_STRUCT(INIT_STRUCT)
-#define INIT_FUNC(NAME,NUM,TYPE) machineInit ## NAME,
-struct initFunc tsage = {
-FOREACH_INNER(INIT_FUNC)
-FOREACH_POINTER(INIT_FUNC)
-FOREACH_ENUM(INIT_FUNC)
-FOREACH_STRUCT(INIT_FUNC)
-};
-void machineMem(enum Memory *dst, int num, int fld, int sub, struct initFunc *ptr, void *arg)
+void machineField(int num, int fld, int sub, int typ, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
-    *dst = cst->src->mem;
-}
-void machineInt(int *dst, int num, int fld, int sub, struct initFunc *ptr, void *arg)
-{
-    struct initCenter *cst = (struct initCenter *)arg;
-    int ofs = (char*)dst-(char*)cst->dst;
-    int *src = (int*)((char*)cst->src+ofs);
-    if (fld == 1) *dst = cst->siz;
-    else if (fld < 4) *dst = *src;
-    else if (sub >= 0 && sub < cst->src->siz) *dst = *src;
-    else *dst = 0;
-}
-void machineKer(struct Kernel *dst, int num, int fld, int sub, struct initFunc *fnc, void *arg)
-{
-    struct initCenter *cst = (struct initCenter *)arg;
-    if (sub >= 0 && sub < cst->src->siz) {
-    copyKernel(dst,&cst->src->ker[sub]);}
-    else {
-    identmat(dst->saved.mat,4);
-    identmat(dst->local.mat,4);
-    identmat(dst->sent.mat,4);
-    identmat(dst->global.mat,4);}
+    if (num == TYPECenter && fld == 1) {
+    writeInt(cst->siz,cst->idx);
+    freadCenter(cst->dst,fld,sub,cst->idx);}
+    else if (num == TYPECenter && fld < 4) {
+    fwriteCenter(cst->src,fld,sub,cst->idx);
+    freadCenter(cst->dst,fld,sub,cst->idx);}
+    else if (num == TYPECenter && typ == TYPEKernel && sub < cst->src->siz) {
+    fwriteCenter(cst->src,fld,sub,cst->idx);
+    freadCenter(cst->dst,fld,sub,cst->idx);}
+    else if (num == TYPECenter && typ == TYPEKernel) {
+    struct Kernel init;
+    identmat(init.saved.mat,4);
+    identmat(init.local.mat,4);
+    identmat(init.sent.mat,4);
+    identmat(init.global.mat,4);
+    writeKernel(&init,cst->idx);
+    freadCenter(cst->dst,fld,sub,cst->idx);}
 }
 void machineInit(struct Center **ptr, int siz)
 {
     struct initCenter init = {}; init.siz = siz; init.src = *ptr; init.dst = 0;
-    tsage.initMemory = machineMem; tsage.initInt = machineInt; tsage.initKernel = machineKer;
-    allocCenter(&init.dst,1); initCenter(init.dst,&tsage,&init);
-    tsage.initMemory = machineInitMemory; tsage.initInt = machineInitInt; tsage.initKernel = machineInitKernel;
+    // TODO open init.idx as *ptr for reading fields
+    allocCenter(&init.dst,1); initCenter(init.dst,machineField,&init);
+    // TODO close init.idx
     freeCenter(*ptr); allocCenter(ptr,0); *ptr = init.dst;
 }
 void machineTsage(enum Configure cfg, int idx)
