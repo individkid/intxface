@@ -619,6 +619,11 @@ FOREACH_POINTER(INIT_FUNC)
 FOREACH_ENUM(INIT_FUNC)
 FOREACH_STRUCT(INIT_FUNC)
 };
+void machineMem(enum Memory *dst, int fld, int idx, struct initFunc *ptr, void *arg)
+{
+    struct initCenter *cst = (struct initCenter *)arg;
+    *dst = cst->src->mem;
+}
 void machineInt(int *dst, int fld, int idx, struct initFunc *ptr, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
@@ -643,9 +648,9 @@ void machineKer(struct Kernel *dst, int fld, int idx, struct initFunc *fnc, void
 void machineInit(struct Center **ptr, int siz)
 {
     struct initCenter init = {}; init.siz = siz; init.src = *ptr; init.dst = 0;
-    tsage.initInt = machineInt; tsage.initKernel = machineKer;
+    tsage.initMemory = machineMem; tsage.initInt = machineInt; tsage.initKernel = machineKer;
     allocCenter(&init.dst,1); initCenter(init.dst,&tsage,&init);
-    tsage.initInt = machineInitInt; tsage.initKernel = machineInitKernel;
+    tsage.initMemory = machineInitMemory; tsage.initInt = machineInitInt; tsage.initKernel = machineInitKernel;
     freeCenter(*ptr); allocCenter(ptr,0); *ptr = init.dst;
 }
 void machineTsage(enum Configure cfg, int idx)
