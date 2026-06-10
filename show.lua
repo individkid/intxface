@@ -1248,11 +1248,12 @@ function showCopyC(name,struct)
 end
 function showInitC(name,struct)
 	local result = ""
-	result = result.."void init"..name.."(struct "..name.." *ptr, int fld, int idx, struct initFunc *fnc, void *arg)"
+	result = result.."void init"..name.."(struct "..name.." *ptr, struct initFunc *fnc, void *arg)"
 	if prototype then return result..";\n" end
 	result = result.."\n{\n"
 	result = result..showIndent(1).."if (fnc == 0 || ptr == 0) ERROR();\n"
 	result = result..showIndent(1).."free"..name.."(ptr);\n"
+	result = result..showIndent(1).."int fld = 0;\n"
 	for ky,vl in ipairs(struct) do
 		local condit = showCondC(vl)
 		local limits = showLimitsC(vl)
@@ -1260,8 +1261,10 @@ function showInitC(name,struct)
 		local lval = "ptr->"..vl[1] -- NOTE expects size field before array fields
 		local alloc = "alloc"..vl[2].."("
 		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
+		sub = "0"
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
+			sub = "sub"..key
 		end
 		if (condit ~= "") then
 			result = result..showIndent(depth).."if ("..condit..") {\n"
@@ -1277,19 +1280,19 @@ function showInitC(name,struct)
 			depth = depth + 1
 		end
 		if (not (Structz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else {struct "..vl[2].." init = {0}; "..lval.." = init;}\n"
 		elseif (not (Enumz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else "..lval.." = 0;\n"
 		elseif (vl[2] == "Str") then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else assignStr(&"..lval..",\"\");\n"
 		elseif (vl[2] == "Dat") then
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else assignDat(&"..lval..",0);\n"
 		else
-			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,idx,fnc,arg);\n"
+			result = result..showIndent(depth).."if (fnc->init"..vl[2]..") fnc->init"..vl[2].."(&"..lval..",fld,"..sub..",fnc,arg);\n"
 			result = result..showIndent(depth).."else "..lval.." = 0;\n"
 		end
 		for key,val in ipairs(limits) do
@@ -1300,6 +1303,7 @@ function showInitC(name,struct)
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
+		result = result..showIndent(depth).."fld += 1;\n"
 	end
 	result = result.."}"
 	return result

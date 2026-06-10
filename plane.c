@@ -587,37 +587,37 @@ struct initCenter {
     struct Center *src;
     struct Center *dst;
 };
-#define INITSTRUCT(NAME,NUM,TYPE)\
+#define INIT_STRUCT(NAME,NUM,TYPE)\
 void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
 {struct initCenter *cst = (struct initCenter *)arg;\
 int ofs = (char*)dst-(char*)cst->dst;\
 TYPE *src = (TYPE *)((char*)cst->src+ofs);\
 if (idx >= 0 && idx < cst->src->siz) {copy ## NAME(dst,src);}\
 else {TYPE init = {0}; *dst = init;}}
-#define INITPOINTER(NAME,NUM,TYPE)\
+#define INIT_POINTER(NAME,NUM,TYPE)\
 void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
 {struct initCenter *cst = (struct initCenter *)arg;\
 int ofs = (char*)dst-(char*)cst->dst;\
 TYPE *src = (TYPE *)((char*)cst->src+ofs);\
 if (idx >= 0 && idx < cst->src->siz) {assign ## NAME(dst,*src);}\
 else {TYPE init = {0}; *dst = init;}}
-#define INITBASIC(NAME,NUM,TYPE)\
+#define INIT_BASIC(NAME,NUM,TYPE)\
 void machineInit ## NAME(TYPE *dst, int fld, int idx, struct initFunc *fnc, void *arg)\
 {struct initCenter *cst = (struct initCenter *)arg;\
 int ofs = (char*)dst-(char*)cst->dst;\
 TYPE *src = (TYPE *)((char*)cst->src+ofs);\
 if (idx >= 0 && idx < cst->src->siz) {*dst = *src;}\
 else {*dst = 0;}}
-FOREACH_INNER(INITBASIC)
-FOREACH_POINTER(INITPOINTER)
-FOREACH_ENUM(INITBASIC)
-FOREACH_STRUCT(INITSTRUCT)
-#define INITFUNC(NAME,NUM,TYPE) machineInit ## NAME,
+FOREACH_INNER(INIT_BASIC)
+FOREACH_POINTER(INIT_POINTER)
+FOREACH_ENUM(INIT_BASIC)
+FOREACH_STRUCT(INIT_STRUCT)
+#define INIT_FUNC(NAME,NUM,TYPE) machineInit ## NAME,
 struct initFunc tsage = {
-FOREACH_INNER(INITFUNC)
-FOREACH_POINTER(INITFUNC)
-FOREACH_ENUM(INITFUNC)
-FOREACH_STRUCT(INITFUNC)
+FOREACH_INNER(INIT_FUNC)
+FOREACH_POINTER(INIT_FUNC)
+FOREACH_ENUM(INIT_FUNC)
+FOREACH_STRUCT(INIT_FUNC)
 };
 void machineInt(int *dst, int fld, int idx, struct initFunc *ptr, void *arg)
 {
@@ -644,7 +644,7 @@ void machineInit(struct Center **ptr, int siz)
 {
     struct initCenter init = {}; init.siz = siz; init.src = *ptr; init.dst = 0;
     tsage.initInt = machineInt; tsage.initKernel = machineKer;
-    allocCenter(&init.dst,1); initCenter(init.dst,0,0,&tsage,&init);
+    allocCenter(&init.dst,1); initCenter(init.dst,&tsage,&init);
     tsage.initInt = machineInitInt; tsage.initKernel = machineInitKernel;
     freeCenter(*ptr); allocCenter(ptr,0); *ptr = init.dst;
 }
