@@ -611,10 +611,10 @@ void machineField(int num, int fld, int sub, int typ, void *arg)
 void machineInit(struct Center **ptr, int siz)
 {
     struct initCenter init = {}; init.siz = siz; init.src = *ptr; init.dst = 0;
-    // TODO open init.idx as *ptr for reading fields
-    allocCenter(&init.dst,1); initCenter(init.dst,machineField,&init);
-    // TODO close init.idx
-    freeCenter(*ptr); allocCenter(ptr,0); *ptr = init.dst;
+    init.idx = openPipe(); allocCenter(&init.dst,1);
+    initCenter(init.dst,machineField,&init);
+    closeIdent(init.idx); freeCenter(*ptr); allocCenter(ptr,0);
+    *ptr = init.dst;
 }
 void machineTsage(enum Configure cfg, int idx)
 {
