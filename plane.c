@@ -626,9 +626,9 @@ void machineTsage(enum Configure cfg, int idx)
     struct Center *ptr = centerPull(idx);
     if (!ptr) allocCenter(&ptr,1);
     switch (cfg) {default: ERROR();
-    case (CenterInt): {int idx = callInfo(cfg,0,planeRcfg); if (idx >= ptr->siz) machineInit(&ptr,idx);} break;
+    case (CenterInt): {int sub = callInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) machineInit(&ptr,sub+1);} break;
     case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSiz): machineInit(&ptr,callInfo(cfg,0,planeRcfg)); break;
+    case (CenterSiz): {int siz = callInfo(cfg,0,planeRcfg); if (siz != ptr->siz) machineInit(&ptr,siz);} break;
     case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
     case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
     centerPlace(ptr,idx);
