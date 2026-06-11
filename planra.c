@@ -20,6 +20,12 @@ int datxRegex(const char *lft, const char *rgt)
 	return datxRegexe(lft,datxRegcmp(rgt));
 }
 
+void machineInit(struct Center **ptr, int siz);
+extern int loopfd;
+int hideCenter(struct Center *ptr, const char *str, int *len);
+void showCenter(struct Center *ptr, char **str);
+void allocCenter(struct Center **ptr, int siz);
+
 int main()
 {
 	void *ptr = 0;
@@ -45,5 +51,16 @@ int main()
 	if (datxRegex("abdef","ab[cd]ef") != 1) ERROR();
 	if (datxRegex("abcef","ab[cd]ef") != 1) ERROR();
 	if (datxRegex("abef","ab[cd]ef") != 0) ERROR();
+	const char *str = "Center(mem:Kernelzsiz:0idx:0slf:0)"; struct Center *ctr = 0; allocCenter(&ctr,1); int len = 0;
+	if (hideCenter(ctr,str,&len) != 1 || len != strlen(str)) ERROR();
+	loopfd = openPipe(); machineInit(&ctr,1);
+	if (ctr->mem != Kernelz || ctr->siz != 1) ERROR();
+	float chk[16]; identmat(chk,4);
+	// for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) fprintf(stderr," %01.1f",*matrc(ctr->ker->saved.mat,i,j,4)); fprintf(stderr,"\n");}
+	// for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) fprintf(stderr," %01.1f",*matrc(chk,i,j,4)); fprintf(stderr,"\n");}
+	for (int i = 0; i < 16; i++) if (ctr->ker->saved.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker->local.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker->sent.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker->global.mat[i] != chk[i]) ERROR();
 	return 0;
 }

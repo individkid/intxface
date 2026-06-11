@@ -1286,11 +1286,11 @@ function showInitC(name,struct)
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
-		result = result..showIndent(depth).."fld += 1;\n"
 		if (condit ~= "") then
 			depth = depth - 1
 			result = result..showIndent(depth).."}\n"
 		end
+		result = result..showIndent(depth).."fld += 1;\n"
 	end
 	result = result.."}"
 	return result
