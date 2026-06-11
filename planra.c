@@ -51,16 +51,26 @@ int main()
 	if (datxRegex("abdef","ab[cd]ef") != 1) ERROR();
 	if (datxRegex("abcef","ab[cd]ef") != 1) ERROR();
 	if (datxRegex("abef","ab[cd]ef") != 0) ERROR();
-	const char *str = "Center(mem:Kernelzsiz:0idx:0slf:0)"; struct Center *ctr = 0; allocCenter(&ctr,1); int len = 0;
-	if (hideCenter(ctr,str,&len) != 1 || len != strlen(str)) ERROR();
-	loopfd = openPipe(); machineInit(&ctr,1);
-	if (ctr->mem != Kernelz || ctr->siz != 1) ERROR();
+	const char *st1 = "Kernel(saved:Matrix(mat[0]:0.0mat[1]:0.1mat[2]:0.2mat[3]:0.3mat[4]:1.0mat[5]:1.1mat[6]:1.2mat[7]:1.3mat[8]:2.0mat[9]:2.1mat[10]:2.2mat[11]:2.3mat[12]:3.0mat[13]:3.1mat[14]:3.2mat[15]:3.3)local:Matrix(mat[0]:0.0mat[1]:0.1mat[2]:0.2mat[3]:0.3mat[4]:1.0mat[5]:1.1mat[6]:1.2mat[7]:1.3mat[8]:2.0mat[9]:2.1mat[10]:2.2mat[11]:2.3mat[12]:3.0mat[13]:3.1mat[14]:3.2mat[15]:3.3)sent:Matrix(mat[0]:0.0mat[1]:0.1mat[2]:0.2mat[3]:0.3mat[4]:1.0mat[5]:1.1mat[6]:1.2mat[7]:1.3mat[8]:2.0mat[9]:2.1mat[10]:2.2mat[11]:2.3mat[12]:3.0mat[13]:3.1mat[14]:3.2mat[15]:3.3)global:Matrix(mat[0]:0.0mat[1]:0.1mat[2]:0.2mat[3]:0.3mat[4]:1.0mat[5]:1.1mat[6]:1.2mat[7]:1.3mat[8]:2.0mat[9]:2.1mat[10]:2.2mat[11]:2.3mat[12]:3.0mat[13]:3.1mat[14]:3.2mat[15]:3.3))";
+	char *st0 = 0; asprintf(&st0,"Center(mem:Kernelzsiz:1idx:0slf:0ker[0]:%s)",st1);
+	struct Center *ctr = 0; allocCenter(&ctr,1); int len = 0;
+	if (hideCenter(ctr,st0,&len) != 1 || len != strlen(st0)) ERROR();
+	struct Kernel *ker = 0; allocKernel(&ker,1); len = 0;
+	if (hideKernel(ker,st1,&len) != 1 || len != strlen(st1)) ERROR();
+	loopfd = openPipe(); machineInit(&ctr,2);
+	if (ctr->mem != Kernelz || ctr->siz != 2) ERROR();
 	float chk[16]; identmat(chk,4);
-	// for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) fprintf(stderr," %01.1f",*matrc(ctr->ker->saved.mat,i,j,4)); fprintf(stderr,"\n");}
-	// for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) fprintf(stderr," %01.1f",*matrc(chk,i,j,4)); fprintf(stderr,"\n");}
-	for (int i = 0; i < 16; i++) if (ctr->ker->saved.mat[i] != chk[i]) ERROR();
-	for (int i = 0; i < 16; i++) if (ctr->ker->local.mat[i] != chk[i]) ERROR();
-	for (int i = 0; i < 16; i++) if (ctr->ker->sent.mat[i] != chk[i]) ERROR();
-	for (int i = 0; i < 16; i++) if (ctr->ker->global.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) printf(" %01.1f",*matrc(ker->saved.mat,i,j,4)); printf("\n");}
+	for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) printf(" %01.1f",*matrc(ctr->ker[0].saved.mat,i,j,4)); printf("\n");}
+	for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) printf(" %01.1f",*matrc(chk,i,j,4)); printf("\n");}
+	for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) printf(" %01.1f",*matrc(ctr->ker[1].saved.mat,i,j,4)); printf("\n");}
+	for (int i = 0; i < 16; i++) if (ctr->ker[0].saved.mat[i] != ker->saved.mat[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[0].local.mat[i] != ker->local.mat[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[0].sent.mat[i] != ker->sent.mat[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[0].global.mat[i] != ker->global.mat[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[1].saved.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[1].local.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[1].sent.mat[i] != chk[i]) ERROR();
+	for (int i = 0; i < 16; i++) if (ctr->ker[1].global.mat[i] != chk[i]) ERROR();
 	return 0;
 }
