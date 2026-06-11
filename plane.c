@@ -38,6 +38,7 @@ int *machine = 0;
 void *safeSem = 0; // protect machine and wakeSem
 // initialized before threads so safe
 void *chrq = 0; // temporary queue to convert chars to str
+int loopfd = 0; // pipe from one struct to another
 void *evalSem = 0;
 uftype callCopy = 0;
 nftype callBack = 0;
@@ -583,7 +584,7 @@ void machineStage(enum Configure cfg, int idx)
     if (postSafe(copySem) != 1) ERROR();
 }
 struct initCenter {
-    int siz, idx;
+    int siz;
     struct Center *src;
     struct Center *dst;
 };
@@ -591,29 +592,30 @@ void machineField(int num, int fld, int sub, int typ, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
     if (num == TYPECenter && fld == 1) {
-    writeInt(cst->siz,cst->idx);
-    freadCenter(cst->dst,fld,sub,cst->idx);}
+    writeInt(cst->siz,loopfd);
+    freadCenter(cst->dst,fld,sub,loopfd);}
     else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(cst->src,fld,sub,cst->idx);
-    freadCenter(cst->dst,fld,sub,cst->idx);}
+    fwriteCenter(cst->src,fld,sub,loopfd);
+    freadCenter(cst->dst,fld,sub,loopfd);}
     else if (num == TYPECenter && typ == TYPEKernel && sub < cst->src->siz) {
-    fwriteCenter(cst->src,fld,sub,cst->idx);
-    freadCenter(cst->dst,fld,sub,cst->idx);}
+    fwriteCenter(cst->src,fld,sub,loopfd);
+    freadCenter(cst->dst,fld,sub,loopfd);}
     else if (num == TYPECenter && typ == TYPEKernel) {
     struct Kernel init;
     identmat(init.saved.mat,4);
     identmat(init.local.mat,4);
     identmat(init.sent.mat,4);
     identmat(init.global.mat,4);
-    writeKernel(&init,cst->idx);
-    freadCenter(cst->dst,fld,sub,cst->idx);}
+    writeKernel(&init,loopfd);
+    freadCenter(cst->dst,fld,sub,loopfd);}
 }
 void machineInit(struct Center **ptr, int siz)
 {
-    struct initCenter init = {}; init.siz = siz; init.src = *ptr; init.dst = 0;
-    init.idx = openPipe(); allocCenter(&init.dst,1);
+    struct initCenter init = {};
+    init.siz = siz; init.src = *ptr; init.dst = 0;
+    allocCenter(&init.dst,1);
     initCenter(init.dst,machineField,&init);
-    closeIdent(init.idx); freeCenter(*ptr); allocCenter(ptr,0);
+    freeCenter(*ptr); allocCenter(ptr,0);
     *ptr = init.dst;
 }
 void machineTsage(enum Configure cfg, int idx)
@@ -665,7 +667,7 @@ int machineIval(struct Express *exp)
 {
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
-    if (typ != identType("Int")) ERROR();
+    if (typ != TYPEInt) ERROR();
     int val = readInt(datxPut(0,dat));
     free(dat);
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
@@ -1136,7 +1138,7 @@ void initSafe()
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); wakeq = allocWakeq(); timep = allocTimep();
-    ableq = allocAbleq(); maskq = allocMaskq();
+    ableq = allocAbleq(); maskq = allocMaskq(); loopfd = openPipe(); 
     callBack(RegisterCall,registerCall);
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
@@ -1426,7 +1428,7 @@ void planeDone()
     callBack(RegisterAble,0);
     callBack(RegisterWake,0);
     callBack(RegisterOpen,0);
-    freeMaskq(maskq); freeAbleq(ableq);
+    closeIdent(loopfd); freeMaskq(maskq); freeAbleq(ableq);
     freeTimep(timep); freeTimeq(timeq);
     freeChrq(chrq); freeStrq(strin); freeStrq(strout);
     freeCenterq(response); freeCenterq(internal);
