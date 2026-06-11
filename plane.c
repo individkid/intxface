@@ -39,6 +39,7 @@ void *safeSem = 0; // protect machine and wakeSem
 // initialized before threads so safe
 void *chrq = 0; // temporary queue to convert chars to str
 int loopfd = 0; // pipe from one struct to another
+void *loopSem = 0; // protect loopfd
 void *evalSem = 0;
 uftype callCopy = 0;
 nftype callBack = 0;
@@ -591,6 +592,7 @@ struct initCenter {
 void machineField(int num, int fld, int sub, int typ, void *arg)
 {
     struct initCenter *cst = (struct initCenter *)arg;
+    if (waitSafe(loopSem) != 0) ERROR();
     if (num == TYPECenter && fld == 1) {
     writeInt(cst->siz,loopfd);
     freadCenter(cst->dst,fld,sub,loopfd);}
@@ -608,6 +610,7 @@ void machineField(int num, int fld, int sub, int typ, void *arg)
     identmat(init.global.mat,4);
     writeKernel(&init,loopfd);
     freadCenter(cst->dst,fld,sub,loopfd);}
+    if (postSafe(loopSem) != 1) ERROR();
 }
 void machineInit(struct Center **ptr, int siz)
 {
@@ -1135,6 +1138,7 @@ void initSafe()
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
+    if (!(loopSem = allocSafe(1))) ERROR(); // protect field pipe
     internal = allocCenterq(); response = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); wakeq = allocWakeq(); timep = allocTimep();
@@ -1442,5 +1446,6 @@ void planeDone()
     if (sem_destroy(&stdioSem) != 0) ERROR();
     if (sem_destroy(&pipeSem) != 0) ERROR();
     if (sem_destroy(&copySem) != 0) ERROR();
+    if (sem_destroy(&loopSem) != 0) ERROR();
     */
 }

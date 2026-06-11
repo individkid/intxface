@@ -3,6 +3,7 @@
 #include "metx.h"
 #include "datx.h"
 #include "luax.h"
+#include "stlx.h"
 #include "type.h"
 #include <stdio.h>
 #include <string.h>
@@ -22,6 +23,8 @@ int datxRegex(const char *lft, const char *rgt)
 
 void machineInit(struct Center **ptr, int siz);
 extern int loopfd;
+extern void *loopSem;
+void *allocSafe(int val);
 int hideCenter(struct Center *ptr, const char *str, int *len);
 void showCenter(struct Center *ptr, char **str);
 void allocCenter(struct Center **ptr, int siz);
@@ -57,7 +60,8 @@ int main()
 	if (hideCenter(ctr,st0,&len) != 1 || len != strlen(st0)) ERROR();
 	struct Kernel *ker = 0; allocKernel(&ker,1); len = 0;
 	if (hideKernel(ker,st1,&len) != 1 || len != strlen(st1)) ERROR();
-	loopfd = openPipe(); machineInit(&ctr,2);
+	loopfd = openPipe(); loopSem = allocSafe(1); // protect field pipe
+	machineInit(&ctr,2);
 	if (ctr->mem != Kernelz || ctr->siz != 2) ERROR();
 	float chk[16]; identmat(chk,4);
 	for (int i = 0; i < 4; i++) {for (int j = 0; j < 4; j++) printf(" %01.1f",*matrc(ker->saved.mat,i,j,4)); printf("\n");}
