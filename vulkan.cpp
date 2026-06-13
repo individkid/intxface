@@ -2511,7 +2511,7 @@ void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mod
 void glfwResize(GLFWwindow* window, int width, int height) {
     mptr->changeState.poke(UniformWid,width);
     mptr->changeState.write(UniformHei,height);
-    mptr->changeState.wots(RegisterWake,1<<SizeMsk);
+    mptr->changeState.wots(RegisterWake,1<<ProjMsk);
 }
 // copy request
 void vulkanCopy(Center *ptr, int sub, Rsp rsp, int ary, const char *dbg) {

@@ -456,13 +456,13 @@ void machinePlace(struct Center *ptr, int sig, int *arg, int lim, int idx, int s
 // T goes to I without changing Comp, when C is I upon Form
 // L goes to I without changing Comp, upon Send
 // S goes to I without changing Comp, upon last outstanding Self
-void machineSize(int sig, int *arg)
+void machineProj(int sig, int *arg)
 {
-    if (sig != SizeArgs) ERROR();
-    struct Center *dst = machineCenter(sig,arg,SizeArgs,SizeDst,SizeDstSub);
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,SizeArgs,SizeDst,SizeDstSub);
+    if (sig != ProjArgs) ERROR();
+    struct Center *dst = machineCenter(sig,arg,ProjArgs,ProjDst,ProjDstSub);
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
     planeWindow(matrix->mat);
-    machinePlace(dst,sig,arg,SizeArgs,SizeDst,SizeDstSub);
+    machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
 }
 void machineComp(int sig, int *arg)
 {
@@ -657,15 +657,6 @@ void machineVoid(struct Express *exp)
     void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
-void planeArgv(int argc, char **argv);
-void machineArgv(int sig, int *arg)
-{
-    if (sig != ArgvArgs) ERROR();
-    int src = arg[ArgvSrc];
-    struct Center *ptr = centerPull(src);
-    planeArgv(ptr->siz,ptr->str);
-    centerPlace(ptr,src);
-}
 int machineIval(struct Express *exp)
 {
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
@@ -699,8 +690,7 @@ void machineSwitch(struct Machine *mptr)
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
-    case (Argv): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineArgv(mptr->sig,arg);} break;
-    case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSize(mptr->sig,arg);} break;
+    case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineProj(mptr->sig,arg);} break;
     case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
     case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;

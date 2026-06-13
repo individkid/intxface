@@ -302,7 +302,6 @@ Transfer = { -- what user machine does
 	"Tsage", -- configure to center fields
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
-	"Argv", -- hide and process
 	-- identity I
 	-- current manipulation C
 	-- Kernel.saved T
@@ -316,21 +315,18 @@ Transfer = { -- what user machine does
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
-	"Bopy", -- memory to memory
+	"Bopy", -- move to center
 	"Copy", -- center to resource
-	"Dopy", -- center to center
+	"Dopy", -- copy to center
 	"Popy", -- queue to center
 	"Qopy", -- center to queue
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
 }
-ArgvArg = { -- arguments for machine operations
-	"ArgvSrc",
-}
-SizeArg = {
-	"SizeDst",
-	"SizeDstSub",
+ProjArg = { -- arguments for machine operations
+	"ProjDst",
+	"ProjDstSub",
 }
 CompArg = {
 	"CompSrc",
@@ -435,7 +431,7 @@ Mask = { -- signals between threads
 	"DropMsk", -- response without request
 	"PollMsk", -- every glfw wakeup
 	"PrssMsk", -- glfw key pressed
-	"SizeMsk", -- glfw window resized
+	"ProjMsk", -- glfw window resized
 	"EoodMsk", -- present frame failed
 	"MoveMsk",
 	"ClckMsk",
@@ -1894,6 +1890,7 @@ Bootstrap = {
 		"dount = 0; function jdx() dount = dount + 1; return dount end;"..
 		"return count)","Str","!(index = #%(return count))Indexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(bringup = #%(return count))Bringupz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(ident = #%(return count))Identz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(image = #%(return count))Imagez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(storage = #%(return count))Storagez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(getint = #%(return count))Getintz(siz:0idx:0slf:0)"},
@@ -1920,7 +1917,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:15)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
-		" @tmp != @fns , #0-#16"..
+		" @tmp != @fns , #-16"..
 		" EO @tmp - #1 #%(return castMask(\"FnceMsk\")) Cmp , #1"..
 		" EO @tmp - #1 #%(return castMask(\"SlctMsk\")) Cmp , #2"..
 		" EO @tmp - #1 #%(return castMask(\"CnslMsk\")) Cmp , #3"..
@@ -1930,7 +1927,7 @@ Bootstrap = {
 		" EO @tmp - #1 #%(return castMask(\"DropMsk\")) Cmp , #7"..
 		" EO @tmp - #1 #%(return castMask(\"PollMsk\")) Cmp , #8"..
 		" EO @tmp - #1 #%(return castMask(\"PrssMsk\")) Cmp , #9"..
-		" EO @tmp - #1 #%(return castMask(\"SizeMsk\")) Cmp , #10"..
+		" EO @tmp - #1 #%(return castMask(\"ProjMsk\")) Cmp , #10"..
 		" EO @tmp - #1 #%(return castMask(\"EoodMsk\")) Cmp , #11"..
 		" EO @tmp - #1 #%(return castMask(\"MoveMsk\")) Cmp , #12"..
 		" EO @tmp - #1 #%(return castMask(\"ClckMsk\")) Cmp , #13"..
@@ -1940,45 +1937,53 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSlctMskOp , EndOp Op))"..
-		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
-		"mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys + #1))"..
-		"mch[%(return jdx())]:Nest(lvl:2)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz == #1) & (?CenterMem == #%(return castMemory(\"Matrixz\"))) & (?CenterSlf == #-1)) , #1 ; #0 , #2 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		 "mch[%(return jdx())]:Tsage(siz:2sav[0]:CenterMemsav[1]:CenterSizidx[0]:$(@memorys + #2))"..
-		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterIntidx[0]:$(@kernel))"..
-		 -- do Self from memorys+1 to kernel[idx], Comp from kernel[idx] to memorys+2, Copy from memorys+2, and Copy from draw
-		 "mch[%(return jdx())]:Self(sig:4arg[0]:$(@memorys + #1)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
-		 "mch[%(return jdx())]:Comp(sig:4arg[0]:$(@kernel)arg[1]:$(?CenterIdx)arg[2]:$(@memorys + #2)arg[3]:$(#0))"..
-		 "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@memorys + #2))"..
-		 "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@draw))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Nest(lvl:2)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz > #0) & (?CenterMem == #%(return castMemory(\"Matrixz\"))) & (?CenterSlf >= #0)) , #1 ; #0 , #2 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		 -- do Glob from memorys+1 to memorys+2, Copy as matrix number CenterIdx, and Draw
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Nest(lvl:2)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz > #0) & (?CenterMem == #%(return castMemory(\"Configurez\")))) , #1 ; #0 , #2 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		 -- do Copy from memorys+1
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Nest(lvl:2)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterPtr == #1) & (?CenterSiz > #0) & (?CenterMem == #%(return castMemory(\"Stringz\")))) , #1 ; #0 , #2 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		 -- do Argv from memorys+1
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Void(exp[0]:$(Put StrSlctMskOp , EndOp Op))"..
+		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Nest(lvl:1)"..
+		  -- loop back to next bit in RegisterWake if nothing in internal queue
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterPtr == #0) , #-3 ; #0 == #1 , #1 Op))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- move current from internal queue to per memory location
+		 "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(@memorys)arg[1]:$(?CenterMem))"..
+		 "mch[%(return jdx())]:Nest(lvl:1)"..
+		  -- loop back to read internal queue if current is empty
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterSiz == #0) , #-2 ; #0 == #1 , #1 Op))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Nest(lvl:1)"..
+		  -- non-gpu memories only need the Bopy
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Kernelz\"))) | (?CenterMem == #%(return castMemory(\"Expressz\"))) | (?CenterMem == #%(return castMemory(\"Machinez\"))) | (?CenterMem == #%(return castMemory(\"Stringz\")))) , #-2 ; #0 , #1 Op))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Nest(lvl:2)"..
+		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterMem == #%(return castMemory(\"Matrixz\"))) , #1 ; #0 == #1 , #2 Op))"..
+		   "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- do Self/Glob from memorys to kernel[idx], Comp from kernel[idx] to matrix, Copy from matrix, and Copy from draw
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterIntidx[0]:$(@kernel))"..
+		  "mch[%(return jdx())]:Nest(lvl:3)"..
+		     "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterSlf < #0) , #1 ; #0 , #2 Op))"..
+		     "mch[%(return jdx())]:Nest(lvl:-1)"..
+		    "mch[%(return jdx())]:Self(sig:4arg[0]:$(@matrix)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
+		    "mch[%(return jdx())]:Jump(exp[0]:$(#2))"..
+		    "mch[%(return jdx())]:Nest(lvl:-1)"..
+		   "mch[%(return jdx())]:Glob(sig:4arg[0]:$(@matrix)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
+		   "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  "mch[%(return jdx())]:Comp(sig:4arg[0]:$(@kernel)arg[1]:$(?CenterIdx)arg[2]:$(@matrix)arg[3]:$(#0))"..
+		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@matrix))"..
+		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@draw))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- do Copy from current
+		 "mch[%(return jdx())]:Copy(sig:1arg[0]:$(?CenterMem))"..
+		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO switch on RegisterPlan
@@ -2017,7 +2022,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO for Regress and Release, do Send
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterPass ; smp = #0 ; pass = @pass + #1 Op))"..
@@ -2035,10 +2040,10 @@ Bootstrap = {
 		 "#0 : @_ Op))"..
 		 -- TODO for pierce returns, change pierce registers, enable manipulation, and do Form
 		 -- TODO for relate returns, change sculpt registers, and do Qopy
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterPass @nask Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterFail ; smp = #0 ; fail = @fail + #1 Op))"..
@@ -2047,53 +2052,53 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- "mch[%(return jdx())]:Void($(Put StrFailMsk Op , Imm @smp - #1 Op , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterFail @nask Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrDropMskOp , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPollMskOp , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
 		-- do Void to disable and change manipulation; do Form
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrSizeMskOp , EndOp Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- change window matrix; do Proj and Draw
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
 		-- wait for window resize
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
 		-- do Void to change manipulate registers; do Form if enabled and last manipulate was roller; do Comp and Draw if enabled
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
 		-- do Void to disable manipulation if enabled, or do pierce with consume of Click registers to enable
 		-- depending on mode, do relate instead of pierce to send instead of enable
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
 		-- do Void to change manipulate registers; do Form if enabled and last manipulate was move; do Comp and Draw if enabled
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@uniform)fnc[0]:$(Non Put StrUnifMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0-#1))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
 		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
@@ -2258,10 +2263,10 @@ Machine = { -- info for user defined action
 	{"idx","Express",{["xfr"]={["Stage"]=true,["Tsage"]=true}},1},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
-	{"sig","Int",{["xfr"]={["Argv"]=true,
+	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
-	{"arg","Express",{["xfr"]={["Argv"]=true,
+	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
