@@ -1,4 +1,4 @@
-Builtin: Check commandline Center at Memorys for initial change to global matrix. Use configure to change cursor/roler location and transformation mode to calculate the global matrix. Loopback to internal pipe. Loopback from timer event in Bootstrap machine. Use Force Copy Comp Form Send Self Glob to modify global matrix upon timer.
+Builtin: Loopback to internal pipe from timer event in Bootstrap machine. Use Force Copy Comp Form Send Self Glob to modify global matrix upon timer. Choose between tests by putting different strings in a Center on commandline.
 
 Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.
 

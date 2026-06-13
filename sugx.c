@@ -360,6 +360,7 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	int siz = sizeExpr(lst);
 	int idt = *idx; // lookahead
 	int sav = *idx; // fallbehind
+	int depth = 0;
 	while (str[*idx]) {
 	// fprintf(stderr,"Recurse ");
 	// for (int i = 0; i < sugarDebug; i++) fprintf(stderr,"-");
@@ -806,7 +807,8 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"Op",2)==0) break;
 	if (strncmp(str+*idx,"Bit",3)==0) break;
 	if (strncmp(str+*idx,"Cmp",3)==0) break;
-	if (strncmp(str+*idx,")",1)==0) break;
+	if (strncmp(str+*idx,"(",1) == 0) depth += 1;
+	if (strncmp(str+*idx,")",1)==0) if (depth == 0) break; else depth -= 1;
 	*idx += 1;}
 	*idx = sav;
 	// sugarDebug -= 1;

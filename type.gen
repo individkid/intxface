@@ -1989,6 +1989,19 @@ Bootstrap = {
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
 		-- TODO after SlctMsk above is done, move following config writes to a Center(Str()) on commandline
+
+		"mch[%(return jdx())]:Void(exp[0]:$(Non CenterSiz := #4 ; CenterSlf := #-1 ; RegisterSelf := #0 Op))"..
+		"mch[%(return jdx())]:Tsage(siz:2sav[0]:CenterSizsav[1]:CenterSlfidx[0]:$(@configure))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ClickLeft)Op Op #0 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ClickBase)Op Op #1 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ManipLeft)Op Op #2 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ManipBase)Op Op #3 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #0 #0 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #0 #1 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #20 #2 Op))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #20 #3 Op))"..
+		-- "mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
+
 		"mch[%(return jdx())]:Void(exp[0]:NonOp(num:5"..
 		 "non[0]:$(SetClickLeft#0Op)"..
 		 "non[1]:$(SetClickBase#0Op)"..
