@@ -1961,8 +1961,9 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterMem == #%(return castMemory(\"Matrixz\"))) , #1 ; #0 == #1 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  -- do Self/Glob from memorys to kernel[idx], Comp from kernel[idx] to matrix, Copy from matrix, and Copy from draw
+		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Copy from matrix, and Copy from draw
 		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterIntidx[0]:$(@kernel))"..
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterIdxidx[0]:$(@matrix))"..
 		  "mch[%(return jdx())]:Nest(lvl:3)"..
 		     "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterSlf < #0) , #1 ; #0 , #2 Op))"..
 		     "mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -1988,6 +1989,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
+		-- TODO move following to Qopy to @string from commandline
 		"mch[%(return jdx())]:Void(exp[0]:$(Non CenterSiz := #5 ; CenterSlf := #-1 ; RegisterSelf := #0 Op))"..
 		"mch[%(return jdx())]:Tsage(siz:2sav[0]:CenterSizsav[1]:CenterSlfidx[0]:$(@configure))"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ClickLeft)Op Op #0 Op))"..
@@ -2006,26 +2008,19 @@ Bootstrap = {
 		" #4 Op))"..
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
-		-- TODO Bopy to @string at boot, and here use @string instead
-		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@memorys))"..
+		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@string))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterPtr != #1 , #1 ; #0 , #2 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterMem != #%(return castMemory(\"Stringz\")) , #1 ; #0 , #2 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz == #0 , #1 ; #0 , #2 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- Eval a Dopy of Center at Memorys to cast to Center of string number @bootstr in Memorys+1 and Void to increment @bootstr
-		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@memorys)arg[1]:$(@memorys+#1))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys+#1)fnc[0]:ImmOp(put[0]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(str))))"..
+		-- Eval a Dopy of Center at Stringz to cast to Center of string number @bootstr and Void to increment @bootstr
+		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@string)arg[1]:$(@memorys))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:ImmOp(put[0]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(str))))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
-		-- Void copy slf at Memorys+1 to RegisterSelf and set slf at Memorys+1 to -1
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys+#1)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#0)fld[2]:$(#-1)fid:Str(slf)) non[2]:$(@_) ))"..
-		-- Qopy to push Center at Memorys+1 to response queue
-		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys + #1))"..
+		-- Void copy slf to RegisterSelf and set slf to -1
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#0)fld[2]:$(#-1)fid:Str(slf)) non[2]:$(@_) ))"..
+		-- Qopy to push Center to response queue
+		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO for Regress and Release, do Send
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..

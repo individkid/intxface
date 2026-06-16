@@ -1,4 +1,4 @@
-Builtin: Loopback to internal pipe from timer event in Bootstrap machine. Use Force Copy Comp Form Send Self Glob to modify global matrix upon timer. Choose between tests by putting different strings in a Center on commandline.
+Builtin: Choose between tests by putting different strings in a Center on commandline.
 
 Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.
 
