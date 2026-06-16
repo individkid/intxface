@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include "proto.h"
+typedef int (*SafeFunc)(void *arg);
 #ifdef __cplusplus
 #include <array>
 #include <vector>
@@ -28,25 +29,31 @@ struct SafeState {
         if (pthread_cond_destroy(&condit) != 0) {std::cerr << "cannot destroy cond!" << std::endl; exit(-1);}
         if (pthread_mutex_destroy(&mutex) != 0) {std::cerr << "cannot destroy mutex!" << std::endl; exit(-1);}
     }
-    int wait() {
+    int wait(SafeFunc fnc, void *arg) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        while (count == 0) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
+        while (count == 0 || (fnc && !fnc(arg))) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
         if (count > 0) count -= 1;
         int ret = count;
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }
-    int wait(double dif) {
+    int wait() {
+        return wait(0,0);
+    }
+    int wait(double dif, SafeFunc fnc, void *arg) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {std::cerr << "cannot get time!" << std::endl; exit(-1);}
         dif += ts.tv_sec + (double)ts.tv_nsec/NANOSECONDS;
         double tsi, tsf; tsf = modf(dif, &tsi); ts.tv_sec = tsi; ts.tv_nsec = tsf*NANOSECONDS;
-        int val = 0; while (count == 0 && val == 0) if ((val = pthread_cond_timedwait(&condit,&mutex,&ts)) != 0 && val != ETIMEDOUT) {std::cerr << "cannot timed wait!" << std::endl; exit(-1);}
+        int val = 0; while ((count == 0 || (fnc && !fnc(arg))) && val == 0) if ((val = pthread_cond_timedwait(&condit,&mutex,&ts)) != 0 && val != ETIMEDOUT) {std::cerr << "cannot timed wait!" << std::endl; exit(-1);}
         if (val != ETIMEDOUT && count > 0) count -= 1;
         int ret = count;
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
+    }
+    int wait(double dif) {
+        return wait(dif,0,0);
     }
     int post() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
@@ -618,10 +625,12 @@ void free ## NAME(void *ptr) {freeMap(ptr);}
 
 void *allocSafe(int val);
 int waitSafe(void *ptr);
+int funcSafe(void *ptr, SafeFunc fnc, void *arg);
 int postSafe(void *ptr);
 void doneSafe(void *ptr);
 void freeSafe(void *ptr);
 int timeSafe(void *ptr, double dif);
+int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg);
 
 float processTime();
 

@@ -343,11 +343,17 @@ void centerSize(int idx)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (postSafe(copySem) != 1) ERROR();
 }
+int centerCond(void *ptr)
+{
+    int *idx = ptr;
+    return (center[*idx] != 0);
+}
 struct Center *centerPull(int idx)
 {
     centerSize(idx);
-    if (waitSafe(copySem) != 0) ERROR();
-    struct Center *ret = center[idx]; center[idx] = 0;
+    struct Center *ret = 0;
+    if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
+    ret = center[idx]; center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
     return ret;
 }
@@ -567,7 +573,7 @@ void machineQopy(int sig, int *arg)
     int src = arg[QopySrc];
     struct Center *ptr = centerPull(src);
     if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(ptr,response);    
+    pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
 void machineStage(enum Configure cfg, int idx)
@@ -624,7 +630,6 @@ void machineInit(struct Center **ptr, int siz)
 void machineTsage(enum Configure cfg, int idx)
 {
     struct Center *ptr = centerPull(idx);
-    if (!ptr) allocCenter(&ptr,1);
     switch (cfg) {default: ERROR();
     case (CenterInt): {int sub = callInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) machineInit(&ptr,sub+1);} break;
     case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = callInfo(cfg,0,planeRcfg); break;
@@ -1195,9 +1200,10 @@ void initBoot()
     callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|MachThd),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
+    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
+    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,1000<<8,planeWcfg);
-    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Regress):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);

@@ -146,6 +146,11 @@ int waitSafe(void *ptr)
     auto saf = (SafeState*)ptr;
     return saf->wait();
 }
+int funcSafe(void *ptr, SafeFunc fnc, void *arg)
+{
+    auto saf = (SafeState*)ptr;
+    return saf->wait(fnc,arg);
+}
 int postSafe(void *ptr)
 {
     auto saf = (SafeState*)ptr;
@@ -165,6 +170,11 @@ int timeSafe(void *ptr, double dif)
 {
     auto saf = (SafeState*)ptr;
     return saf->wait(dif);
+}
+int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg)
+{
+    auto saf = (SafeState*)ptr;
+    return saf->wait(dif,fnc,arg);
 }
 
 float processTime()
