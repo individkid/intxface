@@ -2090,12 +2090,8 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 	")"},
-	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)"..
-		"Expressz(siz:1idx:0slf:0exp[0]:$(Non "..
-		"RegisterTime := #750 << #8 "..
-		"count = @count + #1 "..
-		"Put Imm TimOp Op EndOp Op "..
-		"Op))"},
+	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)Expressz(siz:1idx:0slf:0"..
+		"exp[0]:$(Wos RegisterWake #1<<@masks Op))"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
