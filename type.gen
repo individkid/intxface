@@ -289,13 +289,13 @@ Configure = { -- integer variables for user expressions
 	"FocalDepth", -- configure for window
 	"FocalSlope", -- configure for window
 	-- following are scratch registers initialized with resource limits
-	"ConstantDescrs",
-	"ConstantMicros",
-	"ConstantFrames",
-	"ConstantImages",
-	"ConstantInstrs",
-	"ConstantResrcs",
-	"ConstantHandls",
+	"ScratchDescrs",
+	"ScratchMicros",
+	"ScratchFrames",
+	"ScratchImages",
+	"ScratchInstrs",
+	"ScratchResrcs",
+	"ScratchHandls",
 }
 Transfer = { -- what user machine does
 	"Stage", -- center fields to configure
@@ -1985,7 +1985,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:ImmOp(put[0]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(str))))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
 		-- Void copy slf to RegisterSelf and set slf to -1
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#0)fld[2]:$(#-1)fid:Str(slf)) non[2]:$(@_) ))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#-1)fld[2]:$(#0)fid:Str(slf)) non[2]:$(@_) ))"..
 		-- Qopy to push Center to response queue
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2091,7 +2091,7 @@ Bootstrap = {
 
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)Expressz(siz:1idx:0slf:0"..
-		"exp[0]:$(Wos RegisterWake #1<<@masks Op))"},
+		"exp[0]:$(Wos RegisterWake #1<<?ScratchDescrs Op))"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..

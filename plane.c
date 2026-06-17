@@ -1246,7 +1246,7 @@ void initTest()
     default: ERROR();
 
     break; case (Bringup): mode = true; case (Builtin): {
-    int frames = callInfo(ConstantFrames,0,planeRcfg);
+    int frames = callInfo(ScratchFrames,0,planeRcfg);
 
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
     ptr->mem = Drawz; ptr->siz = 1;
