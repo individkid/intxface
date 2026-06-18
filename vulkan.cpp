@@ -2529,6 +2529,9 @@ void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftyp
     mptr->callState.push(new ForkState(thd,idx,fnc,done,join,wake));
 }
 // register access
+int vulkanGnfo(Configure cfg, int val, yftype fnc) {
+    return mptr->changeState.gnfo(cfg,val,fnc);
+}
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
     return mptr->changeState.info(cfg,val,fnc);
 }
@@ -2596,7 +2599,7 @@ int main(int argc, const char **argv) {
     main.changeState.call(RegisterOpen,vulkanBack);
     main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait);
     // TODO move glfw functions to WindowState
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     glfwSetWindowSizeCallback(main.windowState.window,glfwResize);

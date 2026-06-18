@@ -12,7 +12,7 @@ typedef void (*aftype)();
 typedef int (*bftype)();
 enum Rsp {RetRsp,RptRsp,MltRsp,MptRsp};
 typedef void (*uftype)(struct Center *ptr, int sub, enum Rsp rsp, int ary, const char *dbg);
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait);
+void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait);
 int planeLoop();
 void planeDone();
 void centerDone(struct Center *ptr, int idx);

@@ -44,6 +44,7 @@ void *evalSem = 0;
 uftype callCopy = 0;
 nftype callBack = 0;
 vftype callFork = 0;
+zftype callGnfo = 0;
 zftype callInfo = 0;
 zftype callJnfo = 0;
 zftype callKnfo = 0;
@@ -1021,8 +1022,6 @@ void registerEval(enum Configure cfg, int sav, int val, int act)
     int upr = val >> 8; // center of expr
     struct Center *ptr = centerPull(upr);
     if (ptr && ptr->mem == Expressz && lwr >= 0 && lwr < ptr->siz) {
-    /*{char *exp = 0; showExpress(&ptr->exp[lwr],&exp);
-    printf("%s\n",exp); free(exp);}*/
     machineVoid(&ptr->exp[lwr]);}
     centerPlace(ptr,upr);
 }
@@ -1083,6 +1082,7 @@ int planeRawcfg(int val, int sub)
 }
 int planeRetcfg(int sub)
 {
+    if (callHnfo()) return callGnfo((enum Configure)sub,0,planeRcfg);
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
 void planeSugar(const char *str)
@@ -1369,11 +1369,12 @@ void initTest()
     break; case (Regress): case (Release): {}}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
+void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
 {
     callCopy = copy;
     callBack = call;
     callFork = fork;
+    callGnfo = gnfo;
     callInfo = info;
     callJnfo = jnfo;
     callKnfo = knfo;

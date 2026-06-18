@@ -1972,13 +1972,10 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 4
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
-		-- TODO move following to @string from commandline
-		"mch[%(return jdx())]:Void(exp[0]:$(Wos RegisterWake #1<<@masks Op))"..
 		-- Jump if Center at Memorys is null, empty, or not Stringz
 		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@string))"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz == #0 , #1 ; #0 , #2 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz <= @bootstr , #1 ; #0 , #2 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- Eval a Dopy of Center at Stringz to cast to Center of string number @bootstr and Void to increment @bootstr
 		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@string)arg[1]:$(@memorys))"..
@@ -1989,7 +1986,6 @@ Bootstrap = {
 		-- Qopy to push Center to response queue
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- TODO for Regress and Release, do Send
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 5
@@ -2069,24 +2065,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 16
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMasks Op , Imm TimOp Op , EndOp Op))"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non CenterSiz := #5 ; CenterSlf := #-1 ; RegisterSelf := #0 Op))"..
-		"mch[%(return jdx())]:Tsage(siz:2sav[0]:CenterSizsav[1]:CenterSlfidx[0]:$(@configure))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ClickLeft)Op Op #0 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ClickBase)Op Op #1 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ManipLeft)Op Op #2 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ManipBase)Op Op #3 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ cfg Imm StrConfigure(ManipFixed)Op Op #4 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #0 #0 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #0 #1 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #20 #2 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val #20 #3 Op))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@configure)fnc[0]:$(Fld @_ val "..
-		  "(#1<<#%(return castFixed(\"Slide\")))|"..
-		  "(#1<<#%(return castFixed(\"Ortho\")))|"..
-		  "(#1<<#%(return castFixed(\"Mouse\")))"..
-		" #4 Op))"..
-		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrTestMsk Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 	")"},

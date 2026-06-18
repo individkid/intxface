@@ -181,6 +181,10 @@ template <class Conf, int Size> struct ChangeState {
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
+    int gnfo(Conf cfg, int val, yftype fnc) { // called from callback
+        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
+        return fnc(&config[cfg],val);
+    }
     int info(Conf cfg, int val, yftype fnc) { // no callback
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid info!" << std::endl; exit(-1);}
         safe.wait(); int ret = fnc(&config[cfg],val);
