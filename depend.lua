@@ -271,6 +271,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "9a"; if callmatch(values,line,"^.*: cannot execute file: (%w*)Lua$") and makecopy(values,target,"Lua") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "9b"; if callmatch(values,line,"^.*: cannot execute file: (%w*)Hs$") and makecopy(values,target,"Hs") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "9c"; if callmatch(values,line,"^.*: cannot execute file: (%w*)C$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "9d"; if callmatch(values,line,"^.*: cannot execute file: (%w*)Cpp$") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "10a"; if callmatch(values,line,"^lua: cannot open (%w*).lua: No such file or directory$") and copysource(values,target,".lua") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "10a"; if callmatch(values,line,"^lua: cannot open (%w*).gen: No such file or directory$") and copysource(values,target,".gen") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "11a"; if callmatch(values,line,"^lua: cannot open (%w*).lua: No such file or directory$") and copyxtra(values,target,".gen") and makecopy(values,target,".lua") then dbgent = dbgent - 1; return true end

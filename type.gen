@@ -827,7 +827,6 @@ MemoryIns = {
 		{"Memory","%(return ArgGetKey(mem,def_inc))","Int","%(return ArgGetOrd(mem,def_inc))","Default","%(return ArgGetVal(mem,def_inc))"},
 		{"Memory","%(return ArgGetKey(mem,alt_inc))","Int","%(return ArgGetOrd(mem,alt_inc))","Int","%(return ArgIncVal(mem,alt_inc))"},
 	-- Micro(Fet/Vtx)Rel
-	-- TODO this conflicts with Micro(Fet/Vtx)Rel below; put one of them in MicroIns and other in MicroAlt
 	{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConGetOrdLst(mem))","Instr","MicIncIns"},
 		{"Memory","%(return ConGetKeyLst(mem))","Int","%(return ConIncOrdLst(mem))","Micro","%(return ConIncKeyLst(mic))"},
 		{"Memory","%(return ArgGetKey(mem,def_inc))","Int","%(return ArgGetOrd(mem,def_inc))","Default","%(return ArgGetVal(mem,def_inc))"},
@@ -1882,9 +1881,6 @@ MicroAlt = {
 -- i<Memorys centerPull(i)->mem==i
 -- i>=Memorys scratchpad as src or dest of Transfer
 -- i==Machinez is main machine that waits for bit MachThd in RegisterWake
--- TODO in Builtin, have planeDebug use planeMatrix depending on commandline.
--- TODO in Regress, use Center pipe instead of planeTest.
--- TODO in Release, use mouse and roller instead of Center spoofs.
 Bootstrap = {
 	{"Int","%(count = 0; function idx() count = count + 1; return count end;"..
 		"dount = 0; function jdx() dount = dount + 1; return dount end;"..

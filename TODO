@@ -1,26 +1,6 @@
-Builtin: Choose between tests by putting different strings in a Center on commandline.
-
 Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.
 
 Release: Use actual user actions to interact with actual file.
-Mouse transformations include
- — (C) rotate around Cross of pierce to clicked cursor and pierce to moved cursor,
- — (N) cross of pierce to Normal through picture and pierce to normal through picture moved by same delta as cursor,
- — (O) cross between pierce to Ortho through picture and pierce to ortho through picture moved by same delta as cursor,
- — (T) Translate parallel to picture,
- — (P) Parallel to pierced plane.
-Roller transformations include
- — (R) Rotate around moved leg of cross,
- — (U) rotate around Unmoved leg of cross,
- — (Z) translate perpendicular to picture,
- — (Q) perpendicular to pierced plane,
- — (F) resize with pierce Fixed.
-Click actions include
- — (A) Add facet,
- — (S) Subtract facet,
- — (B) random Boundary through point,
- — (M) send pierce point as Metric,
- — (W) Warp to last metric sent.
 
 Decoration: Add struct and Memory to contain info for custom shaders. Switch on uniform field to decide whether to apply texture or whatever. Fragment shader little language follows graph edges depending on inputs from vertex shader for filling with a constant, copying color or depth or identifier from vertex shader, copying from image buffer, applying texture sampler, calculating from normal, highlighting from adjacent identifiers. Graph edges are constants/inputs in which hypersquare region of constants/inputs, or on which hyperline sids of constants/inputs.
 

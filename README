@@ -51,25 +51,16 @@ their values, or which is used for sound.
 
 vulkan.cpp metal.sw plane.* display mouse keyboard.
 plane.c, plane.h maintain matrices according to mode.
-This has four shaders, one to find pierce points,
-one to display facets, one to stream framebuffers,
-and one to detect focal point proximity to planes.
+This has shaders to take vertices from constants,
+fetch buffers, random access vertices, random access planes.
 This maintains a global transformation matrix,
 a matrix per polytope, and a matrix per plane.
-Each maintained matrix has
-pierce mode, pierce states, pierce deltas,
-portion to send matrix, portion sent matrix.
-Matrix sent to gpu is maintained composed with
-portion sent, portion to send, and pierce delta.
-All but pierce delta is cached to optimize composition.
-Before changing any but pierce delta, invalidate composition cache.
+Each maintained matrix portion to send, portion sent.
+Matrix sent to gpu is composed from portions.
 Before changing pierce mode, apply pierce delta to portion to send.
 After applying pierce delta, change pierce state for continuity.
-Before changing maintained to matrix read from processes,
-remove if is loopback from portion sent.
-After writing portion to send, apply to portion sent,
-and clear to identity portion to send. 
-At will, read matrices, write matrices, and change pierce mode.
+Matrix looped back transfers portions from sent to maintained.
+Matrix from other processes cause discontinuity to maintained.
 Each plane process monitors any number of plane files containing,
 data streams for points facets arrays and matrices.
 
@@ -81,6 +72,24 @@ finds super- sub- co- space section,
 produces points and element arrays for opengl.
 
 plane.lua allows user to manipulate polytopes.
+Mouse transformations include
+ — (C) rotate around Cross of pierce to clicked cursor and pierce to moved cursor,
+ — (N) cross of pierce to Normal through picture and pierce to normal through picture moved by same delta as cursor,
+ — (O) cross between pierce to Ortho through picture and pierce to ortho through picture moved by same delta as cursor,
+ — (T) Translate parallel to picture,
+ — (P) Parallel to pierced plane.
+Roller transformations include
+ — (R) Rotate around moved leg of cross,
+ — (U) rotate around Unmoved leg of cross,
+ — (Z) translate perpendicular to picture,
+ — (Q) perpendicular to pierced plane,
+ — (F) resize with pierce Fixed.
+Click actions include
+ — (A) Add facet,
+ — (S) Subtract facet,
+ — (B) random Boundary through point,
+ — (M) send pierce point as Metric,
+ — (W) Warp to last metric sent.
 
 space.lua finds and/or prettifies complete sets of spaces and tetrahedron overlaps.
 
