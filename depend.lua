@@ -237,6 +237,7 @@ function trymatch(values,target)
 		dbgline[dbgent] = "1e"; if callmatch(values,line,"^/bin/sh: ./(%w*).sh: No such file or directory$") and copysource(values,target,".sh") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "1f"; if callmatch(values,line,"^./%w*.sh: line [%d]*: ./(%w*)C: No such file or directory$") and makecopy(values,target,"C") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "1g"; if callmatch(values,line,"^./%w*.sh: line [%d]*: ./(%w*)Cpp: No such file or directory$") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
+		dbgline[dbgent] = "1h"; if callmatch(values,line,"^sh: line 1: ./(%w*)Cpp: No such file or directory$") and makecopy(values,target,"Cpp") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "2a"; if callmatch(values,line,"^make: *** No rule to make target '(%w*)C.o'.  Stop.$") and copysource(values,target,".c") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "2b"; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Lua'.  Stop.$") and copysource(values,target,".lua") then dbgent = dbgent - 1; return true end
 		dbgline[dbgent] = "2c"; if callmatch(values,line,"^make: *** No rule to make target '([%w]*)Hs'.  Stop.$") and copysource(values,target,".hs") then dbgent = dbgent - 1; return true end
