@@ -2392,11 +2392,12 @@ Change = { -- topology changes
 	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
 }
 Argument = { -- commandline argument
-	{"typ","Program",{},""},
-	{"inp","Int",{},{}},
-	{"out","Int",{},{}},
-	{"idx","Int",{},{}},
-	{"str","Str",{["typ"]={["Holez"]=true}},{}},
+	{"typ","Program",{},""}, -- tag
+	{"oth","Program",{},""}, -- other end of pipe
+	{"inp","Int",{},{}}, -- input file descriptor
+	{"out","Int",{},{}}, -- output file descriptor
+	{"idx","Int",{},{}}, -- face identifier
+	{"str","Str",{["typ"]={["Holez"]=true}},{}}, -- listen port
 }
 Valve = { -- setup for system dynamic
 	{"tag","Stream",{},""},
@@ -2487,7 +2488,7 @@ function showTypeHs(args)
 	result = result..showCallHs(arg).."\n"
 	-- if (not args or args["Wrap"]) then
 	result = result.."execWrap :: Argument -> String -> String -> IO (Maybe Int)\n"
-	result = result.."execWrap (Argument (ArgumentA1 typ _ _ idx) arg) fork exec = do\n"
+	result = result.."execWrap (Argument (ArgumentA1 typ oth _ _ idx) arg) fork exec = do\n"
 	result = result..showIndent(1).."idx <- openFork\n"
 	result = result..showIndent(1).."if idx < 0 then return Nothing else do\n"
 	result = result..showIndent(2).."vld <- openCheck idx\n"
@@ -2495,24 +2496,24 @@ function showTypeHs(args)
 	result = result..showIndent(3).."inp <- openRdfd idx\n"
 	result = result..showIndent(3).."out <- openWrfd idx\n"
 	result = result..showIndent(3).."ptr <- newIORef \"\"\n"
-	result = result..showIndent(3).."showArgument (Argument (ArgumentA1 typ inp out idx) arg) ptr\n"
+	result = result..showIndent(3).."showArgument (Argument (ArgumentA1 typ oth inp out idx) arg) ptr\n"
 	result = result..showIndent(3).."str <- readIORef ptr\n"
 	result = result..showIndent(3).."openExec exec str\n"
 	result = result..showIndent(3).."hPutStrLn stderr (fork ++ \": cannot execute file: \" ++ exec)\n"
 	result = result..showIndent(3).."callExit (negate 1)\n"
 	result = result..showIndent(3).."return Nothing\n"
 	result = result.."typeWrap :: Program -> String -> String -> IO (Maybe Int)\n"
-	result = result.."typeWrap typ fork exec = execWrap (Argument (ArgumentA1 typ 0 0 0) ArgumentA5Bs) fork exec\n"
+	result = result.."typeWrap typ fork exec = execWrap (Argument (ArgumentA1 typ Programs 0 0 0) ArgumentA6Bs) fork exec\n"
 	result = result.."initWrapF :: Maybe Argument -> IO (Maybe Argument)\n"
 	result = result.."initWrapF Nothing = return Nothing\n"
-	result = result.."initWrapF (Just (Argument (ArgumentA1 typ inp out _) arg)) = do\n"
+	result = result.."initWrapF (Just (Argument (ArgumentA1 typ oth inp out _) arg)) = do\n"
 	result = result..showIndent(1).."idx <- rdwrInit inp out\n"
-	result = result..showIndent(1).."return (Just (Argument (ArgumentA1 typ inp out idx) arg))\n"
+	result = result..showIndent(1).."return (Just (Argument (ArgumentA1 typ oth inp out idx) arg))\n"
 	result = result.."initWrap :: String -> IO (Maybe Argument)\n"
 	result = result.."initWrap str = newIORef str >>= hideArgument >>= initWrapF\n"
 	result = result.."identWrapF :: Program -> Maybe Argument -> IO (Maybe Int)\n"
 	result = result.."identWrapF _ Nothing = return Nothing\n"
-	result = result.."identWrapF cmp (Just (Argument (ArgumentA1 typ _ _ idx) _)) =\n"
+	result = result.."identWrapF cmp (Just (Argument (ArgumentA1 typ _ _ _ idx) _)) =\n"
 	result = result..showIndent(1).."if cmp /= typ then\n"
 	result = result..showIndent(1).."return Nothing else\n"
 	result = result..showIndent(1).."return (Just idx)\n"
@@ -2531,6 +2532,7 @@ function showTypeLua()
 	result = result..showIndent(1).."if (openCheck(idx) >= 0) then\n"
 	result = result..showIndent(1).."arg[\"inp\"]=openRdfd(idx); arg[\"out\"]=openWrfd(idx); arg[\"idx\"]=-1\n"
 	result = result..showIndent(1).."if (arg[\"typ\"] == nil) then arg[\"typ\"] = \"Programs\"end\n"
+	result = result..showIndent(1).."if (arg[\"oth\"] == nil) then arg[\"oth\"] = \"Programs\"end\n"
 	result = result..showIndent(2).."str = showArgument(arg,\"\")\n"
 	result = result..showIndent(2).."openExec(exec,str); io.stderr:write(fork..\": cannot execute file: \"..exec..\"\\n\"); os.exit(-1)\n"
 	result = result..showIndent(1).."end\n"
