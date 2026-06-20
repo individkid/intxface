@@ -1194,7 +1194,7 @@ void initBoot()
     planeArgv(size-cmnd,boot+cmnd);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
-    break; case (Bringup): case (Builtin):
+    break; case (Bringup): case (Builtin): case (Regress):
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|MachThd),planeWcfg);
@@ -1204,10 +1204,6 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,1000<<8,planeWcfg);
-    break; case (Regress):
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWots);
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     break; case (Release):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
@@ -1245,7 +1241,7 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
 
-    break; case (Bringup): mode = true; case (Builtin): {
+    break; case (Bringup): mode = true; case (Builtin): case (Regress): {
     int frames = callInfo(ScratchFrames,0,planeRcfg);
 
     struct Center *ptr = centerPull(Drawz); freeCenter(ptr);
@@ -1366,7 +1362,7 @@ void initTest()
 
     callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
 
-    break; case (Regress): case (Release): {}}
+    break; case (Release): {}}
 }
 
 void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
@@ -1389,9 +1385,9 @@ int planeLoop()
 {
     int fever = 0;
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
-    break; case (Bringup): case (Builtin):
+    break; case (Bringup): case (Builtin): case (Regress):
     if (fever || (processTime()-start)*1000 < 2000) return 1;
-    break; case (Regress): case (Release):
+    break; case (Release):
     if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
 }

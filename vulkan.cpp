@@ -2581,6 +2581,7 @@ int main(int argc, const char **argv) {
     act.sa_handler = sigintFunc;
     if (sigaction(SIGINT,&act,0) < 0) ERROR();
     if (sigaction(SIGSEGV,&act,0) < 0) ERROR();
+    if (sigaction(SIGTERM,&act,0) < 0) ERROR();
     // errFunc(errorFunc); // in case pipe is closed just before written to
     // on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg
@@ -2604,11 +2605,13 @@ int main(int argc, const char **argv) {
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     glfwSetWindowSizeCallback(main.windowState.window,glfwResize);
     int count = 0;
+    if (main.changeState.read(RegisterPoll) != 0) // disable Release for now
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.changeState.read(RegisterPoll) == 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);}
     planeDone();
     int ret = main.changeState.read(RegisterExit);
+    // TODO this incompatible with vulkan // exit(ret > 0 ? ret-1 : ret); // WHY is this needed to wakeup waitpid
     return (ret > 0 ? ret-1 : ret);
 }
 
