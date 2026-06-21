@@ -44,9 +44,9 @@ filer.log:
 planra.log:
 	/bin/sh -e ./planra.sh > planra.log
 vulkan.log:
-	./vulkanCpp >> vulkan.log
+	./vulkanCpp > vulkan.log
 planer.log:
-	./planerLua > planer.log
+	/bin/sh -e ./planer.sh > planer.log
 spacra.log:
 	./spacraHs > spacra.log
 spacer.log:
