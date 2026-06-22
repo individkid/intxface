@@ -56,17 +56,11 @@ int main(int argc, const char **argv)
 	for (int i = 0; i < count; i++) for (int j = 0; j < count; j++) {
 	procs[i][words[i]] = shows[i][j]; words[i] += 1;}
 	for (int i = 0; i < count; i++) procs[i][words[i]] = 0;
-	for (int i = 0; i < count; i++) {
-	pids[i] = fork(); if (pids[i] < 0) return -1;
-	if (pids[i] == 0) {
-	execv(procs[i][0],procs[i]);
-	fprintf(stderr,"%s: cannot execute file: %s\n",argv[0],procs[i][0]);
-	kill(-gpid,SIGTERM); return -2;}}
+	for (int i = 0; i < count; i++) {pids[i] = fork(); if (pids[i] < 0) return -1;
+	if (pids[i] == 0) {execv(procs[i][0],procs[i]);
+	fprintf(stderr,"%s: cannot execute file: %s\n",argv[0],procs[i][0]); return -2;}}
 	pid_t pid; while ((pid = wait(0)) >= 0) for (int i = 0; i < count; i++) if (pid == pids[i]) {
 	struct pollfd pfd; pfd.fd = rdfd[i][i]; pfd.events = POLLIN; int ret = poll(&pfd,1,0);
-	if (ret <= 0) {
-	fprintf(stderr,"poll negative %d %d\n",ret,errno);
-	kill(-gpid,SIGTERM); return -3;}
-	break;} if (errno != ECHILD) return -4;}
+	if (ret <= 0) {kill(-gpid,SIGTERM); return -3;}} if (!(pid < 0 && errno == ECHILD)) return -4;}
 	return 0;
 }
