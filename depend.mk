@@ -25,9 +25,10 @@ luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h sugx.h type.h
-planer.log: planer.sh planerC
+planer.log: luax.so planer.lua planer.sh planerC planerLua type.lua
 planerC: faceC.o planerC.o protoC.o typeC.o
 planerC.o: planer.c proto.h type.h
+planerLua: planer.lua
 planra.log: fragmentColorG fragmentPierceG fragmentRelateG planra.sh planraC texture.jpg vertexConstG vertexCoplaneG vertexFetchG vertexFillG vertexVertexG vulkanCpp
 planraC: datxC.o faceC.o fmtxC.o metxC.o planeC.o planraC.o protoC.o stlxCpp.o sugxC.o typeC.o
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h stlx.h type.h
