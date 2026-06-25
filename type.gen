@@ -53,6 +53,12 @@ Memory = { -- which structure is in the center struction
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
+Response = {
+	"RetRsp", -- return pass or fail
+	"RptRsp", -- repeat until pass
+	"MltRsp", -- return pass or fail of multiple
+	"MptRsp", -- repeat multiple until pass
+}
 Resrc = { -- variation of BaseState
 	"SwapRes",
 	"PipeRes",
@@ -240,6 +246,9 @@ Configure = { -- integer variables for user expressions
 	"CenterSlf",
 	"CenterPtr", -- whether staged
 	"CenterInt", -- sample in range
+	"CenterRsp", -- response type
+	"CenterSub", -- repose place
+	"CenterSrc", -- pipe source
 	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"RegisterCall", -- start wake stop
@@ -2367,6 +2376,13 @@ Center = { -- setup for graphics
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
+}
+Extend = {
+	{"ptr","Center",{},{1}}, -- memory union
+	{"rsp","Response",{},{}}, -- how to respond
+	{"sub","Int",{},{}}, -- where to replace
+	{"src","Int",{},{}}, -- pipe read from
+	{"res","Int",{},{}}, -- pass or fail
 }
 Listed = {
 	{"siz","Int",{},{}},

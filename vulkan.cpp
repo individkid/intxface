@@ -803,7 +803,7 @@ struct BaseState {
 struct Push {
     SmartState log;
     BaseState *base; Reloc loc;
-    Center *ptr; int sub;
+    Extend *ptr;
     VkFence fence;
 };
 struct ThreadState : public DoneState {
@@ -836,11 +836,11 @@ struct ThreadState : public DoneState {
     }
     void push(SmartState log, BaseState *base, Reloc loc) {
         // enque resource to process on thread
-        push({log,base,loc,0,0});
+        push({log,base,loc,0});
     }
-    void push(SmartState log, Center *ptr, int sub) {
+    void push(SmartState log, Extend *ptr) {
         // enque response for after enqued resource fences
-        push({log,0,Relocs,ptr,sub});
+        push({log,0,Relocs,ptr});
     }
     bool stage() {
         while (1) {while (1) {
@@ -875,7 +875,7 @@ struct ThreadState : public DoneState {
         if (result != VK_SUCCESS) EXIT}
         if (push.base) {
         push.base->baseups(push.loc,push.log);}
-        if (push.ptr) centerDone(push.ptr,push.sub);
+        if (push.ptr) centerDone(push.ptr);
         change->wots(RegisterWake,1<<FnceMsk);}
         vkDeviceWaitIdle(device);
     }
@@ -1166,7 +1166,7 @@ struct CopyState {
     #define VAL ins[i].key.val
     #define LOC ins[i].req.loc
     #define REQ ins[i].req
-    void push(HeapState<Inst,StackState::instrs> &ins, Center *ptr, int sub, Rsp rsp, SmartState log) {
+    void push(HeapState<Inst,StackState::instrs> &ins, Extend *ptr, SmartState log) {
         // four orderings, in same list: acquire reserve submit notify
         int num = ins.size(); // number that might be reserved
         bool goon = true; while (goon) {goon = false;
@@ -1322,9 +1322,9 @@ struct CopyState {
             log << "IdxDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}}}
         log << "notify pass" << '\n';
-        ptr->slf = 0;
-        switch (rsp) {default:
-        break; case (RetRsp): case (RptRsp): thread->push(log,ptr,sub);}
+        ptr->res = 0;
+        switch (ptr->rsp) {default:
+        break; case (RetRsp): case (RptRsp): thread->push(log,ptr);}
         if (bind) stack[BindRes]->advance(0,Qualitys,0,indx);
         } else {
         log << "release reserved " << num << ">" << lim << '\n';
@@ -1340,10 +1340,10 @@ struct CopyState {
             bind->rdec(sav,log);}}
         if (bind) bind->done(log);
         log << "notify fail" << '\n';
-        switch (rsp) {default:
+        switch (ptr->rsp) {default:
         break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
-        break; case (MltRsp): ptr->slf = -1;
-        break; case (RetRsp): ptr->slf = -1; thread->push(log,ptr,sub);}}}
+        break; case (MltRsp): ptr->res = -1;
+        break; case (RetRsp): ptr->res = -1; thread->push(log,ptr);}}}
     }
     Requ request(Format frm, Reloc loc, void *val, int *arg, int siz, int &idx, SmartState log) {
         Requ req = {Requests,0,0,0,Extents,0,0,loc};
@@ -1662,63 +1662,64 @@ struct CopyState {
         recurse(lst,vlu,tot,idx,typ,dat,arg,siz,ary,dep,log);
         if (idx != tot) {std::cerr << "wrong number of int arguments " << idx << "!=" << tot << std::endl; EXIT}
     }
-    template <class Type> void push(Type typ, void *dat, int *arg, int siz, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    template <class Type> void push(Type typ, void *dat, int *arg, int siz, Extend *ptr, int ary, SmartState log) {
         HeapState<Inst,StackState::instrs> lst;
         push(lst,typ,dat,arg,siz,ary,0,log);
-        push(lst,ptr,sub,rsp,log);
+        push(lst,ptr,log);
     }
-    void push(Draw &drw, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    void push(Draw &drw, Extend *ptr, int ary, SmartState log) {
         {char *st0 = 0; showDraw(&drw,&st0); log << "copy " << st0 << '\n'; free(st0);}
         switch (drw.con.tag) {default: ERROR();
-        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,ptr,sub,rsp,ary,log);
-        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,ptr,sub,rsp,ary,log);
-        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,ptr,sub,rsp,ary,log);}
+        break; case (MicroCon): push(drw.con.mic,drw.ptr,drw.arg,drw.siz,ptr,ary,log);
+        break; case (MemoryCon): push(drw.con.mem,drw.ptr,drw.arg,drw.siz,ptr,ary,log);
+        break; case (ResrcCon): push(drw.con.res,drw.ptr,drw.arg,drw.siz,ptr,ary,log);}
     }
-    void push(Memory mem, void *dat, int idx, int siz, int bas, int fet, int wid, int hei, Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    void push(Memory mem, void *dat, int idx, int siz, int bas, int fet, int wid, int hei, Extend *ptr, int ary, SmartState log) {
         int mval[] = {
         wid,hei, // OldDerIns ExtentFrm
         idx,siz, // OldDerIns WholeFrm
         bas,fet}; // fetch size
         int msiz = sizeof(mval)/sizeof(int);
-        push(mem,dat,mval,msiz,ptr,sub,rsp,ary,log);
+        push(mem,dat,mval,msiz,ptr,ary,log);
     }
-    void push(Center *ptr, int sub, Rsp rsp, int ary, SmartState log) {
+    void push(Extend *ext, int ary, SmartState log) {
+        Center *ptr = ext->ptr;
         switch (ptr->mem) {default: {
-        int mod = centerMod(ptr); int idx = ptr->idx*mod; int siz = ptr->siz*mod;
+        int mod = centerMod(ext); int idx = ptr->idx*mod; int siz = ptr->siz*mod;
         int val[] = {idx,siz}; int aiz = sizeof(val)/sizeof(int);
         switch (ptr->mem) {default: EXIT
-        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Storagez): push(ptr->mem,(void*)ptr->sto,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Identz): push(ptr->mem,(void*)ptr->idt,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Numericz): push(ptr->mem,(void*)ptr->num,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,val,aiz,ptr,sub,rsp,ary,log);
-        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,val,aiz,ptr,sub,rsp,ary,log);}}
+        break; case (Indexz): push(ptr->mem,(void*)ptr->ind,val,aiz,ext,ary,log);
+        break; case (Storagez): push(ptr->mem,(void*)ptr->sto,val,aiz,ext,ary,log);
+        break; case (Bringupz): push(ptr->mem,(void*)ptr->ver,val,aiz,ext,ary,log);
+        break; case (Identz): push(ptr->mem,(void*)ptr->idt,val,aiz,ext,ary,log);
+        break; case (Uniformz): push(ptr->mem,(void*)ptr->uni,val,aiz,ext,ary,log);
+        break; case (Matrixz): push(ptr->mem,(void*)ptr->mat,val,aiz,ext,ary,log);
+        break; case (Trianglez): push(ptr->mem,(void*)ptr->tri,val,aiz,ext,ary,log);
+        break; case (Numericz): push(ptr->mem,(void*)ptr->num,val,aiz,ext,ary,log);
+        break; case (Vertexz): push(ptr->mem,(void*)ptr->vtx,val,aiz,ext,ary,log);
+        break; case (Basisz): push(ptr->mem,(void*)ptr->bas,val,aiz,ext,ary,log);}}
         break; case (Drawz): {
             int mask = 0;
             for (int i = 0; i < ptr->siz; i++) {
             if (ptr->mem != Drawz) *(int*)0=0; // TODO rewrite in rust
-            push(ptr->drw[i],ptr,sub,rsp,ary,log);
-            if (ptr->slf) mask |= 1<<(i<32?i:31);}
-            ptr->slf = mask;}
+            push(ptr->drw[i],ext,ary,log);
+            if (ext->res) mask |= 1<<(i<32?i:31);}
+            ext->res = mask;}
         break; case (Instrz): {
             HeapState<Inst,StackState::instrs> ins;
             for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
-            push(ins,ptr,sub,rsp,log);}
+            push(ins,ext,log);}
         break; case (Configurez):
             // for (int i = 0; i < ptr->siz; i++) {char *st0 = 0; showConfigure(ptr->cfg[i],&st0); fprintf(stderr,"%s=%d\n",st0,ptr->val[i]); free(st0);}
             for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);
-            thread->push(log,ptr,sub); return;
+            thread->push(log,ext); return;
         break; case (Imagez):
-            push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,datxVoids(ptr->img[0].dat),change->read(FetchBase),change->read(FetchSize),ptr->img[0].wid,ptr->img[0].hei,ptr,sub,rsp,ary,log);
+            push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,datxVoids(ptr->img[0].dat),change->read(FetchBase),change->read(FetchSize),ptr->img[0].wid,ptr->img[0].hei,ext,ary,log);
         break; case (Getintz): case (Getoldz):
-            push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,change->read(FetchBase),change->read(FetchSize),change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);
+            push(ptr->mem,(void*)ptr->uns,ptr->idx,ptr->siz,change->read(FetchBase),change->read(FetchSize),change->read(UniformWid),change->read(UniformHei),ext,ary,log);
         break; case (Vectorz):
-            push(ptr->mem,(void*)ptr->uns,ptr->idx*4,ptr->siz*4,change->read(FetchBase),change->read(FetchSize),change->read(UniformWid),change->read(UniformHei),ptr,sub,rsp,ary,log);}
-        switch (rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ptr,sub);}
+            push(ptr->mem,(void*)ptr->uns,ptr->idx*4,ptr->siz*4,change->read(FetchBase),change->read(FetchSize),change->read(UniformWid),change->read(UniformHei),ext,ary,log);}
+        switch (ext->rsp) {default: break; case (MltRsp): case (MptRsp): thread->push(log,ext);}
     }
 };
 
@@ -2516,9 +2517,9 @@ void glfwResize(GLFWwindow* window, int width, int height) {
     mptr->changeState.wots(RegisterWake,1<<ProjMsk);
 }
 // copy request
-void vulkanCopy(Center *ptr, int sub, Rsp rsp, int ary, const char *dbg) {
-    if (dbg) mptr->copyState.push(ptr,sub,rsp,ary,SmartState(dbg));
-    else mptr->copyState.push(ptr,sub,rsp,ary,SmartState());
+void vulkanCopy(Extend *ptr, int ary, const char *dbg) {
+    if (dbg) mptr->copyState.push(ptr,ary,SmartState(dbg));
+    else mptr->copyState.push(ptr,ary,SmartState());
 }
 // add callback
 void vulkanCall(Configure cfg, xftype back) {
