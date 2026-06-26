@@ -1010,7 +1010,7 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
     wake |= able;}
     wake &= callKnfo(RegisterOpen,0,planeRcfg);
     for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) {
-    planeWake(i,0);}
+    planeWake(MachThd,i);}
 }
 void registerAble(enum Configure cfg, int sav, int val, int act)
 {
@@ -1231,17 +1231,17 @@ void initBoot()
     planeArgv(size-cmnd,boot+cmnd);
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
-    break; case (Bringup): case (Builtin): case (Regress):
+    break; case (Bringup): case (Builtin):
     callJnfo(RegisterPoll,1,planeWcfg);
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    callJnfo(RegisterAble,((((1<<TimeMsk)|(1<<PassMsk))<<8)|MachThd),planeWcfg);
+    callJnfo(RegisterAble,(((1<<PassMsk)<<8)|0),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,1000<<8,planeWcfg);
-    break; case (Release):
+    break; case (Regress): case (Release):
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
@@ -1278,7 +1278,7 @@ void initTest()
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
 
-    break; case (Bringup): mode = true; case (Builtin): case (Regress): {
+    break; case (Bringup): mode = true; case (Builtin): {
     int frames = callInfo(ScratchFrames,0,planeRcfg);
 
     struct Extend *ptr = centerPull(Drawz); freeCenter(ptr->ptr);
@@ -1343,11 +1343,6 @@ void initTest()
     mat->ptr->mem = Matrixz; mat->ptr->slf = frames; mat->ptr->siz = 5; allocMatrix(&mat->ptr->mat,mat->ptr->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; planeWindow(proj);
-    // TODO do following with center from commandline after delay
-    /*callInfo(ClickLeft,0,planeWcfg); callInfo(ClickBase,0,planeWcfg);
-    callInfo(ManipLeft,250,planeWcfg); callInfo(ManipBase,250,planeWcfg);
-    callInfo(ManipFixed,(1<<Slide)|(1<<Ortho)|(1<<Mouse),planeWcfg);
-    planeMatrix(mat->ptr->mat[0].mat);*/
     copymat(mat->ptr->mat[0].mat,ident,4); // uni.all
     copymat(mat->ptr->mat[1].mat,ident,4); // uni.one
     copymat(mat->ptr->mat[2].mat,proj,4);
@@ -1410,9 +1405,7 @@ void initTest()
     callCopy(fil,0,(debug?"relate":0));
     while (!centerCheck(Drawz)) callWait();}
 
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
-
-    break; case (Release): {}}
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}}
 }
 
 void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
@@ -1435,60 +1428,14 @@ int planeLoop()
 {
     int fever = 0;
     switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
-    break; case (Bringup): case (Builtin): case (Regress):
+    break; case (Bringup): case (Builtin):
     if (fever || (processTime()-start)*1000 < 2000) return 1;
-    break; case (Release):
+    break; case (Regress): case (Release):
     if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
 }
 void planeDone()
 {
-    // doneTest();
-    // donePlan();
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
-    default: ERROR();
-    break; case (Bringup):
-    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TimeThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
-    break; case (Builtin):
-    callJnfo(RegisterOpen,(1<<TestThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
-    break; case (Regress):
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);
-    break; case (Release):
-    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWotc);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWotc);}
-    // TODO after other destructors on the heap
-    // TODO also free heap pointers from face datx fmtx and local globals
-    // doneBoot();
-    // doneSafe();
-    // datxFnptr(0,0,0,0,0,0,0);
-    /*callBack(RegisterTime,0);
-    callBack(RegisterAble,0);
-    callBack(RegisterWake,0);
-    callBack(RegisterOpen,0);
-    closeIdent(loopfd); freeMaskq(maskq); freeAbleq(ableq);
-    freeTimep(timep); freeTimeq(timeq);
-    freeChrq(chrq); freeStrq(strin); freeStrq(strout);
-    freeCenterq(response); freeCenterq(internal);
-    closeIdent(idx1); closeIdent(idx0); datxNon();
- else safeJoin(tag,idx);
- else safeJoin(tag,idx);
- safeJoin(tag,idx);
-    if (sem_destroy(&safeSem) != 0) ERROR();
-    if (sem_destroy(&evalSem) != 0) ERROR();
-    if (sem_destroy(&timeSem) != 0) ERROR();
-    if (sem_destroy(&stdioSem) != 0) ERROR();
-    if (sem_destroy(&pipeSem) != 0) ERROR();
-    if (sem_destroy(&copySem) != 0) ERROR();
-    if (sem_destroy(&loopSem) != 0) ERROR();
-    */
+    // TODO stop all the threads
+    // TODO free heap allocations
 }
