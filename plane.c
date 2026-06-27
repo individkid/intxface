@@ -789,6 +789,7 @@ void planeExternal(enum Thread tag, int idx)
     int sub = waitRead(0.0,mask);
     if (waitSafe(pipeSem) != 0) ERROR();
     if (sub == extdone) {
+    if (postSafe(pipeSem) != 1) ERROR();
     if (readChr(extdone)) break; else continue;}
     if ((1<<sub)&external != (1<<sub)) ERROR();
     struct Extend *center = 0;
@@ -1405,7 +1406,9 @@ void initTest()
     callCopy(fil,0,(debug?"relate":0));
     while (!centerCheck(Drawz)) callWait();}
 
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}}
+    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
+
+    break; case(Regress): case(Release): break;}
 }
 
 void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
