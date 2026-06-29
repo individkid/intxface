@@ -17,6 +17,8 @@ void *copySem = 0; // protect centers
 int external = 0; // pipes to planeExternal
 int inphint = 0; // last file descriptor
 int outhint = 0; // last file descriptor
+int srchint = 0; // last face ident
+int inverse[Programs] = {0}; // inverse to userIdent
 int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
 void *response = 0; // queue of center
@@ -776,7 +778,9 @@ void planeCenter(enum Thread tag, int idx)
     pushCenterq(center,internal);
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
     if (center && center->ptr->slf >= 0) {
-    writeExtend(center,center->src);
+    if (center->src < 0 || center->src >= Programs) ERROR();
+    int sub = inverse[center->src];
+    writeExtend(center,sub);
     freeExtend(center); allocExtend(&center,0);}
     if (postSafe(pipeSem) != 1) ERROR();}
 }
@@ -795,7 +799,7 @@ void planeExternal(enum Thread tag, int idx)
     struct Extend *center = 0;
     allocExtend(&center,1);
     readCenter(center->ptr,sub);
-    center->src = sub;
+    center->src = (int*)*userIdent(sub) - inverse;
     pushCenterq(center,internal);
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);
     if (postSafe(pipeSem) != 1) ERROR();}
@@ -1067,13 +1071,14 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
 }
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != ArgumentInp && cfg != ArgumentOut) ERROR();
+    if (cfg != ArgumentInp && cfg != ArgumentOut && cfg != ArgumentSrc) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     if (inphint && outhint) ERROR();
-    if (!outhint && cfg == ArgumentInp) external |= 1<<rdwrInit(inphint = val,0);
-    else if (!inphint && cfg == ArgumentOut) external |= 1<<rdwrInit(0,outhint = val);
+    if (!outhint && cfg == ArgumentInp) {srchint = rdwrInit(val,0); inphint = val; external |= 1<<srchint;}
+        else if (!inphint && cfg == ArgumentOut) {srchint = rdwrInit(0,val); outhint = val; external |= 1<<srchint;}
     else if (outhint && cfg == ArgumentInp) {rdfdInit(val,outhint); outhint = 0;}
     else if (inphint && cfg == ArgumentOut) {wrfdInit(val,inphint); inphint = 0;}
+    if (srchint && cfg == ArgumentSrc && val >= 0 && val < Programs) {inverse[val] = srchint; *userIdent(srchint) = inverse + val;}
     postSafe(safeSafe(PipeThd,0));
     writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -1150,7 +1155,8 @@ void planeArgv(int argc, char **argv)
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, argv[i], &asiz)) {
-    callInfo(ArgumentInp,arg.inp,planeWcfg); callJnfo(ArgumentOut,arg.out,planeWcfg); freeArgument(&arg);}
+    callInfo(ArgumentInp,arg.inp,planeWcfg); callInfo(ArgumentOut,arg.out,planeWcfg);
+    callJnfo(ArgumentSrc,arg.oth,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Extend *ptr = 0; allocExtend(&ptr,1);
     copyCenter(ptr->ptr,&cntr); freeCenter(&cntr); ptr->sub = centers;
     centerPlace(ptr);}

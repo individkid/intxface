@@ -1,4 +1,4 @@
-Regress: Test spoofed user actions and file changes with Center loaded through pipe. Add Express to file.c so Persist can do read modify write of fields.
+Regress: Write random triangles. Do following spoofs with appropriate delays. Spoof change to inactive/polytope/rotate mode. Spoof click on one of the triangles to get pierce point and change to active/polytope/rotate mode. Spoof move cursor and roller several times to transform. Spoof timer event to send.  Send as if from other. Send loopback. Send more from other. Do same for other modes.
 
 Release: Use actual user actions to interact with actual file.
 
