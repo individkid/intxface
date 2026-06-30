@@ -25,7 +25,7 @@ luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
 planeC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h sugx.h type.h
-planer.log: luax.so planer.lua planer.sh planerC planerLua type.lua
+planer.log: fragmentColorG fragmentPierceG fragmentRelateG luax.so planer.lua planer.sh planerC planerLua type.lua vertexConstG vertexCoplaneG vertexFetchG vertexFillG vertexVertexG vulkanCpp
 planerC: faceC.o planerC.o protoC.o typeC.o
 planerC.o: planer.c proto.h type.h
 planerLua: planer.lua
