@@ -15,9 +15,6 @@ struct Extend **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 void *copySem = 0; // protect centers
 int external = 0; // pipes to planeExternal
-int inphint = 0; // last file descriptor
-int outhint = 0; // last file descriptor
-int srchint = 0; // last face ident
 int inverse[Programs] = {0}; // inverse to userIdent
 int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
@@ -583,7 +580,9 @@ void machinePopy(int sig, int *arg)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr) centerPlace(ptr);
+    if (ptr) {
+    ptr->sub = dst;
+    centerPlace(ptr);}
     else centerClear(dst);
 }
 void machineQopy(int sig, int *arg)
@@ -1055,14 +1054,25 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
-void registerEval(enum Configure cfg, int sav, int val, int act)
+void registerVoid(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != RegisterEval) ERROR();
+    if (cfg != RegisterVoid) ERROR();
     int lwr = val & 0xff; // expr in center
     int upr = val >> 8; // center of expr
     struct Extend *ptr = centerPull(upr);
     if (ptr && ptr->ptr->mem == Expressz && lwr >= 0 && lwr < ptr->ptr->siz) {
     machineVoid(&ptr->ptr->exp[lwr]);}
+    centerPlace(ptr);
+}
+void registerEval(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != RegisterEval) ERROR();
+    int lwr = val & 0xff; // expr in center
+    int mid = (val >> 8) & 0xff; // center of expr
+    int upr = val >> 16; // center to modify
+    struct Extend *ptr = centerPull(mid);
+    if (ptr && ptr->ptr->mem == Expressz && lwr >= 0 && lwr < ptr->ptr->siz) {
+    machineEval(&ptr->ptr->exp[lwr],upr);}
     centerPlace(ptr);
 }
 void registerUniform(enum Configure cfg, int sav, int val, int act)
@@ -1073,12 +1083,12 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != ArgumentInp && cfg != ArgumentOut && cfg != ArgumentSrc) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
-    if (inphint && outhint) ERROR();
-    if (!outhint && cfg == ArgumentInp) {srchint = rdwrInit(val,0); inphint = val; external |= 1<<srchint;}
-        else if (!inphint && cfg == ArgumentOut) {srchint = rdwrInit(0,val); outhint = val; external |= 1<<srchint;}
-    else if (outhint && cfg == ArgumentInp) {rdfdInit(val,outhint); outhint = 0;}
-    else if (inphint && cfg == ArgumentOut) {wrfdInit(val,inphint); inphint = 0;}
-    if (srchint && cfg == ArgumentSrc && val >= 0 && val < Programs) {inverse[val] = srchint; *userIdent(srchint) = inverse + val;}
+    int rdfd = callGnfo(ArgumentInp,0,planeRcfg);
+    int wrfd = callGnfo(ArgumentOut,0,planeRcfg);
+    int asrc = callGnfo(ArgumentSrc,0,planeRcfg);
+    int idx = rdwrInit(rdfd,wrfd);
+    fprintf(stderr,"registerArgument %d %d %d %d\n",rdfd,wrfd,asrc,idx);
+    external |= 1<<idx; *userIdent(idx) = inverse + asrc;
     postSafe(safeSafe(PipeThd,0));
     writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -1187,6 +1197,7 @@ void initSafe()
     callBack(RegisterWake,registerWake);
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
+    callBack(RegisterVoid,registerVoid);
     callBack(RegisterEval,registerEval);
     callBack(UniformAll,registerUniform);
     callBack(UniformOne,registerUniform);
@@ -1202,6 +1213,7 @@ void initSafe()
     callBack(UniformHei,registerUniform);
     callBack(ArgumentInp,registerArgument);
     callBack(ArgumentOut,registerArgument);
+    callBack(ArgumentSrc,registerArgument);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
@@ -1249,6 +1261,8 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
+    callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
+    callJnfo(RegisterAble,(((1<<SlctMsk)<<8)|0),planeWcfg);
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);

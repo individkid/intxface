@@ -266,7 +266,8 @@ Configure = { -- integer variables for user expressions
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
-	"RegisterEval", -- expression center index
+	"RegisterVoid", -- expression center index
+	"RegisterEval", -- index center index
 	"RegisterSelf", -- self for loopback
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
@@ -1943,7 +1944,7 @@ Bootstrap = {
 		  -- loop back to next bit in RegisterWake if nothing in internal queue
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterPtr == #0) , #-3 ; #0 == #1 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
+		 -- "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		 -- move current from internal queue to per memory location
 		 "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(@memorys)arg[1]:$(?CenterMem))"..
 		 "mch[%(return jdx())]:Nest(lvl:1)"..
@@ -2077,13 +2078,14 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 16
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrTestMsk Op , Imm TimOp Op , EndOp Op))"..
-		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
+		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrTestMsk Op , Imm TimOp Op , EndOp Op))"..
+		-- "mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)Expressz(siz:1idx:0slf:0"..
-		"exp[0]:$(Wos RegisterWake #1<<?ScratchDescrs Op))"},
+		"exp[0]:$(Wos RegisterWake #1<<?ScratchDescrs Op)"..
+	")"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
