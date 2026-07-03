@@ -24,7 +24,7 @@ function readPrint(test)
 	-- print(showCenter(center))
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
-	-- write TestMsk to ScratchDescrs and 0 to RegisterVoid
+	-- write TestMsk to ScratchDescrs and @express to RegisterVoid
 	center = hideCenter("Center(mem:Configurezsiz:2idx:0slf:0cfg[0]:ScratchDescrscfg[1]:RegisterVoidval[0]:"..castMask("TestMsk").."val[1]:0)")
 	if center == nil then print("oops") end
 	writeCenter(center,tests[found]["idx"])

@@ -555,11 +555,21 @@ void machineBopy(int sig, int *arg)
     ptr->sub = dst;
     centerPlace(ptr);
 }
+void machineSwitch(struct Machine *ptr);
+void machineVoid(struct Express *ptr);
 void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
-    callCopy(centerPull(src),0,0);
+    struct Extend *ext = centerPull(src);
+    struct Center *ptr = ext->ptr;
+    switch (ptr->mem) {default: callCopy(ext,0,0); break;
+    case (Executez): for (int i = 0; i < ptr->siz; i++)
+    machineSwitch(&ptr->exe[i]);
+    centerPlace(ext); break;
+    case (Evaluatez): for (int i = 0; i < ptr->siz; i++)
+    machineVoid(&ptr->eva[i]);
+    centerPlace(ext); break;}
 }
 void machineDopy(int sig, int *arg)
 {
@@ -722,6 +732,7 @@ void machineSwitch(struct Machine *mptr)
     switch (mptr->xfr) {default: ERROR();
     case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],machineIval(mptr->idx)); break;
     case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
+    case (Panic): *(int*)0=0; break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineProj(mptr->sig,arg);} break;
@@ -1087,7 +1098,7 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
     int wrfd = callGnfo(ArgumentOut,0,planeRcfg);
     int asrc = callGnfo(ArgumentSrc,0,planeRcfg);
     int idx = rdwrInit(rdfd,wrfd);
-    fprintf(stderr,"registerArgument %d %d %d %d\n",rdfd,wrfd,asrc,idx);
+    // fprintf(stderr,"registerArgument %d %d %d %d\n",rdfd,wrfd,asrc,idx);
     external |= 1<<idx; *userIdent(idx) = inverse + asrc;
     postSafe(safeSafe(PipeThd,0));
     writeChr(0,extdone);
