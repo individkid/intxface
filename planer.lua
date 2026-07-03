@@ -19,17 +19,17 @@ end
 function readPrint(test)
 	center = readCenter(tests[found]["idx"])
 	print(test["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
-	for i,v in ipairs(center["cfg"]) do print(test["typ"].." cfg["..(i-1).."]:"..v) end
-	for i,v in ipairs(center["val"]) do print(test["typ"].." val["..(i-1).."]:"..v) end
+	-- for i,v in ipairs(center["cfg"]) do print(test["typ"].." cfg["..(i-1).."]:"..v) end
+	-- for i,v in ipairs(center["val"]) do print(test["typ"].." val["..(i-1).."]:"..v) end
 	-- print(showCenter(center))
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	-- write TestMsk to ScratchDescrs and @express to RegisterVoid
-	center = hideCenter("Center(mem:Configurezsiz:2idx:0slf:0cfg[0]:ScratchDescrscfg[1]:RegisterVoidval[0]:"..castMask("TestMsk").."val[1]:0)")
-	if center == nil then print("oops") end
+	center,len = hideCenter("Center(mem:Evaluatezsiz:1idx:0slf:0eva[0]:Express(opr:WosOpcgs:RegisterWakeset[0]:Express(opr:BitOpbit:ShlBitopb[0]:Express(opr:IntOpval:1)opb[1]:Express(opr:IntOpval:"..castMask("TestMsk").."))))",0)
+	if center == nil then print("oops "..len) end
 	writeCenter(center,tests[found]["idx"])
 	readPrint(tests[found])
-	-- -- write 1 to RegisterExit
+	-- write 1 to RegisterExit
 	center = hideCenter("Center(mem:Configurezsiz:1idx:0slf:0cfg[0]:RegisterExitval[0]:1)")
 	if center == nil then print("oops") end
 	writeCenter(center,tests[found]["idx"])

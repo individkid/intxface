@@ -1923,6 +1923,7 @@ Bootstrap = {
 	-- TODO initialize Drawz with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
+	-- TODO figure way to use castMask(TestMsk) instead of #15, maybe new Express to cast ImmStrTestMskOpOp to Int
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0 masks = #15 tests = #1 total = @masks + @tests back = #-1 - @total)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
@@ -2088,6 +2089,7 @@ Bootstrap = {
 
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count) count = #5)Expressz(siz:1idx:0slf:0"..
+		-- TODO remove after removing RegisterEval/Void
 		"exp[0]:$(Wos RegisterWake #1<<?ScratchDescrs Op)"..
 	")"},
 	{"Int","%(return idx())","Str","!(execute = #%(return count))Executez(siz:0idx:0slf:0)"},
