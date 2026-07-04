@@ -49,7 +49,7 @@ Memory = { -- which structure is in the center struction
 	"Instrz", -- little vulkan language
 	"Machinez", -- state machine lines
 	"Expressz", -- expression library
-	-- TODO add Rebootz that takes a list of Express for where to put next several Center from same slf
+	"Rebootz", -- block for centers
 	"Transferz", -- execute in place
 	"Kernelz", -- inflight transformations
 }
@@ -2088,6 +2088,7 @@ Bootstrap = {
 		-- TODO remove after removing RegisterEval/Void
 		"exp[0]:$(Wos RegisterWake #1<<?ScratchDescrs Op)"..
 	")"},
+	{"Int","%(return idx())","Str","!(reboot = #%(return count))Rebootz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
@@ -2384,6 +2385,7 @@ Center = { -- setup for graphics
 	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
+	{"rep","Int",{["mem"]={["Rebootz"]=true}},"siz"},
 	{"exe","Machine",{["mem"]={["Transferz"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 }

@@ -401,25 +401,15 @@ int centerMod(struct Extend *ptr)
 {
     switch (ptr->ptr->mem) {default: ERROR();
     break; case (Indexz): return sizeof(int32_t);
+    break; case (Storagez): return sizeof(int32_t);
     break; case (Bringupz): return sizeof(struct Vertex);
     break; case (Identz): return sizeof(int32_t);
-    break; case (Imagez): return sizeof(struct Image);
-    break; case (Getintz): return sizeof(int32_t);
-    break; case (Getoldz): return sizeof(float);
-    break; case (Vectorz): return sizeof(struct Vector);
-    break; case (Storagez): return sizeof(int32_t);
     break; case (Uniformz): return sizeof(struct Uniform);
     break; case (Matrixz): return sizeof(struct Matrix);
     break; case (Trianglez): return sizeof(struct Triangle);
     break; case (Numericz): return sizeof(struct Numeric);
     break; case (Vertexz): return sizeof(struct Vertex);
-    break; case (Basisz): return sizeof(struct Basis);
-    break; case (Drawz): return sizeof(struct Draw);
-    break; case (Instrz): return sizeof(struct Inst);
-    // Stringz
-    break; case (Machinez): return sizeof(struct Machine);
-    break; case (Expressz): return sizeof(struct Express);
-    break; case (Kernelz): return sizeof(struct Kernel);}
+    break; case (Basisz): return sizeof(struct Basis);}
     return 0;
 }
 
@@ -566,7 +556,14 @@ void machineCopy(int sig, int *arg)
     switch (ptr->mem) {default: callCopy(ext,0,0); break;
     case (Transferz): for (int i = 0; i < ptr->siz; i++)
     machineSwitch(&ptr->exe[i]);
-    centerPlace(ext); break;}
+    centerPlace(ext); break;
+    case (Rebootz):
+    // TODO block to read from internal queue
+    // TODO save those with slf different from ptr->slf
+    // TODO centerPlace those with slf equal to ptr->slf
+    // TODO machineCopy those with slf == ptr->slf and reb < 0
+    // TODO then push saved back onto internal queue
+    break;}
 }
 void machineDopy(int sig, int *arg)
 {
