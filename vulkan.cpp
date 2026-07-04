@@ -1709,10 +1709,6 @@ struct CopyState {
             HeapState<Inst,StackState::instrs> ins;
             for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
             push(ins,ext,log);}
-        break; case (Configurez):
-            // for (int i = 0; i < ptr->siz; i++) {char *st0 = 0; showConfigure(ptr->cfg[i],&st0); fprintf(stderr,"%s=%d\n",st0,ptr->val[i]); free(st0);}
-            for (int i = 0; i < ptr->siz; i++) change->write(ptr->cfg[i],ptr->val[i]);
-            thread->push(log,ext); return;
         break; case (Imagez):
             push(ptr->mem,(void*)datxVoidz(0,ptr->img[0].dat),ptr->idx,datxVoids(ptr->img[0].dat),change->read(FetchBase),change->read(FetchSize),ptr->img[0].wid,ptr->img[0].hei,ext,ary,log);
         break; case (Getintz): case (Getoldz):

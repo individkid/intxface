@@ -24,14 +24,13 @@ function readPrint(test)
 	-- print(showCenter(center))
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
-	-- write TestMsk to ScratchDescrs and @express to RegisterVoid
-	center,len = hideCenter("Center(mem:Evaluatezsiz:1idx:0slf:0eva[0]:Express(opr:WosOpcgs:RegisterWakeset[0]:Express(opr:BitOpbit:ShlBitopb[0]:Express(opr:IntOpval:1)opb[1]:Express(opr:IntOpval:"..castMask("TestMsk").."))))",0)
+	center,len = hideCenter("Center(mem:Transferzsiz:1idx:0slf:0exe[0]:Machine(xfr:Voidexp[0]:Express(opr:WosOpcgs:RegisterWakeset[0]:Express(opr:BitOpbit:ShlBitopb[0]:Express(opr:IntOpval:1)opb[1]:Express(opr:IntOpval:"..castMask("TestMsk")..")))))",0)
 	if center == nil then print("oops "..len) end
 	writeCenter(center,tests[found]["idx"])
 	readPrint(tests[found])
 	-- write 1 to RegisterExit
-	center = hideCenter("Center(mem:Configurezsiz:1idx:0slf:0cfg[0]:RegisterExitval[0]:1)")
-	if center == nil then print("oops") end
+	center,len = hideCenter("Center(mem:Transferzsiz:1idx:0slf:0exe[0]:Machine(xfr:Voidexp[0]:Express(opr:SetOpcgs:RegisterExitset[0]:Express(opr:IntOpval:1))))",0)
+	if center == nil then print("oops "..len) end
 	writeCenter(center,tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
 	-- print("TODO4")

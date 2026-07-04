@@ -564,11 +564,8 @@ void machineCopy(int sig, int *arg)
     struct Extend *ext = centerPull(src);
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: callCopy(ext,0,0); break;
-    case (Executez): for (int i = 0; i < ptr->siz; i++)
+    case (Transferz): for (int i = 0; i < ptr->siz; i++)
     machineSwitch(&ptr->exe[i]);
-    centerPlace(ext); break;
-    case (Evaluatez): for (int i = 0; i < ptr->siz; i++)
-    machineVoid(&ptr->eva[i]);
     centerPlace(ext); break;}
 }
 void machineDopy(int sig, int *arg)
@@ -1065,27 +1062,6 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
-void registerVoid(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != RegisterVoid) ERROR();
-    int lwr = val & 0xff; // expr in center
-    int upr = val >> 8; // center of expr
-    struct Extend *ptr = centerPull(upr);
-    if (ptr && ptr->ptr->mem == Expressz && lwr >= 0 && lwr < ptr->ptr->siz) {
-    machineVoid(&ptr->ptr->exp[lwr]);}
-    centerPlace(ptr);
-}
-void registerEval(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != RegisterEval) ERROR();
-    int lwr = val & 0xff; // expr in center
-    int mid = (val >> 8) & 0xff; // center of expr
-    int upr = val >> 16; // center to modify
-    struct Extend *ptr = centerPull(mid);
-    if (ptr && ptr->ptr->mem == Expressz && lwr >= 0 && lwr < ptr->ptr->siz) {
-    machineEval(&ptr->ptr->exp[lwr],upr);}
-    centerPlace(ptr);
-}
 void registerUniform(enum Configure cfg, int sav, int val, int act)
 {
     callKnfo(RegisterWake,(1<<UnifMsk),planeWots);
@@ -1208,8 +1184,6 @@ void initSafe()
     callBack(RegisterWake,registerWake);
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
-    callBack(RegisterVoid,registerVoid);
-    callBack(RegisterEval,registerEval);
     callBack(UniformAll,registerUniform);
     callBack(UniformOne,registerUniform);
     callBack(UniformIdx,registerUniform);

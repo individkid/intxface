@@ -50,8 +50,8 @@ Memory = { -- which structure is in the center struction
 	"Stringz", -- string memory
 	"Machinez", -- state machine lines
 	"Expressz", -- expression library
-	"Executez", -- execute in place
-	"Evaluatez", -- evaluate in place
+	-- TODO add Rebootz that takes a list of Express for where to put next several Center from same slf
+	"Transferz", -- execute in place
 	"Kernelz", -- inflight transformations
 	"Configurez", -- configure to value
 }
@@ -268,9 +268,6 @@ Configure = { -- integer variables for user expressions
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
-	-- TODO remove Void/Eval after adding 
-	"RegisterVoid", -- expression center index
-	"RegisterEval", -- index center index
 	"RegisterSelf", -- self for loopback
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
@@ -1990,6 +1987,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 4
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
+		-- TODO use center @transfer instead, and delete Stringz
 		-- Jump if Center at Memorys is null, empty, or not Stringz
 		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@string))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
@@ -2092,8 +2090,7 @@ Bootstrap = {
 		-- TODO remove after removing RegisterEval/Void
 		"exp[0]:$(Wos RegisterWake #1<<?ScratchDescrs Op)"..
 	")"},
-	{"Int","%(return idx())","Str","!(execute = #%(return count))Executez(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(evaluate = #%(return count))Evaluatez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
@@ -2391,11 +2388,11 @@ Center = { -- setup for graphics
 	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
-	{"exe","Machine",{["mem"]={["Executez"]=true}},"siz"},
-	{"eva","Express",{["mem"]={["Evaluatez"]=true}},"siz"},
+	{"exe","Machine",{["mem"]={["Transferz"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
 	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
+	-- TODO remove Stringz and Configurez
 }
 Extend = {
 	{"ptr","Center",{},{1}}, -- memory union
