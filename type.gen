@@ -47,13 +47,11 @@ Memory = { -- which structure is in the center struction
 	"Basisz", -- base for each dimension
 	"Drawz", -- draw range info
 	"Instrz", -- little vulkan language
-	"Stringz", -- string memory
 	"Machinez", -- state machine lines
 	"Expressz", -- expression library
 	-- TODO add Rebootz that takes a list of Express for where to put next several Center from same slf
 	"Transferz", -- execute in place
 	"Kernelz", -- inflight transformations
-	"Configurez", -- configure to value
 }
 Response = {
 	"RetRsp", -- return pass or fail
@@ -1919,7 +1917,6 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
 	-- TODO initialize Drawz with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(string = #%(return count))Stringz(siz:0idx:0slf:0)"},
 	-- TODO figure way to use castMask(TestMsk) instead of #15, maybe new Express to cast ImmStrTestMskOpOp to Int
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0 masks = #15 tests = #1 total = @masks + @tests back = #-1 - @total)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
@@ -1955,7 +1952,7 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:1)"..
 		  -- non-gpu memories only need the Bopy
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Kernelz\"))) | (?CenterMem == #%(return castMemory(\"Expressz\"))) | (?CenterMem == #%(return castMemory(\"Machinez\"))) | (?CenterMem == #%(return castMemory(\"Stringz\")))) , #-2 ; #0 , #1 Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Kernelz\"))) | (?CenterMem == #%(return castMemory(\"Expressz\"))) | (?CenterMem == #%(return castMemory(\"Machinez\")))) , #-2 ; #0 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterMem == #%(return castMemory(\"Matrixz\"))) , #1 ; #0 == #1 , #2 Op))"..
@@ -1987,15 +1984,16 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 4
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
-		-- TODO use center @transfer instead, and delete Stringz
-		-- Jump if Center at Memorys is null, empty, or not Stringz
-		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@string))"..
+		-- Jump if Center at Memorys is null, empty, or not Transferz
+		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@transfer))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz <= @bootstr , #1 ; #0 , #2 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- Eval a Dopy of Center at Stringz to cast to Center of string number @bootstr and Void to increment @bootstr
-		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@string)arg[1]:$(@memorys))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:ImmOp(put[0]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(str))))"..
+		-- Eval a Dopy of Center at Transferz to get Center number @bootstr and Void to increment @bootstr
+		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@transfer)arg[1]:$(@memorys))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(exe))fld[2]:$(#0)fid:Str(exe)))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(CenterSiz := #1))"..
+		"mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSizidx[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
 		-- Void copy slf to RegisterSelf and set slf to -1
 		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#-1)fld[2]:$(#0)fid:Str(slf)) non[2]:$(@_) ))"..
@@ -2092,7 +2090,6 @@ Bootstrap = {
 	")"},
 	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(configure = #%(return count))Configurez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0 wake = #0)"..
 		"Void(exp[0]:NonOp(num:1non[0]:SetOp(cgs:RegisterPlanset[0]:CndOp(siz:5"..
 		-- vulkanCpp: refactor tutorial: Bringup: no commandline args: RegisterShow == 0
@@ -2385,14 +2382,10 @@ Center = { -- setup for graphics
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
-	{"str","Str",{["mem"]={["Stringz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
 	{"exe","Machine",{["mem"]={["Transferz"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
-	{"cfg","Configure",{["mem"]={["Configurez"]=true}},"siz"},
-	{"val","Int",{["mem"]={["Configurez"]=true}},"siz"},
-	-- TODO remove Stringz and Configurez
 }
 Extend = {
 	{"ptr","Center",{},{1}}, -- memory union
