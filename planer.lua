@@ -24,17 +24,19 @@ function readPrint(test)
 	-- for i,v in ipairs(center["val"]) do print(test["typ"].." val["..(i-1).."]:"..v) end
 	-- print(showCenter(center))
 end
+function hideSugar(expr)
+	show = sugarRepl("Center(mem:Transferzsiz:1idx:0slf:0exe[0]:Machine(xfr:Voidexp[0]:$("..expr..")))")
+	center,len = hideCenter(show,0)
+	if center == nil then print("oops "..len.." "..show) end
+	return center
+end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
-	center,len = hideCenter("Center(mem:Transferzsiz:1idx:0slf:0exe[0]:Machine(xfr:Voidexp[0]:Express(opr:WosOpcgs:RegisterWakeset[0]:Express(opr:BitOpbit:ShlBitopb[0]:Express(opr:IntOpval:1)opb[1]:Express(opr:IntOpval:"..castMask("TestMsk")..")))))",0)
-	if center == nil then print("oops "..len) end
+	center = hideSugar("Wos RegisterWake #1 << #"..castMask("TestMsk").." Op")
 	writeCenter(center,tests[found]["idx"])
 	readPrint(tests[found])
-	-- write 1 to RegisterExit
-	center,len = hideCenter("Center(mem:Transferzsiz:1idx:0slf:0exe[0]:Machine(xfr:Voidexp[0]:Express(opr:SetOpcgs:RegisterExitset[0]:Express(opr:IntOpval:1))))",0)
-	if center == nil then print("oops "..len) end
+	center = hideSugar("RegisterExit := #1")
 	writeCenter(center,tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
-	-- print("TODO4")
 	return
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Planez" then
