@@ -2,7 +2,7 @@
 #include "proto.h"
 
 void wrapCallback(const struct Close *arg);
-int luaxUnwrap(lua_State *L)
+int wrapUnwrap(lua_State *L)
 {
 	const struct Close *arg = lua_touserdata(L, lua_upvalueindex(1));
 	for (int i = 0; i < arg->n; i++) switch (arg->a[i].t) {
@@ -28,9 +28,9 @@ int luaxUnwrap(lua_State *L)
 		default: ERROR();}
 	return arg->m;
 }
-void luaxWrap(lua_State *L, const char *str, const struct Close *arg)
+void wrapWrap(lua_State *L, const char *str, const struct Close *arg)
 {
 	lua_pushlightuserdata(L, (void*)arg);
-	lua_pushcclosure(L, luaxUnwrap, 1);
+	lua_pushcclosure(L, wrapUnwrap, 1);
 	lua_setglobal(L, str);
 }

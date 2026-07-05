@@ -1,6 +1,6 @@
 extern "C" {
 #include <lua.h>
-void luaxWrap(lua_State *L, const char *str, const struct Close *arg);
+void wrapWrap(lua_State *L, const char *str, const struct Close *arg);
 void wrapSugy(lua_State *L);
 void sugarRepl(char **ptr, char chr);
 }
@@ -8,5 +8,5 @@ void sugarRepl(char **ptr, char chr);
 
 void wrapSugy(lua_State *L)
 {
-	luaxWrap(L,"sugarRepl",(new WrapClose([](const struct WrapClose *arg) -> void {sugarRepl(0,0);},0,0)));
+	wrapWrap(L,"sugarRepl",(new WrapClose([](const struct WrapClose *arg) -> void {sugarRepl(0,0);},0,0)));
 }

@@ -3,8 +3,8 @@ extern "C" {
 #include "proto.h"
 char **WrapCloseStr();
 void wrapCallback(const struct Close *arg);
-int luaxUnwrap(lua_State *L);
-void luaxWrap(lua_State *L, const char *str, const struct Close *arg);
+int wrapUnwrap(lua_State *L);
+void wrapWrap(lua_State *L, const char *str, const struct Close *arg);
 }
 #include <functional>
 #ifdef __linux__
