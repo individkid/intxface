@@ -1,4 +1,5 @@
 dofile("type.lua")
+require "sugy"
 
 tests = {}
 for i,v in ipairs(arg) do
