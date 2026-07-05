@@ -20,7 +20,7 @@ holeC.o: face.h hole.c proto.h type.h
 line: lineCpp
 lineCpp: faceC.o lineCpp.o protoC.o typeC.o
 lineCpp.o: face.h line.cpp proto.h type.h
-luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapCpp.o
+luax.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o wrapC.o wrapCpp.o
 luaxC.o: face.h luax.c luax.h proto.h
 luaxCpp.o: luax.cpp luax.h proto.h wrap.h
 metxC.o: metx.c metx.h
@@ -34,7 +34,7 @@ planraC: datxC.o faceC.o fmtxC.o metxC.o planeC.o planraC.o protoC.o stlxCpp.o s
 planraC.o: datx.h face.h luax.h metx.h plane.h planra.c proto.h stlx.h type.h
 protoC.o: proto.c proto.h
 share: shareC
-shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o typeC.o wrapCpp.o
+shareC: datxC.o faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o shareC.o typeC.o wrapC.o wrapCpp.o
 shareC.o: datx.h face.h luax.h proto.h share.c type.h
 space: spaceHs
 spaceHs: face.hs faceC.o naive.hs protoC.o space.hs type.hs
@@ -44,7 +44,7 @@ spacra.log: spacraHs
 spacraHs: face.hs faceC.o naive.hs protoC.o spacra.hs type.hs
 stlxCpp.o: proto.h stlx.cpp stlx.h
 sugxC.o: proto.h stlx.h sugx.c sugx.h type.h
-sugy.so: faceC.o faceCpp.o luaxC.o luaxCpp.o protoC.o stlxCpp.o sugxC.o sugyC.o sugyCpp.o typeC.o wrapCpp.o
+sugy.so: faceC.o protoC.o stlxCpp.o sugxC.o sugyC.o sugyCpp.o typeC.o wrapC.o wrapCpp.o
 sugyC.o: sugy.c
 sugyCpp.o: proto.h sugy.cpp wrap.h
 type.c: luax.so show.lua type.gen
@@ -71,4 +71,5 @@ vertexVertexG: vulkan.g
 vulkan.log: fragmentColorG fragmentPierceG fragmentRelateG texture.jpg vertexConstG vertexCoplaneG vertexFetchG vertexFillG vertexVertexG vulkanCpp
 vulkanCpp: datxC.o faceC.o fmtxC.o metxC.o planeC.o protoC.o stlxCpp.o sugxC.o typeC.o vulkanCpp.o
 vulkanCpp.o: face.h plane.h proto.h stlx.h type.h vulkan.cpp
+wrapC.o: proto.h wrap.c
 wrapCpp.o: proto.h wrap.cpp wrap.h

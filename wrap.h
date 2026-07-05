@@ -1,7 +1,10 @@
 extern "C" {
+#include <lua.h>
 #include "proto.h"
-void wrapCallback(const struct Close *arg);
 char **WrapCloseStr();
+void wrapCallback(const struct Close *arg);
+int luaxUnwrap(lua_State *L);
+void luaxWrap(lua_State *L, const char *str, const struct Close *arg);
 }
 #include <functional>
 #ifdef __linux__
