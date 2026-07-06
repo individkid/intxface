@@ -34,6 +34,7 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	center = hideSugar("Wos RegisterWake #1 << #"..castMask("TestMsk").." Op")
 	writeCenter(center,tests[found]["idx"])
 	readPrint(tests[found])
+	-- TODO cause vulkanCpp to indicate pass with ArgumentSrc := tests[found]["oth"] Tsage Qopy
 	center = hideSugar("RegisterExit := #1")
 	writeCenter(center,tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
@@ -42,6 +43,7 @@ end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Planez" then
 	-- behave as vulkanCpp would
 	readPrint(tests[found])
+	center = hideSugar("Wos RegisterWake #1 << #"..castMask("TestMsk").." Op")
 	writeCenter(center,tests[found]["idx"])
 	readPrint(tests[found])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])

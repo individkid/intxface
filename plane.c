@@ -535,16 +535,6 @@ void machineGlob(int sig, int *arg)
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
 }
-void machineBopy(int sig, int *arg)
-{
-    // TODO think of another use for Bopy; Tsage of CenterSub does exactly this
-    if (sig != BopyArgs) ERROR();
-    int src = arg[BopySrc];
-    int dst = arg[BopyDst];
-    struct Extend *ptr = centerPull(src);
-    ptr->sub = dst;
-    centerPlace(ptr);
-}
 void machineSwitch(struct Machine *ptr);
 void machineVoid(struct Express *ptr);
 void machineCopy(int sig, int *arg)
@@ -735,7 +725,6 @@ void machineSwitch(struct Machine *mptr)
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
     case (Self): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSelf(mptr->sig,arg);} break;
     case (Glob): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineGlob(mptr->sig,arg);} break;
-    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
     case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
     case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
@@ -1070,9 +1059,11 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
     int rdfd = callGnfo(ArgumentInp,0,planeRcfg);
     int wrfd = callGnfo(ArgumentOut,0,planeRcfg);
     int asrc = callGnfo(ArgumentSrc,0,planeRcfg);
-    int idx = rdwrInit(rdfd,wrfd);
-    // fprintf(stderr,"registerArgument %d %d %d %d\n",rdfd,wrfd,asrc,idx);
-    external |= 1<<idx; *userIdent(idx) = inverse + asrc;
+    int sub = rdwrInit(rdfd,wrfd);
+    // fprintf(stderr,"registerArgument %d %d %d %d\n",rdfd,wrfd,asrc,sub);
+    external |= 1<<sub;
+    inverse[asrc] = sub;
+    *userIdent(sub) = inverse + asrc;
     postSafe(safeSafe(PipeThd,0));
     writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();

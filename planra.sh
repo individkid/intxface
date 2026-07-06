@@ -5,11 +5,8 @@ echo "Random choice: $random_string"
 # push literal to stdout queue
 # resize kernel, initializing with identities
 # cast kernel to string and push to stdout queue
-# put Configure Center in next unused location (ManipFixed Slide,Ortho,Mouse 2,7,0 4+128+1 133)
-# evaluate expressions for Center values
-# resize Center at string location
-# save Configure Center to variable
-# cast Configure to field at string location
+# put Configure changes (ManipFixed Slide,Ortho,Mouse 2,7,0 4+128+1 133) at transfer location
+# then timer causes loopback of transfer location
 ./vulkanCpp '$(Put Strhello ok againOp EndOp Op)'\
 	'$(CenterSiz := #1)' '$(CenterMem := @kernel)' 'Tsage(siz:2sav[0]:CenterMemsav[1]:CenterSizidx[0]:$(@kernel))'\
 	'Eval(res[0]:$(@kernel)fnc[0]:$(Non Put Imm @_ Op EndOp Op ; @_ Op))'\
