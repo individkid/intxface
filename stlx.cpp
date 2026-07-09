@@ -56,6 +56,12 @@ void pushDeque(int siz, void *val, void *ptr)
     for (int i = 0; i < siz; i++) vec[i] = ui8[i];
     que->push_back(vec);
 }
+void joinDeque(void *front, void *back)
+{
+    auto lft = (std::deque<std::vector<uint8_t>>*)front;
+    auto rgt = (std::deque<std::vector<uint8_t>>*)back;
+    while (lft->size()) {rgt->push_front(lft->back()); lft->pop_back();}
+}
 void popDeque(void *ptr)
 {
     auto que = (std::deque<std::vector<uint8_t>>*)ptr;

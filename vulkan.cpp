@@ -2602,7 +2602,6 @@ int main(int argc, const char **argv) {
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     glfwSetWindowSizeCallback(main.windowState.window,glfwResize);
     int count = 0;
-    if (main.changeState.read(RegisterPoll) != 0) // disable Release for now
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.changeState.read(RegisterPoll) == 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);}

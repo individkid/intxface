@@ -325,6 +325,7 @@ Transfer = { -- what user machine does
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
+	"Bopy", -- execute center
 	"Copy", -- center to resource
 	"Dopy", -- copy to center
 	"Popy", -- queue to center
@@ -365,8 +366,12 @@ GlobArg = {
 	"GlobDst",
 	"GlobDstSub",
 }
+BopyArg = {
+	"BopySrc",
+}
 CopyArg = {
 	"CopySrc",
+	"CopyAlt",
 }
 DopyArg = {
 	"DopySrc",
@@ -1964,12 +1969,19 @@ Bootstrap = {
 		   "mch[%(return jdx())]:Glob(sig:4arg[0]:$(@matrix)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  "mch[%(return jdx())]:Comp(sig:4arg[0]:$(@kernel)arg[1]:$(?CenterIdx)arg[2]:$(@matrix)arg[3]:$(#0))"..
-		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@matrix))"..
-		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(@draw))"..
+		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(@matrix)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(@draw)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Nest(lvl:2)"..
+		   -- execute memories need Bopy
+		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Transferz\"))) | (?CenterMem == #%(return castMemory(\"Rebootz\")))) , #1 ; #0 , #2 Op))"..
+		   "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  "mch[%(return jdx())]:Bopy(sig:1arg[0]:$(?CenterMem))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 -- do Copy from current
-		 "mch[%(return jdx())]:Copy(sig:1arg[0]:$(?CenterMem))"..
+		 "mch[%(return jdx())]:Copy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 
@@ -2241,10 +2253,10 @@ Machine = { -- info for user defined action
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
@@ -2378,7 +2390,7 @@ Center = { -- setup for graphics
 	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
-	{"rep","Int",{["mem"]={["Rebootz"]=true}},"siz"},
+	{"sub","Int",{["mem"]={["Rebootz"]=true}},"siz"},
 	{"exe","Machine",{["mem"]={["Transferz"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 }

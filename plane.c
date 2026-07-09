@@ -18,6 +18,7 @@ int external = 0; // pipes to planeExternal
 int inverse[Programs] = {0}; // inverse to userIdent
 int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
+void *reboot = 0; // temporary queu
 void *response = 0; // queue of center
 void *pipeSem = 0; // protect internal and response
 int console = 0; // pipe to planeConsole
@@ -537,23 +538,42 @@ void machineGlob(int sig, int *arg)
 }
 void machineSwitch(struct Machine *ptr);
 void machineVoid(struct Express *ptr);
+void machineExec(struct Extend *ext)
+{
+    struct Center *ptr = ext->ptr;
+    switch (ptr->mem) {default: ERROR();
+    case (Transferz): {
+    for (int i = 0; i < ptr->siz; i++)
+    machineSwitch(&ptr->exe[i]);} break;
+    case (Rebootz): {
+    for (int i = 0; i < ptr->siz; i++) {
+    if (waitSafe(safeSafe(MachThd,0)) < 0) break;
+    if (waitSafe(pipeSem) != 0) ERROR();
+    struct Extend *nxt = maybeCenterq(0,internal);
+    if (!nxt) continue;
+    if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
+    pushCenterq(nxt,reboot); continue;}
+    if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
+    else {machineExec(nxt); freeExtend(nxt); allocExtend(&nxt,0);}}
+    joinCenterq(reboot,internal);
+    if (postSafe(pipeSem) != 1) ERROR();} break;}
+}
+void machineBopy(int sig, int *arg)
+{
+    if (sig != BopyArgs) ERROR();
+    int src = arg[BopySrc];
+    struct Extend *ext = centerPull(src);
+    machineExec(ext);
+    centerPlace(ext);
+}
 void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
+    int alt = arg[CopyAlt];
     struct Extend *ext = centerPull(src);
-    struct Center *ptr = ext->ptr;
-    switch (ptr->mem) {default: callCopy(ext,0,0); break;
-    case (Transferz): for (int i = 0; i < ptr->siz; i++)
-    machineSwitch(&ptr->exe[i]);
-    centerPlace(ext); break;
-    case (Rebootz):
-    // TODO block to read from internal queue
-    // TODO save those with slf different from ptr->slf
-    // TODO centerPlace those with slf equal to ptr->slf
-    // TODO machineCopy those with slf == ptr->slf and reb < 0
-    // TODO then push saved back onto internal queue
-    break;}
+    callCopy(ext,alt,0);
+    centerPlace(ext);
 }
 void machineDopy(int sig, int *arg)
 {
@@ -725,6 +745,7 @@ void machineSwitch(struct Machine *mptr)
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
     case (Self): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSelf(mptr->sig,arg);} break;
     case (Glob): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineGlob(mptr->sig,arg);} break;
+    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
     case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
     case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
@@ -1163,7 +1184,7 @@ void initSafe()
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     if (!(loopSem = allocSafe(1))) ERROR(); // protect field pipe
-    internal = allocCenterq(); response = allocCenterq();
+    internal = allocCenterq(); response = allocCenterq(); reboot = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
     timeq = allocTimeq(); wakeq = allocWakeq(); timep = allocTimep();
     ableq = allocAbleq(); maskq = allocMaskq(); loopfd = openPipe(); 
@@ -1221,6 +1242,7 @@ void initBoot()
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,boot[i]); exit(-1);}}
     // Bootstrap first to initialize RegisterPlan
     planeArgv(size-cmnd,boot+cmnd);
+    // {char *st0 = 0; showPlan(callInfo(RegisterPlan,0,planeRcfg),&st0); fprintf(stderr,"initBoot %s\n",st0); free(st0);}
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): case (Builtin):
@@ -1236,6 +1258,7 @@ void initBoot()
     break; case (Regress): case (Release):
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterAble,(((1<<SlctMsk)<<8)|0),planeWcfg);
+    // the RegisterAble mask of events remembered per indicated MachThd wake up the thread upon wos of event mask to RegisterWake
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
