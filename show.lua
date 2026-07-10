@@ -2377,6 +2377,7 @@ function showCastLua(name,list)
 			result = result..showIndent(1).."elseif (val == \""..val.."\") then return "..(key-1).."\n"
 		end
 	end
+	result = result..showIndent(1).."elseif (val == \""..name.."s\") then return "..#list.."\n"
 	result = result..showIndent(1).."else return nil end\n"
 	result = result.."end"
 	return result
