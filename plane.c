@@ -547,16 +547,23 @@ void machineExec(struct Extend *ext)
     machineSwitch(&ptr->exe[i]);} break;
     case (Rebootz): {
     for (int i = 0; i < ptr->siz; i++) {
-    if (waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *nxt = maybeCenterq(0,internal);
-    if (!nxt) continue;
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (nxt == 0) {
+    if (waitSafe(safeSafe(MachThd,0)) < 0) break;
+    continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
-    pushCenterq(nxt,reboot); continue;}
+    if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(nxt,reboot);
+    if (postSafe(pipeSem) != 1) ERROR();
+    continue;}
     if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
     else {machineExec(nxt); freeExtend(nxt); allocExtend(&nxt,0);}}
+    if (waitSafe(pipeSem) != 0) ERROR();
     joinCenterq(reboot,internal);
-    if (postSafe(pipeSem) != 1) ERROR();} break;}
+    if (postSafe(pipeSem) != 1) ERROR();}
+    break;}
 }
 void machineBopy(int sig, int *arg)
 {
@@ -794,7 +801,7 @@ void planeCenter(enum Thread tag, int idx)
     if (center && center->ptr->slf >= 0) {
     if (center->src < 0 || center->src >= Programs) ERROR();
     int sub = inverse[center->src];
-    writeExtend(center,sub);
+    writeCenter(center->ptr,sub);
     freeExtend(center); allocExtend(&center,0);}
     if (postSafe(pipeSem) != 1) ERROR();}
 }
@@ -1450,7 +1457,9 @@ int planeLoop()
     break; case (Bringup): case (Builtin):
     if (fever || (processTime()-start)*1000 < 2000) return 1;
     break; case (Regress): case (Release):
-    if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
+    if (callInfo(RegisterExit,0,planeRcfg) == 0) exit(0);
+    // TODO return 1 when glfw wakes up upon Event
+    /*return 1;*/}
     return 0;
 }
 void planeDone()
