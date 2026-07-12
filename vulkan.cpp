@@ -2579,6 +2579,7 @@ int main(int argc, const char **argv) {
     if (sigaction(SIGINT,&act,0) < 0) ERROR();
     if (sigaction(SIGSEGV,&act,0) < 0) ERROR();
     if (sigaction(SIGTERM,&act,0) < 0) ERROR();
+    if (sigaction(SIGABRT,&act,0) < 0) ERROR();
     // errFunc(errorFunc); // in case pipe is closed just before written to
     // on_exit(whereIsExit,0);
     // TODO parse argv for arguments to main and push only unparsed to cfg
