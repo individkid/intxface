@@ -1227,19 +1227,23 @@ int hideStr(char **val, const char *str, int *siz)
 int hideDat(void **val, const char *str, int *siz)
 {
 	int len = 0;
-	char *tmp = 0;
 	int base = -1;
-	int num = -1;
 	int limit = -1;
-	sscanf(str+*siz," Dat ( %n",&base);
-	limit = base; while (base != -1 && str[limit] && num == -1) sscanf(str+*siz+(++limit)," )%n",&num);
-	if (num == -1) return 0;
-	tmp = malloc(limit-base+1);
-	if (tmp == 0) return 0;
-	strncpy(tmp,str+*siz+base,limit-base); tmp[limit-base] = 0;
-	// TODO assignDat
-	free(tmp);
-	*siz += limit+num;
+	sscanf(str+*siz," Dat ( %n",&base); base += *siz;
+	for (int i = base; str[i] && str[i] != ')'; i++)
+	if (str[i] >= 'a' && str[i] <= 'f' || str[i] >= '0' && str[i] <= '9') len += 1;
+	if (len%2) return 0;
+	char *tmp = malloc(len);
+	limit = base; while (str[limit] && str[limit] != ')') limit += 1; limit += 1;
+	*val = realloc(*val,len/2+sizeof(int));
+	*(int*)*val = len/2;
+	char *ptr = (char*)((int*)val+1); len = 0; int num = 0;
+	for (int i = base; i < limit; i++) {
+	if (str[i]>='a' && str[i]<='f') num = (num<<4)+str[i]-'a'+10;
+	else if (str[i]>='0' && str[i]<='9') num = (num<<4)+str[i]-'0';
+	if (str[i]>='a' && str[i]<='f' || str[i]>='0' && str[i]<='9') {
+	len += 1; if (len%2 == 0) {*ptr = num; ptr++; num = 0;}}}
+	*siz = limit;
 	return 1;
 }
 

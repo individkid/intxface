@@ -43,7 +43,7 @@ function atomSugar(list,idx)
 	for i,v in ipairs(list) do
 	if v["mem"] == "Transferz" then
 	cent = cent.."sub["..(i-1).."]:-1" else
-	cent = cent.."sub["..(i-1).."]:"..castMemory(hide["mem"]) end end
+	cent = cent.."sub["..(i-1).."]:"..castMemory(v["mem"]) end end
 	cent = cent..")"
 	center = centSugar(cent)
 	writeCenter(center,idx)

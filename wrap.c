@@ -25,6 +25,7 @@ int wrapUnwrap(lua_State *L)
 		case (Ntype): lua_pushnumber(L,arg->b[i].n); break;
 		case (Utype): lua_pushstring(L,arg->b[i].u); break;
 		case (Vtype): lua_pushstring(L,arg->b[i].v); break;
+		case (Qtype): lua_pushlstring(L,(char*)((int*)arg->b[i].q+1),*(int*)arg->b[i].q); break;
 		default: ERROR();}
 	return arg->m;
 }
