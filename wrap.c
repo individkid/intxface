@@ -1,10 +1,13 @@
 #include <lua.h>
+#include <stdlib.h>
+#include <string.h>
 #include "proto.h"
 
 void wrapCallback(const struct Close *arg);
 int wrapUnwrap(lua_State *L)
 {
 	const struct Close *arg = lua_touserdata(L, lua_upvalueindex(1));
+	char *tmp = 0;
 	for (int i = 0; i < arg->n; i++) switch (arg->a[i].t) {
 		case (Itype): arg->a[i].i = lua_tointeger(L,i+1); break;
 		case (Jtype): arg->a[i].j = lua_tointeger(L,i+1); break;
@@ -12,9 +15,13 @@ int wrapUnwrap(lua_State *L)
 		case (Mtype): arg->a[i].m = lua_tonumber(L,i+1); break;
 		case (Ntype): arg->a[i].n = lua_tonumber(L,i+1); break;
 		case (Utype): arg->a[i].u = lua_tostring(L,i+1); break;
+		case (Ptype): {size_t len = 0; const char *ptr = lua_tolstring(L,i+1,&len);
+			tmp = malloc(len+sizeof(int)); *(int*)tmp = len;
+			memcpy(tmp+sizeof(int),ptr,len); arg->a[i].p = tmp;} break;
 		default: ERROR();}
 	wrapCallback(arg);
 	lua_pop(L,arg->n);
+	if (tmp) free(tmp);
 	int vld = (arg->i < 0 || arg->i >= arg->m || arg->b[arg->i].i == 0 ? 1 : 0);
 	if (!vld) lua_pushnil(L);
 	for (int i = !vld; i < arg->m; i++) switch (arg->b[i].t) {
