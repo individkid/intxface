@@ -261,12 +261,14 @@ Configure = { -- integer variables for user expressions
 	"RegisterExit", -- sortof exit status
 	"RegisterPass", -- pass center mask
 	"RegisterFail", -- fail center mask
+	"RegisterDrop", -- drop center mask
 	"RegisterSave", -- pass or fail mask
 	"RegisterWake", -- thread interrupts
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterSelf", -- self for loopback
+	"RegisterResp", -- default response type
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
 	"UniformIdx", -- which plane to manipulate
@@ -325,11 +327,13 @@ Transfer = { -- what user machine does
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
-	"Bopy", -- execute center
-	"Copy", -- center to resource
+	"Bopy", -- move to resource
+	"Copy", -- copy to resource
 	"Dopy", -- copy to center
 	"Popy", -- queue to center
 	"Qopy", -- center to queue
+	"Wopy", -- wait for response
+	"Xopy", -- execute center
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
@@ -368,6 +372,7 @@ GlobArg = {
 }
 BopyArg = {
 	"BopySrc",
+	"BopyAlt",
 }
 CopyArg = {
 	"CopySrc",
@@ -382,6 +387,12 @@ PopyArg = {
 }
 QopyArg = {
 	"QopySrc",
+}
+WopyArg = {
+	"WopySrc",
+}
+XopyArg = {
+	"XopySrc",
 }
 Plan = { -- which test to run
 	"Bringup",
@@ -1974,10 +1985,10 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
-		   -- execute memories need Bopy
+		   -- execute memories need Xopy
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Transferz\"))) | (?CenterMem == #%(return castMemory(\"Rebootz\")))) , #1 ; #0 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  "mch[%(return jdx())]:Bopy(sig:1arg[0]:$(?CenterMem))"..
+		  "mch[%(return jdx())]:Xopy(sig:1arg[0]:$(?CenterMem))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 -- do Copy from current
@@ -2253,10 +2264,14 @@ Machine = { -- info for user defined action
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
+		["Popy"]=true,["Qopy"]=true,
+		["Wopy"]=true,["Xopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
+		["Popy"]=true,["Qopy"]=true,
+		["Wopy"]=true,["Xopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }

@@ -381,12 +381,13 @@ void centerDone(struct Extend *ptr)
 {
     if ((callJnfo(RegisterSave,0,planeRcfg) & (1<<ptr->sub)) != 0) {
     callJnfo(RegisterWake,(1<<DropMsk),planeWots);
+    callJnfo(RegisterDrop,(1<<ptr->sub),planeWots);
     freeExtend(ptr); allocExtend(&ptr,0); return;}
     centerPlace(ptr);
-    if (ptr && ptr->res == 0) {
+    if (ptr->res == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
     callJnfo(RegisterPass,(1<<ptr->sub),planeWots);}
-    else if (ptr) {
+    else {
     callJnfo(RegisterWake,(1<<FailMsk),planeWots);
     callJnfo(RegisterFail,(1<<ptr->sub),planeWots);}
 }
@@ -546,12 +547,13 @@ void machineExec(struct Extend *ext)
     machineSwitch(&ptr->exe[i]);} break;
     case (Rebootz):
     for (int i = 0; i < ptr->siz; i++) {
+    // this the preferred pattern
+    callInfo(RegisterWake,1<<SlctMsk,planeWotc);
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
+    // to prevent deadlock, machineExec should only be called from planeMachine
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
-    // TODO is this the preferred pattern?
-    callJnfo(RegisterWake,1<<SlctMsk,planeWotc);
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -569,9 +571,9 @@ void machineBopy(int sig, int *arg)
 {
     if (sig != BopyArgs) ERROR();
     int src = arg[BopySrc];
+    int alt = arg[BopyAlt];
     struct Extend *ext = centerPull(src);
-    machineExec(ext);
-    centerPlace(ext);
+    callCopy(ext,alt,0);
 }
 void machineCopy(int sig, int *arg)
 {
@@ -614,6 +616,32 @@ void machineQopy(int sig, int *arg)
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
+}
+void machineWopy(int sig, int *arg)
+{
+    if (sig != WopyArgs) ERROR();
+    int src = arg[WopySrc];
+    while (1) {
+    // MachThd woken by changes to RegisterWake
+    callInfo(RegisterWake,1<<DropMsk,planeWotc);
+    callInfo(RegisterWake,1<<PassMsk,planeWotc);
+    callInfo(RegisterWake,1<<FailMsk,planeWotc);
+    if (waitSafe(copySem) != 0) ERROR();
+    struct Extend *ext = center[src];
+    if (postSafe(copySem) != 1) ERROR();
+    if (ext) {
+    {char *st0 = 0; showCenter(ext->ptr,&st0); fprintf(stderr,"machineWopy %s\n",st0); free(st0);}
+    break;}
+    // to prevent deadlock, machineWopy should only be called from planeMachine
+    if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
+}
+void machineXopy(int sig, int *arg)
+{
+    if (sig != XopyArgs) ERROR();
+    int src = arg[XopySrc];
+    struct Extend *ext = centerPull(src);
+    machineExec(ext);
+    centerPlace(ext);
 }
 void machineStage(enum Configure cfg, int idx)
 {
@@ -756,7 +784,9 @@ void machineSwitch(struct Machine *mptr)
     case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
     case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
-    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;}
+    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
+    case (Wopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineWopy(mptr->sig,arg);} break;
+    case (Xopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineXopy(mptr->sig,arg);} break;}
 }
 
 // thread callbacks
@@ -795,7 +825,7 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
     if (center && center->ptr->slf < 0) {
-    center->ptr->slf = callJnfo(RegisterSelf,0,planeRcfg);
+    center->ptr->slf = callInfo(RegisterSelf,0,planeRcfg);
     pushCenterq(center,internal);
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
     if (center && center->ptr->slf >= 0) {
@@ -821,6 +851,7 @@ void planeExternal(enum Thread tag, int idx)
     allocExtend(&center,1);
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
+    center->rsp = callInfo(RegisterResp,0,planeRcfg);
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
@@ -1115,30 +1146,24 @@ void planePutstr(const char *src)
     if (postSafe(safeSafe(StdioThd,0)) <= 0) ERROR();
     if (postSafe(stdioSem) != 1) ERROR();
 }
-// TODO callHnfo is not needed now that there is no RegisterEval or RegisterExec
 void planeSetcfg(int val, int sub)
 {
-    if (callHnfo()) callKnfo((enum Configure)sub,val,planeWcfg);
-    else callJnfo((enum Configure)sub,val,planeWcfg);
+    callJnfo((enum Configure)sub,val,planeWcfg);
 }
 void planeWoscfg(int val, int sub)
 {
-    if (callHnfo()) callKnfo((enum Configure)sub,val,planeWots);
-    else callJnfo((enum Configure)sub,val,planeWots);
+    callJnfo((enum Configure)sub,val,planeWots);
 }
 void planeWoccfg(int val, int sub)
 {
-    if (callHnfo()) callKnfo((enum Configure)sub,val,planeWotc);
-    else callJnfo((enum Configure)sub,val,planeWotc);
+    callJnfo((enum Configure)sub,val,planeWotc);
 }
 int planeRawcfg(int val, int sub)
 {
-    if (callHnfo()) callKnfo((enum Configure)sub,val,planeRdwr);
-    else callJnfo((enum Configure)sub,val,planeRdwr);
+    callJnfo((enum Configure)sub,val,planeRdwr);
 }
 int planeRetcfg(int sub)
 {
-    if (callHnfo()) return callGnfo((enum Configure)sub,0,planeRcfg);
     return callInfo((enum Configure)sub,0,planeRcfg);
 }
 void planeSugar(const char *str)
@@ -1266,8 +1291,8 @@ void initBoot()
     break; case (Regress): case (Release):
     callJnfo(RegisterPoll,1,planeWcfg); // TODO instead of this, wakeup glfw when RegisterExit changes and at other times
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    callJnfo(RegisterAble,(((1<<SlctMsk)<<8)|0),planeWcfg);
-    // the RegisterAble mask of events remembered per indicated MachThd wake up the thread upon wos of event mask to RegisterWake
+    callJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DropMsk))<<8)|0),planeWcfg);
+    // the RegisterAble mask of events remembered per indicated MachThd wakes up the thread upon wos of event mask to RegisterWake
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);
     callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
