@@ -840,6 +840,10 @@ void planeExternal(enum Thread tag, int idx)
     int mask = (external|(1<<extdone));
     if (postSafe(pipeSem) != 1) ERROR();
     int sub = waitRead(0.0,mask);
+    // WARN Info semaphore inside of pipeSem will deadlock,
+    // because callbacks inside of Jnfo semaphore wait on pipeSem.
+    // Nested semaphores are fine if they are nested in the same order.
+    int resp = callInfo(RegisterResp,0,planeRcfg);
     if (waitSafe(pipeSem) != 0) ERROR();
     if (sub == extdone) {
     if (postSafe(pipeSem) != 1) ERROR();
@@ -849,7 +853,7 @@ void planeExternal(enum Thread tag, int idx)
     allocExtend(&center,1);
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
-    center->rsp = callInfo(RegisterResp,0,planeRcfg);
+    center->rsp = resp;
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
