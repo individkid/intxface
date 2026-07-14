@@ -629,9 +629,7 @@ void machineWopy(int sig, int *arg)
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ext = center[src];
     if (postSafe(copySem) != 1) ERROR();
-    if (ext) {
-    {char *st0 = 0; showCenter(ext->ptr,&st0); fprintf(stderr,"machineWopy %s\n",st0); free(st0);}
-    break;}
+    if (ext) break;
     // to prevent deadlock, machineWopy should only be called from planeMachine
     if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
 }

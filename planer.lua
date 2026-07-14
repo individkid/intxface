@@ -70,8 +70,15 @@ function doneTest()
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
 end
 function initTest()
-	cent0 = centSugar("Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:SwapRes)ptr:Dat()siz:0))")
-	list = {cent0}
+	list = {}
+	list[#list+1] = centSugar("Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:SwapRes)ptr:Dat()siz:0))")
+	list[#list+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
+	list[#list+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
+	for i = 0, (castMicro("Micros")-1) do
+	list[#list+1] = centSugar("Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:PipeRes)ptr:Dat()siz:2arg[0]:"..i.."arg[1]:"..i.."))")
+	list[#list+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
+	list[#list+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
+	end
 	atomSugar(list,tests[found]["idx"])
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
