@@ -21,6 +21,7 @@ void *internal = 0; // queue of center
 void *reboot = 0; // temporary queu
 void *response = 0; // queue of center
 void *pipeSem = 0; // protect internal and response
+void *execSem = 0; // protect atomic pipe reads
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
 void *strin = 0; // queue of string
@@ -541,7 +542,6 @@ void machineGlob(int sig, int *arg)
 void machineSwitch(struct Machine *ptr);
 void machineExec(struct Extend *ext)
 {
-    // TODO make a new execSem to protect reboot and allow multiple machine threads
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: ERROR();
     case (Transferz):
@@ -646,7 +646,9 @@ void machineXopy(int sig, int *arg)
     if (sig != XopyArgs) ERROR();
     int src = arg[XopySrc];
     struct Extend *ext = centerPull(src);
+    if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
+    if (postSafe(execSem) != 1) ERROR();
     centerPlace(ext);
 }
 void machineStage(enum Configure cfg, int idx)
@@ -1240,6 +1242,7 @@ void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
+    if (!(execSem = allocSafe(1))) ERROR(); // protect atomic pipe reads
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
