@@ -38,6 +38,7 @@ Memory = { -- which structure is in the center struction
 	"Storagez", -- general purpose
 	"Getintz", -- per fragment read
 	"Getoldz", -- per fragment read
+	"Getcfgz", -- for reading Configure
 	"Vectorz", -- displayed framebuffer
 	"Uniformz", -- references into arrays
 	"Matrixz", -- transformations
@@ -331,7 +332,8 @@ Transfer = { -- what user machine does
 	"Copy", -- copy to resource
 	"Dopy", -- copy to center
 	"Popy", -- queue to center
-	"Qopy", -- center to queue
+	"Qopy", -- move to queue
+	"Ropy", -- copy to queue
 	"Wopy", -- wait for response
 	"Xopy", -- execute center
 	"Goto", -- jump to value
@@ -387,6 +389,9 @@ PopyArg = {
 }
 QopyArg = {
 	"QopySrc",
+}
+RopyArg = {
+	"RopySrc",
 }
 WopyArg = {
 	"WopySrc",
@@ -1918,6 +1923,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(storage = #%(return count))Storagez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(getint = #%(return count))Getintz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(getold = #%(return count))Getoldz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(getcfg = #%(return count))Getcfgz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(vector = #%(return count))Vectorz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(uniform = #%(return count))Uniformz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(matrix = #%(return count))Matrixz(siz:0idx:0slf:0)"},
@@ -2265,12 +2271,12 @@ Machine = { -- info for user defined action
 	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
-		["Popy"]=true,["Qopy"]=true,
+		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,
 		["Wopy"]=true,["Xopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
-		["Popy"]=true,["Qopy"]=true,
+		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,
 		["Wopy"]=true,["Xopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
@@ -2393,6 +2399,7 @@ Center = { -- setup for graphics
 	{"img","Image",{["mem"]={["Imagez"]=true}},"siz"},
 	{"uns","Int32",{["mem"]={["Getintz"]=true}},"siz"},
 	{"old","Old",{["mem"]={["Getoldz"]=true}},"siz"},
+	{"cfg","Int",{["mem"]={["Getcfgz"]=true}},"siz"},
 	{"vec","Vector",{["mem"]={["Vectorz"]=true}},"siz"},
 	{"sto","Int32",{["mem"]={["Storagez"]=true}},"siz"},
 	{"uni","Uniform",{["mem"]={["Uniformz"]=true}},"siz"},

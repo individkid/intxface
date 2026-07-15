@@ -521,6 +521,16 @@ void machineQopy(int sig, int *arg)
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
+void machineRopy(int sig, int *arg)
+{
+    if (sig != RopyArgs) ERROR();
+    int src = arg[RopySrc];
+    struct Extend *ptr = centerPull(src);
+    if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
+    if (postSafe(pipeSem) != 1) ERROR();
+    centerPlace(ptr);
+}
 void machineWopy(int sig, int *arg)
 {
     if (sig != WopyArgs) ERROR();
@@ -695,6 +705,7 @@ void machineSwitch(struct Machine *mptr)
     case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
+    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
     case (Wopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineWopy(mptr->sig,arg);} break;
     case (Xopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineXopy(mptr->sig,arg);} break;}
 }

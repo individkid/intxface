@@ -71,6 +71,15 @@ function doneTest()
 end
 function initTest()
 	list = {}
+	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #1))")
+	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(@getcfg)fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?ScratchFrames)fld[2]:$(#0)fid:Str(cfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Ropysig:1arg[0]:$(@getcfg))")
+	atomSugar(list,tests[found]["idx"])
+	center = readCenter(tests[found]["idx"])
+	frames = center["cfg"][1]
+	print("frames "..frames)
+	list = {}
 	list[#list+1] = centSugar("Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:SwapRes)ptr:Dat()siz:0))")
 	list[#list+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
 	list[#list+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
