@@ -2557,6 +2557,10 @@ void vulkanWait() {
     if (mptr->callState.self()) glfwWaitEventsTimeout(mptr->changeState.read(RegisterPoll)*0.001);
     else sleepSec(mptr->changeState.read(RegisterPoll)*0.001);
 }
+void vulkanWake() {
+    glfwPostEmptyEvent();
+}
+
 // c debug
 void vulkanExit() {
     /*void *buffer[100];
@@ -2598,7 +2602,7 @@ int main(int argc, const char **argv) {
     main.changeState.call(RegisterOpen,vulkanBack);
     main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait);
+    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
     // TODO move glfw functions to WindowState
     glfwSetKeyCallback(main.windowState.window,glfwKeypress);
     glfwSetWindowSizeCallback(main.windowState.window,glfwResize);

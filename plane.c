@@ -52,6 +52,7 @@ zftype callKnfo = 0;
 bftype callHnfo = 0;
 oftype callCmnd = 0;
 aftype callWait = 0;
+aftype callWake = 0;
 float start = 0.0;
 
 DECLARE_DEQUE(struct Extend *,Centerq)
@@ -540,6 +541,7 @@ void machineGlob(int sig, int *arg)
 void machineSwitch(struct Machine *ptr);
 void machineExec(struct Extend *ext)
 {
+    // TODO make a new execSem to protect reboot and allow multiple machine threads
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: ERROR();
     case (Transferz):
@@ -547,7 +549,7 @@ void machineExec(struct Extend *ext)
     machineSwitch(&ptr->exe[i]);} break;
     case (Rebootz):
     for (int i = 0; i < ptr->siz; i++) {
-    // this the preferred pattern
+    // clear event before clearing the condition that the event indicates
     callInfo(RegisterWake,1<<SlctMsk,planeWotc);
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *nxt = maybeCenterq(0,internal);
@@ -556,15 +558,15 @@ void machineExec(struct Extend *ext)
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
-    if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(nxt,reboot);
-    if (postSafe(pipeSem) != 1) ERROR();
     continue;}
     if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
     else {machineExec(nxt); freeExtend(nxt); allocExtend(&nxt,0);}}
+    if (sizeCenterq(reboot) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
     joinCenterq(reboot,internal);
     if (postSafe(pipeSem) != 1) ERROR();
+    callJnfo(RegisterWake,1<<SlctMsk,planeWots);}
     break;}
 }
 void machineBopy(int sig, int *arg)
@@ -626,12 +628,18 @@ void machineWopy(int sig, int *arg)
     callInfo(RegisterWake,1<<DropMsk,planeWotc);
     callInfo(RegisterWake,1<<PassMsk,planeWotc);
     callInfo(RegisterWake,1<<FailMsk,planeWotc);
+    callInfo(RegisterDrop,1<<src,planeWotc);
+    callInfo(RegisterPass,1<<src,planeWotc);
+    callInfo(RegisterFail,1<<src,planeWotc);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ext = center[src];
     if (postSafe(copySem) != 1) ERROR();
     if (ext) break;
     // to prevent deadlock, machineWopy should only be called from planeMachine
     if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
+    if (callInfo(RegisterDrop,0,planeRcfg)) callJnfo(RegisterWake,1<<DropMsk,planeWots);
+    if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
+    if (callInfo(RegisterFail,0,planeRcfg)) callJnfo(RegisterWake,1<<FailMsk,planeWots);
 }
 void machineXopy(int sig, int *arg)
 {
@@ -1109,8 +1117,26 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
+void registerExit(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != RegisterExit) ERROR();
+    callWake();
+}
 void registerUniform(enum Configure cfg, int sav, int val, int act)
 {
+    switch (cfg) {default: ERROR();
+    case (UniformAll):
+    case (UniformOne):
+    case (UniformIdx):
+    case (UniformUse):
+    case (UniformTri):
+    case (UniformNum):
+    case (UniformVtx):
+    case (UniformMat):
+    case (UniformBas):
+    case (UniformMod):
+    case (UniformWid):
+    case (UniformHei):}
     callKnfo(RegisterWake,(1<<UnifMsk),planeWots);
 }
 void registerArgument(enum Configure cfg, int sav, int val, int act)
@@ -1228,6 +1254,7 @@ void initSafe()
     callBack(RegisterWake,registerWake);
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
+    callBack(RegisterExit,registerExit);
     callBack(UniformAll,registerUniform);
     callBack(UniformOne,registerUniform);
     callBack(UniformIdx,registerUniform);
@@ -1291,7 +1318,6 @@ void initBoot()
     callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     callJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
-    callJnfo(RegisterPoll,1,planeWcfg); // TODO instead of this, wakeup glfw when RegisterExit changes and at other times
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     callJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DropMsk))<<8)|0),planeWcfg);
     // the RegisterAble mask of events remembered per indicated MachThd wakes up the thread upon wos of event mask to RegisterWake
@@ -1463,7 +1489,7 @@ void initTest()
     break; case(Regress): case(Release): break;}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait)
+void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait, aftype wake)
 {
     callCopy = copy;
     callBack = call;
@@ -1475,6 +1501,7 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, 
     callHnfo = hnfo;
     callCmnd = cmnd;
     callWait = wait;
+    callWake = wake;
     initSafe();
     initBoot();
     initTest();
