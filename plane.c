@@ -255,12 +255,22 @@ int centerCond(void *ptr)
     int *idx = ptr;
     return (center[*idx] != 0);
 }
+struct Extend *centerPeek(int idx)
+{
+    centerSize(idx);
+    struct Extend *ret = 0;
+    if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
+    ret = center[idx];
+    if (postSafe(copySem) != 1) ERROR();
+    if (ret->sub != idx) ERROR();
+    return ret;
+}
 struct Extend *centerPull(int idx)
 {
     centerSize(idx);
     struct Extend *ret = 0;
     if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
-    ret = center[idx]; center[idx] = 0;
+    ret = center[idx]; center[idx] = 0; ret->ref = 0;
     if (postSafe(copySem) != 1) ERROR();
     if (ret->sub != idx) ERROR();
     return ret;
@@ -270,7 +280,7 @@ void centerPlace(struct Extend *ptr)
     centerSize(ptr->sub);
     if (waitSafe(copySem) != 0) ERROR();
     freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);
-    center[ptr->sub] = ptr;
+    center[ptr->sub] = ptr; ptr->ref = 1;
     if (postSafe(copySem) != 1) ERROR();
 }
 void centerClear(int sub)
@@ -286,7 +296,8 @@ void centerDone(struct Extend *ptr)
     if ((callJnfo(RegisterSave,0,planeRcfg) & (1<<ptr->sub)) != 0) {
     callJnfo(RegisterWake,(1<<DropMsk),planeWots);
     callJnfo(RegisterDrop,(1<<ptr->sub),planeWots);
-    freeExtend(ptr); allocExtend(&ptr,0); return;}
+    if (ptr->ref == 0) {freeExtend(ptr); allocExtend(&ptr,0);}
+    return;}
     centerPlace(ptr);
     if (ptr->res == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
@@ -445,6 +456,7 @@ void machineSwitch(struct Machine *ptr);
 void machineExec(struct Extend *ext)
 {
     struct Center *ptr = ext->ptr;
+    // {char *st0 = 0; showCenter(ptr,&st0); fprintf(stderr,"macineExec %s\n",st0); free(st0);}
     switch (ptr->mem) {default: ERROR();
     case (Transferz):
     for (int i = 0; i < ptr->siz; i++) {
@@ -484,20 +496,18 @@ void machineCopy(int sig, int *arg)
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
     int alt = arg[CopyAlt];
-    struct Extend *ext = centerPull(src);
+    struct Extend *ext = centerPeek(src);
     callCopy(ext,alt,0);
-    centerPlace(ext);
 }
 void machineDopy(int sig, int *arg)
 {
     if (sig != DopyArgs) ERROR();
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
-    struct Extend *ptr = centerPull(src);
+    struct Extend *ptr = centerPeek(src);
     struct Extend *cpy = 0; allocExtend(&cpy,1);
     copyExtend(cpy,ptr);
     cpy->sub = dst;
-    centerPlace(ptr);
     centerPlace(cpy);
 }
 void machinePopy(int sig, int *arg)
@@ -525,11 +535,10 @@ void machineRopy(int sig, int *arg)
 {
     if (sig != RopyArgs) ERROR();
     int src = arg[RopySrc];
-    struct Extend *ptr = centerPull(src);
+    struct Extend *ptr = centerPeek(src);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
-    centerPlace(ptr);
 }
 void machineWopy(int sig, int *arg)
 {
@@ -753,7 +762,7 @@ void planeCenter(enum Thread tag, int idx)
     if (center->src < 0 || center->src >= Programs) ERROR();
     int sub = inverse[center->src];
     writeCenter(center->ptr,sub);
-    freeExtend(center); allocExtend(&center,0);}
+    if (center->ref == 0) {freeExtend(center); allocExtend(&center,0);}}
     if (postSafe(pipeSem) != 1) ERROR();}
 }
 void planeExternal(enum Thread tag, int idx)

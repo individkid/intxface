@@ -69,25 +69,37 @@ function doneTest()
 	writeCenter(center,tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
 end
-function initTest()
+function readConfig(res,cfg)
 	list = {}
-	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #1))")
+	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
 	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(@getcfg))")
-	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(@getcfg)fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?ScratchFrames)fld[2]:$(#0)fid:Str(cfg)))")
+	for i,v in ipairs(cfg) do
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(@getcfg)fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
+	end
 	list[#list+1] = machSugar("Machine(xfr:Ropysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"])
 	center = readCenter(tests[found]["idx"])
-	frames = center["cfg"][1]
-	print("frames "..frames)
-	list = {}
-	list[#list+1] = centSugar("Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:SwapRes)ptr:Dat()siz:0))")
-	list[#list+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
-	list[#list+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
-	for i = 0, (castMicro("Micros")-1) do
-	list[#list+1] = centSugar("Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:PipeRes)ptr:Dat()siz:2arg[0]:"..i.."arg[1]:"..i.."))")
-	list[#list+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
-	list[#list+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
+	for i,v in ipairs(center["cfg"]) do res[i] = v end
+end
+function listResrc(lst,res,arg)
+	cent = "Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:"..res..")ptr:Dat()"
+	cent = cent.."siz:"..#arg
+	for i,v in ipairs(arg) do
+	cent = cent.."arg["..(i-1).."]:"..v
 	end
+	cent = cent.."))"
+	lst[#lst+1] = centSugar(cent)
+	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
+	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
+end
+function initTest()
+	list = {}; listResrc(list,"SwapRes",{})
+	atomSugar(list,tests[found]["idx"])
+	config = {} readConfig(config,{"ScratchFrames","UniformWid","UniformHei"})
+	frames = config[1] width = config[2] height = config[3]
+	print("frames:"..frames.." width:"..width.." height:"..height)
+	list = {}; for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
+	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	atomSugar(list,tests[found]["idx"])
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then

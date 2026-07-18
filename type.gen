@@ -1939,14 +1939,10 @@ Bootstrap = {
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterWake @mask Op))"..
-		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
-		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = Ret RegisterWake Op ; tmp = #0 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:16)".. -- @total
+		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = ?RegisterWake ; Woc RegisterWake @mask Op ; tmp = #0 Op))"..
+		"mch[%(return jdx())]:Nest(lvl:17)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @tmp != @fns , #-17 ; #0 , @tmp Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @tmp != @fns , #17 ; #0 , @tmp Op))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 1
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp , EndOp Op))"..
@@ -2108,6 +2104,11 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 17
+		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
+		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 	")"},
 	{"Int","%(return idx())","Str","!(express = #%(return count))Expressz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(reboot = #%(return count))Rebootz(siz:0idx:0slf:0)"},
@@ -2418,9 +2419,10 @@ Center = { -- setup for graphics
 }
 Extend = {
 	{"ptr","Center",{},{1}}, -- memory union
-	{"rsp","Response",{},{}}, -- how to respond
-	{"sub","Int",{},{}}, -- where to replace
+	{"ref","Int",{},{}}, -- reference count
 	{"src","Program",{},{}}, -- pipe read from
+	{"sub","Int",{},{}}, -- where to replace
+	{"rsp","Response",{},{}}, -- how to respond
 	{"res","Int",{},{}}, -- pass or fail
 }
 Listed = {
