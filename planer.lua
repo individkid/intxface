@@ -1,5 +1,6 @@
 dofile("type.lua")
 require "sugy"
+require "fmty"
 
 tests = {}
 more = nil
@@ -92,6 +93,12 @@ function listResrc(lst,res,arg)
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
 	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
 end
+function listMemory(lst,mem,arg)
+	cent = "Center(mem:"..mem.."siz:1idx:0slf:0"..arg..")"
+	lst[#lst+1] = centSugar(cent)
+	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
+	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory(mem).."))")
+end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
 	atomSugar(list,tests[found]["idx"])
@@ -100,6 +107,7 @@ function initTest()
 	print("frames:"..frames.." width:"..width.." height:"..height)
 	list = {}; for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
+	listMemory(list,"Uniformz","uni[0]:Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")")
 	atomSugar(list,tests[found]["idx"])
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
