@@ -1059,8 +1059,11 @@ void showDat(const void* val, char **str)
 	char *hex = 0;
 	hex = malloc(len*2+1);
 	for (int i = 0; i < len; i++) {
-	hex[i*2] = showDatF((*(((char*)(((int*)val)+1))+i))>>4);
-	hex[i*2+1] = showDatF((*(((char*)(((int*)val)+1))+i))&0xf);}
+	int *base = ((int*)val)+1;
+	unsigned char *ptr = (((char*)base)+i);
+	unsigned char chr = *ptr;
+	hex[i*2] = showDatF(chr>>4);
+	hex[i*2+1] = showDatF(chr&0xf);}
 	hex[len*2] = 0;
 	if (asprintf(&tmp,"Dat(%s)",hex) < 0) ERRFNC(-1);
 	num = strlen(tmp);
