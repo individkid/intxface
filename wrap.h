@@ -65,7 +65,7 @@ struct WrapClose : Close {
 	const char *&u_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Utype) ERROR(); return b[sub].u;}
 	char *&v_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); return b[sub].v;}
 	char &w_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Wtype) ERROR(); return b[sub].w;}
-	void *&q_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Qtype) ERROR(); return b[sub].q;}
+	void *&q_(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Qtype) ERROR(); free(*WrapCloseStr()); *WrapCloseStr() = 0; b[sub].q = *WrapCloseStr(); return b[sub].q;}
 	char *&r_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Vtype) ERROR(); free(*WrapCloseStr()); *WrapCloseStr() = 0; return *WrapCloseStr();}
 	char *&s_(int sub) const {if (sub < 0 || sub >= Close::n || a[sub].t != Para::Utype) ERROR(); free(*WrapCloseStr()); *WrapCloseStr() = strdup(a[sub].u); return *WrapCloseStr();}
 	void s(int sub) const {if (sub < 0 || sub >= Close::m || b[sub].t != Para::Vtype) ERROR(); b[sub].v = *WrapCloseStr();}

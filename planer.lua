@@ -1,7 +1,7 @@
 dofile("type.lua")
 require "sugy"
 require "fmty"
--- require "luax" -- for face.c
+require "luax" -- for face.c
 
 tests = {}
 more = nil
@@ -109,14 +109,10 @@ function initTest()
 	list = {}; for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	listMemory(list,"Uniformz","uni[0]:Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")")
+	dat,wid,hei,cha = fmtxStbi("texture.jpg")
+	-- listMemory(list,"Imagez","img[0]:Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")")
 	atomSugar(list,tests[found]["idx"])
 end
-
--- fmtxStbi(&img->ptr->img[0].dat,&img->ptr->img[0].wid,&img->ptr->img[0].hei,&img->ptr->img[0].cha,"texture.jpg");
-dat,wid,hei,cha = fmtxStbi("texture.jpg")
-print("wid:"..wid.." hei:"..hei.." cha:"..cha)
--- st0 = showDat(dat,"")
--- print("dat:"..st0)
 
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	pipeTest()

@@ -1240,7 +1240,7 @@ int hideDat(void **val, const char *str, int *siz)
 	limit = base; while (str[limit] && str[limit] != ')') limit += 1; limit += 1;
 	*val = realloc(*val,len/2+sizeof(int));
 	*(int*)*val = len/2;
-	char *ptr = (char*)((int*)val+1); len = 0; int num = 0;
+	unsigned char *ptr = (unsigned char*)(((int*)(*val))+1); len = 0; unsigned char num = 0;
 	for (int i = base; i < limit; i++) {
 	if (str[i]>='a' && str[i]<='f') num = (num<<4)+str[i]-'a'+10;
 	else if (str[i]>='0' && str[i]<='9') num = (num<<4)+str[i]-'0';
