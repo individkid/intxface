@@ -1,7 +1,6 @@
 dofile("type.lua")
 require "sugy"
 require "fmty"
-require "luax" -- for face.c
 
 tests = {}
 more = nil
