@@ -714,10 +714,15 @@ void readDat(void **dat, int idx)
 	// TODO what if size is zero because of eof
 	*dat = malloc(size+sizeof(int));
 	*(int*)(*dat) = size;
-	while (1) {if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],(void*)(((int*)(*dat))+1),size);
-	else val = read(inp[idx],(void*)(((int*)(*dat))+1),size);
-	if (val < 0 && errno == EINTR) INTRFN() else break;}
-	if (val != 0 && val < size) ERRFNC(idx);
+	int siz = 0;
+	char *ptr = (char*)(((int*)(*dat))+1);
+	while (siz < size) {
+	if (fdt[idx] == Punt || fdt[idx] == Bunt) val = rfn[idx](inp[idx],ptr+siz,size-siz);
+	else val = read(inp[idx],ptr+siz,size-siz);
+	if (val == 0) break;
+	if (val < 0 && errno == EINTR) INTRFN();
+	if (val > 0) siz += val;}
+	if (val != 0 && siz < size) ERRFNC(idx);
 	// TODO reopen before calling notice if val == 0 and fdt[idx] == Poll
 	if (val == 0 && size != 0) {/*TODO zero out dat*/ NOTICE(idx);}
 }

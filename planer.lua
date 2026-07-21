@@ -110,7 +110,7 @@ function initTest()
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	listMemory(list,"Uniformz","uni[0]:Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")")
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
-	-- listMemory(list,"Imagez","img[0]:Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")")
+	listMemory(list,"Imagez","img[0]:Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")")
 	atomSugar(list,tests[found]["idx"])
 end
 
