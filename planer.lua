@@ -93,8 +93,10 @@ function listResrc(lst,res,arg)
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
 	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
 end
-function listMemory(lst,mem,arg)
-	cent = "Center(mem:"..mem.."siz:1idx:0slf:0"..arg..")"
+function listMemory(lst,mem,fld,arg)
+	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
+	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
+	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
 	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory(mem).."))")
@@ -107,9 +109,17 @@ function initTest()
 	print("frames:"..frames.." width:"..width.." height:"..height)
 	list = {}; for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
-	listMemory(list,"Uniformz","uni[0]:Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")")
+	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
-	listMemory(list,"Imagez","img[0]:Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")")
+	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
+	listMemory(list,"Storagez","sto",{"Int32(456)"})
+	ident = "Matrix("
+	for i = 0, 15 do ident = ident.."mat["..i.."]:Old("
+	if (i//4) == (i-((i//4)*4)) then ident = ident.."1.0)"
+	else ident = ident.."0.0)" end end
+	ident = ident..")"
+	mat = {} for i = 0, 4 do mat[i+1] = ident end
+	for i = 0, frames-1 do listMemory(list,"Matrixz","mat",mat) end
 	atomSugar(list,tests[found]["idx"])
 end
 

@@ -1331,20 +1331,20 @@ void initTest()
     callJnfo(UniformHei,height,planeWcfg);
 
     struct Extend *img = centerPull(Imagez); freeCenter(img->ptr);
-    img->ptr->mem = Imagez; img->ptr->idx = 0; img->ptr->siz = 1; allocImage(&img->ptr->img,img->ptr->siz);
+    img->ptr->mem = Imagez; img->ptr->siz = 1; allocImage(&img->ptr->img,img->ptr->siz);
     fmtxStbi(&img->ptr->img[0].dat,&img->ptr->img[0].wid,&img->ptr->img[0].hei,&img->ptr->img[0].cha,"texture.jpg");
     img->sub = Imagez; img->rsp = RptRsp;
     callCopy(img,0,(debug?"image":0));
 
     struct Extend *sto = centerPull(Storagez); freeCenter(sto->ptr);
-    sto->ptr->mem = Storagez; sto->ptr->idx = 0; sto->ptr->siz = 1; allocInt32(&sto->ptr->sto,sto->ptr->siz);
+    sto->ptr->mem = Storagez; sto->ptr->siz = 1; allocInt32(&sto->ptr->sto,sto->ptr->siz);
     sto->ptr->sto[0] = 456;
     sto->sub = Storagez; sto->rsp = RptRsp;
     callCopy(sto,0,(debug?"storage":0));
 
     for (int i = 0; i < frames; i++) {
     struct Extend *mat = centerPull(Matrixz); freeCenter(mat->ptr);
-    mat->ptr->mem = Matrixz; mat->ptr->slf = frames; mat->ptr->siz = 5; allocMatrix(&mat->ptr->mat,mat->ptr->siz);
+    mat->ptr->mem = Matrixz; mat->ptr->siz = 5; allocMatrix(&mat->ptr->mat,mat->ptr->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; planeWindow(proj);
     copymat(mat->ptr->mat[0].mat,ident,4); // uni.all
