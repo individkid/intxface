@@ -230,9 +230,9 @@ void planeDebug(float *debug)
     float fix[] = {0.0f,0.0f,0.4f};
     float org[] = {0.0f,0.0f};
     float time = processTime();
-    float cur[] = {0.4f*sinf(time*8.0f),0.4f*sinf(time*8.0f)};
-    planeRotateFocalMouse(debug, fix, 0, org, cur);}
-    }
+    float leg = 0.4f*sinf(time*8.0f);
+    float cur[] = {leg,leg};
+    planeRotateFocalMouse(debug,fix,0,org,cur);}}
 }
 
 // resource accessors
