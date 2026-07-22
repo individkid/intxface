@@ -227,17 +227,11 @@ void planeDebug(float *debug)
     switch (callInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
     break; case (Bringup): case (Builtin): {
-    identmat(debug,4);
+    float fix[] = {0.0f,0.0f,0.4f};
+    float org[] = {0.0f,0.0f};
     float time = processTime();
-    float src0[] = {-0.5f, -0.5f, 0.20f, 1.0f};
-    float dst0[] = {-0.5f, -0.5f, 0.40f+0.20f*sinf(time*8.0f), 1.0f};
-    float src1[] = {0.5f, -0.5f, 0.40f, 1.0f};
-    float dst1[] = {0.5f, -0.5f, 0.40f, 1.0f};
-    float src2[] = {0.5f, -0.5f, 0.40f, 0.0f};
-    float dst2[] = {0.5f, -0.5f, 0.40f, 0.0f};
-    float src3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
-    float dst3[] = {-0.5f, 0.5f, 0.40f, 1.0f};
-    planeTransform(debug, src0, dst0, src1, dst1, src2, dst2, src3, dst3);}
+    float cur[] = {0.4f*sinf(time*8.0f),0.4f*sinf(time*8.0f)};
+    planeRotateFocalMouse(debug, fix, 0, org, cur);}
     }
 }
 
@@ -1257,9 +1251,9 @@ void initTest()
 {
     int debug = 0;
     const struct Vertex vertices[] = {
-        {{-0.5f, -0.5f, 0.20f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{-0.5f, -0.5f, 0.40f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         {{0.5f, -0.5f, 0.40f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
-        {{0.5f, 0.5f, 0.60f, 1.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
+        {{0.5f, 0.5f, 0.40f, 1.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         {{-0.5f, 0.5f, 0.40f, 1.0f}, {1.0f, 1.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},
         //
         {{-0.5f, -0.5f, 0.50f, 1.0f}, {1.0f, 0.0f, 0.0f, 0.0f}, {0, 0, 0, 0}},

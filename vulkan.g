@@ -202,9 +202,9 @@ void display(uint idx, uint num, uint tex, uint one, uint pol, uint pro, uint al
 
 #if defined(vertexFill) || defined(vertexConst)
     const vec4 vertices[] = {
-        {-0.5f, -0.5f, 0.20f, 1.0f},
+        {-0.5f, -0.5f, 0.40f, 1.0f},
         {0.5f, -0.5f, 0.40f, 1.0f},
-        {0.5f, 0.5f, 0.60f, 1.0f},
+        {0.5f, 0.5f, 0.40f, 1.0f},
         {-0.5f, 0.5f, 0.40f, 1.0f},
         
         {-0.5f, -0.5f, 0.50f, 1.0f},
