@@ -222,18 +222,6 @@ float *planeWindow(float *mat)
     *matrc(mat,0,0,4) = height/width; // y'=y x'=x*height/width
     return mat;
 }
-void planeDebug(float *debug)
-{
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
-    default: ERROR();
-    break; case (Bringup): case (Builtin): {
-    float fix[] = {0.0f,0.0f,0.4f};
-    float org[] = {0.0f,0.0f};
-    float time = processTime();
-    float leg = 0.4f*sinf(time*8.0f);
-    float cur[] = {leg,leg};
-    planeRotateFocalMouse(debug,fix,0,org,cur);}}
-}
 
 // resource accessors
 void centerSize(int idx)
@@ -325,12 +313,23 @@ int centerMod(struct Extend *ptr)
 }
 
 // machine extensions
+struct Extend *machinePeek(int sig, int *arg, int lim, int idx, int sub)
+{
+    if (sig != lim) ERROR();
+    int src = arg[idx];
+    int srcSub = arg[sub];
+    struct Extend *srcPtr = centerPeek(src);
+    if (srcPtr->sub != src) ERROR();
+    if (srcSub < 0 || srcSub >= srcPtr->ptr->siz) ERROR();
+    return srcPtr;
+}
 struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub)
 {
     if (sig != lim) ERROR();
     int src = arg[idx];
     int srcSub = arg[sub];
     struct Extend *srcPtr = centerPull(src);
+    if (srcPtr->sub != src) ERROR();
     if (srcSub < 0 || srcSub >= srcPtr->ptr->siz) ERROR();
     return srcPtr;
 }
@@ -357,6 +356,7 @@ void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int s
     if (sig != lim) ERROR();
     int src = arg[idx];
     int srcSub = arg[sub];
+    if (ptr->sub != src) ERROR();
     if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
     centerPlace(ptr);
 }
@@ -385,7 +385,7 @@ void machineProj(int sig, int *arg)
 void machineComp(int sig, int *arg)
 {
     if (sig != CompArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Extend *src = machinePeek(sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
@@ -393,23 +393,21 @@ void machineComp(int sig, int *arg)
     float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
     timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
     machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
-    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
 }
 void machineForm(int sig, int *arg)
 {
     if (sig != FormArgs) ERROR();
-    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub);
+    struct Extend *center = machinePeek(sig,arg,FormArgs,FormSrc,FormSrcSub);
     struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
     // change manipulation matrix -- L = LTC'; T = C
     float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
     timesmat(timesmat(kernel->local.mat,kernel->saved.mat,4),inv,4); // L = LTC'
     copymat(kernel->saved.mat,mat,4); // T = C
-    machinePlace(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
 }
 void machineSend(int sig, int *arg)
 {
     if (sig != SendArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub);
+    struct Extend *src = machinePeek(sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
@@ -419,12 +417,11 @@ void machineSend(int sig, int *arg)
     timesmat(kernel->sent.mat,kernel->local.mat,4); // S = SL
     identmat(kernel->local.mat,4); // L = I
     machinePlace(dst,sig,arg,SendArgs,SendDst,SendDstSub);
-    machinePlace(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
 }
 void machineSelf(int sig, int *arg)
 {
     if (sig != SelfArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
+    struct Extend *src = machinePeek(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
@@ -432,19 +429,17 @@ void machineSelf(int sig, int *arg)
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
     float inv[16]; jumpmat(kernel->sent.mat,invmat(copymat(inv,matrix->mat,4),4),4); // S = M'S
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
-    machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
 }
 void machineGlob(int sig, int *arg)
 {
     if (sig != GlobArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
+    struct Extend *src = machinePeek(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     // absorb discontinuous change -- G = GM
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
-    machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
 }
 void machineSwitch(struct Machine *ptr);
 void machineExec(struct Extend *ext)
@@ -851,7 +846,13 @@ void planeTest(enum Thread tag, int idx)
     if (alt) {mat->ptr->idx = 2; mat->ptr->siz = 2;}
     else {mat->ptr->idx = 0; mat->ptr->siz = 1;}
     allocMatrix(&mat->ptr->mat,mat->ptr->siz);
-    if (alt) {planeWindow(mat->ptr->mat[0].mat); planeDebug(mat->ptr->mat[1].mat);}
+    if (alt) {planeWindow(mat->ptr->mat[0].mat);
+    float fix[] = {0.0f,0.0f,0.4f};
+    float org[] = {0.0f,0.0f};
+    float time = processTime();
+    float leg = 0.4f*sinf(time*8.0f);
+    float cur[] = {leg,leg};
+    planeRotateFocalMouse(mat->ptr->mat[1].mat,fix,0,org,cur);}
     else planeMatrix(mat->ptr->mat[0].mat);
     mat->sub = Matrixz; mat->rsp = RptRsp;
     callCopy(mat,1,(debug?"matrix":0));
