@@ -183,6 +183,8 @@ template <class Conf, int Size> struct ChangeState {
     }
     int gnfo(Conf cfg, int val, yftype fnc) { // called from callback
         if (cfg < 0 || cfg >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
+        nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
+        {std::cerr << "invalid gnfo! " << depth << std::endl; *(int*)0=0; exit(-1);} nest.post();
         return fnc(&config[cfg],val);
     }
     int info(Conf cfg, int val, yftype fnc) { // no callback
@@ -201,6 +203,7 @@ template <class Conf, int Size> struct ChangeState {
         safe.post(); return ret;
     }
     int knfo(Conf cfg, int val, yftype fnc) { // called from callback
+        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
         nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
         {std::cerr << "invalid knfo! " << depth << std::endl; *(int*)0=0; exit(-1);} nest.post();
         int sav = config[cfg]; int ret = fnc(&config[cfg],val);

@@ -33,13 +33,18 @@ void *timeq = 0; // queue of wakeup times
 void *wakeq = 0; // queue of wakeup threads
 void *timep = 0; // map from thread to time
 void *timeSem = 0; // protect wakeup queues
+void *charq = 0; // queue of keyboard presses
+void *leftq = 0; // queue of mouse presses
+void *baseq = 0; // queue of mouse presses
+void *angleq = 0; // queue of mouse presses
+void *pressSem = 0; // protect press queues
 void **wakeSem[Threads] = {0};
 int keepSem[Threads] = {0};
 int sizeSem[Threads] = {0};
 int *machine = 0;
 void *safeSem = 0; // protect machine and wakeSem
 // initialized before threads so safe
-void *chrq = 0; // temporary queue to convert chars to str
+void *tempq = 0; // temporary queue to convert chars to str
 int loopfd = 0; // pipe from one struct to another
 void *loopSem = 0; // protect loopfd
 void *evalSem = 0;
@@ -60,9 +65,7 @@ DECLARE_DEQUE(struct Extend *,Centerq)
 DECLARE_DEQUE(char *,Strq)
 DECLARE_DEQUE(char, Chrq)
 DECLARE_DEQUE(float, Timeq)
-DECLARE_DEQUE(int, Wakeq)
-DECLARE_DEQUE(int, Ableq)
-DECLARE_DEQUE(int, Maskq)
+DECLARE_DEQUE(int, Intq)
 
 DECLARE_MAP(int,float,Timep)
 
@@ -275,7 +278,7 @@ void centerClear(int sub)
 }
 void centerDone(struct Extend *ptr)
 {
-    if ((callJnfo(RegisterSave,0,planeRcfg) & (1<<ptr->sub)) != 0) {
+    if ((callInfo(RegisterSave,0,planeRcfg) & (1<<ptr->sub)) != 0) {
     callJnfo(RegisterWake,(1<<DropMsk),planeWots);
     callJnfo(RegisterDrop,(1<<ptr->sub),planeWots);
     if (ptr->ref == 0) {freeExtend(ptr); allocExtend(&ptr,0);}
@@ -812,9 +815,9 @@ void planeConsole(enum Thread tag, int idx)
     if (sub == condone) break;
     if (sub == console) {
     char chr = readChr(console);
-    pushChrq(chr,chrq);
-    if (chr == '\n') {char *str = malloc(sizeChrq(chrq)+1); char *ptr = str;
-    while (sizeChrq(chrq)) {*(ptr++) = frontChrq(chrq); popChrq(chrq);} *(ptr++) = 0;
+    pushChrq(chr,tempq);
+    if (chr == '\n') {char *str = malloc(sizeChrq(tempq)+1); char *ptr = str;
+    while (sizeChrq(tempq)) {*(ptr++) = frontChrq(tempq); popChrq(tempq);} *(ptr++) = 0;
     if (waitSafe(stdioSem) != 0) ERROR();
     pushStrq(str,strin);
     int size = sizeStrq(strin);
@@ -831,14 +834,14 @@ void planeTime(enum Thread tag, int idx)
     if (sizeTimeq(timeq) == 0) {
     if (postSafe(timeSem) != 1) ERROR();
     if (timeSafe(safeSafe(TimeThd,0),0.0) < 0) break; else continue;}
-    if (sizeTimeq(timeq) != sizeWakeq(wakeq)) ERROR();
-    float time = frontTimeq(timeq); int wake = frontWakeq(wakeq);
+    if (sizeTimeq(timeq) != sizeIntq(wakeq)) ERROR();
+    float time = frontTimeq(timeq); int wake = frontIntq(wakeq);
     if (postSafe(timeSem) != 1) ERROR();
     float delta = time-(float)processTime(); // how long to wait
     if (timeSafe(safeSafe(TimeThd,0),delta) < 0) break;
     if ((float)processTime() >= time) {
     if (waitSafe(timeSem) != 0) ERROR();
-    dropTimeq(timeq); dropWakeq(wakeq);
+    dropTimeq(timeq); dropIntq(wakeq);
     if (postSafe(timeSem) != 1) ERROR();
     callJnfo(RegisterWake,(1<<TimeMsk),planeWots);
     postSafe(safeSafe(MachThd,wake));}}
@@ -984,7 +987,7 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         doneSafe(safeSafe(StdioThd,0));
         writeChr(0,condone);}
     if ((act & (1<<MachThd)) && !(sav & (1<<MachThd))) {
-        callKnfo(RegisterCall,callKnfo(RegisterMain,0,planeRcfg)<<8,planeWcfg);}
+        callKnfo(RegisterCall,callGnfo(RegisterMain,0,planeRcfg)<<8,planeWcfg);}
     if (!(act & (1<<MachThd)) && (sav & (1<<MachThd))) {
         callKnfo(RegisterCall,-1<<8,planeWcfg);}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
@@ -1006,9 +1009,9 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
     int mask = act&~sav;
     int wake = 0;
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
-    int able = (sizeAbleq(ableq) > i ? *ptrAbleq(i,ableq) : 0);
+    int able = (sizeIntq(ableq) > i ? *ptrIntq(i,ableq) : 0);
     wake |= able;}
-    wake &= callKnfo(RegisterOpen,0,planeRcfg);
+    wake &= callGnfo(RegisterOpen,0,planeRcfg);
     for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) {
     planeWake(MachThd,i);}
 }
@@ -1017,15 +1020,15 @@ void registerAble(enum Configure cfg, int sav, int val, int act)
     if (cfg != RegisterAble) ERROR();
     int wake = val & 0xff; // thread to wake
     int mask = val >> 8; // mask of events
-    while (sizeMaskq(maskq) <= wake) pushMaskq(0,maskq);
-    int even = *ptrMaskq(wake,maskq);
+    while (sizeIntq(maskq) <= wake) pushIntq(0,maskq);
+    int even = *ptrIntq(wake,maskq);
     for (int i = ffs(even)-1; even; i = ffs(even&=~(1<<i))-1) {
-    while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
-    *ptrAbleq(i,ableq) &= ~(1<<wake);}
-    *ptrMaskq(wake,maskq) = mask;
+    while (sizeIntq(ableq) <= i) pushIntq(0,ableq);
+    *ptrIntq(i,ableq) &= ~(1<<wake);}
+    *ptrIntq(wake,maskq) = mask;
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
-    while (sizeAbleq(ableq) <= i) pushAbleq(0,ableq);
-    *ptrAbleq(i,ableq) |= 1<<wake;}
+    while (sizeIntq(ableq) <= i) pushIntq(0,ableq);
+    *ptrIntq(i,ableq) |= 1<<wake;}
 }
 void registerTime(enum Configure cfg, int sav, int val, int act)
 {
@@ -1042,11 +1045,11 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     int idx = sizeTimeq(timeq)-2;
     while (idx > 0 && *ptrTimeq(idx,timeq) > time) {idx--;
     *ptrTimeq(idx+1,timeq) = *ptrTimeq(idx,timeq);
-    *ptrWakeq(idx+1,wakeq) = *ptrWakeq(idx,wakeq);}
+    *ptrIntq(idx+1,wakeq) = *ptrIntq(idx,wakeq);}
     *ptrTimeq(idx,timeq) = time;
-    *ptrWakeq(idx,wakeq) = lwr;} else {
+    *ptrIntq(idx,wakeq) = lwr;} else {
     pushTimeq(time,timeq);
-    pushWakeq(lwr,wakeq);}
+    pushIntq(lwr,wakeq);}
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
@@ -1089,7 +1092,42 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
     writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();
 }
-// TODO add callbacks to set wake mask bits when relevant registers change
+void registerChar(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != PressKey) ERROR();
+    if (waitSafe(pressSem) != 0) ERROR();
+    pushIntq(val,charq);
+    callGnfo((enum Configure)cfg,frontIntq(charq),planeWcfg);
+    if (postSafe(pressSem) != 1) ERROR();
+}
+void registerChars(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != PressQueue) ERROR();
+    if (waitSafe(pressSem) != 0) ERROR();
+    while (act < sizeIntq(charq)) popIntq(charq);
+    while (act > sizeIntq(charq)) pushIntq(0,charq);
+    if (postSafe(pressSem) != 1) ERROR();
+}
+void registerClick(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != ClickLeft && cfg != ClickBase && cfg != ClickAngle) ERROR();
+    if (waitSafe(pressSem) != 0) ERROR();
+    void *que = 0; if (cfg == ClickLeft) que = leftq;
+    else if (cfg == ClickBase) que = baseq;
+    else if (cfg == ClickAngle) que = angleq;
+    pushIntq(val,que);
+    callGnfo((enum Configure)cfg,frontIntq(que),planeWcfg);
+    if (postSafe(pressSem) != 1) ERROR();
+}
+void registerClicks(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != ClickQueue) ERROR();
+    if (waitSafe(pressSem) != 0) ERROR();
+    while (act < sizeIntq(leftq)) popIntq(leftq); while (act > sizeIntq(leftq)) pushIntq(0,leftq);
+    while (act < sizeIntq(baseq)) popIntq(baseq); while (act > sizeIntq(baseq)) pushIntq(0,baseq);
+    while (act < sizeIntq(angleq)) popIntq(angleq); while (act > sizeIntq(angleq)) pushIntq(0,angleq);
+    if (postSafe(pressSem) != 1) ERROR();
+}
 
 // expression callbacks
 const char *planeGetstr()
@@ -1176,14 +1214,16 @@ void initSafe()
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
     if (!(execSem = allocSafe(1))) ERROR(); // protect atomic pipe reads
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
+    if (!(pressSem = allocSafe(1))) ERROR(); // protect glfw queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     if (!(loopSem = allocSafe(1))) ERROR(); // protect field pipe
     internal = allocCenterq(); response = allocCenterq(); reboot = allocCenterq();
-    strout = allocStrq(); strin = allocStrq(); chrq = allocChrq();
-    timeq = allocTimeq(); wakeq = allocWakeq(); timep = allocTimep();
-    ableq = allocAbleq(); maskq = allocMaskq(); loopfd = openPipe(); 
+    strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
+    charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
+    timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();
+    ableq = allocIntq(); maskq = allocIntq(); loopfd = openPipe(); 
     callBack(RegisterCall,registerCall);
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
@@ -1205,6 +1245,12 @@ void initSafe()
     callBack(ArgumentInp,registerArgument);
     callBack(ArgumentOut,registerArgument);
     callBack(ArgumentSrc,registerArgument);
+    callBack(PressKey,registerChar);
+    callBack(PressQueue,registerChars);
+    callBack(ClickLeft,registerClick);
+    callBack(ClickBase,registerClick);
+    callBack(ClickAngle,registerClick);
+    callBack(ClickQueue,registerClicks);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
