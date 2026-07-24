@@ -382,6 +382,19 @@ void machineProj(int sig, int *arg)
     planeWindow(matrix->mat);
     machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
 }
+void machineBnry(int sig, int *arg)
+{
+    if (sig != ProjArgs) ERROR();
+    struct Extend *lft = machinePeek(sig,arg,BnryArgs,BnryLft,BnryLftSub);
+    struct Matrix *mft = machineMatrix(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
+    struct Extend *rgt = machinePeek(sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
+    struct Matrix *mgt = machineMatrix(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
+    struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub);
+    struct Matrix *mst = machineMatrix(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
+    float *fft = mft->mat; float *fgt = mgt->mat; float *fst = mst->mat;
+    planeTransform(fst,fft+0,fgt+0,fft+4,fgt+4,fft+8,fgt+8,fft+12,fgt+12);
+    machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
+}
 void machineComp(int sig, int *arg)
 {
     if (sig != CompArgs) ERROR();
@@ -693,6 +706,7 @@ void machineSwitch(struct Machine *mptr)
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineProj(mptr->sig,arg);} break;
+    case (Bnry): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBnry(mptr->sig,arg);} break;
     case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
     case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
@@ -1044,6 +1058,9 @@ void registerExit(enum Configure cfg, int sav, int val, int act)
 void registerUniform(enum Configure cfg, int sav, int val, int act)
 {
     switch (cfg) {default: ERROR();
+    case (UniformWid):
+    case (UniformHei):
+    callKnfo(RegisterWake,1<<ProjMsk,planeWots);
     case (UniformAll):
     case (UniformOne):
     case (UniformIdx):
@@ -1054,9 +1071,7 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
     case (UniformMat):
     case (UniformBas):
     case (UniformMod):
-    case (UniformWid):
-    case (UniformHei):}
-    callKnfo(RegisterWake,(1<<UnifMsk),planeWots);
+    callKnfo(RegisterWake,(1<<UnifMsk),planeWots);}
 }
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {

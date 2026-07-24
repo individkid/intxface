@@ -285,13 +285,17 @@ Configure = { -- integer variables for user expressions
 	"FetchBase", -- fetch modify read
 	"FetchSize", -- fetch modify read
 	"PressKey", -- queued keyboard
+	"PressQueue", -- queued size
+	"ManipMode", -- configured action
 	"ManipFixed", -- configured mode
+	"ManipScope", -- configured mode
 	"ManipLeft", -- volatile mouse
 	"ManipBase", -- volatile mouse
 	"ManipAngle", -- volatile roller
 	"ClickLeft", -- queued Manip
 	"ClickBase", -- queued Manip
 	"ClickAngle", -- queued Manip
+	"ClickQueue", -- queued size
 	"FixedLeft", -- pierce to choose
 	"FixedBase", -- pierce to choose
 	"FixedDeep", -- return from pierce
@@ -315,6 +319,8 @@ Transfer = { -- what user machine does
 	"Panic", -- throw core dump
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
+	"Proj", -- depends on UniformWid/Hei
+	"Bnry", -- two matrices into one
 	-- identity I
 	-- current manipulation C
 	-- Kernel.saved T
@@ -322,7 +328,6 @@ Transfer = { -- what user machine does
 	-- Kernel.sent S
 	-- Kernel.global G
 	-- input output matrix M
-	"Proj", -- output M depends on UniformWid/Hei
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
 	"Send", -- M = L; S = SL; L = I
@@ -343,6 +348,14 @@ Transfer = { -- what user machine does
 ProjArg = { -- arguments for machine operations
 	"ProjDst",
 	"ProjDstSub",
+}
+BnryArg = {
+	"BnryLft",
+	"BnryLftSub",
+	"BnryRgt",
+	"BnryRgtSub",
+	"BnryDst",
+	"BnryDstSub",
 }
 CompArg = {
 	"CompSrc",

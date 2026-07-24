@@ -2501,32 +2501,50 @@ struct MainState {
 
 MainState *mptr = 0;
 // glfw callbacks
-void glfwKeypress(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
-    // TODO queue up if PressKey is nonzero, and have callback deque when PressKey goes zero
-    // TODO set PrssMsk whenever PressKey goes from zero to nonzero
+void glfwCharPress(GLFWwindow* window, unsigned int unicode) {
+    // Glfw or spoof write to PressKey queues up unicode.
+    // Read of PressKey gets head of queue.
+    // Write to PressQueue pops head of queue.
+    // Read of PressQueue gets length of queue.
+    mptr->changeState.write(PressKey,unicode); // queued
 }
-// TODO queue up click like key, but no need to queue up move or roller
+void glfwKeyPress(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL) EXIT
+}
+void glfwMouseMove(GLFWwindow* window, double xpos, double ypos) {
+    mptr->changeState.poke(ManipLeft,xpos);
+    mptr->changeState.write(ManipBase,ypos);
+}
+void glfwRollerMove(GLFWwindow* window, double xoffset, double yoffset) {
+    mptr->changeState.rmw(ManipAngle,yoffset);
+    // ManipAngle needs to be periodically cleared
+    // TODO is clearing it in glfwButtonPress ok?
+}
+void glfwButtonPress(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && mods == 0) {
+    mptr->changeState.poke(ClickLeft,mptr->changeState.read(ManipLeft));
+    mptr->changeState.poke(ClickBase,mptr->changeState.read(ManipBase));
+    mptr->changeState.poke(ManipAngle,0);
+    // TODO it could wake up here which would cause glitch
+    mptr->changeState.poke(ClickAngle,0);} // queued
+}
 void glfwResize(GLFWwindow* window, int width, int height) {
     mptr->changeState.poke(UniformWid,width);
     mptr->changeState.write(UniformHei,height);
-    mptr->changeState.wots(RegisterWake,1<<ProjMsk);
 }
-// copy request
-void vulkanCopy(Extend *ptr, int ary, const char *dbg) {
+
+// passed to planeInit
+void vulkanCopy(Extend *ptr, int ary, const char *dbg) { // copy request
     if (dbg) mptr->copyState.push(ptr,ary,SmartState(dbg));
     else mptr->copyState.push(ptr,ary,SmartState());
 }
-// add callback
-void vulkanCall(Configure cfg, xftype back) {
+void vulkanCall(Configure cfg, xftype back) { // add callback
     mptr->changeState.call(cfg,back);
 }
-// add thread
-void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftype wake) {
+void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftype wake) { // add thread
     mptr->callState.push(new ForkState(thd,idx,fnc,done,join,wake));
 }
-// register access
-int vulkanGnfo(Configure cfg, int val, yftype fnc) {
+int vulkanGnfo(Configure cfg, int val, yftype fnc) { // register access
     return mptr->changeState.gnfo(cfg,val,fnc);
 }
 int vulkanInfo(Configure cfg, int val, yftype fnc) {
@@ -2541,24 +2559,23 @@ int vulkanKnfo(Configure cfg, int val, yftype fnc) {
 int vulkanHnfo() {
     return mptr->changeState.hnfo();
 }
-// builtin callback
-void vulkanBack(Configure cfg, int sav, int val, int act) {
-    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
-    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
-}
-// startup configuration
 HeapState<const char *,0> cfg;
-const char *vulkanCmnd(int req) {
+const char *vulkanCmnd(int req) { // startup configuration
     if (req < 0 || req >= cfg.size()) return 0;
     return cfg[req];
 }
-// mptr wrapper
-void vulkanWait() {
+void vulkanWait() { // mptr wrapper
     if (mptr->callState.self()) glfwWaitEventsTimeout(mptr->changeState.read(RegisterPoll)*0.001);
     else sleepSec(mptr->changeState.read(RegisterPoll)*0.001);
 }
 void vulkanWake() {
     glfwPostEmptyEvent();
+}
+
+// builtin callback
+void vulkanBack(Configure cfg, int sav, int val, int act) {
+    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
+    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
 }
 
 // c debug
@@ -2604,7 +2621,11 @@ int main(int argc, const char **argv) {
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
     // TODO move glfw functions to WindowState
-    glfwSetKeyCallback(main.windowState.window,glfwKeypress);
+    glfwSetCharCallback(main.windowState.window,glfwCharPress);
+    glfwSetKeyCallback(main.windowState.window,glfwKeyPress);
+    glfwSetCursorPosCallback(main.windowState.window,glfwMouseMove);
+    glfwSetScrollCallback(main.windowState.window,glfwRollerMove);
+    glfwSetMouseButtonCallback(main.windowState.window,glfwButtonPress);
     glfwSetWindowSizeCallback(main.windowState.window,glfwResize);
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
