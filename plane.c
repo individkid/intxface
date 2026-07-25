@@ -93,10 +93,6 @@ int planeRdwr(int *ref, int val)
 {
     int ret = *ref; *ref = val; return ret;
 }
-int planeRaz(int *ref, int val)
-{
-    *ref = 0; return 0;
-}
 
 void safeInit(enum Thread thd, int siz, int val)
 {
@@ -822,8 +818,8 @@ void planeConsole(enum Thread tag, int idx)
     pushStrq(str,strin);
     int size = sizeStrq(strin);
     if (postSafe(stdioSem) != 1) ERROR();
-    callJnfo(RegisterWake,(1<<CnslMsk),planeWots);
-    callJnfo(RegisterStrq,size,planeWcfg);}}
+    callJnfo(RegisterStrq,size,planeWcfg);
+    callJnfo(RegisterWake,(1<<CnslMsk),planeWots);}}
     else ERROR();}
 }
 void planeTime(enum Thread tag, int idx)
@@ -1098,6 +1094,7 @@ void registerChar(enum Configure cfg, int sav, int val, int act)
     if (waitSafe(pressSem) != 0) ERROR();
     pushIntq(val,charq);
     callGnfo((enum Configure)cfg,frontIntq(charq),planeWcfg);
+    callJnfo(RegisterWake,(1<<PrssMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerChars(enum Configure cfg, int sav, int val, int act)
@@ -1106,6 +1103,8 @@ void registerChars(enum Configure cfg, int sav, int val, int act)
     if (waitSafe(pressSem) != 0) ERROR();
     while (act < sizeIntq(charq)) popIntq(charq);
     while (act > sizeIntq(charq)) pushIntq(0,charq);
+    if (sizeIntq(charq) > 0)
+    callJnfo(RegisterWake,(1<<PrssMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerClick(enum Configure cfg, int sav, int val, int act)
@@ -1117,6 +1116,7 @@ void registerClick(enum Configure cfg, int sav, int val, int act)
     else if (cfg == ClickAngle) que = angleq;
     pushIntq(val,que);
     callGnfo((enum Configure)cfg,frontIntq(que),planeWcfg);
+    callJnfo(RegisterWake,(1<<ClckMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerClicks(enum Configure cfg, int sav, int val, int act)
@@ -1126,7 +1126,19 @@ void registerClicks(enum Configure cfg, int sav, int val, int act)
     while (act < sizeIntq(leftq)) popIntq(leftq); while (act > sizeIntq(leftq)) pushIntq(0,leftq);
     while (act < sizeIntq(baseq)) popIntq(baseq); while (act > sizeIntq(baseq)) pushIntq(0,baseq);
     while (act < sizeIntq(angleq)) popIntq(angleq); while (act > sizeIntq(angleq)) pushIntq(0,angleq);
+    if (sizeIntq(leftq) > 0 || sizeIntq(baseq) > 0 || sizeIntq(angleq) > 0)
+    callJnfo(RegisterWake,(1<<ClckMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
+}
+void registerMove(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != ManipLeft && cfg != ManipBase) ERROR();
+    callKnfo(RegisterWake,(1<<MoveMsk),planeWots);
+}
+void registerRoll(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != ManipAngle) ERROR();
+    callKnfo(RegisterWake,(1<<RollMsk),planeWots);
 }
 
 // expression callbacks
@@ -1251,6 +1263,9 @@ void initSafe()
     callBack(ClickBase,registerClick);
     callBack(ClickAngle,registerClick);
     callBack(ClickQueue,registerClicks);
+    callBack(ManipLeft,registerMove);
+    callBack(ManipBase,registerMove);
+    callBack(ManipAngle,registerRoll);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }
@@ -1421,7 +1436,7 @@ void initTest()
     struct Extend *idt = centerPull(Identz); freeCenter(idt->ptr);
     idt->ptr->mem = Identz; idt->ptr->siz = sizeof(primitive)/sizeof(uint32_t); allocInt32(&idt->ptr->idt,idt->ptr->siz);
     for (int i = 0; i < idt->ptr->siz; i++) memcpy(&idt->ptr->idt[i],&primitive[i],sizeof(uint32_t));
-    idt->sub = Bringupz; idt->rsp = RptRsp;
+    idt->sub = Identz; idt->rsp = RptRsp;
     callCopy(idt,0,(debug?"ident":0));
 
     struct Extend *ind = centerPull(Indexz); freeCenter(ind->ptr);
