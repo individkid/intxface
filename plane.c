@@ -1094,7 +1094,7 @@ void registerChar(enum Configure cfg, int sav, int val, int act)
     if (waitSafe(pressSem) != 0) ERROR();
     pushIntq(val,charq);
     callGnfo((enum Configure)cfg,frontIntq(charq),planeWcfg);
-    callJnfo(RegisterWake,(1<<PrssMsk),planeWots);
+    callKnfo(RegisterWake,(1<<PrssMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerChars(enum Configure cfg, int sav, int val, int act)
@@ -1104,7 +1104,7 @@ void registerChars(enum Configure cfg, int sav, int val, int act)
     while (act < sizeIntq(charq)) popIntq(charq);
     while (act > sizeIntq(charq)) pushIntq(0,charq);
     if (sizeIntq(charq) > 0)
-    callJnfo(RegisterWake,(1<<PrssMsk),planeWots);
+    callKnfo(RegisterWake,(1<<PrssMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerClick(enum Configure cfg, int sav, int val, int act)
@@ -1116,7 +1116,7 @@ void registerClick(enum Configure cfg, int sav, int val, int act)
     else if (cfg == ClickAngle) que = angleq;
     pushIntq(val,que);
     callGnfo((enum Configure)cfg,frontIntq(que),planeWcfg);
-    callJnfo(RegisterWake,(1<<ClckMsk),planeWots);
+    callKnfo(RegisterWake,(1<<ClckMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerClicks(enum Configure cfg, int sav, int val, int act)
@@ -1127,7 +1127,7 @@ void registerClicks(enum Configure cfg, int sav, int val, int act)
     while (act < sizeIntq(baseq)) popIntq(baseq); while (act > sizeIntq(baseq)) pushIntq(0,baseq);
     while (act < sizeIntq(angleq)) popIntq(angleq); while (act > sizeIntq(angleq)) pushIntq(0,angleq);
     if (sizeIntq(leftq) > 0 || sizeIntq(baseq) > 0 || sizeIntq(angleq) > 0)
-    callJnfo(RegisterWake,(1<<ClckMsk),planeWots);
+    callKnfo(RegisterWake,(1<<ClckMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerMove(enum Configure cfg, int sav, int val, int act)
