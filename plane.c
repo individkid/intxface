@@ -350,6 +350,15 @@ struct Matrix *machineMatrix(struct Extend *ptr, int sig, int *arg, int lim, int
     if (ptr->ptr->mem != Matrixz) ERROR();
     return &ptr->ptr->mat[srcSub];
 }
+struct Menu *machineMenu(struct Extend *ptr, int sig, int *arg, int lim, int idx, int sub)
+{
+    if (sig != lim) ERROR();
+    int src = arg[idx];
+    int srcSub = arg[sub];
+    if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
+    if (ptr->ptr->mem != Menuz) ERROR();
+    return &ptr->ptr->men[srcSub];
+}
 void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int sub)
 {
     if (sig != lim) ERROR();
@@ -484,6 +493,79 @@ void machineExec(struct Extend *ext)
     callJnfo(RegisterWake,1<<SlctMsk,planeWots);}
     break;}
 }
+void machineWait(int src)
+{
+    while (1) {
+    // MachThd woken by changes to RegisterWake
+    callInfo(RegisterWake,1<<DropMsk,planeWotc);
+    callInfo(RegisterWake,1<<PassMsk,planeWotc);
+    callInfo(RegisterWake,1<<FailMsk,planeWotc);
+    callInfo(RegisterDrop,1<<src,planeWotc);
+    callInfo(RegisterPass,1<<src,planeWotc);
+    callInfo(RegisterFail,1<<src,planeWotc);
+    if (waitSafe(copySem) != 0) ERROR();
+    struct Extend *ext = center[src];
+    if (postSafe(copySem) != 1) ERROR();
+    if (ext) break;
+    // to prevent deadlock, machineWopy should only be called from planeMachine
+    if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
+    if (callInfo(RegisterDrop,0,planeRcfg)) callJnfo(RegisterWake,1<<DropMsk,planeWots);
+    if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
+    if (callInfo(RegisterFail,0,planeRcfg)) callJnfo(RegisterWake,1<<FailMsk,planeWots);
+}
+// Action = { -- what input does
+//     "Indicate", -- move to new pierce point
+//     "Manipulate", -- apply transformation
+//     "Refine", -- add boundaries
+//     "Additive", -- add regions
+//     "Subtractive", -- remove regions
+// }
+// Scope = { -- which primitives to transform
+//     "Inject", -- single primitive
+//     "Object", -- multiple primitives
+//     "Subject", -- all primitives
+// }
+// Device = { -- which input device is manipulating
+//     "Mouse", -- ManipLeft/Base last changed
+//     "Roller", -- ManipAngle last changed
+// }
+// Subidx = {
+//     {"idx","Int",{},{}}, -- which Center
+//     {"sub","Int",{},{}}, -- which element of Center
+// }
+// Menu = { -- state to handle user input
+//     -- these could be Configure, Mopy/NopyArg, or ValOp instead,
+//     -- if Mopy/Nopy were not for demonstration purposes only
+//     {"act","Action",{},{}},
+//     {"jec","Scope",{},{}},
+//     {"dev","Device",{},{}},
+//     {"inj","Int",{},{}}, -- for when jec is Inject
+//     {"obj","Int",{},{}}, -- for when jec is Object
+//     {"suj","Int",{},{}}, -- for when jec is Subject
+//     {"msk","Mask",{},{}}, -- above or below if SlctMsk
+//     {"slf","Int",{},{}}, -- in case msk is SlctMsk
+//     {"src","Subidx",{},{}}, -- source matrix
+//     {"ker","Subidx",{},{}}, -- kernel to operate on
+//     {"dst","Subidx",{},{}}, -- result matrix to Draw
+//     {"drw","Subidx",{},{}}, -- what to draw
+// }
+void machineSync(struct Menu *menu)
+{
+    if (menu->msk != SlctMsk) ERROR();
+    // do Self/Glob from src to ker, Comp from ker to dst, Copy from dst, and Copy from drw
+}
+void machineDemo(struct Menu *menu)
+{
+    switch (menu->msk) {default: ERROR();
+    break; case (PrssMsk): // change menu state; do Form
+    break; case (ProjMsk): // change window matrix; do Proj and Draw
+    break; case (EoodMsk): // wait for window resize
+    break; case (MoveMsk): // change menu state; do Form if enabled and last manipulate was roller; do Comp and Draw if enabled
+    break; case (ClckMsk): // toggle enable, and do pierce with consume of Click registers if enabled
+    // TODO handle query modes
+    break; case (RollMsk): // change menu state; do Form if enabled and last manipulate was move; do Comp and Draw if enabled
+    }
+}
 void machineBopy(int sig, int *arg)
 {
     if (sig != BopyArgs) ERROR();
@@ -510,6 +592,20 @@ void machineDopy(int sig, int *arg)
     copyExtend(cpy,ptr);
     cpy->sub = dst;
     centerPlace(cpy);
+}
+void machineMopy(int sig, int *arg)
+{
+    if (sig != MopyArgs) ERROR();
+    struct Extend *src = machinePeek(sig,arg,MopyArgs,MopySrc,MopySrcSub);
+    struct Menu *menu = machineMenu(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
+    machineSync(menu);
+}
+void machineNopy(int sig, int *arg)
+{
+    if (sig != NopyArgs) ERROR();
+    struct Extend *src = machinePeek(sig,arg,NopyArgs,NopySrc,NopySrcSub);
+    struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
+    machineDemo(menu);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -545,33 +641,16 @@ void machineWopy(int sig, int *arg)
 {
     if (sig != WopyArgs) ERROR();
     int src = arg[WopySrc];
-    while (1) {
-    // MachThd woken by changes to RegisterWake
-    callInfo(RegisterWake,1<<DropMsk,planeWotc);
-    callInfo(RegisterWake,1<<PassMsk,planeWotc);
-    callInfo(RegisterWake,1<<FailMsk,planeWotc);
-    callInfo(RegisterDrop,1<<src,planeWotc);
-    callInfo(RegisterPass,1<<src,planeWotc);
-    callInfo(RegisterFail,1<<src,planeWotc);
-    if (waitSafe(copySem) != 0) ERROR();
-    struct Extend *ext = center[src];
-    if (postSafe(copySem) != 1) ERROR();
-    if (ext) break;
-    // to prevent deadlock, machineWopy should only be called from planeMachine
-    if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
-    if (callInfo(RegisterDrop,0,planeRcfg)) callJnfo(RegisterWake,1<<DropMsk,planeWots);
-    if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
-    if (callInfo(RegisterFail,0,planeRcfg)) callJnfo(RegisterWake,1<<FailMsk,planeWots);
+    machineWait(src);
 }
 void machineXopy(int sig, int *arg)
 {
     if (sig != XopyArgs) ERROR();
     int src = arg[XopySrc];
-    struct Extend *ext = centerPull(src);
+    struct Extend *ext = centerPeek(src);
     if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
     if (postSafe(execSem) != 1) ERROR();
-    centerPlace(ext);
 }
 void machineStage(enum Configure cfg, int idx)
 {
@@ -714,6 +793,8 @@ void machineSwitch(struct Machine *mptr)
     case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
     case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
     case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
+    case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break;
+    case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;

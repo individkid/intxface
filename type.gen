@@ -48,6 +48,7 @@ Memory = { -- which structure is in the center struction
 	"Basisz", -- base for each dimension
 	"Drawz", -- draw range info
 	"Instrz", -- little vulkan language
+	"Menuz", -- state for user input
 	"Machinez", -- state machine lines
 	"Expressz", -- expression library
 	"Rebootz", -- block for centers
@@ -240,7 +241,7 @@ Default = { -- constant array value interpretation
 	"CnstDef", -- TODO append constant to givens
 	"CmntDef",
 }
-Configure = { -- integer variables for user expressions
+Configure = { -- integer variables for user expressions to query and control the ungenerated program
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
@@ -286,9 +287,7 @@ Configure = { -- integer variables for user expressions
 	"FetchSize", -- fetch modify read
 	"PressKey", -- queued keyboard
 	"PressQueue", -- queued size
-	"ManipMode", -- configured action
 	"ManipFixed", -- configured mode
-	"ManipScope", -- configured mode
 	"ManipLeft", -- volatile mouse
 	"ManipBase", -- volatile mouse
 	"ManipAngle", -- volatile roller
@@ -302,6 +301,7 @@ Configure = { -- integer variables for user expressions
 	"NormalLeft", -- return from vector
 	"NormalBase", -- return from vector
 	"NormalDeep", -- return from vector
+	-- TODO Focal* do not interact with the ungenerated program yet
 	"FocalDepth", -- configure for window
 	"FocalSlope", -- configure for window
 	-- following are scratch registers initialized with resource limits
@@ -336,6 +336,8 @@ Transfer = { -- what user machine does
 	"Bopy", -- move to resource
 	"Copy", -- copy to resource
 	"Dopy", -- copy to center
+	"Mopy", -- handle matrices
+	"Nopy", -- handle input
 	"Popy", -- queue to center
 	"Qopy", -- move to queue
 	"Ropy", -- copy to queue
@@ -397,6 +399,14 @@ DopyArg = {
 	"DopySrc",
 	"DopyDst",
 }
+MopyArg = {
+	"MopySrc",
+	"MopySrcSub",
+}
+NopyArg = {
+	"NopySrc",
+	"NopySrcSub",
+}
 PopyArg = {
 	"PopyDst",
 }
@@ -434,12 +444,20 @@ Plan = { -- which test to run
 	-- similar to Regress, except pipe and user processed by builtin machine.
 }
 Action = { -- what input does
-	"Indicate", -- move to new piere point
-	"Collect", -- identify subpolytope
+	"Indicate", -- move to new pierce point
 	"Manipulate", -- apply transformation
 	"Refine", -- add boundaries
 	"Additive", -- add regions
 	"Subtractive", -- remove regions
+}
+Scope = { -- which primitives to transform
+	"Inject", -- single primitive
+	"Object", -- multiple primitives
+	"Subject", -- all primitives
+}
+Device = { -- which input device is manipulating
+	"Coord", -- ManipLeft/Base last changed
+	"Angle", -- ManipAngle last changed
 }
 Fixed = { -- how motion interpreted
 	"Mouse", -- how many fixed
@@ -451,11 +469,6 @@ Fixed = { -- how motion interpreted
 	"Focal",
 	"Ortho",
 	"Normal",
-}
-Scope = { -- which primitives to transform
-	"Inject", -- single primitive
-	"Object", -- multiple primitives
-	"Subject", -- all primitives
 }
 Thread = { -- separate threads
 	"PipeThd", -- read write other processes
@@ -1947,7 +1960,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
 	-- TODO initialize Drawz with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	-- TODO figure way to use castMask(TestMsk) instead of #15, maybe new Express to cast ImmStrTestMskOpOp to Int
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
@@ -1956,6 +1969,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:17)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @tmp != @fns , #17 ; #0 , @tmp Op))"..
+		-- TODO figure way to use castMask(Masks) instead of #17
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 1
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp , EndOp Op))"..
@@ -2100,7 +2114,6 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 13
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
 		-- do Void to disable manipulation if enabled, or do pierce with consume of Click registers to enable
-		-- depending on mode, do relate instead of pierce to send instead of enable
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 14
@@ -2285,15 +2298,37 @@ Machine = { -- info for user defined action
 	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
+		["Mopy"]=true,["Nopy"]=true,
 		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,
 		["Wopy"]=true,["Xopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
+		["Mopy"]=true,["Nopy"]=true,
 		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,
 		["Wopy"]=true,["Xopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
+}
+Subidx = {
+	{"idx","Int",{},{}}, -- which Center
+	{"sub","Int",{},{}}, -- which element of Center
+}
+Menu = { -- state to handle user input
+	-- these could be Configure, Mopy/NopyArg, or ValOp instead,
+	-- if Mopy/Nopy were not for demonstration purposes only
+	{"act","Action",{},{}},
+	{"jec","Scope",{},{}},
+	{"dev","Device",{},{}},
+	{"inj","Int",{},{}}, -- for when jec is Inject
+	{"obj","Int",{},{}}, -- for when jec is Object
+	{"suj","Int",{},{}}, -- for when jec is Subject
+	{"msk","Mask",{},{}}, -- above or below if SlctMsk
+	{"slf","Int",{},{}}, -- in case msk is SlctMsk
+	{"src","Subidx",{},{}}, -- source matrix
+	{"ker","Subidx",{},{}}, -- kernel to operate on
+	{"dst","Subidx",{},{}}, -- result matrix to Draw
+	{"drw","Subidx",{},{}}, -- what to draw
 }
 Uniform = { -- how to interpret subscripts into gpu buffers
 	{"all","Int32",{},{}}, -- which subject to use
@@ -2424,6 +2459,7 @@ Center = { -- setup for graphics
 	{"bas","Basis",{["mem"]={["Basisz"]=true}},"siz"},
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
+	{"men","Menu",{["mem"]={["Menuz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
 	{"sub","Int",{["mem"]={["Rebootz"]=true}},"siz"},
