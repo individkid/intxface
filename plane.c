@@ -526,8 +526,8 @@ void machineWait(int src)
 //     "Subject", -- all primitives
 // }
 // Device = { -- which input device is manipulating
-//     "Mouse", -- ManipLeft/Base last changed
-//     "Roller", -- ManipAngle last changed
+//     "Coord", -- ManipLeft/Base last changed
+//     "Angle", -- ManipAngle last changed
 // }
 // Menu = { -- state to handle user input
 //     -- these could be Configure, Mopy/NopyArg, or ValOp instead,

@@ -1980,7 +1980,7 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Nest(lvl:1)"..
 		  -- loop back to next bit in RegisterWake if nothing in internal queue
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterPtr == #0) , #-3 ; #0 == #1 , #1 Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterPtr == #0 Op , #-3 ; #0 == #1 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 -- "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		 -- move current from internal queue to per memory location
@@ -1992,10 +1992,10 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:1)"..
 		  -- non-gpu memories only need the CenterSub
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Kernelz\"))) | (?CenterMem == #%(return castMemory(\"Expressz\"))) | (?CenterMem == #%(return castMemory(\"Machinez\")))) , #-2 ; #0 , #1 Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (Non ?CenterMem == #%(return castMemory(\"Kernelz\")) Op | Non ?CenterMem == #%(return castMemory(\"Expressz\")) Op | Non ?CenterMem == #%(return castMemory(\"Machinez\")) Op) , #-2 ; #0 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
-		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterMem == #%(return castMemory(\"Matrixz\"))) , #1 ; #0 == #1 , #2 Op))"..
+		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Matrixz\")) Op , #1 ; #0 == #1 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Copy from matrix, and Copy from draw
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrSlctMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
@@ -2005,7 +2005,7 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
 		   -- execute memories need Xopy
-		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == ((?CenterMem == #%(return castMemory(\"Transferz\"))) | (?CenterMem == #%(return castMemory(\"Rebootz\")))) , #1 ; #0 , #2 Op))"..
+		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Transferz\")) Op | Non ?CenterMem == #%(return castMemory(\"Rebootz\")) Op Op , #1 ; #0 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  "mch[%(return jdx())]:Xopy(sig:1arg[0]:$(?CenterMem))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..

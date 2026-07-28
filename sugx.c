@@ -366,13 +366,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	// for (int i = 0; i < sugarDebug; i++) fprintf(stderr,"-");
 	// fprintf(stderr,"- %s -- %d\n",str+*idx,*idx);
 	if (idt <= *idx) idt = identSugar(str,*idx);
-	if (strncmp(str+*idx,"(",1)==0) {
-		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
-		*idx += 1;
-		sugarNested(lst,str,idx);
-		skipSugar(")",str,idx);
-		sav = *idx;
-		continue;}
 	if (strncmp(str+idt,":=",2)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		char *ptr = 0; int tmp = 0; enum Configure cfg;
@@ -807,8 +800,6 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 	if (strncmp(str+*idx,"Op",2)==0) break;
 	if (strncmp(str+*idx,"Bit",3)==0) break;
 	if (strncmp(str+*idx,"Cmp",3)==0) break;
-	if (strncmp(str+*idx,"(",1) == 0) depth += 1;
-	if (strncmp(str+*idx,")",1)==0) if (depth == 0) break; else depth -= 1;
 	*idx += 1;}
 	*idx = sav;
 	// sugarDebug -= 1;
