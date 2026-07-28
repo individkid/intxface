@@ -7,6 +7,7 @@
 #include <math.h>
 #include <regex.h>
 #include <time.h>
+#include <ctype.h>
 
 // these are thread safe is set once and left
 void *prefix = 0;
@@ -383,7 +384,7 @@ void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)
 	writeField(stp,num,sub,datxPut(0,src),datxClr(1)); datxGet(1,fld);
 }
 #define HIDE_BASIC(NAME,NUM,TYPE) {TYPE val = 0; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(val,datxClr(0)); typ = NUM; break;}}
-#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx)) {writeInt(val,datxClr(0)); typ = NUM; break;}}
+#define HIDE_ENUM(NAME,NUM,TYPE) {TYPE val = NAME ## s; int idx = 0; if (hide ## NAME(&val,str,&idx) && !isalpha(str[idx])) {writeInt(val,datxClr(0)); typ = NUM; break;}}
 #define HIDE_STRUCT(NAME,NUM,TYPE) {TYPE val = {0}; int idx = 0; if (hide ## NAME(&val,str,&idx)) {write ## NAME(&val,datxClr(0)); free ## NAME(&val); typ = NUM; break;}}
 int datxHide(void **dat, const char *str)
 {
@@ -749,6 +750,10 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *dat1 = 0; int typ1 = datxEval(&dat1,&exp->fld[1],-1);
 		void *dat2 = 0; int typ2 = datxEval(&dat2,&exp->fld[2],-1);
 		int num = identField(typ0,exp->fid);
+		/*{char *st0 = 0; showType(&st0,typ0,datxPut(0,dat0));
+		char *st1 = 0; showType(&st1,typ1,datxPut(0,dat1));
+		char *st2 = 0; showType(&st2,typ2,datxPut(0,dat2));
+		fprintf(stderr,"FldOp %s . %s [%s] = %s\n",st0,exp->fid,st2,st1);}*/
 		if (identSubtype(typ0,num) != typ1) ERROR();
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ2 != TYPEInt) ERROR();
@@ -780,6 +785,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
 		if (typ0 == TYPEStr) {
+			/*{fprintf(stderr,"ImmOp %s\n",datxChrz(0,dat0));}*/
 			int typ1 = datxHide(dat,datxChrz(0,dat0));
 			if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
 		} else {

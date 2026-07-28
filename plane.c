@@ -937,8 +937,8 @@ void planeTest(enum Thread tag, int idx)
 
     struct Extend *mat = centerPull(Matrixz); if (!mat) {callWait(); continue;}
     freeCenter(mat->ptr); mat->ptr->mem = Matrixz;
-    if (alt) {mat->ptr->idx = 2; mat->ptr->siz = 2;}
-    else {mat->ptr->idx = 0; mat->ptr->siz = 1;}
+    if (alt) {mat->ptr->idx = 2; mat->ptr->siz = 2;} // uni.pro tri.pol
+    else {mat->ptr->idx = 0; mat->ptr->siz = 1;} // uni.all
     allocMatrix(&mat->ptr->mat,mat->ptr->siz);
     if (alt) {planeWindow(mat->ptr->mat[0].mat);
     float fix[] = {0.0f,0.0f,0.4f};
@@ -1501,7 +1501,7 @@ void initTest()
     float proj[16]; planeWindow(proj);
     copymat(mat->ptr->mat[0].mat,ident,4); // uni.all
     copymat(mat->ptr->mat[1].mat,ident,4); // uni.one
-    copymat(mat->ptr->mat[2].mat,proj,4);
+    copymat(mat->ptr->mat[2].mat,proj,4);  // uni.pro
     copymat(mat->ptr->mat[3].mat,ident,4); // tri.pol
     copymat(mat->ptr->mat[4].mat,ident,4); // tri.pol
     mat->sub = Matrixz; mat->rsp = RptRsp;

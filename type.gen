@@ -1957,10 +1957,24 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(numeric = #%(return count))Numericz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(vertex = #%(return count))Vertexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"},
-	-- TODO initialize Drawz with Micro to be used by Regress and Release
+	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"}, -- TODO initialize with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:0idx:0slf:0)"},
+	-- {"msk","Mask",{},{}}, -- action for Sync or Demo
+	-- {"act","Action",{},{}},
+	-- {"jec","Scope",{},{}},
+	-- {"dev","Device",{},{}},
+	-- {"ker","Int",{},{}}, -- center for kernels
+	-- {"inj","Int",{},{}}, -- kernel when jec is Inject
+	-- {"obj","Int",{},{}}, -- kernel when jec is Object
+	-- {"suj","Int",{},{}}, -- kernel when jec is Subject
+	-- {"mat","Int",{},{}}, -- center for matrix
+	-- {"sub","Int",{},{}}, -- element for matrix
+	-- {"drw","Int",{},{}}, -- center for draw
+	-- {"dis","Int",{},{}}, -- which Draw for display
+	-- {"pie","Int",{},{}}, -- which Draw for pierce
+	-- {"slf","Int",{},{}}, -- in case msk is SlctMsk
+	-- {"idx","Int",{},{}}, -- in case msk is SlctMsk
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0drw:%(return castMemory(\"Drawz\"))dis:0pie:1slf:0idx:0))"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
@@ -1999,18 +2013,9 @@ Bootstrap = {
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterMem == #%(return castMemory(\"Matrixz\"))) , #1 ; #0 == #1 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Copy from matrix, and Copy from draw
-		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterIntidx[0]:$(@kernel))"..
-		  "mch[%(return jdx())]:Nest(lvl:3)"..
-		     "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterSlf < #0) , #1 ; #0 , #2 Op))"..
-		     "mch[%(return jdx())]:Nest(lvl:-1)"..
-		    "mch[%(return jdx())]:Self(sig:4arg[0]:$(@matrix)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
-		    "mch[%(return jdx())]:Jump(exp[0]:$(#2))"..
-		    "mch[%(return jdx())]:Nest(lvl:-1)"..
-		   "mch[%(return jdx())]:Glob(sig:4arg[0]:$(@matrix)arg[1]:$(#0)arg[2]:$(@kernel)arg[3]:$(?CenterIdx))"..
-		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  "mch[%(return jdx())]:Comp(sig:4arg[0]:$(@kernel)arg[1]:$(?CenterIdx)arg[2]:$(@matrix)arg[3]:$(#0))"..
-		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(@matrix)arg[1]:$(#0))"..
-		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(@draw)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrSlctMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:$(?CenterSlf)fld[2]:$(#0)fid:Str(slf)))"..
+		  "mch[%(return jdx())]:Mopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
@@ -2048,6 +2053,9 @@ Bootstrap = {
 		-- Qopy to push Center to response queue
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		-- TODO do following for Regress and Release
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrTimeMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		-- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 5
@@ -2093,32 +2101,44 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 9
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
-		-- do Void to disable and change manipulation; do Form
+		-- disable and change manipulation
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrPrssMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- change window matrix; do Proj and Draw
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrProjMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
 		-- wait for window resize
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrEoodMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
-		-- do Void to change manipulate registers; do Form if enabled and last manipulate was roller; do Comp and Draw if enabled
+		-- do Form if enabled and last manipulate was roller; do Comp Copy Draw if enabled
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrMoveMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 13
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
-		-- do Void to disable manipulation if enabled, or do pierce with consume of Click registers to enable
+		-- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrClckMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 14
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
-		-- do Void to change manipulate registers; do Form if enabled and last manipulate was move; do Comp and Draw if enabled
+		-- do Form if enabled and last manipulate was move; do Comp Copy Draw if enabled
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrRollMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 15
@@ -2310,25 +2330,24 @@ Machine = { -- info for user defined action
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
-Subidx = {
-	{"idx","Int",{},{}}, -- which Center
-	{"sub","Int",{},{}}, -- which element of Center
-}
 Menu = { -- state to handle user input
 	-- these could be Configure, Mopy/NopyArg, or ValOp instead,
 	-- if Mopy/Nopy were not for demonstration purposes only
+	{"msk","Mask",{},{}}, -- action for Sync or Demo
 	{"act","Action",{},{}},
 	{"jec","Scope",{},{}},
 	{"dev","Device",{},{}},
-	{"inj","Int",{},{}}, -- for when jec is Inject
-	{"obj","Int",{},{}}, -- for when jec is Object
-	{"suj","Int",{},{}}, -- for when jec is Subject
-	{"msk","Mask",{},{}}, -- above or below if SlctMsk
+	{"ker","Int",{},{}}, -- center for kernels
+	{"inj","Int",{},{}}, -- kernel when jec is Inject
+	{"obj","Int",{},{}}, -- kernel when jec is Object
+	{"suj","Int",{},{}}, -- kernel when jec is Subject
+	{"mat","Int",{},{}}, -- center for matrix
+	{"sub","Int",{},{}}, -- element for matrix
+	{"drw","Int",{},{}}, -- center for draw
+	{"dis","Int",{},{}}, -- which Draw for display
+	{"pie","Int",{},{}}, -- which Draw for pierce
 	{"slf","Int",{},{}}, -- in case msk is SlctMsk
-	{"src","Subidx",{},{}}, -- source matrix
-	{"ker","Subidx",{},{}}, -- kernel to operate on
-	{"dst","Subidx",{},{}}, -- result matrix to Draw
-	{"drw","Subidx",{},{}}, -- what to draw
+	{"idx","Int",{},{}}, -- in case msk is SlctMsk
 }
 Uniform = { -- how to interpret subscripts into gpu buffers
 	{"all","Int32",{},{}}, -- which subject to use
