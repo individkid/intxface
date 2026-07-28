@@ -1998,8 +1998,8 @@ Bootstrap = {
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Matrixz\")) Op , #1 ; #0 == #1 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Copy from matrix, and Copy from draw
-		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrSlctMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
-		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:$(?CenterSlf)fld[2]:$(#0)fid:Str(slf)))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
 		  "mch[%(return jdx())]:Mopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2029,17 +2029,17 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- Eval a Dopy of Center at Transferz to get Center number @bootstr and Void to increment @bootstr
 		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@transfer)arg[1]:$(@memorys))"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:ExtOp(ext[0]:$(@_)ext[1]:$(@bootstr)eid:Str(exe))fld[2]:$(#0)fid:Str(exe)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(@_ .= exe#0 @_ . exe@bootstr))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(CenterSiz := #1))"..
 		"mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSizidx[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
 		-- Void copy slf to RegisterSelf and set slf to -1
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf #0) non[1]:FldOp(fld[0]:$(@_)fld[1]:$(#-1)fld[2]:$(#0)fid:Str(slf)) non[2]:$(@_) ))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf#0) non[1]:$(@_ .= slf#0 #-1) non[2]:$(@_) ))"..
 		-- Qopy to push Center to response queue
 		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO do following for Regress and Release
-		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrTimeMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
 		-- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
@@ -2087,42 +2087,42 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 9
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
 		-- disable and change manipulation
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrPrssMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- change window matrix; do Proj and Draw
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrProjMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrProjMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
 		-- wait for window resize
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrEoodMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrEoodMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was roller; do Comp Copy Draw if enabled
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrMoveMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrMoveMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 13
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
 		-- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrClckMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrClckMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 14
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was move; do Comp Copy Draw if enabled
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:FldOp(fld[0]:$(@_)fld[1]:FldOp(fld[0]:$(@_ . men #0)fld[1]:$(ImmStrRollMskOpOp)fld[2]:$(#0)fid:Str(msk))fld[2]:$(#0)fid:Str(men)))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrRollMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 

@@ -204,6 +204,20 @@ struct Express *sugarTrifix(void *lst, enum Operate opr, const char *str, int *i
 	freeExpr(nst); pushExpr(exp,lst);
 	return exp;
 }
+struct Express *sugarQuadfix(void *lst, enum Operate opr, const char *str, int *idx)
+{
+	struct Express *exp = 0; allocExpress(&exp,1);
+	exp->opr = opr;
+	void *nst = allocExpr();
+	sugarRecurse(nst,2,str,idx);
+	allocExpress(&exp->fld,3);
+	if (sizeExpr(lst) < 1 || sizeExpr(nst) != 2) ERROR();
+	sugarBack(&exp->fld[0],lst);
+	sugarFront(&exp->fld[2],nst);
+	sugarFront(&exp->fld[1],nst);
+	freeExpr(nst); pushExpr(exp,lst);
+	return exp;
+}
 void sugarCondit(void *lst, enum Operate opr, const char *str, int *idx)
 {
 	void *nst = allocExpr();
@@ -276,6 +290,11 @@ void sugarGetnum(void *lst, enum Operate opr, int val)
 }
 int compSugar(const char *str, int idx)
 {
+	// TODO other infix as well as "."
+	if (strncmp(str+idx,".",1)==0) return 1;
+	if (strncmp(str+idx,"@",1)==0) return 1;
+	if (strncmp(str+idx,"?",1)==0) return 1;
+	if (strncmp(str+idx,"#",1)==0) return 1;
 	if (strncmp(str+idx,"Op",2)==0) return 1;
 	if (strncmp(str+idx,"Bit",3)==0) return 1;
 	if (strncmp(str+idx,"Cmp",3)==0) return 1;
@@ -739,11 +758,18 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		skipSugar("Op",str,idx);
 		sav = *idx;
 		continue;}
-	if (strncmp(str+*idx,".",1)==0) {
+	if (strncmp(str+*idx,".",1)==0 && str[*idx+1] != '=') {
 		*idx += 1;
 		char *idt = 0; hideSugar(&idt,str,idx);
 		struct Express *exp = sugarTrifix(lst,ExtOp,str,idx);
 		exp->eid = idt;
+		sav = *idx;
+		continue;}
+	if (strncmp(str+*idx,".=",2)==0) {
+		*idx += 2;
+		char *idt = 0; hideSugar(&idt,str,idx);
+		struct Express *exp = sugarQuadfix(lst,FldOp,str,idx);
+		exp->fid = idt;
 		sav = *idx;
 		continue;}
 	if (strncmp(str+*idx,"Tim",3)==0) {
