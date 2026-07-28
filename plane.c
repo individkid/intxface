@@ -529,25 +529,24 @@ void machineWait(int src)
 //     "Mouse", -- ManipLeft/Base last changed
 //     "Roller", -- ManipAngle last changed
 // }
-// Subidx = {
-//     {"idx","Int",{},{}}, -- which Center
-//     {"sub","Int",{},{}}, -- which element of Center
-// }
 // Menu = { -- state to handle user input
 //     -- these could be Configure, Mopy/NopyArg, or ValOp instead,
 //     -- if Mopy/Nopy were not for demonstration purposes only
+//     {"msk","Mask",{},{}}, -- action for Sync or Demo
 //     {"act","Action",{},{}},
 //     {"jec","Scope",{},{}},
 //     {"dev","Device",{},{}},
-//     {"inj","Int",{},{}}, -- for when jec is Inject
-//     {"obj","Int",{},{}}, -- for when jec is Object
-//     {"suj","Int",{},{}}, -- for when jec is Subject
-//     {"msk","Mask",{},{}}, -- above or below if SlctMsk
+//     {"ker","Int",{},{}}, -- center for kernels
+//     {"inj","Int",{},{}}, -- kernel when jec is Inject
+//     {"obj","Int",{},{}}, -- kernel when jec is Object
+//     {"suj","Int",{},{}}, -- kernel when jec is Subject
+//     {"mat","Int",{},{}}, -- center for matrix
+//     {"sub","Int",{},{}}, -- element for matrix
+//     {"drw","Int",{},{}}, -- center for draw
+//     {"dis","Int",{},{}}, -- which Draw for display
+//     {"pie","Int",{},{}}, -- which Draw for pierce
 //     {"slf","Int",{},{}}, -- in case msk is SlctMsk
-//     {"src","Subidx",{},{}}, -- source matrix
-//     {"ker","Subidx",{},{}}, -- kernel to operate on
-//     {"dst","Subidx",{},{}}, -- result matrix to Draw
-//     {"drw","Subidx",{},{}}, -- what to draw
+//     {"idx","Int",{},{}}, -- in case msk is SlctMsk
 // }
 void machineSync(struct Menu *menu)
 {
