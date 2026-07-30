@@ -2525,8 +2525,8 @@ void glfwButtonPress(GLFWwindow* window, int button, int action, int mods) {
     mptr->changeState.poke(ClickLeft,mptr->changeState.read(ManipLeft));
     mptr->changeState.poke(ClickBase,mptr->changeState.read(ManipBase));
     mptr->changeState.poke(ManipAngle,0);
-    // TODO it could wake up here which would cause glitch
-    mptr->changeState.poke(ClickAngle,0);} // queued
+    // TODO it could wake up here which would cause glitch; make atomic by postponing pokes until next write
+    mptr->changeState.write(ClickAngle,0);} // queued
 }
 void glfwResize(GLFWwindow* window, int width, int height) {
     mptr->changeState.poke(UniformWid,width);

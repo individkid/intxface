@@ -295,12 +295,13 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ClickBase", -- queued Manip
 	"ClickAngle", -- queued Manip
 	"ClickQueue", -- queued size
-	"FixedLeft", -- pierce to choose
-	"FixedBase", -- pierce to choose
+	"FixedLeft", -- return from pierce
+	"FixedBase", -- return from pierce
 	"FixedDeep", -- return from pierce
 	"NormalLeft", -- return from vector
 	"NormalBase", -- return from vector
 	"NormalDeep", -- return from vector
+	"SelectIdx", -- return from int
 	-- TODO Focal* do not interact with the ungenerated program yet
 	"FocalDepth", -- configure for window
 	"FocalSlope", -- configure for window
@@ -469,6 +470,7 @@ Fixed = { -- how motion interpreted
 	"Focal",
 	"Ortho",
 	"Normal",
+	"Pierce",
 }
 Thread = { -- separate threads
 	"PipeThd", -- read write other processes
@@ -1959,7 +1961,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"}, -- TODO initialize with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0drw:%(return castMemory(\"Drawz\"))dis:0pie:1slf:0idx:0))"},
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3slf:0idx:0))"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
@@ -2094,8 +2096,9 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- change window matrix; do Proj and Draw
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrProjMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		-- TODO Center at @matrix needs to be initialized
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrProjMskOpOp))"..
+		-- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
@@ -2322,15 +2325,19 @@ Menu = { -- state to handle user input
 	{"act","Action",{},{}},
 	{"jec","Scope",{},{}},
 	{"dev","Device",{},{}},
+	{"coo","Int",{},{}}, -- ManipFixed for Coord
+	{"ang","Int",{},{}}, -- ManipFixed for Angle
 	{"ker","Int",{},{}}, -- center for kernels
 	{"inj","Int",{},{}}, -- kernel when jec is Inject
 	{"obj","Int",{},{}}, -- kernel when jec is Object
 	{"suj","Int",{},{}}, -- kernel when jec is Subject
 	{"mat","Int",{},{}}, -- center for matrix
 	{"sub","Int",{},{}}, -- element for matrix
+	{"tmp","Int",{},{}}, -- scratch matrix center
 	{"drw","Int",{},{}}, -- center for draw
-	{"dis","Int",{},{}}, -- which Draw for display
-	{"pie","Int",{},{}}, -- which Draw for pierce
+	{"pie","Int",{},{}}, -- center for pierce
+	{"nor","Int",{},{}}, -- center for normal
+	{"sel","Int",{},{}}, -- center for select
 	{"slf","Int",{},{}}, -- in case msk is SlctMsk
 	{"idx","Int",{},{}}, -- in case msk is SlctMsk
 }

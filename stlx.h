@@ -218,6 +218,7 @@ template <class Conf, int Size> struct ChangeState {
         nest.wait(); int ret = (pthread_equal(self,pthread_self())?depth:0); nest.post();
         return ret;
     }
+    // TODO change to take array of cfg and val, and return array of int
     static int readFn(int *ref, int val) {return *ref;}
     int read(Conf cfg) {return info(cfg,0,readFn);}
     static int writeFn(int *ref, int val) {*ref = val; return 0;}

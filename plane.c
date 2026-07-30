@@ -513,59 +513,107 @@ void machineWait(int src)
     if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
     if (callInfo(RegisterFail,0,planeRcfg)) callJnfo(RegisterWake,1<<FailMsk,planeWots);
 }
-// Action = { -- what input does
-//     "Indicate", -- move to new pierce point
-//     "Manipulate", -- apply transformation
-//     "Refine", -- add boundaries
-//     "Additive", -- add regions
-//     "Subtractive", -- remove regions
-// }
-// Scope = { -- which primitives to transform
-//     "Inject", -- single primitive
-//     "Object", -- multiple primitives
-//     "Subject", -- all primitives
-// }
-// Device = { -- which input device is manipulating
-//     "Coord", -- ManipLeft/Base last changed
-//     "Angle", -- ManipAngle last changed
-// }
-// Menu = { -- state to handle user input
-//     -- these could be Configure, Mopy/NopyArg, or ValOp instead,
-//     -- if Mopy/Nopy were not for demonstration purposes only
-//     {"msk","Mask",{},{}}, -- action for Sync or Demo
-//     {"act","Action",{},{}},
-//     {"jec","Scope",{},{}},
-//     {"dev","Device",{},{}},
-//     {"ker","Int",{},{}}, -- center for kernels
-//     {"inj","Int",{},{}}, -- kernel when jec is Inject
-//     {"obj","Int",{},{}}, -- kernel when jec is Object
-//     {"suj","Int",{},{}}, -- kernel when jec is Subject
-//     {"mat","Int",{},{}}, -- center for matrix
-//     {"sub","Int",{},{}}, -- element for matrix
-//     {"drw","Int",{},{}}, -- center for draw
-//     {"dis","Int",{},{}}, -- which Draw for display
-//     {"pie","Int",{},{}}, -- which Draw for pierce
-//     {"slf","Int",{},{}}, -- in case msk is SlctMsk
-//     {"idx","Int",{},{}}, -- in case msk is SlctMsk
-// }
+int machineJect(struct Menu *menu)
+{
+    switch (menu->jec) {default: ERROR();
+    break; case(Inject): return menu->inj;
+    break; case(Object): return menu->obj;
+    break; case(Subject): return menu->suj;}
+    return 0;
+}
+void machineDone(struct Menu *menu)
+{
+    int arg[4] = {menu->ker,machineJect(menu),menu->mat,menu->sub}; machineSend(4,arg);
+}
+void machineCont(struct Menu *menu)
+{
+    int arg[2] = {menu->ker,machineJect(menu)}; machineForm(2,arg);
+}
+void machineCopy(int sig, int *arg);
+void machineDopy(int sig, int *arg);
+void machinePack(struct Menu *menu)
+{
+    int arg[2] = {menu->mat,menu->tmp}; machineDopy(2,arg);
+    // TODO move menu->sub in menu->tmp to 0 in menu->tmp, resize menu->tmp to 1, and change idx in menu->tmp to menu->sub
+    int cpy[2] = {menu->tmp,0}; machineCopy(2,cpy);
+}
+void machineSize(struct Menu *menu)
+{
+    int pro[2] = {menu->mat,menu->sub}; machineProj(2,pro);
+    machinePack(menu);
+    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
+}
+void machineDisp(struct Menu *menu)
+{
+    int cmp[4] = {menu->ker,machineJect(menu),menu->mat,menu->sub}; machineComp(4,cmp);
+    int mat[2] = {menu->mat,0}; machineCopy(2,mat);
+    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
+}
+void machineInit(struct Extend **ptr, int siz);
+int *machinePute(struct Menu *menu, int mem)
+{
+    struct Extend *ptr = centerPull(mem);
+    int left = callInfo(ClickLeft,0,planeRcfg);
+    int base = callInfo(ClickBase,0,planeRcfg);
+    int width = callInfo(UniformWid,0,planeRcfg);
+    int height = callInfo(UniformHei,0,planeRcfg);
+    int siz = width*height;
+    if (siz != ptr->ptr->siz) machineInit(&ptr,siz);
+    // machineCopy()
+    centerPlace(ptr);
+}
 void machineSync(struct Menu *menu)
 {
     if (menu->msk != SlctMsk) ERROR();
-    // do Self/Glob from src to ker, Comp from ker to dst, Copy from dst, and Copy from drw
+    int arg[4] = {menu->mat,menu->sub,menu->ker,machineJect(menu)};
+    if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
+    machineDisp(menu);
 }
 void machineDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
-    break; case (PrssMsk): // change menu state; do Form
-    break; case (ProjMsk): // change window matrix; do Proj and Draw
-    break; case (EoodMsk): // wait for window resize
-    break; case (MoveMsk): // change menu state; do Form if enabled and last manipulate was roller; do Comp and Draw if enabled
-    break; case (ClckMsk): // toggle enable, and do pierce with consume of Click registers if enabled
-    // TODO handle query modes
-    break; case (RollMsk): // change menu state; do Form if enabled and last manipulate was move; do Comp and Draw if enabled
-    }
+    break; case (PrssMsk): { // do Send; change menu state
+    machineDone(menu);
+    char key = callInfo(PressKey,0,planeRcfg);
+    callJnfo(PressQueue,-1,planeRmw);
+    switch (key) {default:
+    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
+    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); menu->act = Indicate;
+    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); menu->act = Indicate;
+    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
+    break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
+    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
+    break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); menu->act = Indicate;
+    break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
+    break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
+    break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); menu->act = Indicate;
+    break; case ('A'): menu->act = Additive;
+    break; case ('S'): menu->act = Subtractive;
+    break; case ('B'): menu->act = Refine;
+    break; case ('M'): // TODO send pierce point as Metric
+    break; case ('W'): /*TODO Warp to last metric sent*/}}
+    break; case (ProjMsk): machineSize(menu);
+    break; case (EoodMsk): // TODO wait for window resize
+    break; case (MoveMsk): if (menu->act == Manipulate) { // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
+    if (menu->dev == Angle) {machineCont(menu); menu->dev = Coord;}
+    callInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
+    machineDisp(menu);}
+    break; case (ClckMsk): switch (menu->act) {default: ERROR();
+    break; case (Manipulate): {machineDone(menu); menu->act = Indicate;}
+    break; case (Indicate): {
+    callInfo(ClickQueue,1,planeWcfg);
+    // TODO Pierce; Wopy; get Fixed* Normal* SelectIdx from Vectorz Getintz at Click*
+    // TODO optimize pcie traffic by using depth to select just the data at some Uniform* point
+    menu->act = Manipulate;}
+    break; case (Refine): // TODO
+    break; case (Additive): // TODO
+    break; case (Subtractive): /*TODO*/}
+    break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
+    if (menu->dev == Coord) {machineCont(menu); menu->dev = Angle;}
+    callInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
+    machineDisp(menu);}}
 }
-void machineBopy(int sig, int *arg)
+void machineBopy(int sig, int *arg) // Bopy uses Pull to Wopy for the response
 {
     if (sig != BopyArgs) ERROR();
     int src = arg[BopySrc];
@@ -573,12 +621,12 @@ void machineBopy(int sig, int *arg)
     struct Extend *ext = centerPull(src);
     callCopy(ext,alt,0);
 }
-void machineCopy(int sig, int *arg)
+void machineCopy(int sig, int *arg) // Copy uses Peek to make readonly until the response
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
     int alt = arg[CopyAlt];
-    struct Extend *ext = centerPeek(src);
+    struct Extend *ext = centerPeek(src); // TODO centerPeek should make it readonly until it is overwritten
     callCopy(ext,alt,0);
 }
 void machineDopy(int sig, int *arg)
@@ -586,10 +634,11 @@ void machineDopy(int sig, int *arg)
     if (sig != DopyArgs) ERROR();
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
-    struct Extend *ptr = centerPeek(src);
+    struct Extend *ptr = centerPeek(src); // TODO this should make it readonly to prevent invalid pointer
     struct Extend *cpy = 0; allocExtend(&cpy,1);
     copyExtend(cpy,ptr);
     cpy->sub = dst;
+    // TODO centerPlace(ptr); // TODO this should make it writable again
     centerPlace(cpy);
 }
 void machineMopy(int sig, int *arg)
@@ -598,6 +647,7 @@ void machineMopy(int sig, int *arg)
     struct Extend *src = machinePeek(sig,arg,MopyArgs,MopySrc,MopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
     machineSync(menu);
+    // TODO centerPlace(src); // TODO prevent invalid pointers; machinePeek does readonly
 }
 void machineNopy(int sig, int *arg)
 {
@@ -605,6 +655,7 @@ void machineNopy(int sig, int *arg)
     struct Extend *src = machinePeek(sig,arg,NopyArgs,NopySrc,NopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
     machineDemo(menu);
+    // TODO centerPlace(src); // TODO prevent invalid pointers
 }
 void machinePopy(int sig, int *arg)
 {
@@ -618,7 +669,8 @@ void machinePopy(int sig, int *arg)
     centerPlace(ptr);}
     else centerClear(dst);
 }
-void machineQopy(int sig, int *arg)
+// TODO to avoid pointer problems, the response thread should call centerPlace
+void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from response thread
 {
     if (sig != QopyArgs) ERROR();
     int src = arg[QopySrc];
@@ -627,7 +679,7 @@ void machineQopy(int sig, int *arg)
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
-void machineRopy(int sig, int *arg)
+void machineRopy(int sig, int *arg) // Ropy uses Peek to make readonly until Place from response thread
 {
     if (sig != RopyArgs) ERROR();
     int src = arg[RopySrc];
@@ -650,6 +702,7 @@ void machineXopy(int sig, int *arg)
     if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
     if (postSafe(execSem) != 1) ERROR();
+    // TODO centerPlace(ext);
 }
 void machineStage(enum Configure cfg, int idx)
 {
