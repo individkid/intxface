@@ -231,71 +231,34 @@ void centerSize(int idx)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (postSafe(copySem) != 1) ERROR();
 }
+struct CenterCond {
+    int idx;
+    struct Extend *ret;
+};
 int centerCond(void *ptr)
 {
-    int *idx = ptr;
-    return (center[*idx] != 0);
-}
-struct Extend *centerPeek(int idx)
-{
-    centerSize(idx);
-    struct Extend *ret = 0;
-    if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
-    if (center[idx] == 0) ERROR();
-    ret = center[idx]; center[idx]->ref -= 1;
-    if (postSafe(copySem) != 1) ERROR();
-    if (ret->sub != idx) ERROR();
-    return ret;
+    struct CenterCond *cond = ptr;
+    if (center[cond->idx] == 0) return 0;
+    cond->ret = center[cond->idx];
+    center[cond->idx] = 0;
+    return 1;
 }
 struct Extend *centerPull(int idx)
 {
     centerSize(idx);
-    struct Extend *ret = 0;
-    if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
-    if (center[idx] == 0 || center[idx]->ref < 0) ERROR();
-    ret = center[idx]; center[idx] = 0; ret->ref = 1;
+    struct CenterCond cond = {idx,0};
+    if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
     if (postSafe(copySem) != 1) ERROR();
-    if (ret->sub != idx) ERROR();
-    return ret;
+    if (cond.ret->sub != idx) ERROR();
+    return cond.ret;
 }
-// ref: <0(both ptr and center) 0(center only) >0(ptr only)
 void centerPlace(struct Extend *ptr)
 {
     centerSize(ptr->sub);
     if (waitSafe(copySem) != 0) ERROR();
-
-    if (center[ptr->sub] == 0) {
-        if (ptr->ref < 0) {
-            ERROR(); // not allowed to be in two centers
-        } else if (ptr->ref == 0) {
-            center[ptr->sub] = ptr; // allowed for initialization
-        } else { // normal response
-            center[ptr->sub] = ptr; ptr->ref = 0;
-        }
-    } else if (center[ptr->sub] == ptr) {
-        if (ptr->ref < 0) {
-            ptr->ref += 1;
-        } else {
-            ERROR(); // unshared pointer in two places
-        }
-    } else {
-        if (center[ptr->sub]->ref < 0) { // refuse to replace reserved
-            if (ptr->ref < 0) {
-                ptr->ref += 1;
-            } else {
-                freeExtend(ptr); allocExtend(&ptr,0);
-            }
-        } else {
-            if (ptr->ref < 0) {
-                ERROR(); // not allowed to be in two centers
-            } else if (ptr->ref == 0) {
-                ERROR(); // not allowed to reinitialize
-            } else { // normal replace
-                freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr; ptr->ref = 0;
-            }
-        }
-    }
-
+    if (center[ptr->sub] != 0 && center[ptr->sub] != ptr) {
+    freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
+    center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
 void centerClear(int sub)
@@ -341,16 +304,6 @@ int centerMod(struct Extend *ptr)
 }
 
 // machine extensions
-struct Extend *machinePeek(int sig, int *arg, int lim, int idx, int sub)
-{
-    if (sig != lim) ERROR();
-    int src = arg[idx];
-    int srcSub = arg[sub];
-    struct Extend *srcPtr = centerPeek(src);
-    if (srcPtr->sub != src) ERROR();
-    if (srcSub < 0 || srcSub >= srcPtr->ptr->siz) ERROR();
-    return srcPtr;
-}
 struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub)
 {
     if (sig != lim) ERROR();
@@ -422,42 +375,46 @@ void machineProj(int sig, int *arg)
 void machineBnry(int sig, int *arg)
 {
     if (sig != ProjArgs) ERROR();
-    struct Extend *lft = machinePeek(sig,arg,BnryArgs,BnryLft,BnryLftSub);
+    struct Extend *lft = machineCenter(sig,arg,BnryArgs,BnryLft,BnryLftSub);
     struct Matrix *mft = machineMatrix(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
-    struct Extend *rgt = machinePeek(sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
+    struct Extend *rgt = machineCenter(sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
     struct Matrix *mgt = machineMatrix(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
     struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub);
     struct Matrix *mst = machineMatrix(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
     float *fft = mft->mat; float *fgt = mgt->mat; float *fst = mst->mat;
     planeTransform(fst,fft+0,fgt+0,fft+4,fgt+4,fft+8,fgt+8,fft+12,fgt+12);
-    machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
+    machinePlace(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
+    machinePlace(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
+    machinePlace(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
 }
 void machineComp(int sig, int *arg)
 {
     if (sig != CompArgs) ERROR();
-    struct Extend *src = machinePeek(sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
     struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     // compose for draw -- T = C; M = GSLT
     float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
     timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
+    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
     machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
 }
 void machineForm(int sig, int *arg)
 {
     if (sig != FormArgs) ERROR();
-    struct Extend *center = machinePeek(sig,arg,FormArgs,FormSrc,FormSrcSub);
+    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub);
     struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
     // change manipulation matrix -- L = LTC'; T = C
     float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
     timesmat(timesmat(kernel->local.mat,kernel->saved.mat,4),inv,4); // L = LTC'
     copymat(kernel->saved.mat,mat,4); // T = C
+    machinePlace(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
 }
 void machineSend(int sig, int *arg)
 {
     if (sig != SendArgs) ERROR();
-    struct Extend *src = machinePeek(sig,arg,SendArgs,SendSrc,SendSrcSub);
+    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub);
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
@@ -466,29 +423,32 @@ void machineSend(int sig, int *arg)
     copymat(matrix->mat,kernel->local.mat,4); // M = L
     timesmat(kernel->sent.mat,kernel->local.mat,4); // S = SL
     identmat(kernel->local.mat,4); // L = I
+    machinePlace(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
     machinePlace(dst,sig,arg,SendArgs,SendDst,SendDstSub);
 }
 void machineSelf(int sig, int *arg)
 {
     if (sig != SelfArgs) ERROR();
-    struct Extend *src = machinePeek(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
+    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     // move portion of sent to global -- G = GM; S = M'S
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
     float inv[16]; jumpmat(kernel->sent.mat,invmat(copymat(inv,matrix->mat,4),4),4); // S = M'S
+    machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
     machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
 }
 void machineGlob(int sig, int *arg)
 {
     if (sig != GlobArgs) ERROR();
-    struct Extend *src = machinePeek(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
+    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub);
     struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     // absorb discontinuous change -- G = GM
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
+    machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
 }
 void machineSwitch(struct Machine *ptr);
@@ -526,6 +486,7 @@ void machineWait(int src)
 {
     while (1) {
     // MachThd woken by changes to RegisterWake
+    // TODO add RegisterDone and DoneMsk written from planeCenter through centerDone instead of centerPlace in planeCenter
     callInfo(RegisterWake,1<<DropMsk,planeWotc);
     callInfo(RegisterWake,1<<PassMsk,planeWotc);
     callInfo(RegisterWake,1<<FailMsk,planeWotc);
@@ -642,6 +603,7 @@ void machineDemo(struct Menu *menu)
     callInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     machineDisp(menu);}}
 }
+// TODO remove Copy, use Bopy
 void machineBopy(int sig, int *arg) // Bopy uses Pull to Wopy for the response
 {
     if (sig != BopyArgs) ERROR();
@@ -655,7 +617,7 @@ void machineCopy(int sig, int *arg) // Copy uses Peek to make readonly until the
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
     int alt = arg[CopyAlt];
-    struct Extend *ext = centerPeek(src);
+    struct Extend *ext = centerPull(src);
     callCopy(ext,alt,0);
 }
 void machineDopy(int sig, int *arg)
@@ -664,27 +626,27 @@ void machineDopy(int sig, int *arg)
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
     struct Extend *cpy = 0; allocExtend(&cpy,1);
-    struct Extend *ptr = centerPeek(src);
+    struct Extend *ptr = centerPull(src);
     copyExtend(cpy,ptr);
     centerPlace(ptr);
-    cpy->sub = dst; cpy->ref = 1;
+    cpy->sub = dst;
     centerPlace(cpy);
 }
 void machineMopy(int sig, int *arg)
 {
     if (sig != MopyArgs) ERROR();
-    struct Extend *src = machinePeek(sig,arg,MopyArgs,MopySrc,MopySrcSub);
+    struct Extend *src = machineCenter(sig,arg,MopyArgs,MopySrc,MopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
     machineSync(menu);
-    centerPlace(src);
+    machinePlace(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
 }
 void machineNopy(int sig, int *arg)
 {
     if (sig != NopyArgs) ERROR();
-    struct Extend *src = machinePeek(sig,arg,NopyArgs,NopySrc,NopySrcSub);
+    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
     machineDemo(menu);
-    centerPlace(src);
+    machinePlace(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -706,26 +668,29 @@ void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from res
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
+// TODO remove Ropy
 void machineRopy(int sig, int *arg) // Ropy uses Peek to make readonly until Place from response thread
 {
     if (sig != RopyArgs) ERROR();
     int src = arg[RopySrc];
-    struct Extend *ptr = centerPeek(src);
+    struct Extend *ptr = centerPull(src);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
+// TODO remove Wopy, have centerPull block until nonzero
 void machineWopy(int sig, int *arg)
 {
     if (sig != WopyArgs) ERROR();
     int src = arg[WopySrc];
     machineWait(src);
 }
+// TODO rename as Copy
 void machineXopy(int sig, int *arg)
 {
     if (sig != XopyArgs) ERROR();
     int src = arg[XopySrc];
-    struct Extend *ext = centerPeek(src);
+    struct Extend *ext = centerPull(src);
     if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
     if (postSafe(execSem) != 1) ERROR();
@@ -948,7 +913,6 @@ void planeExternal(enum Thread tag, int idx)
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
     center->rsp = resp;
-    center->ref = 1;
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}

@@ -2478,11 +2478,10 @@ Center = { -- setup for graphics
 }
 Extend = {
 	{"ptr","Center",{},{1}}, -- memory union
-	{"ref","Int",{},{}}, -- reference count
 	{"src","Program",{},{}}, -- pipe read from
 	{"sub","Int",{},{}}, -- where to replace
 	{"rsp","Response",{},{}}, -- how to respond
-	{"res","Int",{},{}}, -- pass or fail
+	{"res","Int",{},{}}, -- pass fail or done
 }
 Listed = {
 	{"siz","Int",{},{}},
