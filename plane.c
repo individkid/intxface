@@ -241,7 +241,8 @@ struct Extend *centerPeek(int idx)
     centerSize(idx);
     struct Extend *ret = 0;
     if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
-    ret = center[idx];
+    if (center[idx] == 0) ERROR();
+    ret = center[idx]; center[idx]->ref -= 1;
     if (postSafe(copySem) != 1) ERROR();
     if (ret->sub != idx) ERROR();
     return ret;
@@ -251,34 +252,62 @@ struct Extend *centerPull(int idx)
     centerSize(idx);
     struct Extend *ret = 0;
     if (testSafe(copySem,1.0,centerCond,&idx) != 0) ERROR();
-    ret = center[idx]; center[idx] = 0; ret->ref = 0;
+    if (center[idx] == 0 || center[idx]->ref < 0) ERROR();
+    ret = center[idx]; center[idx] = 0; ret->ref = 1;
     if (postSafe(copySem) != 1) ERROR();
     if (ret->sub != idx) ERROR();
     return ret;
 }
+// ref: <0(both ptr and center) 0(center only) >0(ptr only)
 void centerPlace(struct Extend *ptr)
 {
     centerSize(ptr->sub);
     if (waitSafe(copySem) != 0) ERROR();
-    freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);
-    center[ptr->sub] = ptr; ptr->ref = 1;
+
+    if (center[ptr->sub] == 0) {
+        if (ptr->ref < 0) {
+            ERROR(); // not allowed to be in two centers
+        } else if (ptr->ref == 0) {
+            center[ptr->sub] = ptr; // allowed for initialization
+        } else { // normal response
+            center[ptr->sub] = ptr; ptr->ref = 0;
+        }
+    } else if (center[ptr->sub] == ptr) {
+        if (ptr->ref < 0) {
+            ptr->ref += 1;
+        } else {
+            ERROR(); // unshared pointer in two places
+        }
+    } else {
+        if (center[ptr->sub]->ref < 0) { // refuse to replace reserved
+            if (ptr->ref < 0) {
+                ptr->ref += 1;
+            } else {
+                freeExtend(ptr); allocExtend(&ptr,0);
+            }
+        } else {
+            if (ptr->ref < 0) {
+                ERROR(); // not allowed to be in two centers
+            } else if (ptr->ref == 0) {
+                ERROR(); // not allowed to reinitialize
+            } else { // normal replace
+                freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr; ptr->ref = 0;
+            }
+        }
+    }
+
     if (postSafe(copySem) != 1) ERROR();
 }
 void centerClear(int sub)
 {
     centerSize(sub);
     if (waitSafe(copySem) != 0) ERROR();
-    freeExtend(center[sub]); allocExtend(&center[sub],0);
-    center[sub] = 0;
+    if (center[sub] != 0) {
+    freeExtend(center[sub]); allocExtend(&center[sub],0); center[sub] = 0;}
     if (postSafe(copySem) != 1) ERROR();
 }
 void centerDone(struct Extend *ptr)
 {
-    if ((callInfo(RegisterSave,0,planeRcfg) & (1<<ptr->sub)) != 0) {
-    callJnfo(RegisterWake,(1<<DropMsk),planeWots);
-    callJnfo(RegisterDrop,(1<<ptr->sub),planeWots);
-    if (ptr->ref == 0) {freeExtend(ptr); allocExtend(&ptr,0);}
-    return;}
     centerPlace(ptr);
     if (ptr->res == 0) {
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
@@ -634,11 +663,11 @@ void machineDopy(int sig, int *arg)
     if (sig != DopyArgs) ERROR();
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
-    struct Extend *ptr = centerPeek(src); // TODO this should make it readonly to prevent invalid pointer
     struct Extend *cpy = 0; allocExtend(&cpy,1);
+    struct Extend *ptr = centerPeek(src);
     copyExtend(cpy,ptr);
-    cpy->sub = dst;
-    // TODO centerPlace(ptr); // TODO this should make it writable again
+    centerPlace(ptr);
+    cpy->sub = dst; cpy->ref = 1;
     centerPlace(cpy);
 }
 void machineMopy(int sig, int *arg)
@@ -664,9 +693,7 @@ void machinePopy(int sig, int *arg)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr) {
-    ptr->sub = dst;
-    centerPlace(ptr);}
+    if (ptr) {ptr->sub = dst; centerPlace(ptr);}
     else centerClear(dst);
 }
 // TODO to avoid pointer problems, the response thread should call centerPlace
@@ -702,7 +729,7 @@ void machineXopy(int sig, int *arg)
     if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
     if (postSafe(execSem) != 1) ERROR();
-    // TODO centerPlace(ext);
+    centerPlace(ext);
 }
 void machineStage(enum Configure cfg, int idx)
 {
@@ -897,7 +924,7 @@ void planeCenter(enum Thread tag, int idx)
     if (center->src < 0 || center->src >= Programs) ERROR();
     int sub = inverse[center->src];
     writeCenter(center->ptr,sub);
-    if (center->ref == 0) {freeExtend(center); allocExtend(&center,0);}}
+    centerPlace(center);}
     if (postSafe(pipeSem) != 1) ERROR();}
 }
 void planeExternal(enum Thread tag, int idx)
@@ -921,6 +948,7 @@ void planeExternal(enum Thread tag, int idx)
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
     center->rsp = resp;
+    center->ref = 1;
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}

@@ -14,8 +14,8 @@ eftype errfnc = 0;
 
 void exitErr(const char *file, int line)
 {
-	*(int*)0=0;
 	fprintf(stderr,"exitErr %s(%d): %d %lld\n",file,line,errno,(long long)getpid());
+	*(int*)0=0;
 	exit(-1);
 }
 void intrFunc(chtype fnc)

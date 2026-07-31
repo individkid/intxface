@@ -264,7 +264,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterPass", -- pass center mask
 	"RegisterFail", -- fail center mask
 	"RegisterDrop", -- drop center mask
-	"RegisterSave", -- pass or fail mask
 	"RegisterWake", -- thread interrupts
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
