@@ -272,12 +272,16 @@ void centerClear(int sub)
 void centerDone(struct Extend *ptr)
 {
     centerPlace(ptr);
-    if (ptr->res == 0) {
+    switch (ptr->res) {default: ERROR();
+    break; case(PassRet):
     callJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    callJnfo(RegisterPass,(1<<ptr->sub),planeWots);}
-    else {
+    callJnfo(RegisterPass,(1<<ptr->sub),planeWots);
+    break; case(FailRet):
     callJnfo(RegisterWake,(1<<FailMsk),planeWots);
-    callJnfo(RegisterFail,(1<<ptr->sub),planeWots);}
+    callJnfo(RegisterFail,(1<<ptr->sub),planeWots);
+    break; case(DoneRet):
+    callJnfo(RegisterWake,(1<<DoneMsk),planeWots);
+    callJnfo(RegisterDone,(1<<ptr->sub),planeWots);}
 }
 int centerCheck(int idx)
 {
@@ -486,22 +490,21 @@ void machineWait(int src)
 {
     while (1) {
     // MachThd woken by changes to RegisterWake
-    // TODO add RegisterDone and DoneMsk written from planeCenter through centerDone instead of centerPlace in planeCenter
-    callInfo(RegisterWake,1<<DropMsk,planeWotc);
     callInfo(RegisterWake,1<<PassMsk,planeWotc);
     callInfo(RegisterWake,1<<FailMsk,planeWotc);
-    callInfo(RegisterDrop,1<<src,planeWotc);
+    callInfo(RegisterWake,1<<DoneMsk,planeWotc);
     callInfo(RegisterPass,1<<src,planeWotc);
     callInfo(RegisterFail,1<<src,planeWotc);
+    callInfo(RegisterDone,1<<src,planeWotc);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ext = center[src];
     if (postSafe(copySem) != 1) ERROR();
     if (ext) break;
     // to prevent deadlock, machineWopy should only be called from planeMachine
     if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
-    if (callInfo(RegisterDrop,0,planeRcfg)) callJnfo(RegisterWake,1<<DropMsk,planeWots);
     if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
     if (callInfo(RegisterFail,0,planeRcfg)) callJnfo(RegisterWake,1<<FailMsk,planeWots);
+    if (callInfo(RegisterDone,0,planeRcfg)) callJnfo(RegisterWake,1<<DoneMsk,planeWots);
 }
 int machineJect(struct Menu *menu)
 {
@@ -889,7 +892,8 @@ void planeCenter(enum Thread tag, int idx)
     if (center->src < 0 || center->src >= Programs) ERROR();
     int sub = inverse[center->src];
     writeCenter(center->ptr,sub);
-    centerPlace(center);}
+    center->res = DoneRet;
+    centerDone(center);}
     if (postSafe(pipeSem) != 1) ERROR();}
 }
 void planeExternal(enum Thread tag, int idx)
@@ -1440,7 +1444,7 @@ void initBoot()
     callJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
     callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    callJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DropMsk))<<8)|0),planeWcfg);
+    callJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DoneMsk))<<8)|0),planeWcfg);
     // the RegisterAble mask of events remembered per indicated MachThd wakes up the thread upon wos of event mask to RegisterWake
     callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     callJnfo(RegisterOpen,(1<<MachThd),planeWots);

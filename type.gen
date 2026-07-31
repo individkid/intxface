@@ -61,6 +61,11 @@ Response = {
 	"MltRsp", -- return pass or fail of multiple
 	"MptRsp", -- repeat multiple until pass
 }
+Retval = {
+	"PassRet", -- pushed to gpu
+	"FailRet", -- rejected by gpu
+	"DoneRet", -- writtten to pipe
+}
 Resrc = { -- variation of BaseState
 	"SwapRes",
 	"PipeRes",
@@ -263,7 +268,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterExit", -- sortof exit status
 	"RegisterPass", -- pass center mask
 	"RegisterFail", -- fail center mask
-	"RegisterDrop", -- drop center mask
+	"RegisterDone", -- done center mask
 	"RegisterWake", -- thread interrupts
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
@@ -486,7 +491,7 @@ Mask = { -- signals between threads
 	"TimeMsk", -- time thread wakeup
 	"PassMsk", -- passing copy callback
 	"FailMsk", -- failing copy callback
-	"DropMsk", -- response without request
+	"DoneMsk", -- write to pipe done
 	"PollMsk", -- every glfw wakeup
 	"PrssMsk", -- glfw key pressed
 	"ProjMsk", -- glfw window resized
@@ -1966,10 +1971,9 @@ Bootstrap = {
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = ?RegisterWake ; Woc RegisterWake @mask Op ; tmp = #0 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:17)"..
+		"mch[%(return jdx())]:Nest(lvl:%(return castMask(\"Masks\")+1))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non fns = @tmp ; tmp = @mask >> @fns Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @tmp != @fns , #17 ; #0 , @tmp Op))"..
-		-- TODO figure way to use castMask(Masks) instead of #17
+		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @tmp != @fns , #%(return castMask(\"Masks\")+1) ; #0 , @tmp Op))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 1
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp , EndOp Op))"..
@@ -2078,7 +2082,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 7
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrDropMskOp , EndOp Op))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(Put StrDoneMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 8
@@ -2481,7 +2485,7 @@ Extend = {
 	{"src","Program",{},{}}, -- pipe read from
 	{"sub","Int",{},{}}, -- where to replace
 	{"rsp","Response",{},{}}, -- how to respond
-	{"res","Int",{},{}}, -- pass fail or done
+	{"res","Retval",{},{}}, -- pass fail or done
 }
 Listed = {
 	{"siz","Int",{},{}},

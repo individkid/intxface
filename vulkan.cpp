@@ -1322,7 +1322,7 @@ struct CopyState {
             log << "IdxDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}}}
         log << "notify pass" << '\n';
-        ptr->res = 0;
+        ptr->res = PassRet;
         switch (ptr->rsp) {default:
         break; case (RetRsp): case (RptRsp): thread->push(log,ptr);}
         if (bind) stack[BindRes]->advance(0,Qualitys,0,indx);
@@ -1342,8 +1342,8 @@ struct CopyState {
         log << "notify fail" << '\n';
         switch (ptr->rsp) {default:
         break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
-        break; case (MltRsp): ptr->res = -1;
-        break; case (RetRsp): ptr->res = -1; thread->push(log,ptr);}}}
+        break; case (MltRsp): ptr->res = FailRet;
+        break; case (RetRsp): ptr->res = FailRet; thread->push(log,ptr);}}}
     }
     Requ request(Format frm, Reloc loc, void *val, int *arg, int siz, int &idx, SmartState log) {
         Requ req = {Requests,0,0,0,Extents,0,0,loc};
@@ -1703,8 +1703,9 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) {
             if (ptr->mem != Drawz) *(int*)0=0; // TODO rewrite in rust
             push(ptr->drw[i],ext,ary,log);
-            if (ext->res) mask |= 1<<(i<32?i:31);}
-            ext->res = mask;}
+            if (ext->res == FailRet) mask |= 1<<(i<32?i:31);}
+            ext->res = (mask?FailRet:PassRet);
+            /*TODO ext->res = mask;*/}
         break; case (Instrz): {
             HeapState<Inst,StackState::instrs> ins;
             for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
