@@ -655,7 +655,7 @@ void machineCopy(int sig, int *arg) // Copy uses Peek to make readonly until the
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
     int alt = arg[CopyAlt];
-    struct Extend *ext = centerPeek(src); // TODO centerPeek should make it readonly until it is overwritten
+    struct Extend *ext = centerPeek(src);
     callCopy(ext,alt,0);
 }
 void machineDopy(int sig, int *arg)
@@ -676,7 +676,7 @@ void machineMopy(int sig, int *arg)
     struct Extend *src = machinePeek(sig,arg,MopyArgs,MopySrc,MopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
     machineSync(menu);
-    // TODO centerPlace(src); // TODO prevent invalid pointers; machinePeek does readonly
+    centerPlace(src);
 }
 void machineNopy(int sig, int *arg)
 {
@@ -684,7 +684,7 @@ void machineNopy(int sig, int *arg)
     struct Extend *src = machinePeek(sig,arg,NopyArgs,NopySrc,NopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
     machineDemo(menu);
-    // TODO centerPlace(src); // TODO prevent invalid pointers
+    centerPlace(src);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -696,7 +696,7 @@ void machinePopy(int sig, int *arg)
     if (ptr) {ptr->sub = dst; centerPlace(ptr);}
     else centerClear(dst);
 }
-// TODO to avoid pointer problems, the response thread should call centerPlace
+// to avoid pointer problems, the response thread should call centerPlace
 void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from response thread
 {
     if (sig != QopyArgs) ERROR();
