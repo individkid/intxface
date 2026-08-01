@@ -347,7 +347,6 @@ Transfer = { -- what user machine does
 	"Nopy", -- handle input
 	"Popy", -- queue to center
 	"Qopy", -- move to queue
-	"Wopy", -- wait for response
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
@@ -416,9 +415,6 @@ PopyArg = {
 }
 QopyArg = {
 	"QopySrc",
-}
-WopyArg = {
-	"WopySrc",
 }
 Plan = { -- which test to run
 	"Bringup",
@@ -2302,15 +2298,11 @@ Machine = { -- info for user defined action
 	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
-		["Mopy"]=true,["Nopy"]=true,
-		["Popy"]=true,["Qopy"]=true,
-		["Wopy"]=true}},{}},
+		["Mopy"]=true,["Nopy"]=true,["Popy"]=true,["Qopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
-		["Mopy"]=true,["Nopy"]=true,
-		["Popy"]=true,["Qopy"]=true,
-		["Wopy"]=true}},"sig"},
+		["Mopy"]=true,["Nopy"]=true,["Popy"]=true,["Qopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }

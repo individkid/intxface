@@ -233,12 +233,13 @@ void centerSize(int idx)
 }
 struct CenterCond {
     int idx;
+    enum Retval res;
     struct Extend *ret;
 };
 int centerCond(void *ptr)
 {
     struct CenterCond *cond = ptr;
-    if (center[cond->idx] == 0) return 0;
+    if (center[cond->idx] == 0 || center[cond->idx]->res == cond->res) return 0;
     cond->ret = center[cond->idx];
     center[cond->idx] = 0;
     return 1;
@@ -246,7 +247,16 @@ int centerCond(void *ptr)
 struct Extend *centerPull(int idx)
 {
     centerSize(idx);
-    struct CenterCond cond = {idx,0};
+    struct CenterCond cond = {idx,NullRet,0};
+    if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
+    if (postSafe(copySem) != 1) ERROR();
+    if (cond.ret->sub != idx) ERROR();
+    return cond.ret;
+}
+struct Extend *centerPeek(int idx)
+{
+    centerSize(idx);
+    struct CenterCond cond = {idx,Retvals,0};
     if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
     if (postSafe(copySem) != 1) ERROR();
     if (cond.ret->sub != idx) ERROR();
@@ -486,26 +496,6 @@ void machineExec(struct Extend *ext)
     callJnfo(RegisterWake,1<<SlctMsk,planeWots);}
     break;}
 }
-void machineWait(int src)
-{
-    while (1) {
-    // MachThd woken by changes to RegisterWake
-    callInfo(RegisterWake,1<<PassMsk,planeWotc);
-    callInfo(RegisterWake,1<<FailMsk,planeWotc);
-    callInfo(RegisterWake,1<<DoneMsk,planeWotc);
-    callInfo(RegisterPass,1<<src,planeWotc);
-    callInfo(RegisterFail,1<<src,planeWotc);
-    callInfo(RegisterDone,1<<src,planeWotc);
-    if (waitSafe(copySem) != 0) ERROR();
-    struct Extend *ext = center[src];
-    if (postSafe(copySem) != 1) ERROR();
-    if (ext && ext->res != NullRet) break;
-    // to prevent deadlock, machineWopy should only be called from planeMachine
-    if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
-    if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
-    if (callInfo(RegisterFail,0,planeRcfg)) callJnfo(RegisterWake,1<<FailMsk,planeWots);
-    if (callInfo(RegisterDone,0,planeRcfg)) callJnfo(RegisterWake,1<<DoneMsk,planeWots);
-}
 int machineJect(struct Menu *menu)
 {
     switch (menu->jec) {default: ERROR();
@@ -672,17 +662,10 @@ void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from res
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
-// TODO remove Wopy, have centerPull block until nonzero
-void machineWopy(int sig, int *arg)
-{
-    if (sig != WopyArgs) ERROR();
-    int src = arg[WopySrc];
-    machineWait(src);
-}
 void machineStage(enum Configure cfg, int idx)
 {
     centerSize(idx);
-    struct Extend *ext = centerPull(idx);
+    struct Extend *ext = centerPeek(idx);
     struct Center *ptr = (ext->res==NullRet?0:ext->ptr);
     switch (cfg) {default: ERROR();
     case (CenterPtr): callJnfo(cfg,(ptr!=0),planeWcfg); break;
@@ -822,8 +805,7 @@ void machineSwitch(struct Machine *mptr)
     case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break;
     case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
-    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
-    case (Wopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineWopy(mptr->sig,arg);} break;}
+    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;}
 }
 
 // thread callbacks

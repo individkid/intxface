@@ -91,7 +91,7 @@ function listResrc(lst,res,arg)
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
-	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory("Drawz").."))")
+	lst[#lst+1] = machSugar("Machine(xfr:Dopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#"..castMemory("Drawz").."))")
 end
 function listMemory(lst,mem,fld,arg)
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
@@ -99,7 +99,7 @@ function listMemory(lst,mem,fld,arg)
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
-	lst[#lst+1] = machSugar("Machine(xfr:Wopysig:1arg[0]:$(#"..castMemory(mem).."))")
+	lst[#lst+1] = machSugar("Machine(xfr:Dopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#"..castMemory(mem).."))")
 end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
