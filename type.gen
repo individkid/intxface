@@ -62,9 +62,11 @@ Response = {
 	"MptRsp", -- repeat multiple until pass
 }
 Retval = {
+	"NoneRet", -- before submit
 	"PassRet", -- pushed to gpu
 	"FailRet", -- rejected by gpu
 	"DoneRet", -- writtten to pipe
+	"NullRet", -- empty placeholder
 }
 Resrc = { -- variation of BaseState
 	"SwapRes",
@@ -339,15 +341,13 @@ Transfer = { -- what user machine does
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
 	"Bopy", -- move to resource
-	"Copy", -- copy to resource
+	"Copy", -- execute center
 	"Dopy", -- copy to center
 	"Mopy", -- handle matrices
 	"Nopy", -- handle input
 	"Popy", -- queue to center
 	"Qopy", -- move to queue
-	"Ropy", -- copy to queue
 	"Wopy", -- wait for response
-	"Xopy", -- execute center
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
@@ -398,7 +398,6 @@ BopyArg = {
 }
 CopyArg = {
 	"CopySrc",
-	"CopyAlt",
 }
 DopyArg = {
 	"DopySrc",
@@ -418,14 +417,8 @@ PopyArg = {
 QopyArg = {
 	"QopySrc",
 }
-RopyArg = {
-	"RopySrc",
-}
 WopyArg = {
 	"WopySrc",
-}
-XopyArg = {
-	"XopySrc",
 }
 Plan = { -- which test to run
 	"Bringup",
@@ -2002,21 +1995,21 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Matrixz\")) Op , #1 ; #0 == #1 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Copy from matrix, and Copy from draw
+		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Bopy from matrix, and Bopy from draw
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
 		  "mch[%(return jdx())]:Mopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
-		   -- execute memories need Xopy
+		   -- execute memories need Copy
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Transferz\")) Op | Non ?CenterMem == #%(return castMemory(\"Rebootz\")) Op Op , #1 ; #0 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  "mch[%(return jdx())]:Xopy(sig:1arg[0]:$(?CenterMem))"..
+		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(?CenterMem))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 -- do Copy from current
-		 "mch[%(return jdx())]:Copy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
+		 -- do Bopy from current
+		 "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 
@@ -2113,7 +2106,7 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
-		-- do Form if enabled and last manipulate was roller; do Comp Copy Draw if enabled
+		-- do Form if enabled and last manipulate was roller; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrMoveMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2127,7 +2120,7 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 14
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
-		-- do Form if enabled and last manipulate was move; do Comp Copy Draw if enabled
+		-- do Form if enabled and last manipulate was move; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrRollMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2310,14 +2303,14 @@ Machine = { -- info for user defined action
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
 		["Mopy"]=true,["Nopy"]=true,
-		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,
-		["Wopy"]=true,["Xopy"]=true}},{}},
+		["Popy"]=true,["Qopy"]=true,
+		["Wopy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,
 		["Mopy"]=true,["Nopy"]=true,
-		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,
-		["Wopy"]=true,["Xopy"]=true}},"sig"},
+		["Popy"]=true,["Qopy"]=true,
+		["Wopy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }

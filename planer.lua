@@ -77,7 +77,7 @@ function readConfig(res,cfg)
 	for i,v in ipairs(cfg) do
 	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(@getcfg)fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
 	end
-	list[#list+1] = machSugar("Machine(xfr:Ropysig:1arg[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"])
 	center = readCenter(tests[found]["idx"])
 	for i,v in ipairs(center["cfg"]) do res[i] = v end

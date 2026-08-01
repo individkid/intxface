@@ -459,7 +459,7 @@ void machineSwitch(struct Machine *ptr);
 void machineExec(struct Extend *ext)
 {
     struct Center *ptr = ext->ptr;
-    // {char *st0 = 0; showCenter(ptr,&st0); fprintf(stderr,"macineExec %s\n",st0); free(st0);}
+    // {char *st0 = 0; showExtend(ext,&st0); fprintf(stderr,"macineExec %s\n",st0); free(st0);}
     switch (ptr->mem) {default: ERROR();
     case (Transferz):
     for (int i = 0; i < ptr->siz; i++) {
@@ -499,7 +499,7 @@ void machineWait(int src)
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ext = center[src];
     if (postSafe(copySem) != 1) ERROR();
-    if (ext) break;
+    if (ext && ext->res != NullRet) break;
     // to prevent deadlock, machineWopy should only be called from planeMachine
     if (waitSafe(safeSafe(MachThd,0)) < 0) break;}
     if (callInfo(RegisterPass,0,planeRcfg)) callJnfo(RegisterWake,1<<PassMsk,planeWots);
@@ -606,8 +606,7 @@ void machineDemo(struct Menu *menu)
     callInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     machineDisp(menu);}}
 }
-// TODO remove Copy, use Bopy
-void machineBopy(int sig, int *arg) // Bopy uses Pull to Wopy for the response
+void machineBopy(int sig, int *arg)
 {
     if (sig != BopyArgs) ERROR();
     int src = arg[BopySrc];
@@ -615,13 +614,15 @@ void machineBopy(int sig, int *arg) // Bopy uses Pull to Wopy for the response
     struct Extend *ext = centerPull(src);
     callCopy(ext,alt,0);
 }
-void machineCopy(int sig, int *arg) // Copy uses Peek to make readonly until the response
+void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
-    int alt = arg[CopyAlt];
     struct Extend *ext = centerPull(src);
-    callCopy(ext,alt,0);
+    if (waitSafe(execSem) != 0) ERROR();
+    machineExec(ext);
+    if (postSafe(execSem) != 1) ERROR();
+    centerPlace(ext);
 }
 void machineDopy(int sig, int *arg)
 {
@@ -649,7 +650,7 @@ void machineNopy(int sig, int *arg)
     struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub);
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
     machineDemo(menu);
-    machinePlace(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
+    machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
 }
 void machinePopy(int sig, int *arg)
 {
@@ -658,24 +659,14 @@ void machinePopy(int sig, int *arg)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr) {ptr->sub = dst; centerPlace(ptr);}
-    else centerClear(dst);
+    if (ptr == 0) {allocExtend(&ptr,1); ptr->res = NullRet;}
+    ptr->sub = dst; centerPlace(ptr);
 }
 // to avoid pointer problems, the response thread should call centerPlace
 void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from response thread
 {
     if (sig != QopyArgs) ERROR();
     int src = arg[QopySrc];
-    struct Extend *ptr = centerPull(src);
-    if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
-    if (postSafe(pipeSem) != 1) ERROR();
-}
-// TODO remove Ropy
-void machineRopy(int sig, int *arg) // Ropy uses Peek to make readonly until Place from response thread
-{
-    if (sig != RopyArgs) ERROR();
-    int src = arg[RopySrc];
     struct Extend *ptr = centerPull(src);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
@@ -688,34 +679,22 @@ void machineWopy(int sig, int *arg)
     int src = arg[WopySrc];
     machineWait(src);
 }
-// TODO rename as Copy
-void machineXopy(int sig, int *arg)
-{
-    if (sig != XopyArgs) ERROR();
-    int src = arg[XopySrc];
-    struct Extend *ext = centerPull(src);
-    if (waitSafe(execSem) != 0) ERROR();
-    machineExec(ext);
-    if (postSafe(execSem) != 1) ERROR();
-    centerPlace(ext);
-}
 void machineStage(enum Configure cfg, int idx)
 {
     centerSize(idx);
-    if (waitSafe(copySem) != 0) ERROR();
-    struct Extend *ext = center[idx];
-    struct Center *ptr = (ext?ext->ptr:0);
+    struct Extend *ext = centerPull(idx);
+    struct Center *ptr = (ext->res==NullRet?0:ext->ptr);
     switch (cfg) {default: ERROR();
-    case (CenterPtr): callJnfo(cfg,(ext!=0),planeWcfg); break;
-    case (CenterRsp): callJnfo(cfg,(ext?ext->rsp:0),planeWcfg); break;
-    case (CenterSub): callJnfo(cfg,(ext?ext->sub:0),planeWcfg); break;
-    case (CenterSrc): callJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
+    case (CenterPtr): callJnfo(cfg,(ptr!=0),planeWcfg); break;
+    case (CenterRsp): callJnfo(cfg,ext->rsp,planeWcfg); break;
+    case (CenterSub): callJnfo(cfg,ext->sub,planeWcfg); break;
+    case (CenterSrc): callJnfo(cfg,ext->src,planeWcfg); break;
     case (CenterInt): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
     case (CenterMem): callJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
     case (CenterSiz): callJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
     case (CenterIdx): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
     case (CenterSlf): callJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
-    if (postSafe(copySem) != 1) ERROR();
+    centerPlace(ext);
 }
 struct initCenter {
     int siz;
@@ -844,9 +823,7 @@ void machineSwitch(struct Machine *mptr)
     case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
-    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
-    case (Wopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineWopy(mptr->sig,arg);} break;
-    case (Xopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineXopy(mptr->sig,arg);} break;}
+    case (Wopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineWopy(mptr->sig,arg);} break;}
 }
 
 // thread callbacks
