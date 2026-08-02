@@ -93,6 +93,22 @@ int planeRdwr(int *ref, int val)
 {
     int ret = *ref; *ref = val; return ret;
 }
+int planeGnfo(enum Configure cfg, int val, yftype fnc)
+{
+    callGnfo(&cfg,&val,1,fnc); return val;
+}
+int planeInfo(enum Configure cfg, int val, yftype fnc)
+{
+    callInfo(&cfg,&val,1,fnc); return val;
+}
+int planeJnfo(enum Configure cfg, int val, yftype fnc)
+{
+    callJnfo(&cfg,&val,1,fnc); return val;
+}
+int planeKnfo(enum Configure cfg, int val, yftype fnc)
+{
+    callKnfo(&cfg,&val,1,fnc); return val;
+}
 
 void safeInit(enum Thread thd, int siz, int val)
 {
@@ -125,9 +141,9 @@ void *safeSafe(enum Thread thd, int idx)
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
 float *planeVector(float *vec, enum Configure left, enum Configure base, enum Configure deep)
 {
-    vec[0] = (float)callInfo(left,0,planeRcfg)/1000.0;
-    vec[1] = (float)callInfo(base,0,planeRcfg)/1000.0;
-    vec[2] = (float)callInfo(deep,0,planeRcfg)/1000.0;
+    enum Configure cfg[3] = {left,base,deep}; int val[3] = {0,0,0};
+    callInfo(cfg,val,3,planeRcfg);
+    for (int i = 0; i < 3; i++) vec[i] = val[i] / 1000.0;
     return vec;
 }
 float *planeTransform(float *mat, float *src0, float *dst0, float *src1, float *dst1,
@@ -199,7 +215,7 @@ float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, floa
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 float *planeMatrix(float *mat)
 {
-    planeXform fnc = 0; int tmp; int cfg = callInfo(ManipFixed,0,planeRcfg);
+    planeXform fnc = 0; int tmp; int cfg = planeInfo(ManipFixed,0,planeRcfg);
     tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeSlideOrthoMouse;
     tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeRotateFocalMouse;
     tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) fnc = planeRotateCursorRoller;
@@ -214,8 +230,11 @@ float *planeMatrix(float *mat)
 float *planeWindow(float *mat)
 {
     identmat(mat,4);
-    float width = callInfo(UniformWid,0,planeRcfg);
-    float height = callInfo(UniformHei,0,planeRcfg);
+    enum Configure cfg[2] = {UniformWid,UniformHei};
+    int val[2] = {0,0};
+    callInfo(cfg,val,2,planeRcfg);
+    float width = val[0];
+    float height = val[1];
     *matrc(mat,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
     *matrc(mat,3,3,4) = 0.58; // a; // w = a + bz
     *matrc(mat,0,0,4) = height/width; // y'=y x'=x*height/width
@@ -233,14 +252,14 @@ void centerSize(int idx)
 }
 struct CenterCond {
     int idx;
-    enum Retval res;
-    struct Extend *ret;
+    enum Retval ret;
+    struct Extend *ext;
 };
 int centerCond(void *ptr)
 {
     struct CenterCond *cond = ptr;
-    if (center[cond->idx] == 0 || center[cond->idx]->res == cond->res) return 0;
-    cond->ret = center[cond->idx];
+    if (center[cond->idx] == 0 || center[cond->idx]->ret == cond->ret) return 0;
+    cond->ext = center[cond->idx];
     center[cond->idx] = 0;
     return 1;
 }
@@ -250,8 +269,8 @@ struct Extend *centerPull(int idx)
     struct CenterCond cond = {idx,NullRet,0};
     if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
     if (postSafe(copySem) != 1) ERROR();
-    if (cond.ret->sub != idx) ERROR();
-    return cond.ret;
+    if (cond.ext->sub != idx) ERROR();
+    return cond.ext;
 }
 struct Extend *centerPeek(int idx)
 {
@@ -259,8 +278,8 @@ struct Extend *centerPeek(int idx)
     struct CenterCond cond = {idx,Retvals,0};
     if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
     if (postSafe(copySem) != 1) ERROR();
-    if (cond.ret->sub != idx) ERROR();
-    return cond.ret;
+    if (cond.ext->sub != idx) ERROR();
+    return cond.ext;
 }
 void centerPlace(struct Extend *ptr)
 {
@@ -268,6 +287,14 @@ void centerPlace(struct Extend *ptr)
     if (waitSafe(copySem) != 0) ERROR();
     if (center[ptr->sub] != 0 && center[ptr->sub] != ptr) {
     freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
+    center[ptr->sub] = ptr;
+    if (postSafe(copySem) != 1) ERROR();
+}
+void centerPoke(struct Extend *ptr)
+{
+    centerSize(ptr->sub);
+    if (waitSafe(copySem) != 0) ERROR();
+    if (center[ptr->sub] != 0) ERROR();
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
@@ -281,17 +308,18 @@ void centerClear(int sub)
 }
 void centerDone(struct Extend *ptr)
 {
-    centerPlace(ptr);
-    switch (ptr->res) {default: ERROR();
+    // cannot call centerPlace from different thread
+    centerPoke(ptr);
+    switch (ptr->ret) {default: ERROR();
     break; case(PassRet):
-    callJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    callJnfo(RegisterPass,(1<<ptr->sub),planeWots);
+    planeJnfo(RegisterWake,(1<<PassMsk),planeWots);
+    planeJnfo(RegisterPass,(1<<ptr->sub),planeWots);
     break; case(FailRet):
-    callJnfo(RegisterWake,(1<<FailMsk),planeWots);
-    callJnfo(RegisterFail,(1<<ptr->sub),planeWots);
+    planeJnfo(RegisterWake,(1<<FailMsk),planeWots);
+    planeJnfo(RegisterFail,(1<<ptr->sub),planeWots);
     break; case(DoneRet):
-    callJnfo(RegisterWake,(1<<DoneMsk),planeWots);
-    callJnfo(RegisterDone,(1<<ptr->sub),planeWots);}
+    planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
+    planeJnfo(RegisterDone,(1<<ptr->sub),planeWots);}
 }
 int centerCheck(int idx)
 {
@@ -469,7 +497,6 @@ void machineSwitch(struct Machine *ptr);
 void machineExec(struct Extend *ext)
 {
     struct Center *ptr = ext->ptr;
-    // {char *st0 = 0; showExtend(ext,&st0); fprintf(stderr,"macineExec %s\n",st0); free(st0);}
     switch (ptr->mem) {default: ERROR();
     case (Transferz):
     for (int i = 0; i < ptr->siz; i++) {
@@ -477,7 +504,7 @@ void machineExec(struct Extend *ext)
     case (Rebootz):
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
-    callInfo(RegisterWake,1<<SlctMsk,planeWotc);
+    planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -492,8 +519,11 @@ void machineExec(struct Extend *ext)
     if (sizeCenterq(reboot) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
     joinCenterq(reboot,internal);
+    if (postSafe(pipeSem) != 1) ERROR();}
+    if (waitSafe(pipeSem) != 0) ERROR();
+    int size = sizeCenterq(internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    callJnfo(RegisterWake,1<<SlctMsk,planeWots);}
+    if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
     break;}
 }
 int machineJect(struct Menu *menu)
@@ -536,10 +566,13 @@ void machineInit(struct Extend **ptr, int siz);
 int *machinePute(struct Menu *menu, int mem)
 {
     struct Extend *ptr = centerPull(mem);
-    int left = callInfo(ClickLeft,0,planeRcfg);
-    int base = callInfo(ClickBase,0,planeRcfg);
-    int width = callInfo(UniformWid,0,planeRcfg);
-    int height = callInfo(UniformHei,0,planeRcfg);
+    enum Configure cfg[4] = {ClickLeft,ClickBase,UniformWid,UniformHei};
+    int val[4] = {0,0,0,0};
+    callInfo(cfg,val,4,planeRcfg);
+    int left = val[0];
+    int base = val[1];
+    int width = val[2];
+    int height = val[3];
     int siz = width*height;
     if (siz != ptr->ptr->siz) machineInit(&ptr,siz);
     // machineCopy()
@@ -557,8 +590,8 @@ void machineDemo(struct Menu *menu)
     switch (menu->msk) {default: ERROR();
     break; case (PrssMsk): { // do Send; change menu state
     machineDone(menu);
-    char key = callInfo(PressKey,0,planeRcfg);
-    callJnfo(PressQueue,-1,planeRmw);
+    char key = planeInfo(PressKey,0,planeRcfg);
+    planeJnfo(PressQueue,-1,planeRmw);
     switch (key) {default:
     break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
     break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); menu->act = Indicate;
@@ -579,12 +612,12 @@ void machineDemo(struct Menu *menu)
     break; case (EoodMsk): // TODO wait for window resize
     break; case (MoveMsk): if (menu->act == Manipulate) { // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
     if (menu->dev == Angle) {machineCont(menu); menu->dev = Coord;}
-    callInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
+    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     machineDisp(menu);}
     break; case (ClckMsk): switch (menu->act) {default: ERROR();
     break; case (Manipulate): {machineDone(menu); menu->act = Indicate;}
     break; case (Indicate): {
-    callInfo(ClickQueue,1,planeWcfg);
+    planeInfo(ClickQueue,1,planeWcfg);
     // TODO Pierce; Wopy; get Fixed* Normal* SelectIdx from Vectorz Getintz at Click*
     // TODO optimize pcie traffic by using depth to select just the data at some Uniform* point
     menu->act = Manipulate;}
@@ -593,7 +626,7 @@ void machineDemo(struct Menu *menu)
     break; case (Subtractive): /*TODO*/}
     break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
     if (menu->dev == Coord) {machineCont(menu); menu->dev = Angle;}
-    callInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
+    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     machineDisp(menu);}}
 }
 void machineBopy(int sig, int *arg)
@@ -649,8 +682,9 @@ void machinePopy(int sig, int *arg)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr == 0) {allocExtend(&ptr,1); ptr->res = NullRet;}
-    ptr->sub = dst; centerPlace(ptr);
+    if (ptr == 0) {allocExtend(&ptr,1); ptr->ret = NullRet;}
+    ptr->sub = dst;
+    centerPlace(ptr);
 }
 // to avoid pointer problems, the response thread should call centerPlace
 void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from response thread
@@ -666,17 +700,17 @@ void machineStage(enum Configure cfg, int idx)
 {
     centerSize(idx);
     struct Extend *ext = centerPeek(idx);
-    struct Center *ptr = (ext->res==NullRet?0:ext->ptr);
+    struct Center *ptr = (ext->ret==NullRet?0:ext->ptr);
     switch (cfg) {default: ERROR();
-    case (CenterPtr): callJnfo(cfg,(ptr!=0),planeWcfg); break;
-    case (CenterRsp): callJnfo(cfg,ext->rsp,planeWcfg); break;
-    case (CenterSub): callJnfo(cfg,ext->sub,planeWcfg); break;
-    case (CenterSrc): callJnfo(cfg,ext->src,planeWcfg); break;
-    case (CenterInt): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterMem): callJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
-    case (CenterSiz): callJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
-    case (CenterIdx): callJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterSlf): callJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
+    case (CenterPtr): planeJnfo(cfg,(ptr!=0),planeWcfg); break;
+    case (CenterRsp): planeJnfo(cfg,ext->rsp,planeWcfg); break;
+    case (CenterSub): planeJnfo(cfg,ext->sub,planeWcfg); break;
+    case (CenterSrc): planeJnfo(cfg,ext->src,planeWcfg); break;
+    case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
+    case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
+    case (CenterIdx): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
     centerPlace(ext);
 }
 struct initCenter {
@@ -724,14 +758,14 @@ void machineTsage(enum Configure cfg, int idx)
     struct Extend *ext = centerPull(idx);
     struct Center *ptr = ext->ptr;
     switch (cfg) {default: ERROR();
-    case (CenterRsp): ext->rsp = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSub): ext->sub = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSrc): ext->src = callInfo(cfg,0,planeRcfg); break;
-    case (CenterInt): {int sub = callInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) machineInit(&ext,sub+1);} break;
-    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSiz): {int siz = callInfo(cfg,0,planeRcfg); if (siz != ptr->siz) machineInit(&ext,siz);} break;
-    case (CenterIdx): ptr->idx = callInfo(cfg,0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = callInfo(cfg,0,planeRcfg); break;}
+    case (CenterRsp): ext->rsp = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSub): ext->sub = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) machineInit(&ext,sub+1);} break;
+    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) machineInit(&ext,siz);} break;
+    case (CenterIdx): ptr->idx = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;}
     centerPlace(ext);
 }
 void machineEval(struct Express *exp, int idx)
@@ -825,8 +859,6 @@ void planeMachine(enum Thread tag, int idx)
     if (cptr->siz <= 0) next = -1;
     while (next >= 0 && next < cptr->siz) {
     struct Machine *mptr = &cptr->mch[next];
-    /*{char *opr = 0; showMachine(mptr,&opr);
-    fprintf(stderr,"%d-%.3f-%s\n",next,(float)processTime(),opr); free(opr);}*/
     int save = next;
     switch (mptr->xfr) {default: machineSwitch(mptr); next += 1; break;
     case (Goto): next += machineIval(&mptr->exp[0]); break;
@@ -844,14 +876,14 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
     if (center && center->ptr->slf < 0) {
-    center->ptr->slf = callInfo(RegisterSelf,0,planeRcfg);
+    center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
     pushCenterq(center,internal);
-    callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
+    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
     if (center && center->ptr->slf >= 0) {
     if (center->src < 0 || center->src >= Programs) ERROR();
     int sub = inverse[center->src];
     writeCenter(center->ptr,sub);
-    center->res = DoneRet;
+    center->ret = DoneRet;
     centerDone(center);}
     if (postSafe(pipeSem) != 1) ERROR();}
 }
@@ -865,7 +897,7 @@ void planeExternal(enum Thread tag, int idx)
     // WARN Info semaphore inside of pipeSem will deadlock,
     // because callbacks inside of Jnfo semaphore wait on pipeSem.
     // Nested semaphores are fine if they are nested in the same order.
-    int resp = callInfo(RegisterResp,0,planeRcfg);
+    int resp = planeInfo(RegisterResp,0,planeRcfg);
     if (waitSafe(pipeSem) != 0) ERROR();
     if (sub == extdone) {
     if (postSafe(pipeSem) != 1) ERROR();
@@ -878,7 +910,7 @@ void planeExternal(enum Thread tag, int idx)
     center->rsp = resp;
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    callJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
+    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
 }
 void planeString(enum Thread tag, int idx)
 {
@@ -906,8 +938,8 @@ void planeConsole(enum Thread tag, int idx)
     pushStrq(str,strin);
     int size = sizeStrq(strin);
     if (postSafe(stdioSem) != 1) ERROR();
-    callJnfo(RegisterStrq,size,planeWcfg);
-    callJnfo(RegisterWake,(1<<CnslMsk),planeWots);}}
+    planeJnfo(RegisterStrq,size,planeWcfg);
+    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);}}
     else ERROR();}
 }
 void planeTime(enum Thread tag, int idx)
@@ -927,7 +959,7 @@ void planeTime(enum Thread tag, int idx)
     if (waitSafe(timeSem) != 0) ERROR();
     dropTimeq(timeq); dropIntq(wakeq);
     if (postSafe(timeSem) != 1) ERROR();
-    callJnfo(RegisterWake,(1<<TimeMsk),planeWots);
+    planeJnfo(RegisterWake,(1<<TimeMsk),planeWots);
     postSafe(safeSafe(MachThd,wake));}}
 }
 void planeTest(enum Thread tag, int idx)
@@ -936,7 +968,7 @@ void planeTest(enum Thread tag, int idx)
 
     break; case (0): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0; int alt = 0;
-    int mode = (callInfo(RegisterPlan,0,planeRcfg)==Bringup);
+    int mode = (planeInfo(RegisterPlan,0,planeRcfg)==Bringup);
 
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
@@ -960,8 +992,8 @@ void planeTest(enum Thread tag, int idx)
     if (alt) alt = 0; else alt = 1;
 
     if (count == tested) {
-    int width = callInfo(UniformWid,0,planeRcfg);
-    int height = callInfo(UniformHei,0,planeRcfg);
+    int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
+    callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
     int giv[] = {width,height,0,12}; // idx,siz
     struct Extend *drw = centerPull(Drawz); if (!drw) {callWait(); continue;}
     freeCenter(drw->ptr);
@@ -978,8 +1010,8 @@ void planeTest(enum Thread tag, int idx)
 
     break; case (1): {
     int debug = 0; int count = 0; float time = 0.0; int tested = 0;
-    int width = callInfo(UniformWid,0,planeRcfg);
-    int height = callInfo(UniformHei,0,planeRcfg);
+    int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
+    callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
     int hiv[] = {width,height,0,12}; // width,height,idx,siz
     int fiv[] = {width,height}; // width,height
 
@@ -1020,7 +1052,7 @@ void planeTest(enum Thread tag, int idx)
 // phase callbacks
 void planeClose(enum Thread tag, int idx)
 {
-    callJnfo(RegisterOpen,(1<<tag),planeWotc);
+    planeJnfo(RegisterOpen,(1<<tag),planeWotc);
 }
 void planeJoin(enum Thread tag, int idx)
 {
@@ -1071,9 +1103,9 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         doneSafe(safeSafe(StdioThd,0));
         writeChr(0,condone);}
     if ((act & (1<<MachThd)) && !(sav & (1<<MachThd))) {
-        callKnfo(RegisterCall,callGnfo(RegisterMain,0,planeRcfg)<<8,planeWcfg);}
+        planeKnfo(RegisterCall,planeGnfo(RegisterMain,0,planeRcfg)<<8,planeWcfg);}
     if (!(act & (1<<MachThd)) && (sav & (1<<MachThd))) {
-        callKnfo(RegisterCall,-1<<8,planeWcfg);}
+        planeKnfo(RegisterCall,(-1<<8),planeWcfg);}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         safeInit(TimeThd,1,0);
         callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeWake);}
@@ -1095,7 +1127,7 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
     int able = (sizeIntq(ableq) > i ? *ptrIntq(i,ableq) : 0);
     wake |= able;}
-    wake &= callGnfo(RegisterOpen,0,planeRcfg);
+    wake &= planeGnfo(RegisterOpen,0,planeRcfg);
     for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) {
     planeWake(MachThd,i);}
 }
@@ -1147,7 +1179,7 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
     switch (cfg) {default: ERROR();
     case (UniformWid):
     case (UniformHei):
-    callKnfo(RegisterWake,1<<ProjMsk,planeWots);
+    planeKnfo(RegisterWake,(1<<ProjMsk),planeWots);
     case (UniformAll):
     case (UniformOne):
     case (UniformIdx):
@@ -1158,17 +1190,18 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
     case (UniformMat):
     case (UniformBas):
     case (UniformMod):
-    callKnfo(RegisterWake,(1<<UnifMsk),planeWots);}
+    planeKnfo(RegisterWake,(1<<UnifMsk),planeWots);}
 }
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != ArgumentInp && cfg != ArgumentOut && cfg != ArgumentSrc) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
-    int rdfd = callGnfo(ArgumentInp,0,planeRcfg);
-    int wrfd = callGnfo(ArgumentOut,0,planeRcfg);
-    int asrc = callGnfo(ArgumentSrc,0,planeRcfg);
+    enum Configure arg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; int num[3] = {0,0,0};
+    callGnfo(arg,num,3,planeRcfg);
+    int rdfd = num[0];
+    int wrfd = num[1];
+    int asrc = num[2];
     int sub = rdwrInit(rdfd,wrfd);
-    // fprintf(stderr,"registerArgument %d %d %d %d\n",rdfd,wrfd,asrc,sub);
     external |= 1<<sub;
     inverse[asrc] = sub;
     *userIdent(sub) = inverse + asrc;
@@ -1181,8 +1214,8 @@ void registerChar(enum Configure cfg, int sav, int val, int act)
     if (cfg != PressKey) ERROR();
     if (waitSafe(pressSem) != 0) ERROR();
     pushIntq(val,charq);
-    callGnfo((enum Configure)cfg,frontIntq(charq),planeWcfg);
-    callKnfo(RegisterWake,(1<<PrssMsk),planeWots);
+    planeGnfo(cfg,frontIntq(charq),planeWcfg);
+    planeKnfo(RegisterWake,(1<<PrssMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerChars(enum Configure cfg, int sav, int val, int act)
@@ -1192,7 +1225,7 @@ void registerChars(enum Configure cfg, int sav, int val, int act)
     while (act < sizeIntq(charq)) popIntq(charq);
     while (act > sizeIntq(charq)) pushIntq(0,charq);
     if (sizeIntq(charq) > 0)
-    callKnfo(RegisterWake,(1<<PrssMsk),planeWots);
+    planeKnfo(RegisterWake,(1<<PrssMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerClick(enum Configure cfg, int sav, int val, int act)
@@ -1203,8 +1236,8 @@ void registerClick(enum Configure cfg, int sav, int val, int act)
     else if (cfg == ClickBase) que = baseq;
     else if (cfg == ClickAngle) que = angleq;
     pushIntq(val,que);
-    callGnfo((enum Configure)cfg,frontIntq(que),planeWcfg);
-    callKnfo(RegisterWake,(1<<ClckMsk),planeWots);
+    planeGnfo(cfg,frontIntq(que),planeWcfg);
+    planeKnfo(RegisterWake,(1<<ClckMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerClicks(enum Configure cfg, int sav, int val, int act)
@@ -1215,18 +1248,18 @@ void registerClicks(enum Configure cfg, int sav, int val, int act)
     while (act < sizeIntq(baseq)) popIntq(baseq); while (act > sizeIntq(baseq)) pushIntq(0,baseq);
     while (act < sizeIntq(angleq)) popIntq(angleq); while (act > sizeIntq(angleq)) pushIntq(0,angleq);
     if (sizeIntq(leftq) > 0 || sizeIntq(baseq) > 0 || sizeIntq(angleq) > 0)
-    callKnfo(RegisterWake,(1<<ClckMsk),planeWots);
+    planeKnfo(RegisterWake,(1<<ClckMsk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
 void registerMove(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != ManipLeft && cfg != ManipBase) ERROR();
-    callKnfo(RegisterWake,(1<<MoveMsk),planeWots);
+    planeKnfo(RegisterWake,(1<<MoveMsk),planeWots);
 }
 void registerRoll(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != ManipAngle) ERROR();
-    callKnfo(RegisterWake,(1<<RollMsk),planeWots);
+    planeKnfo(RegisterWake,(1<<RollMsk),planeWots);
 }
 
 // expression callbacks
@@ -1248,23 +1281,23 @@ void planePutstr(const char *src)
 }
 void planeSetcfg(int val, int sub)
 {
-    callJnfo((enum Configure)sub,val,planeWcfg);
+    planeJnfo(sub,val,planeWcfg);
 }
 void planeWoscfg(int val, int sub)
 {
-    callJnfo((enum Configure)sub,val,planeWots);
+    planeJnfo(sub,val,planeWots);
 }
 void planeWoccfg(int val, int sub)
 {
-    callJnfo((enum Configure)sub,val,planeWotc);
+    planeJnfo(sub,val,planeWotc);
 }
 int planeRawcfg(int val, int sub)
 {
-    callJnfo((enum Configure)sub,val,planeRdwr);
+    return planeJnfo(sub,val,planeRdwr);
 }
 int planeRetcfg(int sub)
 {
-    return callInfo((enum Configure)sub,0,planeRcfg);
+    return planeInfo(sub,0,planeRcfg);
 }
 void planeSugar(const char *str)
 {
@@ -1289,13 +1322,13 @@ int planeSugval(const char *str)
 void planeArgv(int argc, char **argv)
 {
     for (int i = 0; i < argc; i++) {
-    // fprintf(stderr,"argv--%s--\n",argv[i]);
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, argv[i], &asiz)) {
-    callInfo(ArgumentInp,arg.inp,planeWcfg); callInfo(ArgumentOut,arg.out,planeWcfg);
-    callJnfo(ArgumentSrc,arg.oth,planeWcfg); freeArgument(&arg);}
+    enum Configure cfg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc};
+    int val[3] = {arg.inp,arg.out,arg.oth};
+    callJnfo(cfg,val,3,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Extend *ptr = 0; allocExtend(&ptr,1);
     copyCenter(ptr->ptr,&cntr); freeCenter(&cntr); ptr->sub = centers;
     centerPlace(ptr);}
@@ -1380,35 +1413,33 @@ void initBoot()
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
-    if (hideArgument(&arg, boot[i], &asiz)) {callInfo(RegisterShow,1,planeWots); freeArgument(&arg);}
-    else if (hideCenter(&cntr, boot[i], &csiz)) {callInfo(RegisterShow,2,planeWots); freeCenter(&cntr);}
-    else if (hideMachine(&mchn, boot[i], &msiz)) {callInfo(RegisterShow,4,planeWots); freeMachine(&mchn);}
-    else if (hideExpress(&expr, boot[i], &esiz)) {callInfo(RegisterShow,8,planeWots); freeExpress(&expr);}
-    else if (hideStr(&str,boot[i],&ssiz)) {callInfo(RegisterShow,16,planeWots); freeStr(&str,1);}
+    if (hideArgument(&arg, boot[i], &asiz)) {planeInfo(RegisterShow,1,planeWots); freeArgument(&arg);}
+    else if (hideCenter(&cntr, boot[i], &csiz)) {planeInfo(RegisterShow,2,planeWots); freeCenter(&cntr);}
+    else if (hideMachine(&mchn, boot[i], &msiz)) {planeInfo(RegisterShow,4,planeWots); freeMachine(&mchn);}
+    else if (hideExpress(&expr, boot[i], &esiz)) {planeInfo(RegisterShow,8,planeWots); freeExpress(&expr);}
+    else if (hideStr(&str,boot[i],&ssiz)) {planeInfo(RegisterShow,16,planeWots); freeStr(&str,1);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,boot[i]); exit(-1);}}
     // Bootstrap first to initialize RegisterPlan
     planeArgv(size-cmnd,boot+cmnd);
-    // {char *st0 = 0; showPlan(callInfo(RegisterPlan,0,planeRcfg),&st0); fprintf(stderr,"initBoot %s\n",st0); free(st0);}
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
-    default: ERROR();
+    switch (planeInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): case (Builtin):
-    callJnfo(RegisterPoll,1,planeWcfg);
-    callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    callJnfo(RegisterAble,(((1<<PassMsk)<<8)|0),planeWcfg);
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWots);
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
-    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);
-    callJnfo(RegisterOpen,(1<<TimeThd),planeWots);
-    callJnfo(RegisterTime,1000<<8,planeWcfg);
+    planeJnfo(RegisterPoll,1,planeWcfg);
+    planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
+    planeJnfo(RegisterAble,(((1<<PassMsk)<<8)|0),planeWcfg);
+    planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<TimeThd),planeWots);
+    planeJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
-    callJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    callJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DoneMsk))<<8)|0),planeWcfg);
+    planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
+    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DoneMsk))<<8)|0),planeWcfg);
     // the RegisterAble mask of events remembered per indicated MachThd wakes up the thread upon wos of event mask to RegisterWake
-    callJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    callJnfo(RegisterOpen,(1<<MachThd),planeWots);
-    callJnfo(RegisterOpen,(1<<PipeThd),planeWots);
-    callJnfo(RegisterOpen,(1<<StdioThd),planeWots);}
+    planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);}
     // callCmnd strings after so threads are started
     planeArgv(cmnd,boot);
 }
@@ -1435,14 +1466,14 @@ void initTest()
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
     };
-    callInfo(FetchBase,0,planeWcfg);
-    callInfo(FetchSize,sizeof(indices)/sizeof(int16_t),planeWcfg);
+    planeInfo(FetchBase,0,planeWcfg);
+    planeInfo(FetchSize,sizeof(indices)/sizeof(int16_t),planeWcfg);
     int mode = false;
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {
+    switch (planeInfo(RegisterPlan,0,planeRcfg)) {
     default: ERROR();
 
     break; case (Bringup): mode = true; case (Builtin): {
-    int frames = callInfo(ScratchFrames,0,planeRcfg);
+    int frames = planeInfo(ScratchFrames,0,planeRcfg);
 
     struct Extend *ptr = centerPull(Drawz); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = 1;
@@ -1453,8 +1484,8 @@ void initTest()
     callCopy(ptr,0,(debug?"swap":0));
     while (!centerCheck(Drawz)) usleep(1000);
     // UniformWid and UniformHei set by swap resize
-    int width = callInfo(UniformWid,0,planeRcfg);
-    int height = callInfo(UniformHei,0,planeRcfg);
+    int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
+    callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
 
     ptr = centerPull(Drawz); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = Micros;
@@ -1487,7 +1518,7 @@ void initTest()
     uni->ptr->uni[0].wid = width; uni->ptr->uni[0].hei = height;
     uni->sub = Uniformz; uni->rsp = RptRsp;
     callCopy(uni,0,(debug?"uniform":0));
-    callJnfo(UniformHei,height,planeWcfg);
+    {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {width,height}; callJnfo(cfg,val,2,planeWcfg);}
 
     struct Extend *img = centerPull(Imagez); freeCenter(img->ptr);
     img->ptr->mem = Imagez; img->ptr->siz = 1; allocImage(&img->ptr->img,img->ptr->siz);
@@ -1568,7 +1599,7 @@ void initTest()
     callCopy(fil,0,(debug?"relate":0));
     while (!centerCheck(Drawz)) callWait();}
 
-    callJnfo(RegisterOpen,(1<<TestThd),planeWots);}
+    planeJnfo(RegisterOpen,(1<<TestThd),planeWots);}
 
     break; case(Regress): case(Release): break;}
 }
@@ -1593,11 +1624,11 @@ void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, 
 int planeLoop()
 {
     int fever = 0;
-    switch (callInfo(RegisterPlan,0,planeRcfg)) {default: break;
+    switch (planeInfo(RegisterPlan,0,planeRcfg)) {default: break;
     break; case (Bringup): case (Builtin):
     if (fever || (processTime()-start)*1000 < 2000) return 1;
     break; case (Regress): case (Release):
-    if (callInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
+    if (planeInfo(RegisterExit,0,planeRcfg) == 0) return 1;}
     return 0;
 }
 void planeDone()

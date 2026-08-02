@@ -2051,8 +2051,6 @@ Bootstrap = {
 		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		 "#0 : @_ Op))"..
-		 -- TODO for pierce returns, change pierce registers, enable manipulation, and do Form
-		 -- TODO for relate returns, change sculpt registers, and do Qopy
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterPass @nask Op))"..
@@ -2470,7 +2468,7 @@ Extend = {
 	{"src","Program",{},{}}, -- pipe read from
 	{"sub","Int",{},{}}, -- where to replace
 	{"rsp","Response",{},{}}, -- how to respond
-	{"res","Retval",{},{}}, -- pass fail or done
+	{"ret","Retval",{},{}}, -- pass fail or done
 }
 Listed = {
 	{"siz","Int",{},{}},

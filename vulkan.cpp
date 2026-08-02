@@ -1322,7 +1322,7 @@ struct CopyState {
             log << "IdxDerIns push " << sav->buf->debug << '\n';
             thread->push(log,sav->buf,LOC);}}}
         log << "notify pass" << '\n';
-        ptr->res = PassRet;
+        ptr->ret = PassRet;
         switch (ptr->rsp) {default:
         break; case (RetRsp): case (RptRsp): thread->push(log,ptr);}
         if (bind) stack[BindRes]->advance(0,Qualitys,0,indx);
@@ -1342,8 +1342,8 @@ struct CopyState {
         log << "notify fail" << '\n';
         switch (ptr->rsp) {default:
         break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
-        break; case (MltRsp): ptr->res = FailRet;
-        break; case (RetRsp): ptr->res = FailRet; thread->push(log,ptr);}}}
+        break; case (MltRsp): ptr->ret = FailRet;
+        break; case (RetRsp): ptr->ret = FailRet; thread->push(log,ptr);}}}
     }
     Requ request(Format frm, Reloc loc, void *val, int *arg, int siz, int &idx, SmartState log) {
         Requ req = {Requests,0,0,0,Extents,0,0,loc};
@@ -1703,9 +1703,9 @@ struct CopyState {
             for (int i = 0; i < ptr->siz; i++) {
             if (ptr->mem != Drawz) *(int*)0=0; // TODO rewrite in rust
             push(ptr->drw[i],ext,ary,log);
-            if (ext->res == FailRet) mask |= 1<<(i<32?i:31);}
-            ext->res = (mask?FailRet:PassRet);
-            /*TODO ext->res = mask;*/}
+            if (ext->ret == FailRet) mask |= 1<<(i<32?i:31);}
+            ext->ret = (mask?FailRet:PassRet);
+            /*TODO ext->msk = mask;*/}
         break; case (Instrz): {
             HeapState<Inst,StackState::instrs> ins;
             for (int i = 0; i < ptr->siz; i++) ins<<ptr->ins[i];
@@ -2545,17 +2545,17 @@ void vulkanCall(Configure cfg, xftype back) { // add callback
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftype wake) { // add thread
     mptr->callState.push(new ForkState(thd,idx,fnc,done,join,wake));
 }
-int vulkanGnfo(Configure cfg, int val, yftype fnc) { // register access
-    return mptr->changeState.gnfo(cfg,val,fnc);
+void vulkanGnfo(Configure *cfg, int *val, int siz, yftype fnc) { // register access
+    return mptr->changeState.gnfo(cfg,val,siz,fnc);
 }
-int vulkanInfo(Configure cfg, int val, yftype fnc) {
-    return mptr->changeState.info(cfg,val,fnc);
+void vulkanInfo(Configure *cfg, int *val, int siz, yftype fnc) {
+    return mptr->changeState.info(cfg,val,siz,fnc);
 }
-int vulkanJnfo(Configure cfg, int val, yftype fnc) {
-    return mptr->changeState.jnfo(cfg,val,fnc);
+void vulkanJnfo(Configure *cfg, int *val, int siz, yftype fnc) {
+    return mptr->changeState.jnfo(cfg,val,siz,fnc);
 }
-int vulkanKnfo(Configure cfg, int val, yftype fnc) {
-    return mptr->changeState.knfo(cfg,val,fnc);
+void vulkanKnfo(Configure *cfg, int *val, int siz, yftype fnc) {
+    return mptr->changeState.knfo(cfg,val,siz,fnc);
 }
 int vulkanHnfo() {
     return mptr->changeState.hnfo();

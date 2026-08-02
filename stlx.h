@@ -181,38 +181,57 @@ template <class Conf, int Size> struct ChangeState {
         else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
         safe.post();
     }
-    int gnfo(Conf cfg, int val, yftype fnc) { // called from callback
-        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
+    void gnfo(Conf *cfg, int *val, int siz, yftype fnc) { // called from callback
         nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
         {std::cerr << "invalid gnfo! " << depth << std::endl; *(int*)0=0; exit(-1);} nest.post();
-        return fnc(&config[cfg],val);
+        for (int i = 0; i < siz; i++) {
+        if (cfg[i] < 0 || cfg[i] >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
+        val[i] = fnc(&config[cfg[i]],val[i]);}
     }
-    int info(Conf cfg, int val, yftype fnc) { // no callback
-        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid info!" << std::endl; exit(-1);}
-        safe.wait(); int ret = fnc(&config[cfg],val);
-        safe.post(); return ret;
+    void info(Conf *cfg, int *val, int siz, yftype fnc) { // no callback
+        safe.wait();
+        for (int i = 0; i < siz; i++) {
+        if (cfg[i] < 0 || cfg[i] >= Size) {std::cerr << "invalid info!" << std::endl; exit(-1);}
+        val[i] = fnc(&config[cfg[i]],val[i]);}
+        safe.post();
     }
-    int jnfo(Conf cfg, int val, yftype fnc) { // call callbacks
-        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
-        safe.wait(); int sav = config[cfg]; int ret = fnc(&config[cfg],val);
-        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+    struct Save {xftype fnc; Conf cfg; int sav; int giv;
+    bool operator<(const Save &rhs) const {
+    if (this->fnc < rhs.fnc) return true; if (this->fnc > rhs.fnc) return false;
+    if (this->cfg < rhs.cfg) return true; if (this->cfg > rhs.cfg) return false;
+    if (this->sav < rhs.sav) return true; if (this->sav > rhs.sav) return false;
+    if (this->giv < rhs.giv) return true; if (this->giv > rhs.giv) return false;
+    return false;}};
+    void jnfo(Conf *cfg, int *val, int siz, yftype fnc) { // call callbacks
+        safe.wait(); std::set<Save> save; for (int i = 0; i < siz; i++) {
+        if (cfg[i] < 0 || cfg[i] >= Size) {std::cerr << "invalid jnfo!" << std::endl; exit(-1);}
+        int sav = config[cfg[i]]; int giv = val[i]; std::set<xftype> todo;
+        val[i] = fnc(&config[cfg[i]],giv);
+        if (back.find(cfg[i]) != back.end()) todo = back[cfg[i]];
+        for (auto j = todo.begin(); j != todo.end(); j++) {
+        struct Save tmp = {*j,cfg[i],sav,giv}; save.insert(tmp);}}
         nest.wait(); self = pthread_self(); depth++; nest.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val,config[cfg]);
+        for (auto i = save.begin(); i != save.end(); i++)
+        (*i).fnc((*i).cfg,(*i).sav,(*i).giv,config[(*i).cfg]);
         // would block forever if calls info or jnfo
         nest.wait(); depth--; nest.post();
-        safe.post(); return ret;
+        safe.post();
     }
-    int knfo(Conf cfg, int val, yftype fnc) { // called from callback
-        if (cfg < 0 || cfg >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
+    void knfo(Conf *cfg, int *val, int siz, yftype fnc) { // called from callback
         nest.wait(); if (!depth || !pthread_equal(self,pthread_self()))
         {std::cerr << "invalid knfo! " << depth << std::endl; *(int*)0=0; exit(-1);} nest.post();
-        int sav = config[cfg]; int ret = fnc(&config[cfg],val);
         // would not block if called from jnfo, but thread safe since pthread_equal to calling jnfo
-        std::set<xftype> todo; if (back.find(cfg) != back.end()) todo = back[cfg];
+        std::set<Save> save; for (int i = 0; i < siz; i++) {
+        if (cfg[i] < 0 || cfg[i] >= Size) {std::cerr << "invalid hnfo!" << std::endl; exit(-1);}
+        int sav = config[cfg[i]]; int giv = val[i]; std::set<xftype> todo;
+        val[i] = fnc(&config[cfg[i]],giv);
+        if (back.find(cfg[i]) != back.end()) todo = back[cfg[i]];
+        for (auto j = todo.begin(); j != todo.end(); j++) {
+        struct Save tmp = {*j,cfg[i],sav,giv}; save.insert(tmp);}}
         nest.wait(); depth++; nest.post();
-        for (auto i = todo.begin(); i != todo.end(); i++) (*i)(cfg,sav,val,config[cfg]);
+        for (auto i = save.begin(); i != save.end(); i++)
+        (*i).fnc((*i).cfg,(*i).sav,(*i).giv,config[(*i).cfg]);
         nest.wait(); depth--; nest.post();
-        return ret;
     }
     int hnfo() { // whether in callback
         nest.wait(); int ret = (pthread_equal(self,pthread_self())?depth:0); nest.post();
@@ -220,18 +239,18 @@ template <class Conf, int Size> struct ChangeState {
     }
     // TODO change to take array of cfg and val, and return array of int
     static int readFn(int *ref, int val) {return *ref;}
-    int read(Conf cfg) {return info(cfg,0,readFn);}
+    int read(Conf cfg) {Conf cfgs[1] = {cfg}; int vals[1] = {0}; info(cfgs,vals,1,readFn); return vals[0];}
     static int writeFn(int *ref, int val) {*ref = val; return 0;}
-    void write(Conf cfg, int val) {jnfo(cfg,val,writeFn);}
-    void poke(Conf cfg, int val) {info(cfg,val,writeFn);}
+    void write(Conf cfg, int val) {Conf cfgs[1] = {cfg}; int vals[1] = {val}; jnfo(cfgs,vals,1,writeFn);}
+    void poke(Conf cfg, int val) {Conf cfgs[1] = {cfg}; int vals[1] = {val}; info(cfgs,vals,1,writeFn);}
     static int wotsFn(int *ref, int val) {*ref = *ref|val; return 0;}
-    void wots(Conf cfg, int val) {jnfo(cfg,val,wotsFn);}
+    void wots(Conf cfg, int val) {Conf cfgs[1] = {cfg}; int vals[1] = {val}; jnfo(cfgs,vals,1,wotsFn);}
     static int wotcFn(int *ref, int val) {*ref = *ref&~val; return 0;}
-    void wotc(Conf cfg, int val) {jnfo(cfg,val,wotcFn);}
+    void wotc(Conf cfg, int val) {Conf cfgs[1] = {cfg}; int vals[1] = {val}; jnfo(cfgs,vals,1,wotcFn);}
     static int rmwFn(int *ref, int val) {int ret = *ref; *ref = *ref+val; return ret;}
-    int rmw(Conf cfg, int val) {return jnfo(cfg,val,rmwFn);}
+    int rmw(Conf cfg, int val) {Conf cfgs[1] = {cfg}; int vals[1] = {val}; jnfo(cfgs,vals,1,rmwFn); return vals[0];}
     static int razFn(int *ref, int val) {*ref = 0; return 0;}
-    void raz(Conf cfg, int val) {jnfo(cfg,val,razFn);}
+    void raz(Conf cfg, int val) {Conf cfgs[1] = {cfg}; int vals[1] = {val}; jnfo(cfgs,vals,1,razFn);}
 };
 
 struct CallState;
