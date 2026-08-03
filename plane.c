@@ -20,7 +20,8 @@ int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
 void *reboot = 0; // temporary queu
 void *response = 0; // queue of center
-void *pipeSem = 0; // protect internal and response
+void *replace = 0; // queue of center
+void *pipeSem = 0; // protect internal response replace
 void *execSem = 0; // protect atomic pipe reads
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
@@ -250,51 +251,32 @@ void centerSize(int idx)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (postSafe(copySem) != 1) ERROR();
 }
-struct CenterCond {
-    int idx;
-    enum Retval ret;
-    struct Extend *ext;
-};
-int centerCond(void *ptr)
-{
-    struct CenterCond *cond = ptr;
-    if (center[cond->idx] == 0 || center[cond->idx]->ret == cond->ret) return 0;
-    cond->ext = center[cond->idx];
-    center[cond->idx] = 0;
-    return 1;
-}
 struct Extend *centerPull(int idx)
 {
     centerSize(idx);
-    struct CenterCond cond = {idx,NullRet,0};
-    if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
+    if (waitSafe(copySem) != 0) ERROR();
+    struct Extend *ret = center[idx];
+    if (ret == 0) allocExtend(&ret,1);
+    center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
-    if (cond.ext->sub != idx) ERROR();
-    return cond.ext;
+    return ret;
 }
 struct Extend *centerPeek(int idx)
 {
     centerSize(idx);
-    struct CenterCond cond = {idx,Retvals,0};
-    if (testSafe(copySem,1.0,centerCond,&cond) != 0) ERROR();
+    if (waitSafe(copySem) != 0) ERROR();
+    struct Extend *ret = center[idx];
+    center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
-    if (cond.ext->sub != idx) ERROR();
-    return cond.ext;
+    return ret;
 }
 void centerPlace(struct Extend *ptr)
 {
+    if (ptr == 0) return;
     centerSize(ptr->sub);
     if (waitSafe(copySem) != 0) ERROR();
-    if (center[ptr->sub] != 0 && center[ptr->sub] != ptr) {
+    if (center[ptr->sub] != 0) {
     freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
-    center[ptr->sub] = ptr;
-    if (postSafe(copySem) != 1) ERROR();
-}
-void centerPoke(struct Extend *ptr)
-{
-    centerSize(ptr->sub);
-    if (waitSafe(copySem) != 0) ERROR();
-    if (center[ptr->sub] != 0) ERROR();
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
@@ -308,8 +290,10 @@ void centerClear(int sub)
 }
 void centerDone(struct Extend *ptr)
 {
-    // cannot call centerPlace from different thread
-    centerPoke(ptr);
+    /*if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(ptr,replace);
+    if (postSafe(pipeSem) != 1) ERROR();*/
+    centerPlace(ptr);
     switch (ptr->ret) {default: ERROR();
     break; case(PassRet):
     planeJnfo(RegisterWake,(1<<PassMsk),planeWots);
@@ -682,11 +666,9 @@ void machinePopy(int sig, int *arg)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr == 0) {allocExtend(&ptr,1); ptr->ret = NullRet;}
-    ptr->sub = dst;
-    centerPlace(ptr);
+    if (ptr == 0) centerClear(dst);
+    else {ptr->sub = dst; centerPlace(ptr);}
 }
-// to avoid pointer problems, the response thread should call centerPlace
 void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from response thread
 {
     if (sig != QopyArgs) ERROR();
@@ -696,11 +678,21 @@ void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from res
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
 }
+void machineRopy(int sig, int *arg)
+{
+    if (sig != RopyArgs) ERROR();
+    int dst = arg[RopyDst];
+    if (waitSafe(pipeSem) != 0) ERROR();
+    struct Extend *ptr = maybeCenterq(0,replace);
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (ptr == 0) centerClear(dst);
+    else {ptr->sub = dst; centerPlace(ptr);}
+}
 void machineStage(enum Configure cfg, int idx)
 {
     centerSize(idx);
     struct Extend *ext = centerPeek(idx);
-    struct Center *ptr = (ext->ret==NullRet?0:ext->ptr);
+    struct Center *ptr = (ext?ext->ptr:0);
     switch (cfg) {default: ERROR();
     case (CenterPtr): planeJnfo(cfg,(ptr!=0),planeWcfg); break;
     case (CenterRsp): planeJnfo(cfg,ext->rsp,planeWcfg); break;
@@ -772,7 +764,6 @@ void machineEval(struct Express *exp, int idx)
 {
     struct Extend *ext = centerPull(idx);
     struct Center *ptr = ext->ptr;
-    if (!ptr) allocExtend(&ext,1);
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0)); freeCenter(ptr);
     void *dat0 = 0; datxStr(&dat0,"_");
@@ -839,7 +830,8 @@ void machineSwitch(struct Machine *mptr)
     case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break;
     case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
-    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;}
+    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
+    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;}
 }
 
 // thread callbacks
@@ -875,6 +867,7 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
+    if (postSafe(pipeSem) != 1) ERROR();
     if (center && center->ptr->slf < 0) {
     center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
     pushCenterq(center,internal);
@@ -884,8 +877,7 @@ void planeCenter(enum Thread tag, int idx)
     int sub = inverse[center->src];
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
-    centerDone(center);}
-    if (postSafe(pipeSem) != 1) ERROR();}
+    centerDone(center);}}
 }
 void planeExternal(enum Thread tag, int idx)
 {
@@ -902,12 +894,14 @@ void planeExternal(enum Thread tag, int idx)
     if (sub == extdone) {
     if (postSafe(pipeSem) != 1) ERROR();
     if (readChr(extdone)) break; else continue;}
+    if (postSafe(pipeSem) != 1) ERROR();
     if ((1<<sub)&external != (1<<sub)) ERROR();
     struct Extend *center = 0;
     allocExtend(&center,1);
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
     center->rsp = resp;
+    if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
@@ -1352,7 +1346,7 @@ void initSafe()
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     if (!(loopSem = allocSafe(1))) ERROR(); // protect field pipe
-    internal = allocCenterq(); response = allocCenterq(); reboot = allocCenterq();
+    internal = allocCenterq(); response = allocCenterq(); replace = allocCenterq(); reboot = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
     charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
     timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();

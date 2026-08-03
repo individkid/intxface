@@ -133,6 +133,7 @@ function initTest()
 	--
 	cent = cent..")"
 	center = centSugar(cent)
+	-- TODO figure out way to wait for Place from replace queue to read Vectorz Getintz or Getoldz
 	writeCenter(center,idx)
 end
 
