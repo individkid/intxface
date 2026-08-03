@@ -257,6 +257,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"CenterRsp", -- response type
 	"CenterSub", -- repose place
 	"CenterSrc", -- pipe source
+	"CenterRet", -- response value
 	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"ArgumentSrc",
@@ -267,9 +268,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterPlan", -- testing plan
 	"RegisterPoll", -- poll microseconds
 	"RegisterExit", -- sortof exit status
-	"RegisterPass", -- pass center mask
-	"RegisterFail", -- fail center mask
-	"RegisterDone", -- done center mask
 	"RegisterWake", -- thread interrupts
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
@@ -481,8 +479,6 @@ Mask = { -- signals between threads
 	"SlctMsk", -- pipe thread wakeup
 	"CnslMsk", -- stdio thread wakeup
 	"TimeMsk", -- time thread wakeup
-	"PassMsk", -- passing copy callback
-	"FailMsk", -- failing copy callback
 	"DoneMsk", -- write to pipe done
 	"PollMsk", -- every glfw wakeup
 	"PrssMsk", -- glfw key pressed
@@ -1960,7 +1956,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3slf:0idx:0))"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
-		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 Op))"..
+		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 ; done = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		"mch[%(return jdx())]:Void(exp[0]:$(Non mask = ?RegisterWake ; Woc RegisterWake @mask Op ; tmp = #0 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:%(return castMask(\"Masks\")+1))"..
@@ -2041,52 +2037,43 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 5
-		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterPass ; smp = #0 ; pass = @pass + #1 Op))"..
+		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrDoneMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non gns = @smp ; smp = @nask >> @gns Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
+		  "mch[%(return jdx())]:Ropy(sig:1arg[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterRetsav[2]:CenterMemidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterPtr == #0 Op , #2 ; #0 == #1 , #1 Op))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Cnd "..
+		  "EO ?CenterRet #%(return castRetval(\"PassRet\")) Cmp : Non pass = @pass + #1 ; @_ Op "..
+		  "EO ?CenterRet #%(return castRetval(\"FailRet\")) Cmp : Non fail = @fail + #1 ; @_ Op "..
+		  "EO ?CenterRet #%(return castRetval(\"DoneRet\")) Cmp : Non done = @done + #1 ; @_ Op "..
+		  "#0 : @_ Op))"..
+		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Cnd "..
+		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str old:Op , Imm @_ . old #0 Op , EndOp Op ; @_ Op "..
+		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str uns:Op , Imm @_ . uns #0 Op , EndOp Op ; @_ Op "..
+		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
+		  "#0 : @_ Op))"..
+		 "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
+		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Eval(res[0]:$(@smp - #1)fnc[0]:$(Cnd "..
-		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str old:Op , Imm @_ . old #0 Op , EndOp Op ; @_ Op "..
-		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str uns:Op , Imm @_ . uns #0 Op , EndOp Op ; @_ Op "..
-		 "EO @_ . slf #0 #0 Cmp | EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
-		  "Non Put StrPassMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str sub:Op , Imm @smp - #1 Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
-		 "#0 : @_ Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterPass @nask Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 6
-		"mch[%(return jdx())]:Void(exp[0]:$(Non nask = ?RegisterFail ; smp = #0 ; fail = @fail + #1 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:2)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Non gns = @smp ; smp = @nask >> @gns Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd @smp != @gns , #2 ; #0 , #1 Op))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- "mch[%(return jdx())]:Void($(Put StrFailMsk Op , Imm @smp - #1 Op , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
-		"mch[%(return jdx())]:Void(exp[0]:$(Woc RegisterFail @nask Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
-
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 7
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrDoneMskOp , EndOp Op))"..
-		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
-
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 8
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPollMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 9
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 7
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
 		-- disable and change manipulation
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 8
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- change window matrix; do Proj and Draw
 		-- TODO Center at @matrix needs to be initialized
@@ -2094,44 +2081,44 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 9
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
 		-- wait for window resize
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrEoodMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was roller; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrMoveMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 13
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
 		-- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrClckMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 14
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was move; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrRollMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 15
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 13
 		"mch[%(return jdx())]:Eval(res[0]:$(@uniform)fnc[0]:$(Non Put StrUnifMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 16
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 14
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrTestMsk Op , Imm TimOp Op , EndOp Op))"..
 		-- "mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@configure))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 17
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 15
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#0))"..
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op))"..

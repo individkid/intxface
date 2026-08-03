@@ -290,20 +290,10 @@ void centerClear(int sub)
 }
 void centerDone(struct Extend *ptr)
 {
-    /*if (waitSafe(pipeSem) != 0) ERROR();
+    if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,replace);
-    if (postSafe(pipeSem) != 1) ERROR();*/
-    centerPlace(ptr);
-    switch (ptr->ret) {default: ERROR();
-    break; case(PassRet):
-    planeJnfo(RegisterWake,(1<<PassMsk),planeWots);
-    planeJnfo(RegisterPass,(1<<ptr->sub),planeWots);
-    break; case(FailRet):
-    planeJnfo(RegisterWake,(1<<FailMsk),planeWots);
-    planeJnfo(RegisterFail,(1<<ptr->sub),planeWots);
-    break; case(DoneRet):
+    if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
-    planeJnfo(RegisterDone,(1<<ptr->sub),planeWots);}
 }
 int centerCheck(int idx)
 {
@@ -694,10 +684,11 @@ void machineStage(enum Configure cfg, int idx)
     struct Extend *ext = centerPeek(idx);
     struct Center *ptr = (ext?ext->ptr:0);
     switch (cfg) {default: ERROR();
-    case (CenterPtr): planeJnfo(cfg,(ptr!=0),planeWcfg); break;
-    case (CenterRsp): planeJnfo(cfg,ext->rsp,planeWcfg); break;
-    case (CenterSub): planeJnfo(cfg,ext->sub,planeWcfg); break;
-    case (CenterSrc): planeJnfo(cfg,ext->src,planeWcfg); break;
+    case (CenterPtr): planeJnfo(cfg,(ext!=0),planeWcfg); break;
+    case (CenterRsp): planeJnfo(cfg,(ext?ext->rsp:0),planeWcfg); break;
+    case (CenterSub): planeJnfo(cfg,(ext?ext->sub:0),planeWcfg); break;
+    case (CenterSrc): planeJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
+    case (CenterRet): planeJnfo(cfg,(ext?ext->ret:0),planeWcfg); break;
     case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
     case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
     case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
@@ -1419,7 +1410,7 @@ void initBoot()
     break; case (Bringup): case (Builtin):
     planeJnfo(RegisterPoll,1,planeWcfg);
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,(((1<<PassMsk)<<8)|0),planeWcfg);
+    planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|0),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
@@ -1428,7 +1419,7 @@ void initBoot()
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PassMsk)|(1<<FailMsk)|(1<<DoneMsk))<<8)|0),planeWcfg);
+    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk))<<8)|0),planeWcfg);
     // the RegisterAble mask of events remembered per indicated MachThd wakes up the thread upon wos of event mask to RegisterWake
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
