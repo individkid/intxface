@@ -560,8 +560,17 @@ void machineDemo(struct Menu *menu)
     if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
     machineDisp(menu);}
     break; case (DoneMsk): {
-    // TODO complete Indicate from ClickMsk after Vectorz Getintz comes back
-    }
+    // TODO add field to menu for place to hold Metric
+    // TODO add to Configure Stage Tsage to get/put Metric fields from/to Piercez mem in Center
+    // TODO Getoldz is only depth; calculate other coordinates from UniformWid/Hei and Focal*
+    // TODO following only if Metric is completed
+    // TODO mark Metric as the opposite of complete
+    switch (menu->act) {default: ERROR();
+    break; case (Indicate): {
+    // TODO Tsage from Metric
+    menu->act = Manipulate;}
+    break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
+    /*TODO relay menu->act Fixed* Normal* SelectIdx to other process*/}}}
     break; case (PrssMsk): { // do Send; change menu state
     machineDone(menu);
     char key = planeInfo(PressKey,0,planeRcfg);
@@ -579,8 +588,8 @@ void machineDemo(struct Menu *menu)
     break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); menu->act = Indicate;
     break; case ('A'): menu->act = Additive;
     break; case ('S'): menu->act = Subtractive;
-    break; case ('B'): menu->act = Refine;
-    break; case ('M'): // TODO send pierce point as Metric
+    break; case ('B'): menu->act = Divisive;
+    break; case ('M'): menu->act = Operative;
     break; case ('W'): /*TODO Warp to last metric sent*/}}
     break; case (ProjMsk): machineSize(menu);
     break; case (EoodMsk): // TODO wait for window resize
@@ -590,14 +599,10 @@ void machineDemo(struct Menu *menu)
     machineDisp(menu);}
     break; case (ClckMsk): switch (menu->act) {default: ERROR();
     break; case (Manipulate): {machineDone(menu); menu->act = Indicate;}
-    break; case (Indicate): {
-    planeInfo(ClickQueue,1,planeWcfg);
-    // TODO Pierce; Wopy; get Fixed* Normal* SelectIdx from Vectorz Getintz at Click*
-    // TODO optimize pcie traffic by using depth to select just the data at some Uniform* point
-    menu->act = Manipulate;}
-    break; case (Refine): // TODO
-    break; case (Additive): // TODO
-    break; case (Subtractive): /*TODO*/}
+    break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative): {
+    planeJnfo(ClickQueue,1,planeWcfg); // discard to last click
+    // TODO Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
+    planeJnfo(ClickQueue,0,planeWcfg);}}
     break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
     if (menu->dev == Coord) {machineCont(menu); menu->dev = Angle;}
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);

@@ -41,7 +41,7 @@ Memory = { -- which structure is in the center struction
 	"Getcfgz", -- for reading Configure
 	"Vectorz", -- displayed framebuffer
 	"Uniformz", -- references into arrays
-	"Matrixz", -- transformations
+	"Matrixz", -- internal self other transformations
 	"Trianglez", -- indices of vertices of facet
 	"Numericz", -- distances of plane above selected base
 	"Vertexz", -- intersection of backlinked planes
@@ -49,6 +49,7 @@ Memory = { -- which structure is in the center struction
 	"Drawz", -- draw range info
 	"Instrz", -- little vulkan language
 	"Menuz", -- state for user input
+	"Metricz", -- control to other processes
 	"Machinez", -- state machine lines
 	"Expressz", -- expression library
 	"Rebootz", -- block for centers
@@ -442,9 +443,10 @@ Plan = { -- which test to run
 Action = { -- what input does
 	"Indicate", -- move to new pierce point
 	"Manipulate", -- apply transformation
-	"Refine", -- add boundaries
+	"Divisive", -- add boundaries
 	"Additive", -- add regions
 	"Subtractive", -- remove regions
+	"Operative", -- send pierce points
 }
 Scope = { -- which primitives to transform
 	"Inject", -- single primitive
@@ -1954,7 +1956,8 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:0idx:0slf:0)"}, -- TODO initialize with Micro to be used by Regress and Release
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3slf:0idx:0))"},
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3met:%(return castMemory(\"Metricz\"))slf:0idx:0))"},
+	{"Int","%(return idx())","Str","!(metric = #%(return count))Metricz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(exp[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 ; done = #0 Op))"..
@@ -2295,6 +2298,12 @@ Machine = { -- info for user defined action
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
+Metric = { -- information about pierce point
+	{"act","Action",{},{}},
+	{"fix","Old",{},{3}},
+	{"nor","Old",{},{3}},
+	{"idx","Int",{},{}},
+}
 Menu = { -- state to handle user input
 	-- these could be Configure, Mopy/NopyArg, or ValOp instead,
 	-- if Mopy/Nopy were not for demonstration purposes only
@@ -2315,6 +2324,7 @@ Menu = { -- state to handle user input
 	{"pie","Int",{},{}}, -- center for pierce
 	{"nor","Int",{},{}}, -- center for normal
 	{"sel","Int",{},{}}, -- center for select
+	{"met","Int",{},{}}, -- center for metric
 	{"slf","Int",{},{}}, -- in case msk is SlctMsk
 	{"idx","Int",{},{}}, -- in case msk is SlctMsk
 }
@@ -2448,6 +2458,7 @@ Center = { -- setup for graphics
 	{"drw","Draw",{["mem"]={["Drawz"]=true}},"siz"},
 	{"ins","Inst",{["mem"]={["Instrz"]=true}},"siz"},
 	{"men","Menu",{["mem"]={["Menuz"]=true}},"siz"},
+	{"met","Metric",{["mem"]={["Metricz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
 	{"sub","Int",{["mem"]={["Rebootz"]=true}},"siz"},
