@@ -649,17 +649,20 @@ void machineNopy(int sig, int *arg)
     machineDemo(menu);
     machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
 }
-void machinePopy(int sig, int *arg)
+void machinePop(int sig, int chk, int dst, void *que)
 {
-    if (sig != PopyArgs) ERROR();
-    int dst = arg[PopyDst];
+    if (sig != chk) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *ptr = maybeCenterq(0,internal);
+    struct Extend *ptr = maybeCenterq(0,que);
     if (postSafe(pipeSem) != 1) ERROR();
     if (ptr == 0) centerClear(dst);
-    else {ptr->sub = dst; centerPlace(ptr);}
+    else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
 }
-void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from response thread
+void machinePopy(int sig, int *arg)
+{
+    machinePop(sig,PopyArgs,arg[PopyDst],internal);
+}
+void machineQopy(int sig, int *arg)
 {
     if (sig != QopyArgs) ERROR();
     int src = arg[QopySrc];
@@ -670,13 +673,7 @@ void machineQopy(int sig, int *arg) // Qopy uses Pull to wait for Place from res
 }
 void machineRopy(int sig, int *arg)
 {
-    if (sig != RopyArgs) ERROR();
-    int dst = arg[RopyDst];
-    if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *ptr = maybeCenterq(0,replace);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr == 0) centerClear(dst);
-    else {ptr->sub = dst; centerPlace(ptr);}
+    machinePop(sig,RopyArgs,arg[RopyDst],replace);
 }
 void machineStage(enum Configure cfg, int idx)
 {
@@ -689,6 +686,7 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterSub): planeJnfo(cfg,(ext?ext->sub:0),planeWcfg); break;
     case (CenterSrc): planeJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
     case (CenterRet): planeJnfo(cfg,(ext?ext->ret:0),planeWcfg); break;
+    case (CenterSav): planeJnfo(cfg,(ext?ext->sav:0),planeWcfg); break;
     case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
     case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
     case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
@@ -744,6 +742,8 @@ void machineTsage(enum Configure cfg, int idx)
     case (CenterRsp): ext->rsp = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSub): ext->sub = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterRet): ext->ret = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSav): ext->sav = planeInfo(cfg,0,planeRcfg); break;
     case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) machineInit(&ext,sub+1);} break;
     case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) machineInit(&ext,siz);} break;
@@ -1194,47 +1194,51 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
     writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();
 }
+void registerQue(enum Configure cfg, int val, enum Configure ary[], void *ptr[], int siz, int msk)
+{
+    void *que = 0;
+    for (int i = 0; i < siz; i++)
+    if (cfg == ary[i]) que = ptr[i];
+    if (que == 0) ERROR();
+    if (waitSafe(pressSem) != 0) ERROR();
+    pushIntq(val,que);
+    planeGnfo(cfg,frontIntq(que),planeWcfg);
+    planeKnfo(RegisterWake,(1<<msk),planeWots);
+    if (postSafe(pressSem) != 1) ERROR();
+}
+void registerQues(enum Configure cfg, int act, enum Configure chk, void *ptr[], int siz, int msk)
+{
+    if (cfg != chk) ERROR();
+    if (waitSafe(pressSem) != 0) ERROR();
+    for (int i = 0; i < siz; i++) {
+    while (act < sizeIntq(ptr[i])) popIntq(ptr[i]);
+    while (act > sizeIntq(ptr[i])) pushIntq(0,ptr[i]);}
+    int num = 0; for (int i = 0; i < siz; i++)
+    if (sizeIntq(ptr[i]) > 0) num += 1;
+    if (num > 0) planeKnfo(RegisterWake,(1<<msk),planeWots);
+    if (postSafe(pressSem) != 1) ERROR();
+}
 void registerChar(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != PressKey) ERROR();
-    if (waitSafe(pressSem) != 0) ERROR();
-    pushIntq(val,charq);
-    planeGnfo(cfg,frontIntq(charq),planeWcfg);
-    planeKnfo(RegisterWake,(1<<PrssMsk),planeWots);
-    if (postSafe(pressSem) != 1) ERROR();
+    enum Configure ary[1] = {PressKey};
+    void *ptr[1] = {charq};
+    registerQue(cfg,val,ary,ptr,1,PrssMsk);
 }
 void registerChars(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != PressQueue) ERROR();
-    if (waitSafe(pressSem) != 0) ERROR();
-    while (act < sizeIntq(charq)) popIntq(charq);
-    while (act > sizeIntq(charq)) pushIntq(0,charq);
-    if (sizeIntq(charq) > 0)
-    planeKnfo(RegisterWake,(1<<PrssMsk),planeWots);
-    if (postSafe(pressSem) != 1) ERROR();
+    void *ptr[1] = {charq};
+    registerQues(cfg,act,PressQueue,ptr,1,PrssMsk);
 }
 void registerClick(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != ClickLeft && cfg != ClickBase && cfg != ClickAngle) ERROR();
-    if (waitSafe(pressSem) != 0) ERROR();
-    void *que = 0; if (cfg == ClickLeft) que = leftq;
-    else if (cfg == ClickBase) que = baseq;
-    else if (cfg == ClickAngle) que = angleq;
-    pushIntq(val,que);
-    planeGnfo(cfg,frontIntq(que),planeWcfg);
-    planeKnfo(RegisterWake,(1<<ClckMsk),planeWots);
-    if (postSafe(pressSem) != 1) ERROR();
+    enum Configure ary[3] = {ClickLeft,ClickBase,ClickAngle};
+    void *ptr[3] = {leftq,baseq,angleq};
+    registerQue(cfg,val,ary,ptr,3,ClckMsk);
 }
 void registerClicks(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != ClickQueue) ERROR();
-    if (waitSafe(pressSem) != 0) ERROR();
-    while (act < sizeIntq(leftq)) popIntq(leftq); while (act > sizeIntq(leftq)) pushIntq(0,leftq);
-    while (act < sizeIntq(baseq)) popIntq(baseq); while (act > sizeIntq(baseq)) pushIntq(0,baseq);
-    while (act < sizeIntq(angleq)) popIntq(angleq); while (act > sizeIntq(angleq)) pushIntq(0,angleq);
-    if (sizeIntq(leftq) > 0 || sizeIntq(baseq) > 0 || sizeIntq(angleq) > 0)
-    planeKnfo(RegisterWake,(1<<ClckMsk),planeWots);
-    if (postSafe(pressSem) != 1) ERROR();
+    void *ptr[3] = {leftq,baseq,angleq};
+    registerQues(cfg,act,ClickQueue,ptr,3,ClckMsk);
 }
 void registerMove(enum Configure cfg, int sav, int val, int act)
 {

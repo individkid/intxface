@@ -258,6 +258,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"CenterSub", -- repose place
 	"CenterSrc", -- pipe source
 	"CenterRet", -- response value
+	"CenterSav", -- saved sub
 	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"ArgumentSrc",
@@ -2457,6 +2458,7 @@ Extend = {
 	{"ptr","Center",{},{1}}, -- memory union
 	{"src","Program",{},{}}, -- pipe read from
 	{"sub","Int",{},{}}, -- where to replace
+	{"sav","Int",{},{}}, -- saved to replace
 	{"rsp","Response",{},{}}, -- how to respond
 	{"ret","Retval",{},{}}, -- pass fail or done
 }
