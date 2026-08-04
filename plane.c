@@ -552,16 +552,16 @@ int *machinePute(struct Menu *menu, int mem)
     // machineCopy()
     centerPlace(ptr);
 }
-void machineSync(struct Menu *menu)
-{
-    if (menu->msk != SlctMsk) ERROR();
-    int arg[4] = {menu->mat,menu->sub,menu->ker,machineJect(menu)};
-    if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
-    machineDisp(menu);
-}
 void machineDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
+    break; case (SlctMsk): {
+    int arg[4] = {menu->mat,menu->sub,menu->ker,machineJect(menu)};
+    if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
+    machineDisp(menu);}
+    break; case (DoneMsk): {
+    // TODO complete Indicate from ClickMsk after Vectorz Getintz comes back
+    }
     break; case (PrssMsk): { // do Send; change menu state
     machineDone(menu);
     char key = planeInfo(PressKey,0,planeRcfg);
@@ -636,10 +636,13 @@ void machineDopy(int sig, int *arg)
 void machineMopy(int sig, int *arg)
 {
     if (sig != MopyArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,MopyArgs,MopySrc,MopySrcSub);
-    struct Menu *menu = machineMenu(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
-    machineSync(menu);
-    machinePlace(src,sig,arg,MopyArgs,MopySrc,MopySrcSub);
+    int srcSub = arg[MopySrc];
+    int dstSub = arg[MopyDst];
+    struct Extend *src = centerPull(srcSub);
+    struct Extend *dst = centerPull(dstSub);
+    // TODO merge src into dst
+    centerPlace(src);
+    centerPlace(dst);
 }
 void machineNopy(int sig, int *arg)
 {

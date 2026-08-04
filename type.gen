@@ -341,7 +341,7 @@ Transfer = { -- what user machine does
 	"Bopy", -- move to resource
 	"Copy", -- execute center
 	"Dopy", -- copy to center
-	"Mopy", -- handle matrices
+	"Mopy", -- merge memories
 	"Nopy", -- handle input
 	"Popy", -- queue to center
 	"Qopy", -- move to queue
@@ -403,7 +403,7 @@ DopyArg = {
 }
 MopyArg = {
 	"MopySrc",
-	"MopySrcSub",
+	"MopyDst",
 }
 NopyArg = {
 	"NopySrc",
