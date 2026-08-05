@@ -318,6 +318,87 @@ int centerMod(struct Extend *ptr)
     break; case (Basisz): return sizeof(struct Basis);}
     return 0;
 }
+struct InitCenter {
+    int sdx, ddx, siz, tot;
+    struct Extend *src;
+    struct Extend *sav;
+    struct Extend *dst;
+};
+void centerField(int num, int fld, int sub, int typ, void *arg)
+{
+    struct InitCenter *cst = (struct InitCenter *)arg;
+    struct Center *src = cst->src->ptr;
+    struct Center *dst = cst->dst->ptr;
+    if (waitSafe(loopSem) != 0) ERROR();
+    if (num == TYPECenter && fld == 1) {
+    writeInt(cst->siz,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && fld < 4) {
+    fwriteCenter(src,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && typ == TYPEKernel && sub < src->siz) {
+    fwriteCenter(src,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && typ == TYPEKernel) {
+    struct Kernel init;
+    identmat(init.saved.mat,4);
+    identmat(init.local.mat,4);
+    identmat(init.sent.mat,4);
+    identmat(init.global.mat,4);
+    writeKernel(&init,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    if (postSafe(loopSem) != 1) ERROR();
+}
+void centerElem(int num, int fld, int sub, int typ, void *arg)
+{
+    struct InitCenter *cst = (struct InitCenter *)arg;
+    struct Center *src = cst->src->ptr;
+    struct Center *sav = cst->sav->ptr;
+    struct Center *dst = cst->dst->ptr;
+    if (waitSafe(loopSem) != 0) ERROR();
+    if (num == TYPECenter && fld == 1) {
+    writeInt(cst->tot,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && fld < 4) {
+    fwriteCenter(sav,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub < cst->ddx) {
+    fwriteCenter(sav,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub >= cst->ddx && sub < cst->ddx+cst->siz && sub-cst->ddx+cst->sdx < src->siz) {
+    fwriteCenter(src,fld,sub-cst->ddx+cst->sdx,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub >= cst->ddx+cst->siz) {
+    fwriteCenter(sav,fld,sub-cst->siz,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    if (postSafe(loopSem) != 1) ERROR();
+}
+void centerInit(struct Extend *src, struct Extend *dst)
+{
+    dst->src = src->src;
+    dst->sub = src->sub;
+    dst->sav = src->sav;
+    dst->rsp = src->rsp;
+    dst->ret = src->ret;
+}
+void centerResize(struct Extend **ptr, int siz)
+{
+    struct InitCenter init = {0,0,siz,0,*ptr,0,0};
+    allocExtend(&init.dst,1);
+    centerInit(*ptr,init.dst);
+    initCenter(init.dst->ptr,centerField,&init);
+    freeExtend(*ptr); allocExtend(ptr,0);
+    *ptr = init.dst;
+}
+void centerMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int siz)
+{
+    struct InitCenter init = {sdx,ddx,siz,(*dst)->ptr->siz+siz,src,*dst,0};
+    allocExtend(&init.dst,1);
+    centerInit(*dst,init.dst);
+    initCenter(init.dst->ptr,centerElem,&init);
+    freeExtend(*dst); allocExtend(dst,0);
+    *dst = init.dst;
+}
 
 // machine extensions
 struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub)
@@ -366,6 +447,7 @@ void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int s
     if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
     centerPlace(ptr);
 }
+
 // manipulation C
 // Kernel.saved T
 // Kernel.local L
@@ -467,174 +549,6 @@ void machineGlob(int sig, int *arg)
     machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
 }
-void machineSwitch(struct Machine *ptr);
-void machineExec(struct Extend *ext)
-{
-    struct Center *ptr = ext->ptr;
-    switch (ptr->mem) {default: ERROR();
-    case (Transferz):
-    for (int i = 0; i < ptr->siz; i++) {
-    machineSwitch(&ptr->exe[i]);} break;
-    case (Rebootz):
-    for (int i = 0; i < ptr->siz; i++) {
-    // clear event before clearing the condition that the event indicates
-    planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
-    if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *nxt = maybeCenterq(0,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    // to prevent deadlock, machineExec should only be called from planeMachine
-    if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
-    if (nxt == 0) {i--; continue;}
-    if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
-    pushCenterq(nxt,reboot);
-    continue;}
-    if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
-    else {machineExec(nxt); freeExtend(nxt); allocExtend(&nxt,0);}}
-    if (sizeCenterq(reboot) > 0) {
-    if (waitSafe(pipeSem) != 0) ERROR();
-    joinCenterq(reboot,internal);
-    if (postSafe(pipeSem) != 1) ERROR();}
-    if (waitSafe(pipeSem) != 0) ERROR();
-    int size = sizeCenterq(internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
-    break;}
-}
-int machineJect(struct Menu *menu)
-{
-    switch (menu->jec) {default: ERROR();
-    break; case(Inject): return menu->inj;
-    break; case(Object): return menu->obj;
-    break; case(Subject): return menu->suj;}
-    return 0;
-}
-void machineDone(struct Menu *menu)
-{
-    int arg[4] = {menu->ker,machineJect(menu),menu->mat,menu->sub}; machineSend(4,arg);
-}
-void machineCont(struct Menu *menu)
-{
-    int arg[2] = {menu->ker,machineJect(menu)}; machineForm(2,arg);
-}
-void machineCopy(int sig, int *arg);
-void machineDopy(int sig, int *arg);
-void machinePack(struct Menu *menu)
-{
-    int arg[2] = {menu->mat,menu->tmp}; machineDopy(2,arg);
-    // TODO move menu->sub in menu->tmp to 0 in menu->tmp, resize menu->tmp to 1, and change idx in menu->tmp to menu->sub
-    int cpy[2] = {menu->tmp,0}; machineCopy(2,cpy);
-}
-void machineSize(struct Menu *menu)
-{
-    int pro[2] = {menu->mat,menu->sub}; machineProj(2,pro);
-    machinePack(menu);
-    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
-}
-void machineDisp(struct Menu *menu)
-{
-    int cmp[4] = {menu->ker,machineJect(menu),menu->mat,menu->sub}; machineComp(4,cmp);
-    int mat[2] = {menu->mat,0}; machineCopy(2,mat);
-    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
-}
-void machineDemo(struct Menu *menu)
-{
-    switch (menu->msk) {default: ERROR();
-    break; case (SlctMsk): {
-    int arg[4] = {menu->mat,menu->sub,menu->ker,machineJect(menu)};
-    if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
-    machineDisp(menu);}
-    break; case (DoneMsk): {
-    // TODO add field to menu for place to hold Metric
-    // TODO add to Configure Stage Tsage to get/put Metric fields from/to Piercez mem in Center
-    // TODO Getoldz is only depth; calculate other coordinates from UniformWid/Hei and Focal*
-    // TODO following only if Metric is completed
-    // TODO mark Metric as the opposite of complete
-    switch (menu->act) {default: ERROR();
-    break; case (Indicate): {
-    // TODO Tsage from Metric
-    menu->act = Manipulate;}
-    break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    /*TODO relay menu->act Fixed* Normal* SelectIdx to other process*/}}}
-    break; case (PrssMsk): { // do Send; change menu state
-    machineDone(menu);
-    char key = planeInfo(PressKey,0,planeRcfg);
-    planeJnfo(PressQueue,-1,planeRmw);
-    switch (key) {default:
-    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
-    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); menu->act = Indicate;
-    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); menu->act = Indicate;
-    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
-    break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
-    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
-    break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); menu->act = Indicate;
-    break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
-    break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
-    break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); menu->act = Indicate;
-    break; case ('A'): menu->act = Additive;
-    break; case ('S'): menu->act = Subtractive;
-    break; case ('B'): menu->act = Divisive;
-    break; case ('M'): menu->act = Operative;
-    break; case ('W'): /*TODO Warp to last metric sent*/}}
-    break; case (ProjMsk): machineSize(menu);
-    break; case (EoodMsk): // TODO wait for window resize
-    break; case (MoveMsk): if (menu->act == Manipulate) { // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
-    if (menu->dev == Angle) {machineCont(menu); menu->dev = Coord;}
-    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
-    machineDisp(menu);}
-    break; case (ClckMsk): switch (menu->act) {default: ERROR();
-    break; case (Manipulate): {machineDone(menu); menu->act = Indicate;}
-    break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    planeJnfo(ClickQueue,1,planeWcfg); // discard to last click
-    // TODO Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
-    planeJnfo(ClickQueue,0,planeWcfg);}}
-    break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
-    if (menu->dev == Coord) {machineCont(menu); menu->dev = Angle;}
-    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
-    machineDisp(menu);}}
-}
-struct ElemCenter {
-    int sdx, ddx, siz, tot;
-    struct Extend *src;
-    struct Extend *sav;
-    struct Extend *dst;
-};
-void machineElem(int num, int fld, int sub, int typ, void *arg)
-{
-    struct ElemCenter *cst = (struct ElemCenter *)arg;
-    struct Center *src = cst->src->ptr;
-    struct Center *sav = cst->sav->ptr;
-    struct Center *dst = cst->dst->ptr;
-    if (waitSafe(loopSem) != 0) ERROR();
-    if (num == TYPECenter && fld == 1) {
-    writeInt(cst->tot,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(sav,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub < cst->ddx) {
-    fwriteCenter(sav,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub >= cst->ddx && sub < cst->ddx+cst->siz && sub-cst->ddx+cst->sdx < src->siz) {
-    fwriteCenter(src,fld,sub-cst->ddx+cst->sdx,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub >= cst->ddx+cst->siz) {
-    fwriteCenter(sav,fld,sub-cst->siz,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    if (postSafe(loopSem) != 1) ERROR();
-}
-void machineMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int siz)
-{
-    struct ElemCenter elem = {sdx,ddx,siz,(*dst)->ptr->siz+siz,src,*dst,0};
-    allocExtend(&elem.dst,1);
-    elem.dst->src = (*dst)->src;
-    elem.dst->sub = (*dst)->sub;
-    elem.dst->sav = (*dst)->sav;
-    elem.dst->rsp = (*dst)->rsp;
-    elem.dst->ret = (*dst)->ret;
-    initCenter(elem.dst->ptr,machineElem,&elem);
-    freeExtend(*dst); allocExtend(dst,0);
-    *dst = elem.dst;
-}
 void machineBopy(int sig, int *arg)
 {
     if (sig != BopyArgs) ERROR();
@@ -643,6 +557,7 @@ void machineBopy(int sig, int *arg)
     struct Extend *ext = centerPull(src);
     callCopy(ext,alt,0);
 }
+void machineExec(struct Extend *ext);
 void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
@@ -675,10 +590,11 @@ void machineMopy(int sig, int *arg)
     int siz = arg[MopySiz];
     struct Extend *src = centerPull(srcSub);
     struct Extend *dst = centerPull(dstSub);
-    machineMerge(src,&dst,srcOfs,dstOfs,siz);
+    centerMerge(src,&dst,srcOfs,dstOfs,siz);
     centerPlace(src);
     centerPlace(dst);
 }
+void machineDemo(struct Menu *menu);
 void machineNopy(int sig, int *arg)
 {
     if (sig != NopyArgs) ERROR();
@@ -687,15 +603,7 @@ void machineNopy(int sig, int *arg)
     machineDemo(menu);
     machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
 }
-void machinePop(int sig, int chk, int dst, void *que)
-{
-    if (sig != chk) ERROR();
-    if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *ptr = maybeCenterq(0,que);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr == 0) centerClear(dst);
-    else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
-}
+void machinePop(int sig, int chk, int dst, void *que);
 void machinePopy(int sig, int *arg)
 {
     machinePop(sig,PopyArgs,arg[PopyDst],internal);
@@ -732,49 +640,6 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
     centerPlace(ext);
 }
-struct InitCenter {
-    int siz;
-    struct Extend *src;
-    struct Extend *dst;
-};
-void machineField(int num, int fld, int sub, int typ, void *arg)
-{
-    struct InitCenter *cst = (struct InitCenter *)arg;
-    struct Center *src = cst->src->ptr;
-    struct Center *dst = cst->dst->ptr;
-    if (waitSafe(loopSem) != 0) ERROR();
-    if (num == TYPECenter && fld == 1) {
-    writeInt(cst->siz,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(src,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && typ == TYPEKernel && sub < src->siz) {
-    fwriteCenter(src,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && typ == TYPEKernel) {
-    struct Kernel init;
-    identmat(init.saved.mat,4);
-    identmat(init.local.mat,4);
-    identmat(init.sent.mat,4);
-    identmat(init.global.mat,4);
-    writeKernel(&init,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    if (postSafe(loopSem) != 1) ERROR();
-}
-void machineInit(struct Extend **ptr, int siz)
-{
-    struct InitCenter init = {siz,*ptr,0};
-    allocExtend(&init.dst,1);
-    init.dst->src = (*ptr)->src;
-    init.dst->sub = (*ptr)->sub;
-    init.dst->sav = (*ptr)->sav;
-    init.dst->rsp = (*ptr)->rsp;
-    init.dst->ret = (*ptr)->ret;
-    initCenter(init.dst->ptr,machineField,&init);
-    freeExtend(*ptr); allocExtend(ptr,0);
-    *ptr = init.dst;
-}
 void machineTsage(enum Configure cfg, int idx)
 {
     struct Extend *ext = centerPull(idx);
@@ -785,9 +650,9 @@ void machineTsage(enum Configure cfg, int idx)
     case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
     case (CenterRet): ext->ret = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSav): ext->sav = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) machineInit(&ext,sub+1);} break;
+    case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
     case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) machineInit(&ext,siz);} break;
+    case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);} break;
     case (CenterIdx): ptr->idx = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;}
     centerPlace(ext);
@@ -836,10 +701,7 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
     if (level <= 0) break;}
     return next;
 }
-void machineArg(int *arg, int sig, struct Express *exp)
-{
-    for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
-}
+void machineArg(int *arg, int sig, struct Express *exp);
 void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
@@ -864,6 +726,143 @@ void machineSwitch(struct Machine *mptr)
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;}
+}
+
+int demoJect(struct Menu *menu)
+{
+    switch (menu->jec) {default: ERROR();
+    break; case(Inject): return menu->inj;
+    break; case(Object): return menu->obj;
+    break; case(Subject): return menu->suj;}
+    return 0;
+}
+void demoDone(struct Menu *menu)
+{
+    int arg[4] = {menu->ker,demoJect(menu),menu->mat,menu->sub}; machineSend(4,arg);
+}
+void demoCont(struct Menu *menu)
+{
+    int arg[2] = {menu->ker,demoJect(menu)}; machineForm(2,arg);
+}
+void demoPack(struct Menu *menu)
+{
+    int arg[2] = {menu->mat,menu->tmp}; machineDopy(2,arg);
+    // TODO move menu->sub in menu->tmp to 0 in menu->tmp, resize menu->tmp to 1, and change idx in menu->tmp to menu->sub
+    int cpy[2] = {menu->tmp,0}; machineCopy(2,cpy);
+}
+void demoSize(struct Menu *menu)
+{
+    int pro[2] = {menu->mat,menu->sub}; machineProj(2,pro);
+    demoPack(menu);
+    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
+}
+void demoDisp(struct Menu *menu)
+{
+    int cmp[4] = {menu->ker,demoJect(menu),menu->mat,menu->sub}; machineComp(4,cmp);
+    int mat[2] = {menu->mat,0}; machineCopy(2,mat);
+    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
+}
+
+void machineArg(int *arg, int sig, struct Express *exp)
+{
+    for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
+}
+void machinePop(int sig, int chk, int dst, void *que)
+{
+    if (sig != chk) ERROR();
+    if (waitSafe(pipeSem) != 0) ERROR();
+    struct Extend *ptr = maybeCenterq(0,que);
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (ptr == 0) centerClear(dst);
+    else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
+}
+void machineExec(struct Extend *ext)
+{
+    struct Center *ptr = ext->ptr;
+    switch (ptr->mem) {default: ERROR();
+    case (Transferz):
+    for (int i = 0; i < ptr->siz; i++) {
+    machineSwitch(&ptr->exe[i]);} break;
+    case (Rebootz):
+    for (int i = 0; i < ptr->siz; i++) {
+    // clear event before clearing the condition that the event indicates
+    planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
+    if (waitSafe(pipeSem) != 0) ERROR();
+    struct Extend *nxt = maybeCenterq(0,internal);
+    if (postSafe(pipeSem) != 1) ERROR();
+    // to prevent deadlock, machineExec should only be called from planeMachine
+    if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
+    if (nxt == 0) {i--; continue;}
+    if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
+    pushCenterq(nxt,reboot);
+    continue;}
+    if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
+    else {machineExec(nxt); freeExtend(nxt); allocExtend(&nxt,0);}}
+    if (sizeCenterq(reboot) > 0) {
+    if (waitSafe(pipeSem) != 0) ERROR();
+    joinCenterq(reboot,internal);
+    if (postSafe(pipeSem) != 1) ERROR();}
+    if (waitSafe(pipeSem) != 0) ERROR();
+    int size = sizeCenterq(internal);
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    break;}
+}
+void machineDemo(struct Menu *menu)
+{
+    switch (menu->msk) {default: ERROR();
+    break; case (SlctMsk): {
+    int arg[4] = {menu->mat,menu->sub,menu->ker,demoJect(menu)};
+    if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
+    demoDisp(menu);}
+    break; case (DoneMsk): {
+    // TODO add field to menu for place to hold Metric
+    // TODO add to Configure Stage Tsage to get/put Metric fields from/to Piercez mem in Center
+    // TODO Getoldz is only depth; calculate other coordinates from UniformWid/Hei and Focal*
+    // TODO following only if Metric is completed
+    // TODO mark Metric as the opposite of complete
+    switch (menu->act) {default: ERROR();
+    break; case (Indicate): {
+    // TODO Tsage from Metric
+    menu->act = Manipulate;}
+    break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
+    /*TODO relay menu->act Fixed* Normal* SelectIdx to other process*/}}}
+    break; case (PrssMsk): { // do Send; change menu state
+    demoDone(menu);
+    char key = planeInfo(PressKey,0,planeRcfg);
+    planeJnfo(PressQueue,-1,planeRmw);
+    switch (key) {default:
+    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
+    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); menu->act = Indicate;
+    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); menu->act = Indicate;
+    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
+    break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
+    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
+    break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); menu->act = Indicate;
+    break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
+    break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
+    break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); menu->act = Indicate;
+    break; case ('A'): menu->act = Additive;
+    break; case ('S'): menu->act = Subtractive;
+    break; case ('B'): menu->act = Divisive;
+    break; case ('M'): menu->act = Operative;
+    break; case ('W'): /*TODO Warp to last metric sent*/}}
+    break; case (ProjMsk): demoSize(menu);
+    break; case (EoodMsk): // TODO wait for window resize
+    break; case (MoveMsk): if (menu->act == Manipulate) { // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
+    if (menu->dev == Angle) {demoCont(menu); menu->dev = Coord;}
+    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
+    demoDisp(menu);}
+    break; case (ClckMsk): switch (menu->act) {default: ERROR();
+    break; case (Manipulate): {demoDone(menu); menu->act = Indicate;}
+    break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative): {
+    planeJnfo(ClickQueue,1,planeWcfg); // discard to last click
+    // TODO Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
+    planeJnfo(ClickQueue,0,planeWcfg);}}
+    break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
+    if (menu->dev == Coord) {demoCont(menu); menu->dev = Angle;}
+    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
+    demoDisp(menu);}}
 }
 
 // thread callbacks
