@@ -404,7 +404,10 @@ DopyArg = {
 }
 MopyArg = {
 	"MopySrc",
+	"MopySrcSub",
 	"MopyDst",
+	"MopyDstSub",
+	"MopySiz",
 }
 NopyArg = {
 	"NopySrc",

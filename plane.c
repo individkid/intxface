@@ -536,22 +536,6 @@ void machineDisp(struct Menu *menu)
     int mat[2] = {menu->mat,0}; machineCopy(2,mat);
     int drw[2] = {menu->drw,0}; machineCopy(2,drw);
 }
-void machineInit(struct Extend **ptr, int siz);
-int *machinePute(struct Menu *menu, int mem)
-{
-    struct Extend *ptr = centerPull(mem);
-    enum Configure cfg[4] = {ClickLeft,ClickBase,UniformWid,UniformHei};
-    int val[4] = {0,0,0,0};
-    callInfo(cfg,val,4,planeRcfg);
-    int left = val[0];
-    int base = val[1];
-    int width = val[2];
-    int height = val[3];
-    int siz = width*height;
-    if (siz != ptr->ptr->siz) machineInit(&ptr,siz);
-    // machineCopy()
-    centerPlace(ptr);
-}
 void machineDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
@@ -608,6 +592,49 @@ void machineDemo(struct Menu *menu)
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     machineDisp(menu);}}
 }
+struct ElemCenter {
+    int sdx, ddx, siz, tot;
+    struct Extend *src;
+    struct Extend *sav;
+    struct Extend *dst;
+};
+void machineElem(int num, int fld, int sub, int typ, void *arg)
+{
+    struct ElemCenter *cst = (struct ElemCenter *)arg;
+    struct Center *src = cst->src->ptr;
+    struct Center *sav = cst->sav->ptr;
+    struct Center *dst = cst->dst->ptr;
+    if (waitSafe(loopSem) != 0) ERROR();
+    if (num == TYPECenter && fld == 1) {
+    writeInt(cst->tot,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && fld < 4) {
+    fwriteCenter(sav,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub < cst->ddx) {
+    fwriteCenter(sav,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub >= cst->ddx && sub < cst->ddx+cst->siz && sub-cst->ddx+cst->sdx < src->siz) {
+    fwriteCenter(src,fld,sub-cst->ddx+cst->sdx,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub >= cst->ddx+cst->siz) {
+    fwriteCenter(sav,fld,sub-cst->siz,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    if (postSafe(loopSem) != 1) ERROR();
+}
+void machineMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int siz)
+{
+    struct ElemCenter elem = {sdx,ddx,siz,(*dst)->ptr->siz+siz,src,*dst,0};
+    allocExtend(&elem.dst,1);
+    elem.dst->src = (*dst)->src;
+    elem.dst->sub = (*dst)->sub;
+    elem.dst->sav = (*dst)->sav;
+    elem.dst->rsp = (*dst)->rsp;
+    elem.dst->ret = (*dst)->ret;
+    initCenter(elem.dst->ptr,machineElem,&elem);
+    freeExtend(*dst); allocExtend(dst,0);
+    *dst = elem.dst;
+}
 void machineBopy(int sig, int *arg)
 {
     if (sig != BopyArgs) ERROR();
@@ -642,10 +669,13 @@ void machineMopy(int sig, int *arg)
 {
     if (sig != MopyArgs) ERROR();
     int srcSub = arg[MopySrc];
+    int srcOfs = arg[MopySrcSub];
     int dstSub = arg[MopyDst];
+    int dstOfs = arg[MopyDstSub];
+    int siz = arg[MopySiz];
     struct Extend *src = centerPull(srcSub);
     struct Extend *dst = centerPull(dstSub);
-    // TODO merge src into dst
+    machineMerge(src,&dst,srcOfs,dstOfs,siz);
     centerPlace(src);
     centerPlace(dst);
 }
@@ -702,14 +732,14 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
     centerPlace(ext);
 }
-struct initCenter {
+struct InitCenter {
     int siz;
     struct Extend *src;
     struct Extend *dst;
 };
 void machineField(int num, int fld, int sub, int typ, void *arg)
 {
-    struct initCenter *cst = (struct initCenter *)arg;
+    struct InitCenter *cst = (struct InitCenter *)arg;
     struct Center *src = cst->src->ptr;
     struct Center *dst = cst->dst->ptr;
     if (waitSafe(loopSem) != 0) ERROR();
@@ -734,10 +764,13 @@ void machineField(int num, int fld, int sub, int typ, void *arg)
 }
 void machineInit(struct Extend **ptr, int siz)
 {
-    struct initCenter init = {};
-    init.siz = siz; init.src = *ptr; init.dst = 0;
+    struct InitCenter init = {siz,*ptr,0};
     allocExtend(&init.dst,1);
-    init.dst->sub = (*ptr)->sub; init.dst->src = (*ptr)->src; init.dst->rsp = (*ptr)->rsp;
+    init.dst->src = (*ptr)->src;
+    init.dst->sub = (*ptr)->sub;
+    init.dst->sav = (*ptr)->sav;
+    init.dst->rsp = (*ptr)->rsp;
+    init.dst->ret = (*ptr)->ret;
     initCenter(init.dst->ptr,machineField,&init);
     freeExtend(*ptr); allocExtend(ptr,0);
     *ptr = init.dst;
