@@ -626,6 +626,7 @@ void machineStage(enum Configure cfg, int idx)
     centerSize(idx);
     struct Extend *ext = centerPeek(idx);
     struct Center *ptr = (ext?ext->ptr:0);
+    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
     switch (cfg) {default: ERROR();
     case (CenterPtr): planeJnfo(cfg,(ext!=0),planeWcfg); break;
     case (CenterRsp): planeJnfo(cfg,(ext?ext->rsp:0),planeWcfg); break;
@@ -637,13 +638,22 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
     case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
     case (CenterIdx): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;}
+    case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;
+    case (FixedLeft): planeJnfo(cfg,(met?met->fix[0]:0),planeWcfg); break;
+    case (FixedBase): planeJnfo(cfg,(met?met->fix[1]:0),planeWcfg); break;
+    case (FixedDeep): planeJnfo(cfg,(met?met->fix[2]:0),planeWcfg); break;
+    case (NormalLeft): planeJnfo(cfg,(met?met->nor[0]:0),planeWcfg); break;
+    case (NormalBase): planeJnfo(cfg,(met?met->nor[1]:0),planeWcfg); break;
+    case (NormalDeep): planeJnfo(cfg,(met?met->nor[2]:0),planeWcfg); break;
+    case (SelectIdx): planeJnfo(cfg,(met?met->idx:0),planeWcfg); break;
+    case (MetricAct): planeJnfo(cfg,(met?met->act:0),planeWcfg); break;}
     centerPlace(ext);
 }
 void machineTsage(enum Configure cfg, int idx)
 {
     struct Extend *ext = centerPull(idx);
-    struct Center *ptr = ext->ptr;
+    struct Center *ptr = (ext?ext->ptr:0);
+    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
     switch (cfg) {default: ERROR();
     case (CenterRsp): ext->rsp = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSub): ext->sub = planeInfo(cfg,0,planeRcfg); break;
@@ -654,7 +664,15 @@ void machineTsage(enum Configure cfg, int idx)
     case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);} break;
     case (CenterIdx): ptr->idx = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;}
+    case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;
+    case (FixedLeft): met->fix[0] = planeInfo(cfg,0,planeRcfg); break;
+    case (FixedBase): met->fix[1] = planeInfo(cfg,0,planeRcfg); break;
+    case (FixedDeep): met->fix[2] = planeInfo(cfg,0,planeRcfg); break;
+    case (NormalLeft): met->nor[0] = planeInfo(cfg,0,planeRcfg); break;
+    case (NormalBase): met->nor[1] = planeInfo(cfg,0,planeRcfg); break;
+    case (NormalDeep): met->nor[2] = planeInfo(cfg,0,planeRcfg); break;
+    case (SelectIdx): met->idx = planeInfo(cfg,0,planeRcfg); break;
+    case (MetricAct): met->act = planeInfo(cfg,0,planeRcfg); break;}
     centerPlace(ext);
 }
 void machineEval(struct Express *exp, int idx)
