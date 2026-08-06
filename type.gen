@@ -1991,11 +1991,15 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Nest(lvl:1)"..
 		  -- loop back to read internal queue if current is empty
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (?CenterSiz == #0) , #-2 ; #0 == #1 , #1 Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterSiz == #0 Op , #-2 ; #0 == #1 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 "mch[%(return jdx())]:Nest(lvl:1)"..
+		 "mch[%(return jdx())]:Nest(lvl:3)"..
+		    "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Trianglez\")) Op , #1 ; #0 , #2 Op))"..
+		    "mch[%(return jdx())]:Nest(lvl:-1)"..
+		   "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
+		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- non-gpu memories only need the CenterSub
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == (Non ?CenterMem == #%(return castMemory(\"Kernelz\")) Op | Non ?CenterMem == #%(return castMemory(\"Expressz\")) Op | Non ?CenterMem == #%(return castMemory(\"Machinez\")) Op) , #-2 ; #0 , #1 Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Kernelz\")) Op | Non ?CenterMem == #%(return castMemory(\"Expressz\")) Op | Non ?CenterMem == #%(return castMemory(\"Machinez\")) Op | Non ?CenterMem == #%(return castMemory(\"Metricz\")) Op | Non ?CenterMem == #%(return castMemory(\"Menuz\")) Op Op , #-2 ; #0 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
 		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Matrixz\")) Op , #1 ; #0 == #1 , #2 Op))"..

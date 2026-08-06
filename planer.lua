@@ -118,23 +118,21 @@ function initTest()
 	ident = ident..")"
 	mat = {} for i = 0, 4 do mat[i+1] = ident end
 	for i = 0, frames-1 do listMemory(list,"Matrixz","mat",mat) end
+	--
+	ver={}
+	ver[1]="Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	ver[2]="Vertex(vec[0]: 0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:0.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	ver[3]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.4vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	ver[4]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	--
+	ver[5]="Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	ver[6]="Vertex(vec[0]: 0.5vec[1]:-0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
+	--
+	listMemory(list,"Bringupz","ver",ver)
 	atomSugar(list,tests[found]["idx"])
-	cent = "Center(mem:Bringupzsiz:8idx:0slf:0"
-	--
-	cent = cent.."ver[0]:Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	cent = cent.."ver[1]:Vertex(vec[0]: 0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:0.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	cent = cent.."ver[2]:Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.4vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	cent = cent.."ver[3]:Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	--
-	cent = cent.."ver[4]:Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	cent = cent.."ver[5]:Vertex(vec[0]: 0.5vec[1]:-0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	cent = cent.."ver[6]:Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	cent = cent.."ver[7]:Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	--
-	cent = cent..")"
-	center = centSugar(cent)
 	-- TODO draw and manipulate with Demo
-	writeCenter(center,idx)
 end
 
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
