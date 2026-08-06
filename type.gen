@@ -1958,7 +1958,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(numeric = #%(return count))Numericz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(vertex = #%(return count))Vertexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(basis = #%(return count))Basisz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:1idx:0slf:0drw[0]:Draw(con:Const(tag:MicroConmic:MicroVtxDrw)ptr:Dat()siz:4arg[0]:0arg[1]:0arg[2]:0arg[3]:0))"},
+	{"Int","%(return idx())","Str","!(draw = #%(return count))Drawz(siz:1idx:0slf:0drw[0]:Draw(con:Const(tag:MicroConmic:MicroFetDrw)ptr:Dat()siz:4arg[0]:0arg[1]:0arg[2]:0arg[3]:0))"},
 	-- TODO add Micro for Vectorz Getoldz Getintz
 	-- TODO add change of arg to {width,height,0,12} when UniformWid/Hie and Trianglez siz change
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
