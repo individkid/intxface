@@ -43,8 +43,10 @@ function atomSugar(list,idx)
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:0slf:0"
 	for i,v in ipairs(list) do
 	if v["mem"] == "Transferz" then
-	cent = cent.."sub["..(i-1).."]:-1" else
-	cent = cent.."sub["..(i-1).."]:"..castMemory(v["mem"]) end end
+	cent = cent.."sub["..(i-1).."]:-1"
+	elseif v["mem"] == "Drawz" then
+	cent = cent.."sub["..(i-1).."]:"..castMemory("Memorys")
+	else cent = cent.."sub["..(i-1).."]:"..castMemory(v["mem"]) end end
 	cent = cent..")"
 	center = centSugar(cent)
 	writeCenter(center,idx)
@@ -90,7 +92,7 @@ function listResrc(lst,res,arg)
 	end
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
-	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Drawz")..")arg[1]:$(#0))")
+	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Memorys")..")arg[1]:$(#0))")
 end
 function listMemory(lst,mem,fld,arg)
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
@@ -130,19 +132,19 @@ function initTest()
 	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	--
-	listMemory(list,"Bringupz","ver",ver)
+	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	listMemory(list,"Identz","idt",idt)
+	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
-	listMemory(list,"Identz","ind",ind)
-	listMemory(list,"Vertexz","vtx",ver)
+	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
 	--
 	atomSugar(list,tests[found]["idx"])
+	--
 	-- TODO draw and manipulate with Demo
 end
 

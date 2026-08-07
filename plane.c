@@ -256,7 +256,7 @@ struct Extend *centerPull(int idx)
     centerSize(idx);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
-    if (ret == 0) allocExtend(&ret,1);
+    if (ret == 0) {allocExtend(&ret,1); ret->sub = idx;}
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
     return ret;
@@ -778,7 +778,7 @@ void demoDisp(struct Menu *menu)
 {
     int cmp[4] = {menu->ker,demoJect(menu),menu->mat,menu->sub}; machineComp(4,cmp);
     int mat[2] = {menu->mat,0}; machineCopy(2,mat);
-    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
+    int drw[2] = {menu->drw,0}; machineCopy(2,drw); // TODO do Dopy first, so Drawz is never zero
 }
 
 void machineArg(int *arg, int sig, struct Express *exp)
@@ -875,7 +875,7 @@ void machineDemo(struct Menu *menu)
     break; case (Manipulate): {demoDone(menu); menu->act = Indicate;}
     break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative): {
     planeJnfo(ClickQueue,1,planeWcfg); // discard to last click
-    // TODO Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
+    // TODO Dopy/Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
     planeJnfo(ClickQueue,0,planeWcfg);}}
     break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
     if (menu->dev == Coord) {demoCont(menu); menu->dev = Angle;}
