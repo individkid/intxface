@@ -97,13 +97,11 @@ struct SmartState {
         return *this;
     }
     SmartState &operator<<(char *val) {
-        for (int i = 0; val[i]; i++) if (i>=200) *(int*)0=0;
         wait();
         if (vld) str << val;
         return *this;
     }
     SmartState &operator<<(const char *val) {
-        for (int i = 0; val[i]; i++) if (i>=200) *(int*)0=0;
         wait();
         if (vld) str << val;
         return *this;
@@ -119,6 +117,8 @@ struct SlogState : public std::ostream {
     std::map<int, std::stringstream*> sstr;
     std::map<int, std::string> name;
     std::map<int, int> smart;
+    std::map<int, SmartState*> factory;
+    static int seqnum;
     int minnum, limnum, min, lim, ord, num;
     SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0), ord(0), num(0) {}
     void onof(int m, int l, int o, int n) {
@@ -157,6 +157,27 @@ struct SlogState : public std::ostream {
     }
     template <class Type> std::ostream &operator<<(Type typ) {
         return *this;
+    }
+    int con(const char *str) {
+        if (seqnum == 0) seqnum += 1;
+        if (factory.find(seqnum) != factory.end()) exit(-1);
+        factory[seqnum] = new SmartState(str);
+        return seqnum++;
+    }
+    int con(int oth) {
+        if (seqnum == 0) seqnum += 1;
+        if (factory.find(seqnum) != factory.end()) exit(-1);
+        if (factory.find(oth) == factory.end()) exit(-1);
+        factory[seqnum] = factory[oth];
+        return seqnum++;
+    }
+    void dis(int slf) {
+        if (factory.find(slf) == factory.end()) exit(-1);
+        delete factory[slf]; factory.erase(slf);
+    }
+    SmartState *get(int slf) {
+        if (factory.find(slf) == factory.end()) exit(-1);
+        return factory[slf];
     }
 };
 extern SlogState slog; // TODO qualify with NDEBUG
@@ -660,6 +681,10 @@ void doneSafe(void *ptr);
 void freeSafe(void *ptr);
 int timeSafe(void *ptr, double dif);
 int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg);
+int nameSmart(const char *str);
+int otherSmart(int oth);
+void deleteSmart(int slf);
+void printfSmart(int slf, const char *fmt, ...);
 
 float processTime();
 

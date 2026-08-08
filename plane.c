@@ -251,32 +251,41 @@ void centerSize(int idx)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (postSafe(copySem) != 1) ERROR();
 }
-struct Extend *centerPull(int idx)
+struct Extend *centerPull(int idx, const char *log)
 {
     centerSize(idx);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
     if (ret == 0) {allocExtend(&ret,1); ret->sub = idx;}
+    if (ret->log != 0) ERROR();
+    ret->log = nameSmart(log);
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
+    printfSmart(ret->log,"Pull %d",idx);
     return ret;
 }
-struct Extend *centerPeek(int idx)
+struct Extend *centerPeek(int idx, const char *log)
 {
     centerSize(idx);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
     center[idx] = 0;
+    if (ret != 0 && ret->log != 0) ERROR();
+    if (ret != 0) ret->log = nameSmart(log);
     if (postSafe(copySem) != 1) ERROR();
+    if (ret != 0) printfSmart(ret->log,"Peek %d",idx);
     return ret;
 }
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
+    printfSmart(ptr->log,"Place %d",ptr->sub);
     centerSize(ptr->sub);
     if (waitSafe(copySem) != 0) ERROR();
     if (center[ptr->sub] != 0) {
+    if (center[ptr->sub]->log != 0) ERROR();
     freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
+    deleteSmart(ptr->log); ptr->log = 0;
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
@@ -285,6 +294,7 @@ void centerClear(int sub)
     centerSize(sub);
     if (waitSafe(copySem) != 0) ERROR();
     if (center[sub] != 0) {
+    if (center[sub]->log != 0) ERROR();
     freeExtend(center[sub]); allocExtend(&center[sub],0); center[sub] = 0;}
     if (postSafe(copySem) != 1) ERROR();
 }
@@ -380,6 +390,7 @@ void centerInit(struct Extend *src, struct Extend *dst)
     dst->sav = src->sav;
     dst->rsp = src->rsp;
     dst->ret = src->ret;
+    if (src->log) dst->log = otherSmart(src->log); else dst->log = 0;
 }
 void centerResize(struct Extend **ptr, int siz)
 {
@@ -401,12 +412,12 @@ void centerMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int 
 }
 
 // machine extensions
-struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub)
+struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub, const char *log)
 {
     if (sig != lim) ERROR();
     int src = arg[idx];
     int srcSub = arg[sub];
-    struct Extend *srcPtr = centerPull(src);
+    struct Extend *srcPtr = centerPull(src,log);
     if (srcPtr->sub != src) ERROR();
     if (srcSub < 0 || srcSub >= srcPtr->ptr->siz) ERROR();
     return srcPtr;
@@ -462,10 +473,11 @@ void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int s
 // T goes to I without changing Comp, when C is I upon Form
 // L goes to I without changing Comp, upon Send
 // S goes to I without changing Comp, upon last outstanding Self
+int machdbg = 0;
 void machineProj(int sig, int *arg)
 {
     if (sig != ProjArgs) ERROR();
-    struct Extend *dst = machineCenter(sig,arg,ProjArgs,ProjDst,ProjDstSub);
+    struct Extend *dst = machineCenter(sig,arg,ProjArgs,ProjDst,ProjDstSub,(machdbg?"Proj":0));
     struct Matrix *matrix = machineMatrix(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
     planeWindow(matrix->mat);
     machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
@@ -473,11 +485,11 @@ void machineProj(int sig, int *arg)
 void machineBnry(int sig, int *arg)
 {
     if (sig != ProjArgs) ERROR();
-    struct Extend *lft = machineCenter(sig,arg,BnryArgs,BnryLft,BnryLftSub);
+    struct Extend *lft = machineCenter(sig,arg,BnryArgs,BnryLft,BnryLftSub,(machdbg?"Proj":0));
     struct Matrix *mft = machineMatrix(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
-    struct Extend *rgt = machineCenter(sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
+    struct Extend *rgt = machineCenter(sig,arg,BnryArgs,BnryRgt,BnryRgtSub,(machdbg?"Proj":0));
     struct Matrix *mgt = machineMatrix(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
-    struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub);
+    struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub,(machdbg?"Proj":0));
     struct Matrix *mst = machineMatrix(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
     float *fft = mft->mat; float *fgt = mgt->mat; float *fst = mst->mat;
     planeTransform(fst,fft+0,fgt+0,fft+4,fgt+4,fft+8,fgt+8,fft+12,fgt+12);
@@ -488,9 +500,9 @@ void machineBnry(int sig, int *arg)
 void machineComp(int sig, int *arg)
 {
     if (sig != CompArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub);
+    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub,(machdbg?"Comp":0));
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub);
+    struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub,(machdbg?"Comp":0));
     struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     // compose for draw -- T = C; M = GSLT
     float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
@@ -501,7 +513,7 @@ void machineComp(int sig, int *arg)
 void machineForm(int sig, int *arg)
 {
     if (sig != FormArgs) ERROR();
-    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub);
+    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub,(machdbg?"Form":0));
     struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
     // change manipulation matrix -- L = LTC'; T = C
     float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
@@ -512,9 +524,9 @@ void machineForm(int sig, int *arg)
 void machineSend(int sig, int *arg)
 {
     if (sig != SendArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub);
+    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub,(machdbg?"Send":0));
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub);
+    struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub,(machdbg?"Send":0));
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
     // move local to sent -- T = C; M = L; S = SL; L = I
     float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
@@ -527,9 +539,9 @@ void machineSend(int sig, int *arg)
 void machineSelf(int sig, int *arg)
 {
     if (sig != SelfArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
+    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub,(machdbg?"Self":0));
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub);
+    struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub,(machdbg?"Self":0));
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     // move portion of sent to global -- G = GM; S = M'S
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
@@ -540,9 +552,9 @@ void machineSelf(int sig, int *arg)
 void machineGlob(int sig, int *arg)
 {
     if (sig != GlobArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
+    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub,(machdbg?"Glob":0));
     struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub);
+    struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub,(machdbg?"Glob":0));
     struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     // absorb discontinuous change -- G = GM
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
@@ -554,7 +566,7 @@ void machineBopy(int sig, int *arg)
     if (sig != BopyArgs) ERROR();
     int src = arg[BopySrc];
     int alt = arg[BopyAlt];
-    struct Extend *ext = centerPull(src);
+    struct Extend *ext = centerPull(src,(machdbg?"Bopy":0));
     callCopy(ext,alt,0);
 }
 void machineExec(struct Extend *ext);
@@ -562,7 +574,7 @@ void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
-    struct Extend *ext = centerPull(src);
+    struct Extend *ext = centerPull(src,(machdbg?"Copy":0));
     if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
     if (postSafe(execSem) != 1) ERROR();
@@ -574,10 +586,10 @@ void machineDopy(int sig, int *arg)
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
     struct Extend *cpy = 0; allocExtend(&cpy,1);
-    struct Extend *ptr = centerPull(src);
+    struct Extend *ptr = centerPull(src,(machdbg?"Dopy":0));
     copyExtend(cpy,ptr);
+    cpy->sub = dst; cpy->log = otherSmart(ptr->log);
     centerPlace(ptr);
-    cpy->sub = dst;
     centerPlace(cpy);
 }
 void machineMopy(int sig, int *arg)
@@ -588,8 +600,8 @@ void machineMopy(int sig, int *arg)
     int dstSub = arg[MopyDst];
     int dstOfs = arg[MopyDstSub];
     int siz = arg[MopySiz];
-    struct Extend *src = centerPull(srcSub);
-    struct Extend *dst = centerPull(dstSub);
+    struct Extend *src = centerPull(srcSub,(machdbg?"Mopy":0));
+    struct Extend *dst = centerPull(dstSub,(machdbg?"Mopy":0));
     centerMerge(src,&dst,srcOfs,dstOfs,siz);
     centerPlace(src);
     centerPlace(dst);
@@ -598,7 +610,7 @@ void machineDemo(struct Menu *menu);
 void machineNopy(int sig, int *arg)
 {
     if (sig != NopyArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub);
+    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,(machdbg?"Nopy":0));
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
     machineDemo(menu);
     machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
@@ -612,7 +624,7 @@ void machineQopy(int sig, int *arg)
 {
     if (sig != QopyArgs) ERROR();
     int src = arg[QopySrc];
-    struct Extend *ptr = centerPull(src);
+    struct Extend *ptr = centerPull(src,(machdbg?"Qopy":0));
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
@@ -624,7 +636,7 @@ void machineRopy(int sig, int *arg)
 void machineStage(enum Configure cfg, int idx)
 {
     centerSize(idx);
-    struct Extend *ext = centerPeek(idx);
+    struct Extend *ext = centerPeek(idx,(machdbg?"Stage":0));
     struct Center *ptr = (ext?ext->ptr:0);
     struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
     switch (cfg) {default: ERROR();
@@ -651,7 +663,7 @@ void machineStage(enum Configure cfg, int idx)
 }
 void machineTsage(enum Configure cfg, int idx)
 {
-    struct Extend *ext = centerPull(idx);
+    struct Extend *ext = centerPull(idx,(machdbg?"Tsage":0));
     struct Center *ptr = (ext?ext->ptr:0);
     struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
     switch (cfg) {default: ERROR();
@@ -677,7 +689,7 @@ void machineTsage(enum Configure cfg, int idx)
 }
 void machineEval(struct Express *exp, int idx)
 {
-    struct Extend *ext = centerPull(idx);
+    struct Extend *ext = centerPull(idx,(machdbg?"Eval":0));
     struct Center *ptr = ext->ptr;
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0)); freeCenter(ptr);
@@ -815,7 +827,7 @@ void machineExec(struct Extend *ext)
     pushCenterq(nxt,reboot);
     continue;}
     if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
-    else {machineExec(nxt); freeExtend(nxt); allocExtend(&nxt,0);}}
+    else {machineExec(nxt); freeExtend(nxt); deleteSmart(nxt->log); allocExtend(&nxt,0);}}
     if (sizeCenterq(reboot) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
     joinCenterq(reboot,internal);
@@ -886,6 +898,7 @@ void machineDemo(struct Menu *menu)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
+    int debug = 0;
     int next = 0; while (next >= 0) {next = 0;
     int index = -1;
     struct Extend *current = 0;
@@ -893,7 +906,7 @@ void planeMachine(enum Thread tag, int idx)
     index = machine[idx];
     postSafe(safeSem);
     if (index < 0) break;
-    current = centerPull(index);
+    current = centerPull(index,(debug?"Mach":0));
     if (current == 0) break;
     struct Center *cptr = current->ptr;
     if (cptr->mem != Machinez) next = -1;
@@ -930,6 +943,7 @@ void planeCenter(enum Thread tag, int idx)
 }
 void planeExternal(enum Thread tag, int idx)
 {
+    int debug = 0;
     while (1) {
     if (waitSafe(pipeSem) != 0) ERROR();
     int mask = (external|(1<<extdone));
@@ -950,6 +964,8 @@ void planeExternal(enum Thread tag, int idx)
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
     center->rsp = resp;
+    center->log = nameSmart(debug?"Pipe":0);
+    if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -1017,7 +1033,7 @@ void planeTest(enum Thread tag, int idx)
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
 
-    struct Extend *mat = centerPull(Matrixz); if (!mat) {callWait(); continue;}
+    struct Extend *mat = centerPull(Matrixz,(debug?"Test0":0)); if (!mat) {callWait(); continue;}
     freeCenter(mat->ptr); mat->ptr->mem = Matrixz;
     if (alt) {mat->ptr->idx = 2; mat->ptr->siz = 2;} // uni.pro tri.pol
     else {mat->ptr->idx = 0; mat->ptr->siz = 1;} // uni.all
@@ -1038,7 +1054,7 @@ void planeTest(enum Thread tag, int idx)
     int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
     callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
     int giv[] = {width,height,0,12}; // idx,siz
-    struct Extend *drw = centerPull(Drawz); if (!drw) {callWait(); continue;}
+    struct Extend *drw = centerPull(Drawz,(debug?"Test1":0)); if (!drw) {callWait(); continue;}
     freeCenter(drw->ptr);
     drw->ptr->mem = Drawz; drw->ptr->idx = 0; drw->ptr->siz = 1;
     allocDraw(&drw->ptr->drw,drw->ptr->siz);
@@ -1065,7 +1081,7 @@ void planeTest(enum Thread tag, int idx)
     if (count == tested) {}
 
     else if (count%6 == 1 || count%6 == 4) {
-    struct Extend *eek = centerPull(Getoldz); if (!eek) {callWait(); continue;}
+    struct Extend *eek = centerPull(Getoldz,(debug?"Test2":0)); if (!eek) {callWait(); continue;}
     freeCenter(eek->ptr);
     eek->ptr->mem = Getoldz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocOld(&eek->ptr->old,eek->ptr->siz);
@@ -1073,7 +1089,7 @@ void planeTest(enum Thread tag, int idx)
     callCopy(eek,0,(debug?"peek":0));}
 
     else if (count%6 == 2 || count%6 == 5) {
-    struct Extend *eek = centerPull(Getintz); if (!eek) {callWait(); continue;}
+    struct Extend *eek = centerPull(Getintz,(debug?"Test3":0)); if (!eek) {callWait(); continue;}
     freeCenter(eek->ptr);
     eek->ptr->mem = Getintz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocInt(&eek->ptr->uns,eek->ptr->siz);
@@ -1081,7 +1097,7 @@ void planeTest(enum Thread tag, int idx)
     callCopy(eek,0,(debug?"ident":0));}
 
     else if (count%6 == 3 || count%6 == 0) {
-    struct Extend *vec = centerPull(Vectorz); freeCenter(vec->ptr);
+    struct Extend *vec = centerPull(Vectorz,(debug?"Test4":0)); freeCenter(vec->ptr);
     vec->ptr->mem = Vectorz; vec->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->ptr->siz = 1;
     allocVector(&vec->ptr->vec,vec->ptr->siz);
     vec->ptr->vec[0].vec[0] = 1.0; vec->ptr->vec[0].vec[1] = 2.0;
@@ -1368,6 +1384,7 @@ int planeSugval(const char *str)
 }
 void planeArgv(int argc, char **argv)
 {
+    int debug = 0;
     for (int i = 0; i < argc; i++) {
     int asiz = 0; int csiz = 0; int msiz = 0; int esiz = 0; int ssiz = 0;
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
@@ -1377,7 +1394,7 @@ void planeArgv(int argc, char **argv)
     int val[3] = {arg.inp,arg.out,arg.oth};
     callJnfo(cfg,val,3,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Extend *ptr = 0; allocExtend(&ptr,1);
-    copyCenter(ptr->ptr,&cntr); freeCenter(&cntr); ptr->sub = centers;
+    copyCenter(ptr->ptr,&cntr); freeCenter(&cntr); ptr->sub = centers; ptr->log = nameSmart(debug?"Argv":0);
     centerPlace(ptr);}
     else if (hideMachine(&mchn, argv[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);}
@@ -1522,7 +1539,9 @@ void initTest()
     break; case (Bringup): mode = true; case (Builtin): {
     int frames = planeInfo(ScratchFrames,0,planeRcfg);
 
-    struct Extend *ptr = centerPull(Drawz); freeCenter(ptr->ptr);
+    int test = nameSmart("Init"); printfSmart(test,"test %d",123); deleteSmart(test);
+
+    struct Extend *ptr = centerPull(Drawz,(debug?"Init0":0)); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = 1;
     allocDraw(&ptr->ptr->drw,ptr->ptr->siz);
     ptr->ptr->drw[0].con.tag = ResrcCon;
@@ -1534,7 +1553,7 @@ void initTest()
     int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
     callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
 
-    ptr = centerPull(Drawz); freeCenter(ptr->ptr);
+    ptr = centerPull(Drawz,(debug?"Init1":0)); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = Micros;
     allocDraw(&ptr->ptr->drw,ptr->ptr->siz);
     for (int i = 0; i < Micros; i++) {
@@ -1550,7 +1569,7 @@ void initTest()
     while (!centerCheck(Drawz)) usleep(1000);
 
     for (int i = 0; i < frames; i++) {
-    struct Extend *ptr = centerPull(Drawz); freeCenter(ptr->ptr);
+    struct Extend *ptr = centerPull(Drawz,(debug?"Init2":0)); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = 1;
     allocDraw(&ptr->ptr->drw,ptr->ptr->siz);
     ptr->ptr->drw[0].con.tag = ResrcCon;
@@ -1559,7 +1578,7 @@ void initTest()
     callCopy(ptr,0,(debug?"chain":0));
     while (!centerCheck(Drawz)) usleep(1000);}
 
-    struct Extend *uni = centerPull(Uniformz); freeCenter(uni->ptr);
+    struct Extend *uni = centerPull(Uniformz,(debug?"Init3":0)); freeCenter(uni->ptr);
     uni->ptr->mem = Uniformz; uni->ptr->siz = 1; allocUniform(&uni->ptr->uni,uni->ptr->siz);
     uni->ptr->uni[0].all = 0; uni->ptr->uni[0].one = 1; uni->ptr->uni[0].pro = 2;
     uni->ptr->uni[0].wid = width; uni->ptr->uni[0].hei = height;
@@ -1567,20 +1586,20 @@ void initTest()
     callCopy(uni,0,(debug?"uniform":0));
     {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {width,height}; callJnfo(cfg,val,2,planeWcfg);}
 
-    struct Extend *img = centerPull(Imagez); freeCenter(img->ptr);
+    struct Extend *img = centerPull(Imagez,(debug?"Init4":0)); freeCenter(img->ptr);
     img->ptr->mem = Imagez; img->ptr->siz = 1; allocImage(&img->ptr->img,img->ptr->siz);
     fmtxStbi(&img->ptr->img[0].dat,&img->ptr->img[0].wid,&img->ptr->img[0].hei,&img->ptr->img[0].cha,"texture.jpg");
     img->sub = Imagez; img->rsp = RptRsp;
     callCopy(img,0,(debug?"image":0));
 
-    struct Extend *sto = centerPull(Storagez); freeCenter(sto->ptr);
+    struct Extend *sto = centerPull(Storagez,(debug?"Init5":0)); freeCenter(sto->ptr);
     sto->ptr->mem = Storagez; sto->ptr->siz = 1; allocInt32(&sto->ptr->sto,sto->ptr->siz);
     sto->ptr->sto[0] = 456;
     sto->sub = Storagez; sto->rsp = RptRsp;
     callCopy(sto,0,(debug?"storage":0));
 
     for (int i = 0; i < frames; i++) {
-    struct Extend *mat = centerPull(Matrixz); freeCenter(mat->ptr);
+    struct Extend *mat = centerPull(Matrixz,(debug?"Init6":0)); freeCenter(mat->ptr);
     mat->ptr->mem = Matrixz; mat->ptr->siz = 5; allocMatrix(&mat->ptr->mat,mat->ptr->siz);
     float ident[16]; identmat(ident,4);
     float proj[16]; planeWindow(proj);
@@ -1593,32 +1612,32 @@ void initTest()
     callCopy(mat,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
-    struct Extend *bup = centerPull(Bringupz); freeCenter(bup->ptr);
+    struct Extend *bup = centerPull(Bringupz,(debug?"Init7":0)); freeCenter(bup->ptr);
     bup->ptr->mem = Bringupz; bup->ptr->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ptr->ver,bup->ptr->siz);
     for (int i = 0; i < bup->ptr->siz; i++) memcpy(&bup->ptr->ver[i],&vertices[i],sizeof(struct Vertex));
     bup->sub = Bringupz; bup->rsp = RptRsp;
     callCopy(bup,0,(debug?"bringup":0));
 
-    struct Extend *idt = centerPull(Identz); freeCenter(idt->ptr);
+    struct Extend *idt = centerPull(Identz,(debug?"Init8":0)); freeCenter(idt->ptr);
     idt->ptr->mem = Identz; idt->ptr->siz = sizeof(primitive)/sizeof(uint32_t); allocInt32(&idt->ptr->idt,idt->ptr->siz);
     for (int i = 0; i < idt->ptr->siz; i++) memcpy(&idt->ptr->idt[i],&primitive[i],sizeof(uint32_t));
     idt->sub = Identz; idt->rsp = RptRsp;
     callCopy(idt,0,(debug?"ident":0));
 
-    struct Extend *ind = centerPull(Indexz); freeCenter(ind->ptr);
+    struct Extend *ind = centerPull(Indexz,(debug?"Init9":0)); freeCenter(ind->ptr);
     ind->ptr->mem = Indexz; ind->ptr->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ptr->ind,ind->ptr->siz);
     memcpy(ind->ptr->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
     ind->sub = Indexz; ind->rsp = RptRsp;
     callCopy(ind,0,(debug?"index":0));
 
-    struct Extend *vtx = centerPull(Vertexz); freeCenter(vtx->ptr);
+    struct Extend *vtx = centerPull(Vertexz,(debug?"Init10":0)); freeCenter(vtx->ptr);
     vtx->ptr->mem = Vertexz; vtx->ptr->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ptr->vtx,vtx->ptr->siz);
     for (int i = 0; i < vtx->ptr->siz; i++) memcpy(&vtx->ptr->vtx[i],&vertices[i],sizeof(struct Vertex));
     // for (int i = 4; i < 8; i++) vtx->ptr->vtx[i].vec[2] = 0.9;
     vtx->sub = Vertexz; vtx->rsp = RptRsp;
     callCopy(vtx,0,(debug?"vertex":0));
 
-    struct Extend *tri = centerPull(Trianglez); freeCenter(tri->ptr);
+    struct Extend *tri = centerPull(Trianglez,(debug?"Init11":0)); freeCenter(tri->ptr);
     tri->ptr->mem = Trianglez; tri->ptr->siz = (sizeof(indices)/sizeof(uint16_t))/3; allocTriangle(&tri->ptr->tri,tri->ptr->siz);
     for (int i = 0; i < tri->ptr->siz; i++) for (int j = 0; j < 3; j++) {
     int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
@@ -1635,7 +1654,7 @@ void initTest()
     int giv[] = {width,height};
     int giw[] = {0,12}; // idx,siz
     for (int i = 0; i < 2; i++) {
-    struct Extend *fil = centerPull(Drawz); freeCenter(fil->ptr);
+    struct Extend *fil = centerPull(Drawz,(debug?"Init12":0)); freeCenter(fil->ptr);
     fil->ptr->mem = Drawz; fil->ptr->siz = 1; allocDraw(&fil->ptr->drw,fil->ptr->siz);
     fil->ptr->drw[0].con.tag = MicroCon;
     fil->ptr->drw[0].con.mic = (i?(mode?MicroFetRel:MicroVtxRel):MicroFilRel);

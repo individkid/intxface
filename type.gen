@@ -2481,6 +2481,7 @@ Extend = {
 	{"sav","Int",{},{}}, -- saved to replace
 	{"rsp","Response",{},{}}, -- how to respond
 	{"ret","Retval",{},{}}, -- pass fail or done
+	{"log","Int",{},{}}, -- handle for logging
 }
 Listed = {
 	{"siz","Int",{},{}},

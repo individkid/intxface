@@ -1,9 +1,12 @@
 #include "stlx.h"
 #include <iomanip>
 #include <chrono>
+#include <stdarg.h>
+#include <stdio.h>
 
 SlogState slog; // TODO qualify with NDEBUG
 int SmartState::seqnum = 0;
+int SlogState::seqnum = 0;
 void SmartState::init(std::string str) {
     slog.safe.wait();
     num = slog.limnum++; vld = true; rdy = false; this->str.str("");
@@ -181,6 +184,27 @@ int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg)
 {
     auto saf = (SafeState*)ptr;
     return saf->wait(dif,fnc,arg);
+}
+int nameSmart(const char *str) {
+    if (str == 0) return 0;
+    return slog.con(str);
+}
+int otherSmart(int oth) {
+    if (oth == 0) return 0;
+    return slog.con(oth);
+}
+void deleteSmart(int slf) {
+    if (slf == 0) return;
+    slog.dis(slf);
+}
+void printfSmart(int slf, const char *fmt, ...) {
+    if (slf == 0) return;
+    SmartState *ptr = slog.get(slf);
+    va_list arg;
+    va_start(arg,fmt);
+    char *str = 0; vasprintf(&str,fmt,arg);
+    *ptr << str << '\n'; free(str);
+    va_end(arg);
 }
 
 float processTime()
