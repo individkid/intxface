@@ -84,9 +84,11 @@ struct SmartState {
     SmartState(volatile SmartState &&oth) = delete;
     SmartState &operator=(const SmartState &oth) {done(); init(oth); return *this;}
     SmartState(std::string str) {init(str);}
+    SmartState(int log) {init(log);}
     ~SmartState() {done();}
     void init(std::string str);
     void init(const SmartState &oth);
+    void init(int log);
     void done();
     void wait();
     void post();
@@ -159,25 +161,49 @@ struct SlogState : public std::ostream {
         return *this;
     }
     int con(const char *str) {
+        SmartState *ptr = new SmartState(str);
+        safe.wait();
         if (seqnum == 0) seqnum += 1;
         if (factory.find(seqnum) != factory.end()) exit(-1);
-        factory[seqnum] = new SmartState(str);
-        return seqnum++;
+        factory[seqnum] = ptr;
+        int ret = seqnum++;
+        safe.post();
+        return ret;
     }
     int con(int oth) {
+        safe.wait();
+        if (factory.find(oth) == factory.end()) exit(-1);
+        SmartState *cpy = factory[oth];
+        safe.post();
+        SmartState *ptr = new SmartState(*cpy);
+        safe.wait();
         if (seqnum == 0) seqnum += 1;
         if (factory.find(seqnum) != factory.end()) exit(-1);
-        if (factory.find(oth) == factory.end()) exit(-1);
-        factory[seqnum] = factory[oth];
-        return seqnum++;
+        factory[seqnum] = ptr;
+        int ret = seqnum++;
+        safe.post();
+        return ret;
     }
     void dis(int slf) {
+        safe.wait();
         if (factory.find(slf) == factory.end()) exit(-1);
-        delete factory[slf]; factory.erase(slf);
+        SmartState *ptr = factory[slf]; factory.erase(slf);
+        safe.post();
+        delete ptr;
     }
     SmartState *get(int slf) {
+        safe.wait();
         if (factory.find(slf) == factory.end()) exit(-1);
-        return factory[slf];
+        SmartState *ret = factory[slf];
+        safe.post();
+        return ret;
+    }
+    void get(int slf, int &num, bool &vld) {
+        safe.wait();
+        if (factory.find(slf) == factory.end()) exit(-1);
+        SmartState *ptr = factory[slf];
+        num = ptr->num; vld = ptr->vld;
+        safe.post();
     }
 };
 extern SlogState slog; // TODO qualify with NDEBUG
@@ -685,6 +711,7 @@ int nameSmart(const char *str);
 int otherSmart(int oth);
 void deleteSmart(int slf);
 void printfSmart(int slf, const char *fmt, ...);
+void clearSmart();
 
 float processTime();
 

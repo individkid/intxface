@@ -18,6 +18,11 @@ void SmartState::init(const SmartState &oth) {
     num = oth.num; vld = oth.vld; rdy = false; str.str("");
     if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
 }
+void SmartState::init(int log) {
+    slog.get(log,num,vld);
+    rdy = false; str.str("");
+    if (vld) {slog.wait(num); slog.smart[num]++; slog.safe.post();}
+}
 void SmartState::done() {
     if (!vld) return;
     slog.wait(num);
@@ -205,6 +210,9 @@ void printfSmart(int slf, const char *fmt, ...) {
     char *str = 0; vasprintf(&str,fmt,arg);
     *ptr << str << '\n'; free(str);
     va_end(arg);
+}
+void clearSmart() {
+    slog.clear();
 }
 
 float processTime()

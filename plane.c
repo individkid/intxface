@@ -50,6 +50,7 @@ int loopfd = 0; // pipe from one struct to another
 void *loopSem = 0; // protect loopfd
 void *evalSem = 0;
 uftype callCopy = 0;
+wftype callCont = 0;
 nftype callBack = 0;
 vftype callFork = 0;
 zftype callGnfo = 0;
@@ -300,6 +301,7 @@ void centerClear(int sub)
 }
 void centerDone(struct Extend *ptr)
 {
+    printfSmart(ptr->log,"Done %d",ptr->sub);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,replace);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -567,7 +569,7 @@ void machineBopy(int sig, int *arg)
     int src = arg[BopySrc];
     int alt = arg[BopyAlt];
     struct Extend *ext = centerPull(src,(machdbg?"Bopy":0));
-    callCopy(ext,alt,0);
+    callCont(ext,alt,ext->log);
 }
 void machineExec(struct Extend *ext);
 void machineCopy(int sig, int *arg)
@@ -1539,7 +1541,9 @@ void initTest()
     break; case (Bringup): mode = true; case (Builtin): {
     int frames = planeInfo(ScratchFrames,0,planeRcfg);
 
-    int test = nameSmart("Init"); printfSmart(test,"test %d",123); deleteSmart(test);
+    int test = nameSmart("Init");
+    printfSmart(test,"test %d",test);
+    deleteSmart(test);
 
     struct Extend *ptr = centerPull(Drawz,(debug?"Init0":0)); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = 1;
@@ -1670,9 +1674,10 @@ void initTest()
     break; case(Regress): case(Release): break;}
 }
 
-void planeInit(uftype copy, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait, aftype wake)
+void planeInit(uftype copy, wftype cont, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait, aftype wake)
 {
     callCopy = copy;
+    callCont = cont;
     callBack = call;
     callFork = fork;
     callGnfo = gnfo;

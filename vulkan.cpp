@@ -2539,6 +2539,10 @@ void vulkanCopy(Extend *ptr, int ary, const char *dbg) { // copy request
     if (dbg) mptr->copyState.push(ptr,ary,SmartState(dbg));
     else mptr->copyState.push(ptr,ary,SmartState());
 }
+void vulkanCont(Extend *ptr, int ary, int log) { // log copy
+    if (log) mptr->copyState.push(ptr,ary,SmartState(log));
+    else mptr->copyState.push(ptr,ary,SmartState());
+}
 void vulkanCall(Configure cfg, xftype back) { // add callback
     mptr->changeState.call(cfg,back);
 }
@@ -2620,7 +2624,7 @@ int main(int argc, const char **argv) {
     main.changeState.call(RegisterOpen,vulkanBack);
     main.changeState.call(RegisterWake,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
-    planeInit(vulkanCopy,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
+    planeInit(vulkanCopy,vulkanCont,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
     // TODO move glfw functions to WindowState
     glfwSetCharCallback(main.windowState.window,glfwCharPress);
     glfwSetKeyCallback(main.windowState.window,glfwKeyPress);

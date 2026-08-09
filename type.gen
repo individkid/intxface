@@ -1994,9 +1994,12 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterSiz == #0 Op , #-2 ; #0 == #1 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:3)"..
-		    "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Trianglez\")) Op , #1 ; #0 , #2 Op))"..
+		    -- "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Trianglez\")) Op , #1 ; #0 , #2 Op))"..
+		    "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Indexz\")) Op , #1 ; #0 , #2 Op))"..
 		    "mch[%(return jdx())]:Nest(lvl:-1)"..
-		   -- TODO qualify with Plan "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
+		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
+		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
+		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- non-gpu memories only need the CenterSub
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Kernelz\")) Op | Non ?CenterMem == #%(return castMemory(\"Expressz\")) Op | Non ?CenterMem == #%(return castMemory(\"Machinez\")) Op | Non ?CenterMem == #%(return castMemory(\"Metricz\")) Op | Non ?CenterMem == #%(return castMemory(\"Menuz\")) Op Op , #-2 ; #0 , #1 Op))"..
@@ -2090,8 +2093,9 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 8
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- TODO change window matrix; do Proj and Draw
-		-- TODO qualify with Plan "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#0 ?UniformWid))"..
-		-- TODO qualify with Plan "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#1 ?UniformHei))"..
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#0 ?UniformWid))"..
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#1 ?UniformHei))"..
+		-- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrProjMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 9
