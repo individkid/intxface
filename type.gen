@@ -1977,7 +1977,20 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrFnceMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
-		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2
+		-- TODO Allow branching transaction debug. Stage/Tsage to/from CenterLog does otherSmart.
+		-- TODO callback for CenterLog does deleteSmart on sav.
+		-- TODO transaction branching done with Stage/Tsage of CenterLog.
+		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2 SlctMsk
+		-- "mch[%(return jdx())]:Nest(lvl:1)"..
+		--  "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
+		--  "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
+		--  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
+		--   "#0 == EC ?CenterPtr #0 Cmp , #-1"..
+		--   "#0 == EC ?"
+		--   "#0 == #1 , #1 Op))"..
+		--  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		-- "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+--
 		"mch[%(return jdx())]:Nest(lvl:1)"..
 		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
@@ -1989,17 +2002,14 @@ Bootstrap = {
 		 -- move current from internal queue to per memory location
 		 "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
 		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Nest(lvl:1)"..
-		  -- loop back to read internal queue if current is empty
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterSiz == #0 Op , #-2 ; #0 == #1 , #1 Op))"..
-		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Nest(lvl:3)"..
 		    -- "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Trianglez\")) Op , #1 ; #0 , #2 Op))"..
-		    "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Indexz\")) Op , #1 ; #0 , #2 Op))"..
+		    "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == And EC ?CenterMem #%(return castMemory(\"Indexz\")) Cmp Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit Bit , #1 ; #0 , #2 Op))"..
 		    "mch[%(return jdx())]:Nest(lvl:-1)"..
+		   -- TODO this is not hit by Rebootz from planer.lua, because machineExec does not do callCopy
 		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
-		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
-		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
+		   "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
+		   "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- non-gpu memories only need the CenterSub
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Kernelz\")) Op | Non ?CenterMem == #%(return castMemory(\"Expressz\")) Op | Non ?CenterMem == #%(return castMemory(\"Machinez\")) Op | Non ?CenterMem == #%(return castMemory(\"Metricz\")) Op | Non ?CenterMem == #%(return castMemory(\"Menuz\")) Op Op , #-2 ; #0 , #1 Op))"..
@@ -2059,7 +2069,7 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Ropy(sig:1arg[0]:$(@memorys))"..
 		  "mch[%(return jdx())]:Stage(siz:4sav[0]:CenterPtrsav[1]:CenterRetsav[2]:CenterMemsav[3]:CenterSavidx[0]:$(@memorys))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterPtr == #0 Op , #2 ; #0 == #1 , #1 Op))"..
-		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Cnd "..
 		  "EO ?CenterRet #%(return castRetval(\"PassRet\")) Cmp : Non pass = @pass + #1 ; @_ Op "..
 		  "EO ?CenterRet #%(return castRetval(\"FailRet\")) Cmp : Non fail = @fail + #1 ; @_ Op "..
@@ -2076,7 +2086,7 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterSav))"..
 		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
-		"mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 6
@@ -2093,9 +2103,13 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 8
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- TODO change window matrix; do Proj and Draw
-		-- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#0 ?UniformWid))"..
-		-- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#1 ?UniformHei))"..
-		-- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrProjMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit , #1 ; #0 == #1 , #2 Op))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#0 ?UniformWid))"..
+		 "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#1 ?UniformHei))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrProjMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 9
