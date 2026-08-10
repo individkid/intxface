@@ -101,6 +101,13 @@ function listMemory(lst,mem,fld,arg)
 	lst[#lst+1] = centSugar(cent)
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
 end
+function listSpoof(lst,mem,fld,arg)
+	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:-1"
+	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
+	cent = cent..")"
+	lst[#lst+1] = centSugar(cent)
+	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..castMemory(mem).."))")
+end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
 	atomSugar(list,tests[found]["idx"])
@@ -141,7 +148,7 @@ function initTest()
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
-	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
+	listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
 	--
 	atomSugar(list,tests[found]["idx"])
 	--
