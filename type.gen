@@ -1981,59 +1981,57 @@ Bootstrap = {
 		-- TODO callback for CenterLog does deleteSmart on sav.
 		-- TODO transaction branching done with Stage/Tsage of CenterLog.
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2 SlctMsk
-		-- "mch[%(return jdx())]:Nest(lvl:1)"..
-		--  "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
-		--  "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
-		--  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
-		--   "#0 == EC ?CenterPtr #0 Cmp , #-1"..
-		--   "#0 == EC ?"
-		--   "#0 == #1 , #1 Op))"..
-		--  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		-- "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
---
-		"mch[%(return jdx())]:Nest(lvl:1)"..
+		"mch[%(return jdx())]:Nest(lvl:6)"..
 		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Nest(lvl:1)"..
-		  -- loop back to next bit in RegisterWake if nothing in internal queue
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterPtr == #0 Op , #-3 ; #0 == #1 , #1 Op))"..
-		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 -- "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
-		 -- move current from internal queue to per memory location
-		 "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Nest(lvl:3)"..
-		    -- "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Trianglez\")) Op , #1 ; #0 , #2 Op))"..
-		    "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == And EC ?CenterMem #%(return castMemory(\"Indexz\")) Cmp Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit Bit , #1 ; #0 , #2 Op))"..
-		    "mch[%(return jdx())]:Nest(lvl:-1)"..
-		   -- TODO this is not hit by Rebootz from planer.lua, because machineExec does not do callCopy
-		   -- "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
-		   "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
-		   "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
-		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  -- non-gpu memories only need the CenterSub
-		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Kernelz\")) Op | Non ?CenterMem == #%(return castMemory(\"Expressz\")) Op | Non ?CenterMem == #%(return castMemory(\"Machinez\")) Op | Non ?CenterMem == #%(return castMemory(\"Metricz\")) Op | Non ?CenterMem == #%(return castMemory(\"Menuz\")) Op Op , #-2 ; #0 , #1 Op))"..
-		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 "mch[%(return jdx())]:Nest(lvl:2)"..
-		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterMem == #%(return castMemory(\"Matrixz\")) Op , #1 ; #0 == #1 , #2 Op))"..
-		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  -- do Self/Glob from matrix[0] to kernel[idx], Comp from kernel[idx] to matrix[0], Bopy from matrix, and Bopy from draw
+		 "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
+		  "#0 == EC ?CenterPtr #0 Cmp , #6"..
+		  "#0 == Or EC ?CenterMem #%(return castMemory(\"Transferz\")) Cmp EC ?CenterMem #%(return castMemory(\"Rebootz\")) Cmp Bit , #5"..
+		  "#0 == Or EC ?CenterMem #%(return castMemory(\"Kernelz\")) Cmp EC ?CenterMem #%(return castMemory(\"Expressz\")) Cmp EC ?CenterMem #%(return castMemory(\"Machinez\")) Cmp EC ?CenterMem #%(return castMemory(\"Metricz\")) Cmp EC ?CenterMem #%(return castMemory(\"Menuz\")) Cmp Bit , #4"..
+		  -- TODO use Trianglez siz*3 for Vertex micro "#0 == And EC ?CenterMem #%(return castMemory(\"Trianglez\")) Cmp Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit Bit , #3"..
+		  "#0 == And EC ?CenterMem #%(return castMemory(\"Indexz\")) Cmp Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit Bit , #3"..
+		  "#0 == EC ?CenterMem #%(return castMemory(\"Matrixz\")) Cmp , #2"..
+		  "#0 == #1 , #1 Op))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- Bopy normal memory to gpu
+		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- Nopy Matrixz to process Self or Glob matrix
+		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
-		  "mch[%(return jdx())]:Mopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
-		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
-		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 "mch[%(return jdx())]:Nest(lvl:2)"..
-		   -- execute memories need Copy
-		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non Non ?CenterMem == #%(return castMemory(\"Transferz\")) Op | Non ?CenterMem == #%(return castMemory(\"Rebootz\")) Op Op , #1 ; #0 , #2 Op))"..
-		   "mch[%(return jdx())]:Nest(lvl:-1)"..
-		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(?CenterMem))"..
-		  "mch[%(return jdx())]:Jump(exp[0]:$(#-2))"..
-		  "mch[%(return jdx())]:Nest(lvl:-1)"..
-		 -- do Bopy from current
-		 "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
-		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
+		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrAfterOp , EndOp Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- update Drawz according to Indexz CenterSiz
+		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
+		  -- TODO this is not hit by Rebootz from planer.lua, because machineExec does not do callCopy
+		  -- TODO for Trianglez use siz*3 "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- Tsage only for non-gpu memory
+		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- Copy immediate and atomic memory
+		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
+		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(?CenterMem))"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- do nothing if internal queue empty
+		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 3
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrCnslMskOp , EndOp Op))"..
@@ -2096,7 +2094,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 7
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
 		-- disable and change manipulation
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
+		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrPrssMskOpOp))"..
 		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
