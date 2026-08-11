@@ -115,6 +115,7 @@ struct SmartState {
     }
 };
 struct SlogState : public std::ostream {
+    typedef void (*xftype)(const char *str);
     SafeState safe;
     std::map<int, std::stringstream*> sstr;
     std::map<int, std::string> name;
@@ -122,12 +123,14 @@ struct SlogState : public std::ostream {
     std::map<int, SmartState*> factory;
     static int seqnum;
     int minnum, limnum, min, lim, ord, num;
-    SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0), ord(0), num(0) {}
-    void onof(int m, int l, int o, int n) {
+    xftype fnc;
+    SlogState() : safe(1), minnum(0), limnum(0), min(0), lim(0), ord(0), num(0), fnc(0) {}
+    void onof(int m, int l, int o, int n, xftype f) {
         min = m;
         lim = l;
         ord = o;
         num = n;
+        fnc = f;
     }
     bool check(int num, int min, int lim) {
         if (min == lim) return false;
@@ -145,7 +148,9 @@ struct SlogState : public std::ostream {
     void clr(int num) {
         wait(num);
         if (smart[num] != 0) {std::cerr << "invalid clr smart!" << std::endl; exit(-1);}
-        if (check(num,min,lim)) std::cout << sstr[num]->str();
+        if (check(num,min,lim)) {
+        if (fnc) fnc(sstr[num]->str().c_str());
+        else std::cout << sstr[num]->str();}
         delete sstr[num]; sstr.erase(num); name.erase(num); smart.erase(num);
         while (sstr.begin() != sstr.end() &&
         sstr.find(minnum) == sstr.end()) minnum++;
@@ -154,7 +159,10 @@ struct SlogState : public std::ostream {
     void clr() {
         safe.wait();
         for (auto i = sstr.begin(); i != sstr.end(); i++) {
-        if (check((*i).first,min,lim)) {std::cout << (*i).second->str(); (*i).second->str("");}}
+        if (check((*i).first,min,lim)) {
+        if (fnc) fnc((*i).second->str().c_str());
+        else std::cout << (*i).second->str();}
+        (*i).second->str("");}
         safe.post();
     }
     template <class Type> std::ostream &operator<<(Type typ) {

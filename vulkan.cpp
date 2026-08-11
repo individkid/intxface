@@ -2611,7 +2611,7 @@ int main(int argc, const char **argv) {
     // TODO parse argv for arguments to main and push only unparsed to cfg
     for (int i = 1; i < argc; i++) cfg << argv[i];
     // TODO pass parsed arguments to main
-    slog.onof(0,10000,123,5);
+    slog.onof(0,10000,123,5,planePutstr);
     MainState main;
     mptr = &main;
     main.changeState.write(ScratchDescrs,StackState::descrs);

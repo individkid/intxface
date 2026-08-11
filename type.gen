@@ -260,6 +260,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"CenterSrc", -- pipe source
 	"CenterRet", -- response value
 	"CenterSav", -- saved sub
+	"CenterLog", -- transaction branching
 	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"ArgumentSrc",
@@ -276,6 +277,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterStrq", -- num strings in queue
 	"RegisterSelf", -- self for loopback
 	"RegisterResp", -- default response type
+	"RegisterVerb", -- transaction logging
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
 	"UniformIdx", -- which plane to manipulate
@@ -496,6 +498,9 @@ Mask = { -- signals between threads
 	"RollMsk",
 	"UnifMsk",
 	"TestMsk",
+}
+Verbose = { -- logging enable mask
+	"PipeVrb", -- external pipe thread
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary

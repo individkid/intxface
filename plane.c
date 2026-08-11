@@ -648,6 +648,7 @@ void machineStage(enum Configure cfg, int idx)
     case (CenterSrc): planeJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
     case (CenterRet): planeJnfo(cfg,(ext?ext->ret:0),planeWcfg); break;
     case (CenterSav): planeJnfo(cfg,(ext?ext->sav:0),planeWcfg); break;
+    case (CenterLog): planeJnfo(cfg,(ext?ext->log:0),planeWcfg); break;
     case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
     case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
     case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
@@ -674,6 +675,7 @@ void machineTsage(enum Configure cfg, int idx)
     case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
     case (CenterRet): ext->ret = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSav): ext->sav = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterLog): if (ext->log) deleteSmart(ext->log); ext->log = otherSmart(planeInfo(cfg,0,planeRcfg)); break;
     case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
     case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
     case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);} break;
@@ -945,7 +947,6 @@ void planeCenter(enum Thread tag, int idx)
 }
 void planeExternal(enum Thread tag, int idx)
 {
-    int debug = 0;
     while (1) {
     if (waitSafe(pipeSem) != 0) ERROR();
     int mask = (external|(1<<extdone));
@@ -966,6 +967,7 @@ void planeExternal(enum Thread tag, int idx)
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
     center->rsp = resp;
+    int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
     center->log = nameSmart(debug?"Pipe":0);
     if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -1326,6 +1328,11 @@ void registerRoll(enum Configure cfg, int sav, int val, int act)
     if (cfg != ManipAngle) ERROR();
     planeKnfo(RegisterWake,(1<<RollMsk),planeWots);
 }
+void registerLog(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != CenterLog) ERROR();
+    if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
+}
 
 // expression callbacks
 const char *planeGetstr()
@@ -1453,6 +1460,7 @@ void initSafe()
     callBack(ManipLeft,registerMove);
     callBack(ManipBase,registerMove);
     callBack(ManipAngle,registerRoll);
+    callBack(CenterLog,registerLog);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
     start = processTime();
 }

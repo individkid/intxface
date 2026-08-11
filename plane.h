@@ -17,3 +17,4 @@ int planeLoop();
 void planeDone();
 void centerDone(struct Extend *ptr);
 int centerMod(struct Extend *ptr);
+void planePutstr(const char *src);
