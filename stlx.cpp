@@ -212,7 +212,7 @@ void printfSmart(int slf, const char *fmt, ...) {
     va_end(arg);
 }
 void clearSmart() {
-    slog.clear();
+    slog.clr();
 }
 
 float processTime()

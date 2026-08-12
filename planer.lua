@@ -52,6 +52,7 @@ function atomSugar(list,idx)
 	writeCenter(center,idx)
 	for i,v in ipairs(list) do
 	writeCenter(v,idx) end
+	for i in pairs(list) do list[i] = nil end
 end
 function listSugar(src)
 	mach0 = machSugar("Machine(xfr:Dopysig:2arg[0]:$(#"..castMemory("Kernelz")..")arg[1]:$(#"..castMemory("Memorys").."))")
@@ -72,8 +73,7 @@ function doneTest()
 	writeCenter(center,tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
 end
-function readConfig(res,cfg)
-	list = {}
+function readConfig(list,res,cfg)
 	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
 	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(@getcfg))")
 	for i,v in ipairs(cfg) do
@@ -83,6 +83,11 @@ function readConfig(res,cfg)
 	atomSugar(list,tests[found]["idx"])
 	center = readCenter(tests[found]["idx"])
 	for i,v in ipairs(center["cfg"]) do res[i] = v end
+end
+function writeConfig(list,val,cfg)
+	for i,v in ipairs(cfg) do
+	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$("..v.." := #"..val[i].."))")
+	end
 end
 function listResrc(lst,res,arg)
 	cent = "Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:"..res..")ptr:Dat()"
@@ -111,10 +116,10 @@ end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
 	atomSugar(list,tests[found]["idx"])
-	config = {} readConfig(config,{"ScratchFrames","UniformWid","UniformHei"})
+	config = {} readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
 	print("frames:"..frames.." width:"..width.." height:"..height)
-	list = {}; for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
+	for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
@@ -145,13 +150,18 @@ function initTest()
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
 	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
+	--
+	writeConfig(list,{1<<castVerbose("LoopVrb")},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
 	listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
-	--
 	atomSugar(list,tests[found]["idx"])
-	--
+end
+
+function runTest()
 	-- TODO draw and manipulate with Demo
 end
 
@@ -159,6 +169,7 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	pipeTest()
 	if more then
 	initTest()
+	runTest()
 	end
 	doneTest()
 	return

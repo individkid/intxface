@@ -501,6 +501,8 @@ Mask = { -- signals between threads
 }
 Verbose = { -- logging enable mask
 	"PipeVrb", -- external pipe thread
+	"LoopVrb", -- loopback queue thread
+	"ExecVrb", -- atomic pipe reads
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary

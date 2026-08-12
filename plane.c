@@ -258,11 +258,10 @@ struct Extend *centerPull(int idx, const char *log)
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
     if (ret == 0) {allocExtend(&ret,1); ret->sub = idx;}
-    if (ret->log != 0) ERROR();
-    ret->log = nameSmart(log);
+    deleteSmart(ret->log); ret->log = otherSmart(planeInfo(CenterLog,0,planeRcfg));
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
-    printfSmart(ret->log,"Pull %d",idx);
+    printfSmart(ret->log,"Pull %d %s",idx,log);
     return ret;
 }
 struct Extend *centerPeek(int idx, const char *log)
@@ -271,22 +270,18 @@ struct Extend *centerPeek(int idx, const char *log)
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
     center[idx] = 0;
-    if (ret != 0 && ret->log != 0) ERROR();
-    if (ret != 0) ret->log = nameSmart(log);
     if (postSafe(copySem) != 1) ERROR();
-    if (ret != 0) printfSmart(ret->log,"Peek %d",idx);
+    // if (ret) printfSmart(ret->log,"Peek %d %s",idx,log);
     return ret;
 }
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
-    printfSmart(ptr->log,"Place %d",ptr->sub);
+    // printfSmart(ptr->log,"Place %d",ptr->sub);
     centerSize(ptr->sub);
     if (waitSafe(copySem) != 0) ERROR();
     if (center[ptr->sub] != 0) {
-    if (center[ptr->sub]->log != 0) ERROR();
-    freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
-    deleteSmart(ptr->log); ptr->log = 0;
+    deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
@@ -295,8 +290,7 @@ void centerClear(int sub)
     centerSize(sub);
     if (waitSafe(copySem) != 0) ERROR();
     if (center[sub] != 0) {
-    if (center[sub]->log != 0) ERROR();
-    freeExtend(center[sub]); allocExtend(&center[sub],0); center[sub] = 0;}
+    deleteSmart(center[sub]->log); freeExtend(center[sub]); allocExtend(&center[sub],0); center[sub] = 0;}
     if (postSafe(copySem) != 1) ERROR();
 }
 void centerDone(struct Extend *ptr)
@@ -400,6 +394,7 @@ void centerResize(struct Extend **ptr, int siz)
     allocExtend(&init.dst,1);
     centerInit(*ptr,init.dst);
     initCenter(init.dst->ptr,centerField,&init);
+    if ((*ptr) != 0) deleteSmart((*ptr)->log);
     freeExtend(*ptr); allocExtend(ptr,0);
     *ptr = init.dst;
 }
@@ -409,6 +404,7 @@ void centerMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int 
     allocExtend(&init.dst,1);
     centerInit(*dst,init.dst);
     initCenter(init.dst->ptr,centerElem,&init);
+    if ((*dst) != 0) deleteSmart((*dst)->log);
     freeExtend(*dst); allocExtend(dst,0);
     *dst = init.dst;
 }
@@ -475,11 +471,10 @@ void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int s
 // T goes to I without changing Comp, when C is I upon Form
 // L goes to I without changing Comp, upon Send
 // S goes to I without changing Comp, upon last outstanding Self
-int machdbg = 0;
 void machineProj(int sig, int *arg)
 {
     if (sig != ProjArgs) ERROR();
-    struct Extend *dst = machineCenter(sig,arg,ProjArgs,ProjDst,ProjDstSub,(machdbg?"Proj":0));
+    struct Extend *dst = machineCenter(sig,arg,ProjArgs,ProjDst,ProjDstSub,"Proj");
     struct Matrix *matrix = machineMatrix(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
     planeWindow(matrix->mat);
     machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
@@ -487,11 +482,11 @@ void machineProj(int sig, int *arg)
 void machineBnry(int sig, int *arg)
 {
     if (sig != ProjArgs) ERROR();
-    struct Extend *lft = machineCenter(sig,arg,BnryArgs,BnryLft,BnryLftSub,(machdbg?"Proj":0));
+    struct Extend *lft = machineCenter(sig,arg,BnryArgs,BnryLft,BnryLftSub,"Proj");
     struct Matrix *mft = machineMatrix(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
-    struct Extend *rgt = machineCenter(sig,arg,BnryArgs,BnryRgt,BnryRgtSub,(machdbg?"Proj":0));
+    struct Extend *rgt = machineCenter(sig,arg,BnryArgs,BnryRgt,BnryRgtSub,"Proj");
     struct Matrix *mgt = machineMatrix(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
-    struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub,(machdbg?"Proj":0));
+    struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub,"Proj");
     struct Matrix *mst = machineMatrix(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
     float *fft = mft->mat; float *fgt = mgt->mat; float *fst = mst->mat;
     planeTransform(fst,fft+0,fgt+0,fft+4,fgt+4,fft+8,fgt+8,fft+12,fgt+12);
@@ -502,9 +497,9 @@ void machineBnry(int sig, int *arg)
 void machineComp(int sig, int *arg)
 {
     if (sig != CompArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub,(machdbg?"Comp":0));
+    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub,"Comp");
     struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub,(machdbg?"Comp":0));
+    struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub,"Comp");
     struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
     // compose for draw -- T = C; M = GSLT
     float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
@@ -515,7 +510,7 @@ void machineComp(int sig, int *arg)
 void machineForm(int sig, int *arg)
 {
     if (sig != FormArgs) ERROR();
-    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub,(machdbg?"Form":0));
+    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub,"Form");
     struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
     // change manipulation matrix -- L = LTC'; T = C
     float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
@@ -526,9 +521,9 @@ void machineForm(int sig, int *arg)
 void machineSend(int sig, int *arg)
 {
     if (sig != SendArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub,(machdbg?"Send":0));
+    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub,"Send");
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub,(machdbg?"Send":0));
+    struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub,"Send");
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
     // move local to sent -- T = C; M = L; S = SL; L = I
     float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
@@ -541,9 +536,9 @@ void machineSend(int sig, int *arg)
 void machineSelf(int sig, int *arg)
 {
     if (sig != SelfArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub,(machdbg?"Self":0));
+    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub,"Self");
     struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub,(machdbg?"Self":0));
+    struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub,"Self");
     struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
     // move portion of sent to global -- G = GM; S = M'S
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
@@ -554,9 +549,9 @@ void machineSelf(int sig, int *arg)
 void machineGlob(int sig, int *arg)
 {
     if (sig != GlobArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub,(machdbg?"Glob":0));
+    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub,"Glob");
     struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub,(machdbg?"Glob":0));
+    struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub,"Glob");
     struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
     // absorb discontinuous change -- G = GM
     timesmat(kernel->global.mat,matrix->mat,4); // G = GM
@@ -568,7 +563,7 @@ void machineBopy(int sig, int *arg)
     if (sig != BopyArgs) ERROR();
     int src = arg[BopySrc];
     int alt = arg[BopyAlt];
-    struct Extend *ext = centerPull(src,(machdbg?"Bopy":0));
+    struct Extend *ext = centerPull(src,"Bopy");
     callCont(ext,alt,ext->log);
 }
 void machineExec(struct Extend *ext);
@@ -576,7 +571,7 @@ void machineCopy(int sig, int *arg)
 {
     if (sig != CopyArgs) ERROR();
     int src = arg[CopySrc];
-    struct Extend *ext = centerPull(src,(machdbg?"Copy":0));
+    struct Extend *ext = centerPull(src,"Copy");
     if (waitSafe(execSem) != 0) ERROR();
     machineExec(ext);
     if (postSafe(execSem) != 1) ERROR();
@@ -588,7 +583,7 @@ void machineDopy(int sig, int *arg)
     int src = arg[DopySrc];
     int dst = arg[DopyDst];
     struct Extend *cpy = 0; allocExtend(&cpy,1);
-    struct Extend *ptr = centerPull(src,(machdbg?"Dopy":0));
+    struct Extend *ptr = centerPull(src,"Dopy");
     copyExtend(cpy,ptr);
     cpy->sub = dst; cpy->log = otherSmart(ptr->log);
     centerPlace(ptr);
@@ -602,8 +597,8 @@ void machineMopy(int sig, int *arg)
     int dstSub = arg[MopyDst];
     int dstOfs = arg[MopyDstSub];
     int siz = arg[MopySiz];
-    struct Extend *src = centerPull(srcSub,(machdbg?"Mopy":0));
-    struct Extend *dst = centerPull(dstSub,(machdbg?"Mopy":0));
+    struct Extend *src = centerPull(srcSub,"Mopy");
+    struct Extend *dst = centerPull(dstSub,"Mopy");
     centerMerge(src,&dst,srcOfs,dstOfs,siz);
     centerPlace(src);
     centerPlace(dst);
@@ -612,7 +607,7 @@ void machineDemo(struct Menu *menu);
 void machineNopy(int sig, int *arg)
 {
     if (sig != NopyArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,(machdbg?"Nopy":0));
+    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,"Nopy");
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
     machineDemo(menu);
     machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
@@ -626,7 +621,7 @@ void machineQopy(int sig, int *arg)
 {
     if (sig != QopyArgs) ERROR();
     int src = arg[QopySrc];
-    struct Extend *ptr = centerPull(src,(machdbg?"Qopy":0));
+    struct Extend *ptr = centerPull(src,"Qopy");
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
@@ -638,7 +633,7 @@ void machineRopy(int sig, int *arg)
 void machineStage(enum Configure cfg, int idx)
 {
     centerSize(idx);
-    struct Extend *ext = centerPeek(idx,(machdbg?"Stage":0));
+    struct Extend *ext = centerPeek(idx,"Stage");
     struct Center *ptr = (ext?ext->ptr:0);
     struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
     switch (cfg) {default: ERROR();
@@ -666,7 +661,7 @@ void machineStage(enum Configure cfg, int idx)
 }
 void machineTsage(enum Configure cfg, int idx)
 {
-    struct Extend *ext = centerPull(idx,(machdbg?"Tsage":0));
+    struct Extend *ext = centerPull(idx,"Tsage");
     struct Center *ptr = (ext?ext->ptr:0);
     struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
     switch (cfg) {default: ERROR();
@@ -693,7 +688,7 @@ void machineTsage(enum Configure cfg, int idx)
 }
 void machineEval(struct Express *exp, int idx)
 {
-    struct Extend *ext = centerPull(idx,(machdbg?"Eval":0));
+    struct Extend *ext = centerPull(idx,"Eval");
     struct Center *ptr = ext->ptr;
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0)); freeCenter(ptr);
@@ -818,6 +813,9 @@ void machineExec(struct Extend *ext)
     for (int i = 0; i < ptr->siz; i++) {
     machineSwitch(&ptr->exe[i]);} break;
     case (Rebootz):
+    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
+    ext->log = nameSmart(debug?"Exec":0);
+    if (debug) {char *st0 = 0; showExtend(ext,&st0); printfSmart(ext->log,"%s",st0); free(st0);}}
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
     planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
@@ -827,11 +825,15 @@ void machineExec(struct Extend *ext)
     // to prevent deadlock, machineExec should only be called from planeMachine
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
-    if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
+    if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
     pushCenterq(nxt,reboot);
     continue;}
+    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
+    nxt->log = nameSmart(debug?"Exec":0);
+    if (debug) {char *st0 = 0; showExtend(nxt,&st0);
+    printfSmart(nxt->log,"%d/%d %d %p %s",i,ptr->siz,ptr->sub[i],nxt,st0); free(st0);}}
     if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
-    else {machineExec(nxt); freeExtend(nxt); deleteSmart(nxt->log); allocExtend(&nxt,0);}}
+    else {machineExec(nxt); deleteSmart(nxt->log); freeExtend(nxt); allocExtend(&nxt,0);}}
     if (sizeCenterq(reboot) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
     joinCenterq(reboot,internal);
@@ -936,7 +938,12 @@ void planeCenter(enum Thread tag, int idx)
     if (postSafe(pipeSem) != 1) ERROR();
     if (center && center->ptr->slf < 0) {
     center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
+    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<LoopVrb)) != 0);
+    center->log = nameSmart(debug?"Loop":0);
+    if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
+    if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
+    if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
     if (center && center->ptr->slf >= 0) {
     if (center->src < 0 || center->src >= Programs) ERROR();
@@ -967,9 +974,9 @@ void planeExternal(enum Thread tag, int idx)
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
     center->rsp = resp;
-    int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
+    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
     center->log = nameSmart(debug?"Pipe":0);
-    if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}
+    if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -1332,6 +1339,10 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != CenterLog) ERROR();
     if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
+    if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
+    if (center[i] != 0 && center[i]->log != 0) {
+    // this is to allow centerPeek from machineTsage to get placed log
+    deleteSmart(center[i]->log); center[i]->log = 0;}
 }
 
 // expression callbacks
@@ -1712,6 +1723,7 @@ int planeLoop()
 }
 void planeDone()
 {
+    clearSmart();
     // TODO stop all the threads
     // TODO free heap allocations
 }
