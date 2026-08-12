@@ -257,11 +257,12 @@ struct Extend *centerPull(int idx, const char *log)
     centerSize(idx);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
-    if (ret == 0) {allocExtend(&ret,1); ret->sub = idx;}
+    if (ret == 0) {allocExtend(&ret,1); ret->sub = idx; ret->asr = PlaceAsr;}
     deleteSmart(ret->log); ret->log = otherSmart(planeInfo(CenterLog,0,planeRcfg));
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
     printfSmart(ret->log,"Pull %d %s",idx,log);
+    if (ret->asr != PlaceAsr) ERROR(); else ret->asr = PullAsr;
     return ret;
 }
 struct Extend *centerPeek(int idx, const char *log)
@@ -272,29 +273,39 @@ struct Extend *centerPeek(int idx, const char *log)
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
     // if (ret) printfSmart(ret->log,"Peek %d %s",idx,log);
+    if (ret != 0 && ret->asr != PlaceAsr) ERROR(); else if (ret != 0) ret->asr = PullAsr;
     return ret;
+}
+void centerFree(int idx, const char *log)
+{
+    centerSize(idx);
+    struct Extend *ptr = centerPeek(idx,log);
+    if (ptr == 0) return;
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = Asserts;
+    deleteSmart(ptr->log);
+    freeExtend(ptr);
+    allocExtend(&ptr,0);
 }
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = PlaceAsr;
     // printfSmart(ptr->log,"Place %d",ptr->sub);
     centerSize(ptr->sub);
+    centerFree(ptr->sub,"Place");
     if (waitSafe(copySem) != 0) ERROR();
-    if (center[ptr->sub] != 0) {
-    deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0);}
+    if (center[ptr->sub] != 0) ERROR();
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
 void centerClear(int sub)
 {
     centerSize(sub);
-    if (waitSafe(copySem) != 0) ERROR();
-    if (center[sub] != 0) {
-    deleteSmart(center[sub]->log); freeExtend(center[sub]); allocExtend(&center[sub],0); center[sub] = 0;}
-    if (postSafe(copySem) != 1) ERROR();
+    centerFree(sub,"Clear");
 }
 void centerDone(struct Extend *ptr)
 {
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = DoneAsr;
     printfSmart(ptr->log,"Done %d",ptr->sub);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,replace);
@@ -304,6 +315,7 @@ void centerDone(struct Extend *ptr)
 int centerCheck(int idx)
 {
     centerSize(idx);
+    if (center[idx] != 0 && center[idx]->asr != PlaceAsr) ERROR();
     if (waitSafe(copySem) != 0) ERROR();
     int ret = (center[idx] != 0);
     if (postSafe(copySem) != 1) ERROR();
@@ -622,6 +634,7 @@ void machineQopy(int sig, int *arg)
     if (sig != QopyArgs) ERROR();
     int src = arg[QopySrc];
     struct Extend *ptr = centerPull(src,"Qopy");
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
     if (postSafe(pipeSem) != 1) ERROR();
@@ -801,7 +814,9 @@ void machinePop(int sig, int chk, int dst, void *que)
     if (sig != chk) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,que);
+    enum Assert asr = (que==internal?PipeAsr:DoneAsr);
     if (postSafe(pipeSem) != 1) ERROR();
+    if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
     if (ptr == 0) centerClear(dst);
     else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
 }
@@ -822,18 +837,19 @@ void machineExec(struct Extend *ext)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
+    if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
     // to prevent deadlock, machineExec should only be called from planeMachine
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
-    pushCenterq(nxt,reboot);
+    nxt->asr = PipeAsr; pushCenterq(nxt,reboot);
     continue;}
     {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
     nxt->log = nameSmart(debug?"Exec":0);
     if (debug) {char *st0 = 0; showExtend(nxt,&st0);
     printfSmart(nxt->log,"%d/%d %d %p %s",i,ptr->siz,ptr->sub[i],nxt,st0); free(st0);}}
     if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
-    else {machineExec(nxt); deleteSmart(nxt->log); freeExtend(nxt); allocExtend(&nxt,0);}}
+    else {machineExec(nxt); nxt->asr = Asserts; deleteSmart(nxt->log); freeExtend(nxt); allocExtend(&nxt,0);}}
     if (sizeCenterq(reboot) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
     joinCenterq(reboot,internal);
@@ -936,16 +952,17 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
+    if (center != 0 && center->asr != RespAsr) ERROR(); else if (center != 0) center->asr = PullAsr;
     if (center && center->ptr->slf < 0) {
     center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
     {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<LoopVrb)) != 0);
     center->log = nameSmart(debug?"Loop":0);
     if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
     if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(center,internal);
+    center->asr = PipeAsr; pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
-    if (center && center->ptr->slf >= 0) {
+    else if (center && center->ptr->slf >= 0) {
     if (center->src < 0 || center->src >= Programs) ERROR();
     int sub = inverse[center->src];
     writeCenter(center->ptr,sub);
@@ -978,7 +995,7 @@ void planeExternal(enum Thread tag, int idx)
     center->log = nameSmart(debug?"Pipe":0);
     if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
     if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(center,internal);
+    center->asr = PipeAsr; pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
 }
@@ -1414,7 +1431,8 @@ void planeArgv(int argc, char **argv)
     int val[3] = {arg.inp,arg.out,arg.oth};
     callJnfo(cfg,val,3,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {struct Extend *ptr = 0; allocExtend(&ptr,1);
-    copyCenter(ptr->ptr,&cntr); freeCenter(&cntr); ptr->sub = centers; ptr->log = nameSmart(debug?"Argv":0);
+    copyCenter(ptr->ptr,&cntr); freeCenter(&cntr);
+    ptr->sub = centers; ptr->log = nameSmart(debug?"Argv":0);
     centerPlace(ptr);}
     else if (hideMachine(&mchn, argv[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);}

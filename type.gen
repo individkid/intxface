@@ -57,16 +57,23 @@ Memory = { -- which structure is in the center struction
 	"Kernelz", -- inflight transformations
 }
 Response = {
-	"RetRsp", -- return pass or fail
 	"RptRsp", -- repeat until pass
-	"MltRsp", -- return pass or fail of multiple
+	"RetRsp", -- return pass or fail
 	"MptRsp", -- repeat multiple until pass
+	"MltRsp", -- return pass or fail of multiple
 }
 Retval = {
 	"NoneRet", -- before submit
 	"PassRet", -- pushed to gpu
 	"FailRet", -- rejected by gpu
 	"DoneRet", -- writtten to pipe
+}
+Assert = { -- only one place at a time
+	"PullAsr", -- just after pull
+	"PlaceAsr", -- in center array
+	"PipeAsr", -- in internal queue
+	"RespAsr", -- in response queue
+	"DoneAsr", -- in replace queue
 }
 Resrc = { -- variation of BaseState
 	"SwapRes",
@@ -2506,6 +2513,7 @@ Extend = {
 	{"rsp","Response",{},{}}, -- how to respond
 	{"ret","Retval",{},{}}, -- pass fail or done
 	{"log","Int",{},{}}, -- handle for logging
+	{"asr","Assert",{},{}}, -- assertion check
 }
 Listed = {
 	{"siz","Int",{},{}},
