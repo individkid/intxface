@@ -214,6 +214,9 @@ void printfSmart(int slf, const char *fmt, ...) {
 void clearSmart() {
     slog.clr();
 }
+void doneSmart() {
+    slog.onof(0,0,0,0,0);
+}
 
 float processTime()
 {

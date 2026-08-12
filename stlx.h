@@ -720,6 +720,7 @@ int otherSmart(int oth);
 void deleteSmart(int slf);
 void printfSmart(int slf, const char *fmt, ...);
 void clearSmart();
+void doneSmart();
 
 float processTime();
 

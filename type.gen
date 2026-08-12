@@ -1990,7 +1990,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Nest(lvl:6)"..
 		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Stage(siz:7sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntsav[6]:CenterLogidx[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
 		  "#0 == EC ?CenterPtr #0 Cmp , #6"..
 		  "#0 == Or EC ?CenterMem #%(return castMemory(\"Transferz\")) Cmp EC ?CenterMem #%(return castMemory(\"Rebootz\")) Cmp Bit , #5"..
@@ -2038,6 +2038,7 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- do nothing if internal queue empty
+		  "mch[%(return jdx())]:Void(exp[0]:$(CenterLog := #0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 3

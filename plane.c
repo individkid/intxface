@@ -1724,6 +1724,7 @@ int planeLoop()
 void planeDone()
 {
     clearSmart();
+    doneSmart(); // destructor for SlogState happens after destructor for ThreadState
     // TODO stop all the threads
     // TODO free heap allocations
 }
