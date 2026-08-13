@@ -283,7 +283,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterSelf", -- self for loopback
-	"RegisterResp", -- default response type
 	"RegisterVerb", -- transaction logging
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use

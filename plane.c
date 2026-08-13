@@ -14,14 +14,13 @@
 struct Extend **center = 0; // only for planeSwitch
 int centers = 0; // only for planeSwitch
 void *copySem = 0; // protect centers
+int extdone = 0; // done for planeExternal
 int external = 0; // pipes to planeExternal
 int inverse[Programs] = {0}; // inverse to userIdent
-int extdone = 0; // done for planeExternal
 void *internal = 0; // queue of center
-void *reboot = 0; // temporary queu
 void *response = 0; // queue of center
 void *replace = 0; // queue of center
-void *pipeSem = 0; // protect internal response replace
+void *pipeSem = 0; // protect external inverse internal response replace
 void *execSem = 0; // protect atomic pipe reads
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
@@ -636,8 +635,9 @@ void machineQopy(int sig, int *arg)
     struct Extend *ptr = centerPull(src,"Qopy");
     if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
+    pushCenterq(ptr,response);
     if (postSafe(pipeSem) != 1) ERROR();
+    postSafe(safeSafe(PipeThd,0));
 }
 void machineRopy(int sig, int *arg)
 {
@@ -814,8 +814,8 @@ void machinePop(int sig, int chk, int dst, void *que)
     if (sig != chk) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,que);
-    enum Assert asr = (que==internal?PipeAsr:DoneAsr);
     if (postSafe(pipeSem) != 1) ERROR();
+    enum Assert asr = (que==internal?PipeAsr:DoneAsr);
     if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
     if (ptr == 0) centerClear(dst);
     else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
@@ -826,8 +826,10 @@ void machineExec(struct Extend *ext)
     switch (ptr->mem) {default: ERROR();
     case (Transferz):
     for (int i = 0; i < ptr->siz; i++) {
-    machineSwitch(&ptr->exe[i]);} break;
-    case (Rebootz):
+    machineSwitch(&ptr->exe[i]);}
+    break;
+    case (Rebootz): {
+    void *reboot = 0; reboot = allocCenterq();
     {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
     ext->log = nameSmart(debug?"Exec":0);
     if (debug) {char *st0 = 0; showExtend(ext,&st0); printfSmart(ext->log,"%s",st0); free(st0);}}
@@ -858,6 +860,7 @@ void machineExec(struct Extend *ext)
     int size = sizeCenterq(internal);
     if (postSafe(pipeSem) != 1) ERROR();
     if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    freeCenterq(reboot);}
     break;}
 }
 void machineDemo(struct Menu *menu)
@@ -958,13 +961,16 @@ void planeCenter(enum Thread tag, int idx)
     {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<LoopVrb)) != 0);
     center->log = nameSmart(debug?"Loop":0);
     if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
+    center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
-    center->asr = PipeAsr; pushCenterq(center,internal);
+    pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
     else if (center && center->ptr->slf >= 0) {
     if (center->src < 0 || center->src >= Programs) ERROR();
+    if (waitSafe(pipeSem) != 0) ERROR();
     int sub = inverse[center->src];
+    if (postSafe(pipeSem) != 1) ERROR();
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
     centerDone(center);}}
@@ -973,29 +979,25 @@ void planeExternal(enum Thread tag, int idx)
 {
     while (1) {
     if (waitSafe(pipeSem) != 0) ERROR();
-    int mask = (external|(1<<extdone));
+    int temp = external;
     if (postSafe(pipeSem) != 1) ERROR();
-    int sub = waitRead(0.0,mask);
-    // WARN Info semaphore inside of pipeSem will deadlock,
+    int sub = waitRead(0.0,(temp|(1<<extdone)));
+    // WARN semaphore inside of pipeSem will deadlock,
     // because callbacks inside of Jnfo semaphore wait on pipeSem.
     // Nested semaphores are fine if they are nested in the same order.
-    int resp = planeInfo(RegisterResp,0,planeRcfg);
-    if (waitSafe(pipeSem) != 0) ERROR();
-    if (sub == extdone) {
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (readChr(extdone)) break; else continue;}
-    if (postSafe(pipeSem) != 1) ERROR();
-    if ((1<<sub)&external != (1<<sub)) ERROR();
-    struct Extend *center = 0;
-    allocExtend(&center,1);
+    if (sub == extdone) {if (readChr(extdone)) break; else continue;}
+    if ((1<<sub)&temp != (1<<sub)) ERROR();
+    struct Extend *center = 0; allocExtend(&center,1);
     readCenter(center->ptr,sub);
+    if (waitSafe(pipeSem) != 0) ERROR();
     center->src = (int*)*userIdent(sub) - inverse;
-    center->rsp = resp;
+    if (postSafe(pipeSem) != 1) ERROR();
     {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
     center->log = nameSmart(debug?"Pipe":0);
     if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
+    center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
-    center->asr = PipeAsr; pushCenterq(center,internal);
+    pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
 }
@@ -1261,6 +1263,11 @@ void registerExit(enum Configure cfg, int sav, int val, int act)
     if (cfg != RegisterExit) ERROR();
     callWake();
 }
+void registerVerb(enum Configure cfg, int sav, int val, int act)
+{
+    if (cfg != RegisterVerb) ERROR();
+    clearSmart();
+}
 void registerUniform(enum Configure cfg, int sav, int val, int act)
 {
     switch (cfg) {default: ERROR();
@@ -1282,19 +1289,18 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != ArgumentInp && cfg != ArgumentOut && cfg != ArgumentSrc) ERROR();
-    if (waitSafe(pipeSem) != 0) ERROR();
     enum Configure arg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; int num[3] = {0,0,0};
     callGnfo(arg,num,3,planeRcfg);
     int rdfd = num[0];
     int wrfd = num[1];
     int asrc = num[2];
+    if (waitSafe(pipeSem) != 0) ERROR();
     int sub = rdwrInit(rdfd,wrfd);
     external |= 1<<sub;
     inverse[asrc] = sub;
     *userIdent(sub) = inverse + asrc;
-    postSafe(safeSafe(PipeThd,0));
-    writeChr(0,extdone);
     if (postSafe(pipeSem) != 1) ERROR();
+    writeChr(0,extdone);
 }
 void registerQue(enum Configure cfg, int val, enum Configure ary[], void *ptr[], int siz, int msk)
 {
@@ -1430,7 +1436,8 @@ void planeArgv(int argc, char **argv)
     enum Configure cfg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc};
     int val[3] = {arg.inp,arg.out,arg.oth};
     callJnfo(cfg,val,3,planeWcfg); freeArgument(&arg);}
-    else if (hideCenter(&cntr, argv[i], &csiz)) {struct Extend *ptr = 0; allocExtend(&ptr,1);
+    else if (hideCenter(&cntr, argv[i], &csiz)) {
+    struct Extend *ptr = 0; allocExtend(&ptr,1);
     copyCenter(ptr->ptr,&cntr); freeCenter(&cntr);
     ptr->sub = centers; ptr->log = nameSmart(debug?"Argv":0);
     centerPlace(ptr);}
@@ -1454,7 +1461,7 @@ void initSafe()
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     if (!(loopSem = allocSafe(1))) ERROR(); // protect field pipe
-    internal = allocCenterq(); response = allocCenterq(); replace = allocCenterq(); reboot = allocCenterq();
+    internal = allocCenterq(); response = allocCenterq(); replace = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
     charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
     timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();
@@ -1465,6 +1472,7 @@ void initSafe()
     callBack(RegisterAble,registerAble);
     callBack(RegisterTime,registerTime);
     callBack(RegisterExit,registerExit);
+    callBack(RegisterVerb,registerVerb);
     callBack(UniformAll,registerUniform);
     callBack(UniformOne,registerUniform);
     callBack(UniformIdx,registerUniform);

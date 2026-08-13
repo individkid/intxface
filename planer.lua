@@ -146,12 +146,17 @@ function initTest()
 	--
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
 	--
+	readConfig(list,config,{"RegisterVerb"})
+	writeConfig(list,{1<<castVerbose("LoopVrb")},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
+	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
 	--
-	writeConfig(list,{1<<castVerbose("LoopVrb")},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	writeConfig(list,{0},{"RegisterVerb"})
 	readConfig(list,config,{"RegisterVerb"})
 	--
 	ind={}
