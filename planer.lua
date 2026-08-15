@@ -85,9 +85,11 @@ function readConfig(list,res,cfg)
 	for i,v in ipairs(center["cfg"]) do res[i] = v end
 end
 function writeConfig(list,val,cfg)
+	if #list > 0 then atomSugar(list,tests[found]["idx"]) end
 	for i,v in ipairs(cfg) do
 	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$("..v.." := #"..val[i].."))")
 	end
+	atomSugar(list,tests[found]["idx"])
 end
 function listResrc(lst,res,arg)
 	cent = "Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:"..res..")ptr:Dat()"
@@ -112,6 +114,14 @@ function listSpoof(lst,mem,fld,arg)
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
 	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..castMemory(mem).."))")
+	atomSugar(list,tests[found]["idx"])
+end
+function writeCent(lst,mem,idx,slf,fld,arg)
+	if #lst > 0 then atomSugar(lst,tests[found]["idx"]) end
+	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:"..idx.."slf:"..slf
+	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
+	cent = cent..")"
+	writeCenter(centSugar(cent),tests[found]["idx"]);
 end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
@@ -138,24 +148,21 @@ function initTest()
 	ver[2]="Vertex(vec[0]: 0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:0.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[3]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.4vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[4]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	--
 	ver[5]="Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[6]="Vertex(vec[0]: 0.5vec[1]:-0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
-	--
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
 	--
-	readConfig(list,config,{"RegisterVerb"})
-	writeConfig(list,{1<<castVerbose("LoopVrb")},{"RegisterVerb"})
+	writeConfig(list,{(1<<castVerbose("PipeVrb"))},{"RegisterVerb"})
 	readConfig(list,config,{"RegisterVerb"})
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
 	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
+	-- writeCent(list,"Identz",0,0,"idt",idt) -- FetchPhs 1
 	--
-	readConfig(list,config,{"RegisterVerb"})
 	writeConfig(list,{0},{"RegisterVerb"})
 	readConfig(list,config,{"RegisterVerb"})
 	--
@@ -163,7 +170,13 @@ function initTest()
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
 	listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
-	atomSugar(list,tests[found]["idx"])
+	--
+	config[1] = 0 while(config[1] ~= 1) do
+	list[#list+1] = machSugar("Machine(xfr:Stagesiz:1sav[0]:CenterPtridx[0]:$(@index))")
+	readConfig(list,config,{"CenterPtr"}) end
+	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
+	readConfig(list,config,{"ScratchDescrs"})
+	print("pass:"..config[1])
 end
 
 function runTest()

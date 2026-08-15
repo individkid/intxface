@@ -715,10 +715,12 @@ void doneSafe(void *ptr);
 void freeSafe(void *ptr);
 int timeSafe(void *ptr, double dif);
 int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg);
-int nameSmart(const char *str);
+int selfSmart(const char *str);
 int otherSmart(int oth);
 void deleteSmart(int slf);
 void printfSmart(int slf, const char *fmt, ...);
+int numberSmart(int slf);
+const char *nameSmart(int slf);
 void clearSmart();
 void doneSmart();
 

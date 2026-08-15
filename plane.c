@@ -243,20 +243,13 @@ float *planeWindow(float *mat)
 }
 
 // resource accessors
-void centerSize(int idx)
-{
-    if (waitSafe(copySem) != 0) ERROR();
-    if (idx < 0) ERROR();
-    if (idx >= centers) {int size = idx+1; center = realloc(center,size*sizeof(struct Extend *));
-    for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
-    if (postSafe(copySem) != 1) ERROR();
-}
+void centerSize(int idx);
+int centerBlock(void *arg);
 struct Extend *centerPull(int idx, const char *log)
 {
     centerSize(idx);
-    if (waitSafe(copySem) != 0) ERROR();
+    if (funcSafe(copySem,centerBlock,center+idx) < 0) ERROR();
     struct Extend *ret = center[idx];
-    if (ret == 0) {allocExtend(&ret,1); ret->sub = idx; ret->asr = PlaceAsr;}
     deleteSmart(ret->log); ret->log = otherSmart(planeInfo(CenterLog,0,planeRcfg));
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
@@ -275,16 +268,7 @@ struct Extend *centerPeek(int idx, const char *log)
     if (ret != 0 && ret->asr != PlaceAsr) ERROR(); else if (ret != 0) ret->asr = PullAsr;
     return ret;
 }
-void centerFree(int idx, const char *log)
-{
-    centerSize(idx);
-    struct Extend *ptr = centerPeek(idx,log);
-    if (ptr == 0) return;
-    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = Asserts;
-    deleteSmart(ptr->log);
-    freeExtend(ptr);
-    allocExtend(&ptr,0);
-}
+void centerFree(int idx, const char *log);
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
@@ -418,6 +402,29 @@ void centerMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int 
     if ((*dst) != 0) deleteSmart((*dst)->log);
     freeExtend(*dst); allocExtend(dst,0);
     *dst = init.dst;
+}
+void centerSize(int idx)
+{
+    if (waitSafe(copySem) != 0) ERROR();
+    if (idx < 0) ERROR();
+    if (idx >= centers) {int size = idx+1; center = realloc(center,size*sizeof(struct Extend *));
+    for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
+    if (postSafe(copySem) != 1) ERROR();
+}
+void centerFree(int idx, const char *log)
+{
+    centerSize(idx);
+    struct Extend *ptr = centerPeek(idx,log);
+    if (ptr == 0) return;
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = Asserts;
+    deleteSmart(ptr->log);
+    freeExtend(ptr);
+    allocExtend(&ptr,0);
+}
+int centerBlock(void *arg)
+{
+    struct Extend **center = (struct Extend **)arg;
+    return (*center != 0);
 }
 
 // machine extensions
@@ -830,9 +837,7 @@ void machineExec(struct Extend *ext)
     break;
     case (Rebootz): {
     void *reboot = 0; reboot = allocCenterq();
-    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
-    ext->log = nameSmart(debug?"Exec":0);
-    if (debug) {char *st0 = 0; showExtend(ext,&st0); printfSmart(ext->log,"%s",st0); free(st0);}}
+    printfSmart(ext->log,"Exec %d",ptr->siz);
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
     planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
@@ -846,10 +851,7 @@ void machineExec(struct Extend *ext)
     if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
     nxt->asr = PipeAsr; pushCenterq(nxt,reboot);
     continue;}
-    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
-    nxt->log = nameSmart(debug?"Exec":0);
-    if (debug) {char *st0 = 0; showExtend(nxt,&st0);
-    printfSmart(nxt->log,"%d/%d %d %p %s",i,ptr->siz,ptr->sub[i],nxt,st0); free(st0);}}
+    printfSmart(ext->log,"Exec %d/%d:%d %05d:%s",i,ptr->siz,ptr->sub[i],numberSmart(nxt->log),nameSmart(nxt->log));
     if (ptr->sub[i] >= 0) {nxt->sub = ptr->sub[i]; centerPlace(nxt);}
     else {machineExec(nxt); nxt->asr = Asserts; deleteSmart(nxt->log); freeExtend(nxt); allocExtend(&nxt,0);}}
     if (sizeCenterq(reboot) > 0) {
@@ -958,9 +960,7 @@ void planeCenter(enum Thread tag, int idx)
     if (center != 0 && center->asr != RespAsr) ERROR(); else if (center != 0) center->asr = PullAsr;
     if (center && center->ptr->slf < 0) {
     center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
-    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<LoopVrb)) != 0);
-    center->log = nameSmart(debug?"Loop":0);
-    if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
+    {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"Loop %s",st0); free(st0);}
     center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
@@ -971,6 +971,7 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     int sub = inverse[center->src];
     if (postSafe(pipeSem) != 1) ERROR();
+    {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"Write %s",st0); free(st0);}
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
     centerDone(center);}}
@@ -993,7 +994,7 @@ void planeExternal(enum Thread tag, int idx)
     center->src = (int*)*userIdent(sub) - inverse;
     if (postSafe(pipeSem) != 1) ERROR();
     {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
-    center->log = nameSmart(debug?"Pipe":0);
+    center->log = selfSmart(debug?"Pipe":0);
     if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
     center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -1063,7 +1064,7 @@ void planeTest(enum Thread tag, int idx)
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
 
-    struct Extend *mat = centerPull(Matrixz,(debug?"Test0":0)); if (!mat) {callWait(); continue;}
+    struct Extend *mat = centerPeek(Matrixz,(debug?"Test0":0)); if (!mat) {callWait(); continue;}
     freeCenter(mat->ptr); mat->ptr->mem = Matrixz;
     if (alt) {mat->ptr->idx = 2; mat->ptr->siz = 2;} // uni.pro tri.pol
     else {mat->ptr->idx = 0; mat->ptr->siz = 1;} // uni.all
@@ -1084,7 +1085,7 @@ void planeTest(enum Thread tag, int idx)
     int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
     callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
     int giv[] = {width,height,0,12}; // idx,siz
-    struct Extend *drw = centerPull(Drawz,(debug?"Test1":0)); if (!drw) {callWait(); continue;}
+    struct Extend *drw = centerPeek(Drawz,(debug?"Test1":0)); if (!drw) {callWait(); continue;}
     freeCenter(drw->ptr);
     drw->ptr->mem = Drawz; drw->ptr->idx = 0; drw->ptr->siz = 1;
     allocDraw(&drw->ptr->drw,drw->ptr->siz);
@@ -1111,7 +1112,7 @@ void planeTest(enum Thread tag, int idx)
     if (count == tested) {}
 
     else if (count%6 == 1 || count%6 == 4) {
-    struct Extend *eek = centerPull(Getoldz,(debug?"Test2":0)); if (!eek) {callWait(); continue;}
+    struct Extend *eek = centerPeek(Getoldz,(debug?"Test2":0)); if (!eek) {callWait(); continue;}
     freeCenter(eek->ptr);
     eek->ptr->mem = Getoldz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocOld(&eek->ptr->old,eek->ptr->siz);
@@ -1119,7 +1120,7 @@ void planeTest(enum Thread tag, int idx)
     callCopy(eek,0,(debug?"peek":0));}
 
     else if (count%6 == 2 || count%6 == 5) {
-    struct Extend *eek = centerPull(Getintz,(debug?"Test3":0)); if (!eek) {callWait(); continue;}
+    struct Extend *eek = centerPeek(Getintz,(debug?"Test3":0)); if (!eek) {callWait(); continue;}
     freeCenter(eek->ptr);
     eek->ptr->mem = Getintz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocInt(&eek->ptr->uns,eek->ptr->siz);
@@ -1127,7 +1128,8 @@ void planeTest(enum Thread tag, int idx)
     callCopy(eek,0,(debug?"ident":0));}
 
     else if (count%6 == 3 || count%6 == 0) {
-    struct Extend *vec = centerPull(Vectorz,(debug?"Test4":0)); freeCenter(vec->ptr);
+    struct Extend *vec = centerPeek(Vectorz,(debug?"Test4":0)); if (!vec) {callWait(); continue;}
+    freeCenter(vec->ptr);
     vec->ptr->mem = Vectorz; vec->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; vec->ptr->siz = 1;
     allocVector(&vec->ptr->vec,vec->ptr->siz);
     vec->ptr->vec[0].vec[0] = 1.0; vec->ptr->vec[0].vec[1] = 2.0;
@@ -1439,7 +1441,7 @@ void planeArgv(int argc, char **argv)
     else if (hideCenter(&cntr, argv[i], &csiz)) {
     struct Extend *ptr = 0; allocExtend(&ptr,1);
     copyCenter(ptr->ptr,&cntr); freeCenter(&cntr);
-    ptr->sub = centers; ptr->log = nameSmart(debug?"Argv":0);
+    ptr->sub = centers; ptr->log = selfSmart(debug?"Argv":0);
     centerPlace(ptr);}
     else if (hideMachine(&mchn, argv[i], &msiz)) {
     machineSwitch(&mchn); freeMachine(&mchn);}
@@ -1586,7 +1588,7 @@ void initTest()
     break; case (Bringup): mode = true; case (Builtin): {
     int frames = planeInfo(ScratchFrames,0,planeRcfg);
 
-    int test = nameSmart("Init");
+    int test = selfSmart("Init");
     printfSmart(test,"test %d",test);
     deleteSmart(test);
 

@@ -190,7 +190,7 @@ int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg)
     auto saf = (SafeState*)ptr;
     return saf->wait(dif,fnc,arg);
 }
-int nameSmart(const char *str) {
+int selfSmart(const char *str) {
     if (str == 0) return 0;
     return slog.con(str);
 }
@@ -210,6 +210,16 @@ void printfSmart(int slf, const char *fmt, ...) {
     char *str = 0; vasprintf(&str,fmt,arg);
     *ptr << str << '\n'; free(str);
     va_end(arg);
+}
+int numberSmart(int slf) {
+    if (slf == 0) return 0;
+    SmartState *ptr = slog.get(slf);
+    return ptr->num;
+}
+const char *nameSmart(int slf) {
+    if (slf == 0) return 0;
+    SmartState *ptr = slog.get(slf);
+    return slog.name[ptr->num].c_str();
 }
 void clearSmart() {
     slog.clr();

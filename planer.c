@@ -65,8 +65,8 @@ int main(int argc, const char **argv)
 	execv(procs[i][0],procs[i]);
 	fprintf(stderr,"%s: cannot execute file: %s\n",argv[0],procs[i][0]); return -2;}}
 	pid_t pid; while ((pid = wait(0)) >= 0) for (int i = 0; i < count; i++) if (pid == pids[i]) {
-	struct pollfd pfd; pfd.fd = rdid[i]; pfd.events = POLLIN; int ret = poll(&pfd,1,0);
-	if (ret <= 0) fprintf(stderr,"%s: cannot read pipe\n",procs[i][0]);
+	struct pollfd pfd; pfd.fd = rdid[i]; pfd.events = POLLIN; int ret = 0; while (ret == 0) ret = poll(&pfd,1,0);
+	if (ret <= 0) fprintf(stderr,"%s: cannot read pipe %d %d\n",procs[i][0],errno,ret);
 	if (ret <= 0) {kill(-gpid,SIGTERM); return -3;}} if (!(pid < 0 && errno == ECHILD)) return -4;}
 	return 0;
 }
