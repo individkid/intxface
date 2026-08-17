@@ -55,10 +55,11 @@ function atomSugar(list,idx)
 	for i in pairs(list) do list[i] = nil end
 end
 function listSugar(src)
-	mach0 = machSugar("Machine(xfr:Dopysig:2arg[0]:$(#"..castMemory("Kernelz")..")arg[1]:$(#"..castMemory("Memorys").."))")
+	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
+	mach0 = centSugar(cent) -- this prevents Pull blocking
 	mach1 = exprSugar("$(CenterSrc := #"..castProgram(src)..")")
-	mach2 = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(#"..castMemory("Memorys").."))")
-	mach3 = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..castMemory("Memorys").."))")
+	mach2 = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
+	mach3 = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	return {mach0,mach1,mach2,mach3}
 end
 function pipeTest()
@@ -74,6 +75,8 @@ function doneTest()
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
 end
 function readConfig(list,res,cfg)
+	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
+	list[#list+1] = centSugar(cent) -- this prevents Pull blocking
 	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
 	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(@getcfg))")
 	for i,v in ipairs(cfg) do
@@ -91,14 +94,14 @@ function writeConfig(list,val,cfg)
 	end
 	atomSugar(list,tests[found]["idx"])
 end
+-- TODO for listDraw, use rsp of RetRsp
 function listResrc(lst,res,arg)
 	cent = "Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:"..res..")ptr:Dat()"
 	cent = cent.."siz:"..#arg
-	for i,v in ipairs(arg) do
-	cent = cent.."arg["..(i-1).."]:"..v
-	end
+	for i,v in ipairs(arg) do cent = cent.."arg["..(i-1).."]:"..v end
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
+	-- TODO Void and Tsage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Memorys")..")arg[1]:$(#0))")
 end
 function listMemory(lst,mem,fld,arg)
@@ -106,6 +109,7 @@ function listMemory(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
+	-- TODO Void and Tsage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
 end
 function listSpoof(lst,mem,fld,arg)
@@ -160,8 +164,9 @@ function initTest()
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
 	-- writeCent(list,"Identz",0,0,"idt",idt) -- FetchPhs 1
+	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
+	-- listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	--
 	writeConfig(list,{0},{"RegisterVerb"})
 	readConfig(list,config,{"RegisterVerb"})

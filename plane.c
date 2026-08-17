@@ -39,10 +39,12 @@ void *baseq = 0; // queue of mouse presses
 void *angleq = 0; // queue of mouse presses
 void *pressSem = 0; // protect press queues
 void **wakeSem[Threads] = {0};
-int keepSem[Threads] = {0};
 int sizeSem[Threads] = {0};
 int *machine = 0;
-void *safeSem = 0; // protect machine and wakeSem
+int **reboot = 0;
+struct Extend ***recent = 0;
+int *resize = 0;
+void *safeSem = 0; // protect reboot recent resize and wakeSem
 // initialized before threads so safe
 void *tempq = 0; // temporary queue to convert chars to str
 int loopfd = 0; // pipe from one struct to another
@@ -121,10 +123,15 @@ void safeInit(enum Thread thd, int siz, int val)
     free(wakeSem[thd]); wakeSem[thd] = temp;
     if (thd == MachThd) {
     int *temq = malloc(sizeof(int)*siz);
-    for (int i = 0; i < sizeSem[thd]; i++) temq[i] = machine[i];
-    for (int i = sizeSem[thd]; i < siz; i++) temq[i] = -1;
-    free(machine); machine = temq;}
-    keepSem[thd] = siz;
+    int **temr = malloc(sizeof(int*)*siz);
+    struct Extend ***tems = malloc(sizeof(struct Extend**)*siz);
+    int *temt = malloc(sizeof(int)*siz);
+    for (int i = 0; i < sizeSem[thd]; i++) {
+    temq[i] = machine[i]; temr[i] = reboot[i]; tems[i] = recent[i]; temt[i] = resize[i];}
+    for (int i = sizeSem[thd]; i < siz; i++) {
+    temq[i] = -1; temr[i] = 0; tems[i] = 0; temt[i] = 0;}
+    free(machine); free(reboot); free(recent); free(resize);
+    machine = temq; reboot = temr; recent = tems; resize = temt;}
     sizeSem[thd] = siz;
     postSafe(safeSem);
 }
@@ -650,60 +657,60 @@ void machineRopy(int sig, int *arg)
 {
     machinePop(sig,RopyArgs,arg[RopyDst],replace);
 }
-void machineStage(enum Configure cfg, int idx)
+void machineStage(enum Configure *cfg, int siz, int idx)
 {
     centerSize(idx);
     struct Extend *ext = centerPeek(idx,"Stage");
     struct Center *ptr = (ext?ext->ptr:0);
     struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
-    switch (cfg) {default: ERROR();
-    case (CenterPtr): planeJnfo(cfg,(ext!=0),planeWcfg); break;
-    case (CenterRsp): planeJnfo(cfg,(ext?ext->rsp:0),planeWcfg); break;
-    case (CenterSub): planeJnfo(cfg,(ext?ext->sub:0),planeWcfg); break;
-    case (CenterSrc): planeJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
-    case (CenterRet): planeJnfo(cfg,(ext?ext->ret:0),planeWcfg); break;
-    case (CenterSav): planeJnfo(cfg,(ext?ext->sav:0),planeWcfg); break;
-    case (CenterLog): planeJnfo(cfg,(ext?ext->log:0),planeWcfg); break;
-    case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
-    case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
-    case (CenterIdx): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;
-    case (FixedLeft): planeJnfo(cfg,(met?met->fix[0]:0),planeWcfg); break;
-    case (FixedBase): planeJnfo(cfg,(met?met->fix[1]:0),planeWcfg); break;
-    case (FixedDeep): planeJnfo(cfg,(met?met->fix[2]:0),planeWcfg); break;
-    case (NormalLeft): planeJnfo(cfg,(met?met->nor[0]:0),planeWcfg); break;
-    case (NormalBase): planeJnfo(cfg,(met?met->nor[1]:0),planeWcfg); break;
-    case (NormalDeep): planeJnfo(cfg,(met?met->nor[2]:0),planeWcfg); break;
-    case (SelectIdx): planeJnfo(cfg,(met?met->idx:0),planeWcfg); break;
-    case (MetricAct): planeJnfo(cfg,(met?met->act:0),planeWcfg); break;}
+    for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
+    case (CenterPtr): planeJnfo(cfg[i],(ext!=0),planeWcfg); break;
+    case (CenterRsp): planeJnfo(cfg[i],(ext?ext->rsp:0),planeWcfg); break;
+    case (CenterSub): planeJnfo(cfg[i],(ext?ext->sub:0),planeWcfg); break;
+    case (CenterSrc): planeJnfo(cfg[i],(ext?ext->src:0),planeWcfg); break;
+    case (CenterRet): planeJnfo(cfg[i],(ext?ext->ret:0),planeWcfg); break;
+    case (CenterSav): planeJnfo(cfg[i],(ext?ext->sav:0),planeWcfg); break;
+    case (CenterLog): planeJnfo(cfg[i],(ext?ext->log:0),planeWcfg); break;
+    case (CenterInt): planeJnfo(cfg[i],(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterMem): planeJnfo(cfg[i],(ptr?ptr->mem:0),planeWcfg); break;
+    case (CenterSiz): planeJnfo(cfg[i],(ptr?ptr->siz:0),planeWcfg); break;
+    case (CenterIdx): planeJnfo(cfg[i],(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterSlf): planeJnfo(cfg[i],(ptr?ptr->slf:0),planeWcfg); break;
+    case (FixedLeft): planeJnfo(cfg[i],(met?met->fix[0]:0),planeWcfg); break;
+    case (FixedBase): planeJnfo(cfg[i],(met?met->fix[1]:0),planeWcfg); break;
+    case (FixedDeep): planeJnfo(cfg[i],(met?met->fix[2]:0),planeWcfg); break;
+    case (NormalLeft): planeJnfo(cfg[i],(met?met->nor[0]:0),planeWcfg); break;
+    case (NormalBase): planeJnfo(cfg[i],(met?met->nor[1]:0),planeWcfg); break;
+    case (NormalDeep): planeJnfo(cfg[i],(met?met->nor[2]:0),planeWcfg); break;
+    case (SelectIdx): planeJnfo(cfg[i],(met?met->idx:0),planeWcfg); break;
+    case (MetricAct): planeJnfo(cfg[i],(met?met->act:0),planeWcfg); break;}
     centerPlace(ext);
 }
-void machineTsage(enum Configure cfg, int idx)
+void machineTsage(enum Configure *cfg, int siz, int idx)
 {
     struct Extend *ext = centerPull(idx,"Tsage");
     struct Center *ptr = (ext?ext->ptr:0);
     struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
-    switch (cfg) {default: ERROR();
-    case (CenterRsp): ext->rsp = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSub): ext->sub = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterRet): ext->ret = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSav): ext->sav = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterLog): if (ext->log) deleteSmart(ext->log); ext->log = otherSmart(planeInfo(cfg,0,planeRcfg)); break;
-    case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
-    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSiz): {int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);} break;
-    case (CenterIdx): ptr->idx = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;
-    case (FixedLeft): met->fix[0] = planeInfo(cfg,0,planeRcfg); break;
-    case (FixedBase): met->fix[1] = planeInfo(cfg,0,planeRcfg); break;
-    case (FixedDeep): met->fix[2] = planeInfo(cfg,0,planeRcfg); break;
-    case (NormalLeft): met->nor[0] = planeInfo(cfg,0,planeRcfg); break;
-    case (NormalBase): met->nor[1] = planeInfo(cfg,0,planeRcfg); break;
-    case (NormalDeep): met->nor[2] = planeInfo(cfg,0,planeRcfg); break;
-    case (SelectIdx): met->idx = planeInfo(cfg,0,planeRcfg); break;
-    case (MetricAct): met->act = planeInfo(cfg,0,planeRcfg); break;}
+    for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
+    case (CenterRsp): ext->rsp = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterSub): ext->sub = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterSrc): ext->src = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterRet): ext->ret = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterSav): ext->sav = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterLog): if (ext->log) deleteSmart(ext->log); ext->log = otherSmart(planeInfo(cfg[i],0,planeRcfg)); break;
+    case (CenterInt): {int sub = planeInfo(cfg[i],0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
+    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterSiz): {int siz = planeInfo(cfg[i],0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);} break;
+    case (CenterIdx): ptr->idx = planeInfo(cfg[i],0,planeRcfg); break;
+    case (CenterSlf): ptr->slf = planeInfo(cfg[i],0,planeRcfg); break;
+    case (FixedLeft): met->fix[0] = planeInfo(cfg[i],0,planeRcfg); break;
+    case (FixedBase): met->fix[1] = planeInfo(cfg[i],0,planeRcfg); break;
+    case (FixedDeep): met->fix[2] = planeInfo(cfg[i],0,planeRcfg); break;
+    case (NormalLeft): met->nor[0] = planeInfo(cfg[i],0,planeRcfg); break;
+    case (NormalBase): met->nor[1] = planeInfo(cfg[i],0,planeRcfg); break;
+    case (NormalDeep): met->nor[2] = planeInfo(cfg[i],0,planeRcfg); break;
+    case (SelectIdx): met->idx = planeInfo(cfg[i],0,planeRcfg); break;
+    case (MetricAct): met->act = planeInfo(cfg[i],0,planeRcfg); break;}
     centerPlace(ext);
 }
 void machineEval(struct Express *exp, int idx)
@@ -755,8 +762,8 @@ void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
-    case (Stage): for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],machineIval(mptr->idx)); break;
-    case (Tsage): for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],machineIval(mptr->idx)); break;
+    case (Stage): machineStage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break;
+    case (Tsage): machineTsage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break;
     case (Panic): *(int*)0=0; break;
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
@@ -845,7 +852,6 @@ void machineExec(struct Extend *ext)
     struct Extend *nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
-    // to prevent deadlock, machineExec should only be called from planeMachine
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
@@ -925,19 +931,21 @@ void machineDemo(struct Menu *menu)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
-    int debug = 0;
-    int next = 0; while (next >= 0) {next = 0;
-    int index = -1;
-    struct Extend *current = 0;
+    // TODO no need for Tranferz, just use Machinez with remach of -1
     waitSafe(safeSem);
-    index = machine[idx];
+    int index = machine[idx];
+    int *boot = reboot[idx]; reboot[idx] = 0;
+    struct Extend **cent = recent[idx]; recent[idx] = 0;
+    int size = resize[idx]; resize[idx] = 0;
     postSafe(safeSem);
-    if (index < 0) break;
-    current = centerPull(index,(debug?"Mach":0));
-    if (current == 0) break;
-    struct Center *cptr = current->ptr;
-    if (cptr->mem != Machinez) next = -1;
-    if (cptr->siz <= 0) next = -1;
+    if (index < 0) return; if (size == 0) {size = 1;
+    boot = malloc(sizeof(int)); boot[0] = -1;
+    cent = malloc(sizeof(struct Extend *));
+    cent[0] = centerPull(index,"Mach");}
+    for (int i = 0; i < size; i++)
+    if (boot[i] >= 0) {cent[i]->sub = boot[i]; centerPlace(cent[i]);}
+    else {struct Center *cptr = cent[i]->ptr;
+    int next = 0; if (cptr->mem != Machinez) next = -1;
     while (next >= 0 && next < cptr->siz) {
     struct Machine *mptr = &cptr->mch[next];
     int save = next;
@@ -946,9 +954,14 @@ void planeMachine(enum Thread tag, int idx)
     case (Jump): next = machineEscape(cptr->mch,cptr->siz,machineIval(&mptr->exp[0]),next); break;
     case (Nest): next += 1; break;}
     if (next == save) {
-    if (waitSafe(safeSafe(MachThd,0)) < 0) next = -1;
-    else next += 1;}}
-    centerPlace(current); current = 0;}
+    if (waitSafe(safeSafe(MachThd,idx)) < 0) next = -1;
+    else next += 1;}}}
+    for (int i = 0; i < size; i++) if (boot[i] < 0) {
+    freeExtend(cent[i]); allocExtend(&cent[i],0);}
+    free(boot); free(cent);
+    waitSafe(safeSem);
+    index = -1;
+    postSafe(safeSem);
 }
 void planeCenter(enum Thread tag, int idx)
 {
@@ -1168,6 +1181,7 @@ void registerCall(enum Configure cfg, int sav, int val, int act)
     safeInit(MachThd,wake+1,0);
     waitSafe(safeSem);
     int save = machine[wake]; machine[wake] = indx;
+    // TODO change machine to reboot with array of center to place and execute
     postSafe(safeSem);
     if (save < 0) callFork(MachThd,wake,planeMachine,planeClose,planeJoin,planeWake);
     else if (indx < 0) doneSafe(safeSafe(MachThd,wake));
