@@ -45,7 +45,9 @@ function atomSugar(list,idx)
 	if v["mem"] == "Transferz" then
 	cent = cent.."sub["..(i-1).."]:-1"
 	elseif v["mem"] == "Drawz" then
-	cent = cent.."sub["..(i-1).."]:"..castMemory("Memorys")
+	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+1)
+	elseif v["mem"] == "Getcfgz" then
+	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+1)
 	else cent = cent.."sub["..(i-1).."]:"..castMemory(v["mem"]) end end
 	cent = cent..")"
 	center = centSugar(cent)
@@ -55,12 +57,10 @@ function atomSugar(list,idx)
 	for i in pairs(list) do list[i] = nil end
 end
 function listSugar(src)
-	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
-	mach0 = centSugar(cent) -- this prevents Pull blocking
 	mach1 = exprSugar("$(CenterSrc := #"..castProgram(src)..")")
 	mach2 = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
 	mach3 = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
-	return {mach0,mach1,mach2,mach3}
+	return {mach1,mach2,mach3}
 end
 function pipeTest()
 	list = listSugar(tests[found]["typ"])
@@ -78,11 +78,11 @@ function readConfig(list,res,cfg)
 	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
 	list[#list+1] = centSugar(cent) -- this prevents Pull blocking
 	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
-	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(#"..(castMemory("Memorys")+1).."))")
 	for i,v in ipairs(cfg) do
-	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(@getcfg)fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
 	end
-	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
 	atomSugar(list,tests[found]["idx"])
 	center = readCenter(tests[found]["idx"])
 	for i,v in ipairs(center["cfg"]) do res[i] = v end
@@ -102,7 +102,7 @@ function listResrc(lst,res,arg)
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Void and Tsage to set rsp to RptRsp
-	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory("Memorys")..")arg[1]:$(#0))")
+	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..(castMemory("Memorys")+1)..")arg[1]:$(#0))")
 end
 function listMemory(lst,mem,fld,arg)
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
@@ -158,8 +158,8 @@ function initTest()
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
 	--
-	writeConfig(list,{(1<<castVerbose("PipeVrb"))},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
+	-- writeConfig(list,{(1<<castVerbose("PipeVrb"))},{"RegisterVerb"})
+	-- readConfig(list,config,{"RegisterVerb"})
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
@@ -168,8 +168,8 @@ function initTest()
 	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
 	-- listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	--
-	writeConfig(list,{0},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
+	-- writeConfig(list,{0},{"RegisterVerb"})
+	-- readConfig(list,config,{"RegisterVerb"})
 	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";

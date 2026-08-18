@@ -406,6 +406,7 @@ BopyArg = {
 }
 CopyArg = {
 	"CopySrc",
+	"CopyThd",
 }
 DopyArg = {
 	"DopySrc",
@@ -2043,7 +2044,7 @@ Bootstrap = {
 		  -- Copy immediate and atomic memory
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
 		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
-		  "mch[%(return jdx())]:Copy(sig:1arg[0]:$(?CenterMem))"..
+		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#1))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- do nothing if internal queue empty
