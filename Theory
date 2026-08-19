@@ -93,3 +93,17 @@ Independent:
   If space S extended by b0 is pseudolinear and S extended by b1 is pseudolinear, then there is a pseudolinear space extended by b0 and b1.
   Choose b in S, and assume by recursion that S0 = the section by b in S + {b0,b1} is pseudolinear, and that S1 = S + {b0,b1} - {b} is pseudolinear.
   Choose corner regions of b0 and b1 for b to divide in S1 such that S0 is a section of S1. Apply section theorem to find pseudolinear S2 = S + {b0,b1}.
+
+Algorithms:
+
+Tabletop:
+  Given hyperplanes, construct cospace hyperplanes by treating coordinates of vertices as leg lengths of a tabletop, where the legs are perpendicular from fixed points on a fixed base.
+
+Explore:
+  Given classification of hyperplanes, find all other pseudoline arrangements that are constructible, by finding all migrations from the given constructible space that are also constructible.
+
+Regress:
+  Find if a migration is constructible by finding if the vertex/boundary in the-space/a-cospace is attached to the migrating boundary's/vertice's super-region. Find if the vertex/boundary is attached by recursively finding all constructible cospaces.
+
+Question:
+  If the regression terminates because all new boundaries in the cospace are just duplicates of existing boundaries, then the question of whether the migration is constructible is answered. Does the regression always terminate?
