@@ -871,6 +871,7 @@ void machineExec(int idx, struct Extend *ext)
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: ERROR();
     case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
+    case (Machinez): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->mch[i]); break;
     case (Rebootz): {
     struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
     int *boot = (int *)malloc(sizeof(int)*ptr->siz);

@@ -39,8 +39,11 @@ end
 function exprSugar(expr)
 	return machSugar("Machine(xfr:Voidexp[0]:"..expr..")")
 end
-function atomSugar(list,idx)
-	cent = "Center(mem:Rebootzsiz:"..#list.."idx:0slf:0"
+index = 0
+function atomSugar(list,idx,str)
+	-- io.stderr:write(str..":"..index..":"..#list.."\n")
+	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
+	index = index + 1
 	for i,v in ipairs(list) do
 	if v["mem"] == "Transferz" then
 	cent = cent.."sub["..(i-1).."]:-1"
@@ -64,12 +67,23 @@ function listSugar(src)
 end
 function pipeTest()
 	list = listSugar(tests[found]["typ"])
-	atomSugar(list,tests[found]["idx"])
+	atomSugar(list,tests[found]["idx"],"Pipe")
 	readPrint(tests[found])
 end
 function doneTest()
 	list = listSugar(tests[found]["oth"])
-	atomSugar(list,tests[found]["idx"])
+	atomSugar(list,tests[found]["idx"],"Done")
+	center = exprSugar("$(RegisterExit := #1)")
+	writeCenter(center,tests[found]["idx"])
+	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
+end
+function flushTest()
+	list = listSugar(tests[found]["oth"])
+	atomSugar(list,tests[found]["idx"],"Done")
+	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
+	readConfig(list,config,{"ScratchDescrs"})
+	print("pass:"..config[1])
+	-- above read forces all prior Rebootz to complete before following Exit
 	center = exprSugar("$(RegisterExit := #1)")
 	writeCenter(center,tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
@@ -83,7 +97,9 @@ function readConfig(list,res,cfg)
 	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
 	end
 	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
-	atomSugar(list,tests[found]["idx"])
+	str = "Read"
+	for i,v in ipairs(cfg) do str = str..":"..v end
+	atomSugar(list,tests[found]["idx"],str)
 	center = readCenter(tests[found]["idx"])
 	for i,v in ipairs(center["cfg"]) do res[i] = v end
 end
@@ -92,7 +108,7 @@ function writeConfig(list,val,cfg)
 	for i,v in ipairs(cfg) do
 	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$("..v.." := #"..val[i].."))")
 	end
-	atomSugar(list,tests[found]["idx"])
+	atomSugar(list,tests[found]["idx"],"Write")
 end
 -- TODO for listDraw, use rsp of RetRsp
 function listResrc(lst,res,arg)
@@ -118,10 +134,10 @@ function listSpoof(lst,mem,fld,arg)
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
 	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..castMemory(mem).."))")
-	atomSugar(list,tests[found]["idx"])
+	atomSugar(list,tests[found]["idx"],"Spoof")
 end
 function writeCent(lst,mem,idx,slf,fld,arg)
-	if #lst > 0 then atomSugar(lst,tests[found]["idx"]) end
+	if #lst > 0 then atomSugar(lst,tests[found]["idx"],"Cent") end
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:"..idx.."slf:"..slf
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
@@ -129,12 +145,14 @@ function writeCent(lst,mem,idx,slf,fld,arg)
 end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
-	atomSugar(list,tests[found]["idx"])
+	atomSugar(list,tests[found]["idx"],"Swap")
+	-- TODO following write to Memorys+1 can be overwritten by Done from above Bopy of Drawz from Memorys+1
+	-- TODO I guess wait for Done by waiting for CenterPtr of Memorys+1 to be nonzero in listResrc
 	config = {} readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
 	print("frames:"..frames.." width:"..width.." height:"..height)
-	for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
-	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
+	-- for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
+	--[[for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
@@ -178,10 +196,8 @@ function initTest()
 	--
 	config[1] = 0 while(config[1] ~= 1) do
 	list[#list+1] = machSugar("Machine(xfr:Stagesiz:1sav[0]:CenterPtridx[0]:$(@index))")
-	readConfig(list,config,{"CenterPtr"}) end
-	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
-	readConfig(list,config,{"ScratchDescrs"})
-	print("pass:"..config[1])
+	readConfig(list,config,{"CenterPtr"}) end--]]
+	atomSugar(list,tests[found]["idx"],"Test")
 end
 
 function runTest()
@@ -193,8 +209,10 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	if more then
 	initTest()
 	runTest()
-	end
+	flushTest()
+	else
 	doneTest()
+	end
 	return
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Planez" then
