@@ -119,6 +119,10 @@ function listResrc(lst,res,arg)
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Void and Tsage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..(castMemory("Memorys")+1)..")arg[1]:$(#0))")
+	-- prevent overwrite of Memorys+1 by response from Bopy; wait for read of response before sending next Rebootz
+	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
+	atomSugar(lst,tests[found]["idx"],"Resrc")
+	readCenter(tests[found]["idx"])
 end
 function listMemory(lst,mem,fld,arg)
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
@@ -146,8 +150,6 @@ end
 function initTest()
 	list = {}; listResrc(list,"SwapRes",{})
 	atomSugar(list,tests[found]["idx"],"Swap")
-	-- TODO following write to Memorys+1 can be overwritten by Done from above Bopy of Drawz from Memorys+1
-	-- TODO I guess wait for Done by waiting for CenterPtr of Memorys+1 to be nonzero in listResrc
 	config = {} readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
 	print("frames:"..frames.." width:"..width.." height:"..height)
@@ -196,8 +198,8 @@ function initTest()
 	--
 	config[1] = 0 while(config[1] ~= 1) do
 	list[#list+1] = machSugar("Machine(xfr:Stagesiz:1sav[0]:CenterPtridx[0]:$(@index))")
-	readConfig(list,config,{"CenterPtr"}) end--]]
-	atomSugar(list,tests[found]["idx"],"Test")
+	readConfig(list,config,{"CenterPtr"}) end
+	atomSugar(list,tests[found]["idx"],"Test")--]]
 end
 
 function runTest()

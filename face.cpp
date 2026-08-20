@@ -100,7 +100,7 @@ void wrapFace(lua_State *L)
 	wrapWrap(L,"readEof",(new WrapClose([](const struct WrapClose *arg) -> void {readEof(arg->i(0));},1,0))->ia(0));
 	wrapWrap(L,"readStr",(new WrapClose([](const struct WrapClose *arg) -> void {readStr(&arg->v_(0),arg->i(0));},1,1))->ia(0)->vb(0));
 	wrapWrap(L,"preadStr",(new WrapClose([](const struct WrapClose *arg) -> void {preadStr(&arg->v_(0),arg->k(0),arg->i(1));},2,1))->ka(0)->ia(1)->vb(0));
-	wrapWrap(L,"readDat",(new WrapClose([](const struct WrapClose *arg) -> void {readDat(&arg->q_(0),arg->i(0));},1,1))->ia(0)->pb(0));
+	wrapWrap(L,"readDat",(new WrapClose([](const struct WrapClose *arg) -> void {readDat(&arg->q_(0),arg->i(0));},1,1))->ia(0)->qb(0));
 	wrapWrap(L,"readChr",(new WrapClose([](const struct WrapClose *arg) -> void {arg->w_(0)=readChr(arg->i(0));},1,1))->ia(0)->wb(0));
 	wrapWrap(L,"readInt",(new WrapClose([](const struct WrapClose *arg) -> void {arg->i_(0)=readInt(arg->i(0));},1,1))->ia(0)->ib(0));
 	wrapWrap(L,"readInt32",(new WrapClose([](const struct WrapClose *arg) -> void {arg->j_(0)=readInt32(arg->i(0));},1,1))->ia(0)->jb(0));
