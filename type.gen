@@ -74,6 +74,7 @@ Assert = { -- only one place at a time
 	"PipeAsr", -- in internal queue
 	"RespAsr", -- in response queue
 	"DoneAsr", -- in replace queue
+	"BootAsr", -- in reboot thread
 }
 Resrc = { -- variation of BaseState
 	"SwapRes",
@@ -256,16 +257,18 @@ Default = { -- constant array value interpretation
 	"CmntDef",
 }
 Configure = { -- integer variables for user expressions to query and control the ungenerated program
+	-- TODO remove Center* Stage Tsage *opy, replacing with Eval that takes multiple from array and queues
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
 	"CenterSlf",
-	"CenterPtr", -- whether staged
 	"CenterInt", -- sample in range
-	"CenterRsp", -- response type
-	"CenterSub", -- repose place
+	"CenterPtr", -- whether staged
 	"CenterSrc", -- pipe source
+	"CenterRsp", -- response type
 	"CenterRet", -- response value
+	"CenterAsr", -- which queue
+	"CenterSub", -- repose place
 	"CenterSav", -- saved sub
 	"CenterLog", -- transaction branching
 	"ArgumentInp", -- inter process
@@ -331,7 +334,7 @@ Configure = { -- integer variables for user expressions to query and control the
 Transfer = { -- what user machine does
 	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
-	"Panic", -- throw core dump
+	"Dump", -- throw core dump
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
 	"Proj", -- depends on UniformWid/Hei

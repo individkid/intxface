@@ -23,8 +23,8 @@ void vulkanExit();
 // TODO declare glfw callbacks
 
 struct WindowState {
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
+    const uint32_t WIDTH = 1200;
+    const uint32_t HEIGHT = 1200;
     GLFWwindow* const window;
     WindowState() : // TODO add argument to switch between glfw and wayland
         window(createWindow(WIDTH,HEIGHT)) {
