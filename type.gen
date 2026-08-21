@@ -74,6 +74,7 @@ Assert = { -- only one place at a time
 	"PipeAsr", -- in internal queue
 	"RespAsr", -- in response queue
 	"DoneAsr", -- in replace queue
+	"LoopAsr", -- pull and repush
 	"BootAsr", -- in reboot thread
 }
 Resrc = { -- variation of BaseState
@@ -337,6 +338,7 @@ Transfer = { -- what user machine does
 	"Dump", -- throw core dump
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
+	"Move", -- replace list from array/queues
 	"Proj", -- depends on UniformWid/Hei
 	"Bnry", -- two matrices into one
 	-- identity I
@@ -351,11 +353,11 @@ Transfer = { -- what user machine does
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
+	"Demo", -- handle input
 	"Bopy", -- move to resource
 	"Copy", -- execute center
 	"Dopy", -- copy to center
 	"Mopy", -- merge memories
-	"Nopy", -- handle input
 	"Popy", -- queue to center
 	"Qopy", -- move to queue
 	"Ropy", -- move to queu
@@ -403,6 +405,10 @@ GlobArg = {
 	"GlobDst",
 	"GlobDstSub",
 }
+DemoArg = {
+	"DemoSrc",
+	"DemoSrcSub",
+}
 BopyArg = {
 	"BopySrc",
 	"BopyAlt",
@@ -421,10 +427,6 @@ MopyArg = {
 	"MopyDst",
 	"MopyDstSub",
 	"MopySiz",
-}
-NopyArg = {
-	"NopySrc",
-	"NopySrcSub",
 }
 PopyArg = {
 	"PopyDst",
@@ -2013,13 +2015,13 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"matrix\"))]:Nest(lvl:-1)"..
-		  -- Nopy Matrixz to process Self or Glob matrix
+		  -- Demo Matrixz to process Self or Glob matrix
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
 		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
-		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrAfterOp , EndOp Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
@@ -2079,7 +2081,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO do following for Regress and Release
 		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
-		-- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		-- "mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"done\"))]:Nest(lvl:-1)".. -- 5
@@ -2116,7 +2118,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
 		-- disable and change manipulation
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrPrssMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"proj\"))]:Nest(lvl:-1)".. -- 8
@@ -2135,28 +2137,28 @@ Bootstrap = {
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
 		-- wait for window resize
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrEoodMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was roller; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrMoveMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
 		-- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrClckMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was move; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrRollMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"unif\"))]:Nest(lvl:-1)".. -- 13
@@ -2333,13 +2335,16 @@ Machine = { -- info for user defined action
 	{"idx","Express",{["xfr"]={["Stage"]=true,["Tsage"]=true}},1},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
+	{"atm","Int",{["xfr"]={["Move"]=true}},{}},
+	{"sub","Express",{["xfr"]={["Move"]=true}},"atm"},
+	{"fun","Express",{["xfr"]={["Move"]=true}},"atm"},
 	{"sig","Int",{["xfr"]={
-		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,["Nopy"]=true,
+		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,["Demo"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,
 		["Popy"]=true,["Qopy"]=true,["Ropy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
-		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,["Nopy"]=true,
+		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,["Demo"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,
 		["Popy"]=true,["Qopy"]=true,["Ropy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
@@ -2351,8 +2356,8 @@ Metric = { -- information about pierce point
 	{"idx","Int",{},{}},
 }
 Menu = { -- state to handle user input
-	-- these could be Configure, Mopy/NopyArg, or ValOp instead,
-	-- if Mopy/Nopy were not for demonstration purposes only
+	-- these could be Configure, DemoArg, or ValOp instead,
+	-- if Demo were not for demonstration purposes only
 	{"msk","Mask",{},{}}, -- action for Sync or Demo
 	{"act","Action",{},{}},
 	{"jec","Scope",{},{}},

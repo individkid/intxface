@@ -21,7 +21,6 @@ void *internal = 0; // queue of center
 void *response = 0; // queue of center
 void *replace = 0; // queue of center
 void *pipeSem = 0; // protect external inverse internal response replace
-void *execSem = 0; // protect atomic pipe reads
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
 void *strin = 0; // queue of string
@@ -608,9 +607,7 @@ void machineCopy(int sig, int *arg)
     int src = arg[CopySrc];
     int idx = arg[CopyThd];
     struct Extend *ext = centerPull(src,"Copy");
-    if (waitSafe(execSem) != 0) ERROR();
     machineExec(idx,ext);
-    if (postSafe(execSem) != 1) ERROR();
     centerPlace(ext);
 }
 void machineDopy(int sig, int *arg)
@@ -638,15 +635,6 @@ void machineMopy(int sig, int *arg)
     centerMerge(src,&dst,srcOfs,dstOfs,siz);
     centerPlace(src);
     centerPlace(dst);
-}
-void machineDemo(struct Menu *menu);
-void machineNopy(int sig, int *arg)
-{
-    if (sig != NopyArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,"Nopy");
-    struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
-    machineDemo(menu);
-    machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
 }
 void machinePop(int sig, int chk, int dst, void *que);
 void machinePopy(int sig, int *arg)
@@ -727,20 +715,64 @@ void machineTsage(enum Configure *cfg, int siz, int idx)
     case (MetricAct): met->act = planeInfo(cfg[i],0,planeRcfg); break;}
     centerPlace(ext);
 }
+void demoMenu(struct Menu *menu);
+void machineDemo(int sig, int *arg)
+{
+    if (sig != DemoArgs) ERROR();
+    struct Extend *src = machineCenter(sig,arg,DemoArgs,DemoSrc,DemoSrcSub,"Demo");
+    struct Menu *menu = machineMenu(src,sig,arg,DemoArgs,DemoSrc,DemoSrcSub);
+    demoMenu(menu);
+    machinePlace(src,sig,arg,DemoArgs,DemoSrc,DemoSrcSub);
+}
+int machineIval(struct Express *exp);
+struct Extend *machineRefer(int sub); // leave to be changed in place
+void machineDeref(int sub, struct Extend **ext); // compare sub to asr/sub to decide whether to move
+void machineMove(struct Express *sub, struct Express *exp, int siz)
+{
+    if (siz > 9) ERROR();
+    if (waitSafe(copySem) != 0) ERROR();
+    if (waitSafe(pipeSem) != 0) ERROR();
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    int num[siz]; for (int i = 0; i < siz; i++) num[i] = machineIval(&sub[i]);
+    // negative num refers to a queue, positive is sub into center
+    for (int i = 0; i < siz; i++) {
+    struct Extend *ptr = machineRefer(num[i]);
+    int empty = (ptr == 0); if (empty) {allocExtend(&ptr,1); ptr->asr = PullAsr;}
+    writeExtend(ptr,datxClr(0));
+    char str[3]; str[0] = '_'; str[1] = '0' + i; str[2] = 0;
+    void *dat0 = 0; datxStr(&dat0,str);
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEExtend);
+    free(dat0); free(dat1);}
+    // each expression does pull from num and place to exp.asr/sub
+    for (int i = 0; i < siz; i++) {
+    struct Extend *ptr = machineRefer(num[i]);
+    writeExtend(ptr,datxClr(0));
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEExtend);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEExtend);
+    if (typ != TYPEExtend) ERROR();
+    freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
+    machineDeref(num[i],&ptr);}
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (postSafe(copySem) != 1) ERROR();
+}
 void machineEval(struct Express *exp, int idx)
 {
     struct Extend *ext = centerPull(idx,"Eval");
     struct Center *ptr = ext->ptr;
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
-    writeCenter(ptr,datxClr(0)); freeCenter(ptr);
+    writeCenter(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
     datxInsert(dat0,dat1,TYPECenter);
     free(dat0); free(dat1);
     void *dat = 0; int typ = datxEval(&dat,exp,TYPECenter);
     if (typ != TYPECenter) ERROR();
-    readCenter(ptr,datxPut(0,dat));
-    free(dat);
+    freeCenter(ptr); readCenter(ptr,datxPut(0,dat)); free(dat);
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
     centerPlace(ext);
 }
@@ -776,9 +808,10 @@ void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
-    case (Stage): machineStage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break;
-    case (Tsage): machineTsage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break;
+    case (Stage): machineStage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break; // TODO remove when tests changed over to Move
+    case (Tsage): machineTsage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break; // TODO remove when tests changed over to Move
     case (Dump): *(int*)0=0; break;
+    case (Move): machineMove(mptr->sub,mptr->fun,mptr->atm); break; // each fun takes Extend @_, and Extend's in @0 @1 @2 ... indicated by sub, and returns Extend
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineProj(mptr->sig,arg);} break;
@@ -788,14 +821,14 @@ void machineSwitch(struct Machine *mptr)
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
     case (Self): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSelf(mptr->sig,arg);} break;
     case (Glob): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineGlob(mptr->sig,arg);} break;
-    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
-    case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
-    case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
-    case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break;
-    case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
-    case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
-    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
-    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;}
+    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
+    case (Demo): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDemo(mptr->sig,arg);} break;}
 }
 
 int demoJect(struct Menu *menu)
@@ -832,85 +865,7 @@ void demoDisp(struct Menu *menu)
     int mat[2] = {menu->mat,0}; machineCopy(2,mat);
     int drw[2] = {menu->drw,0}; machineCopy(2,drw); // TODO do Dopy first, so Drawz is never zero
 }
-
-// phase callbacks
-void planeClose(enum Thread tag, int idx)
-{
-    planeJnfo(RegisterOpen,(1<<tag),planeWotc);
-}
-void planeJoin(enum Thread tag, int idx)
-{
-    switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i); closeIdent(extdone);}
-    break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
-    break; case (MachThd): case (TimeThd): case (TestThd):}
-}
-void planeWake(enum Thread tag, int idx)
-{
-    switch (tag) {default: ERROR();
-    break; case (PipeThd): case (StdioThd): case (MachThd): case (TimeThd): case (TestThd):}
-    postSafe(safeSafe(tag,idx));
-}
-
-
-void machineArg(int *arg, int sig, struct Express *exp)
-{
-    for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
-}
-void machinePop(int sig, int chk, int dst, void *que)
-{
-    if (sig != chk) ERROR();
-    if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *ptr = maybeCenterq(0,que);
-    if (postSafe(pipeSem) != 1) ERROR();
-    enum Assert asr = (que==internal?PipeAsr:DoneAsr);
-    if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
-    if (ptr == 0) centerClear(dst);
-    else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
-}
-void planeMachine(enum Thread tag, int idx);
-void machineExec(int idx, struct Extend *ext)
-{
-    struct Center *ptr = ext->ptr;
-    switch (ptr->mem) {default: ERROR();
-    case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
-    case (Machinez): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->mch[i]); break;
-    case (Rebootz): {
-    struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
-    int *boot = (int *)malloc(sizeof(int)*ptr->siz);
-    void *repush = 0; repush = allocCenterq();
-    printfSmart(ext->log,"Exec %d",ptr->siz);
-    for (int i = 0; i < ptr->siz; i++) {
-    // clear event before clearing the condition that the event indicates
-    planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
-    if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *nxt = maybeCenterq(0,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
-    if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
-    if (nxt == 0) {i--; continue;}
-    if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
-    nxt->asr = PipeAsr; pushCenterq(nxt,repush); continue;}
-    printfSmart(ext->log,"Exec %d/%d:%d %05d:%s",i,ptr->siz,ptr->sub[i],numberSmart(nxt->log),nameSmart(nxt->log));
-    boot[i] = ptr->sub[i]; cent[i] = nxt;}
-    if (sizeCenterq(repush) > 0) {
-    if (waitSafe(pipeSem) != 0) ERROR();
-    joinCenterq(repush,internal);
-    if (postSafe(pipeSem) != 1) ERROR();}
-    if (waitSafe(pipeSem) != 0) ERROR();
-    int size = sizeCenterq(internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
-    freeCenterq(repush);
-    safeInit(MachThd,idx+1,0);
-    if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
-    free(reboot[idx]); free(recent[idx]); resize[idx] = 0;
-    reboot[idx] = boot; recent[idx] = cent; resize[idx] = ptr->siz; machine[idx] = 0;
-    callFork(MachThd,idx,planeMachine,planeClose,planeJoin,planeWake);
-    if (postSafe(safeSem) != 1) ERROR();}
-    break;}
-}
-void machineDemo(struct Menu *menu)
+void demoMenu(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk): {
@@ -965,6 +920,127 @@ void machineDemo(struct Menu *menu)
     if (menu->dev == Coord) {demoCont(menu); menu->dev = Angle;}
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     demoDisp(menu);}}
+}
+
+// phase callbacks
+void planeClose(enum Thread tag, int idx)
+{
+    planeJnfo(RegisterOpen,(1<<tag),planeWotc);
+}
+void planeJoin(enum Thread tag, int idx)
+{
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): if (idx) {for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i); closeIdent(extdone);}
+    break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
+    break; case (MachThd): case (TimeThd): case (TestThd):}
+}
+void planeWake(enum Thread tag, int idx)
+{
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): case (StdioThd): case (MachThd): case (TimeThd): case (TestThd):}
+    postSafe(safeSafe(tag,idx));
+}
+
+
+void machineArg(int *arg, int sig, struct Express *exp)
+{
+    for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
+}
+void machinePop(int sig, int chk, int dst, void *que)
+{
+    if (sig != chk) ERROR();
+    if (waitSafe(pipeSem) != 0) ERROR();
+    struct Extend *ptr = maybeCenterq(0,que);
+    if (postSafe(pipeSem) != 1) ERROR();
+    enum Assert asr = (que==internal?PipeAsr:DoneAsr);
+    if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
+    if (ptr == 0) centerClear(dst);
+    else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
+}
+struct Extend *machineRefer(int sub)
+{
+    struct Extend *ptr = 0;
+    enum Assert asr = (sub < 0 ? -asr : PlaceAsr);
+    if (sub == -1) asr = PullAsr;
+    switch (asr) {default: ERROR();
+    break; case (PullAsr):
+    break; case (PlaceAsr): centerSize(sub); ptr = center[sub];
+    break; case (PipeAsr): ptr = frontCenterq(internal);
+    break; case (RespAsr): ptr = frontCenterq(response);
+    break; case (DoneAsr): ptr = frontCenterq(replace);}
+    return ptr;
+}
+void machineDeref(int sub, struct Extend **ext)
+{
+    struct Extend *ptr = *ext;
+    struct Extend *chk = machineRefer(sub);
+    if (ptr->asr == PullAsr && chk == 0) chk = ptr;
+    if (chk != ptr) ERROR();
+    // PullAsr in num[i] moves from nowhere
+    // PullAsr in ptr moves to nowhere
+    // LoopAsr in ptr does pop/push in num[i] and changes ptr to num[i]
+    // num[i] equal to asr/sub in ptr does nothing; *ptr already changed by free/readExtend
+    // otherwise set pointer at num[i] to zero, deallocate poiner at asr/sub, and set pointer at asr/sub to ptr
+    enum Assert asr = (sub < 0 ? -asr : PlaceAsr);
+    if (sub == -1) asr = PullAsr;
+    void *que = 0; switch(asr) {default: ERROR();
+    break; case (PullAsr): case (PlaceAsr):
+    break; case (PipeAsr): que = internal;
+    break; case (RespAsr): que = response;
+    break; case (DoneAsr): que = replace;}
+    if (ptr->asr == LoopAsr && que == 0) ERROR();
+    int equal = (ptr->asr == asr && (asr != PlaceAsr || ptr->sub == sub));
+    if (ptr->asr == LoopAsr) ptr->asr = asr;
+    if (equal) return;
+    if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
+    switch (ptr->asr) {default: ERROR();
+    break; case (PullAsr): freeExtend(ptr); allocExtend(ext,0);
+    break; case (PlaceAsr): freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
+    break; case (PipeAsr): pushCenterq(ptr,internal);
+    break; case (RespAsr): pushCenterq(ptr,response);
+    break; case (DoneAsr): pushCenterq(ptr,replace);}
+}
+void planeMachine(enum Thread tag, int idx);
+void machineExec(int idx, struct Extend *ext)
+{
+    struct Center *ptr = ext->ptr;
+    switch (ptr->mem) {default: ERROR();
+    case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
+    case (Machinez): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->mch[i]); break;
+    case (Rebootz): {
+    struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
+    int *boot = (int *)malloc(sizeof(int)*ptr->siz);
+    void *repush = 0; repush = allocCenterq();
+    printfSmart(ext->log,"Exec %d",ptr->siz);
+    for (int i = 0; i < ptr->siz; i++) {
+    // clear event before clearing the condition that the event indicates
+    planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
+    if (waitSafe(pipeSem) != 0) ERROR();
+    struct Extend *nxt = maybeCenterq(0,internal);
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
+    if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
+    if (nxt == 0) {i--; continue;}
+    if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
+    nxt->asr = PipeAsr; pushCenterq(nxt,repush); continue;}
+    printfSmart(ext->log,"Exec %d/%d:%d %05d:%s",i,ptr->siz,ptr->sub[i],numberSmart(nxt->log),nameSmart(nxt->log));
+    boot[i] = ptr->sub[i]; cent[i] = nxt;}
+    if (sizeCenterq(repush) > 0) {
+    if (waitSafe(pipeSem) != 0) ERROR();
+    joinCenterq(repush,internal);
+    if (postSafe(pipeSem) != 1) ERROR();}
+    if (waitSafe(pipeSem) != 0) ERROR();
+    int size = sizeCenterq(internal);
+    if (postSafe(pipeSem) != 1) ERROR();
+    if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    freeCenterq(repush);
+    safeInit(MachThd,idx+1,0);
+    if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
+    free(reboot[idx]); free(recent[idx]); resize[idx] = 0;
+    reboot[idx] = boot; recent[idx] = cent; resize[idx] = ptr->siz; machine[idx] = 0;
+    callFork(MachThd,idx,planeMachine,planeClose,planeJoin,planeWake);
+    if (postSafe(safeSem) != 1) ERROR();}
+    break;}
 }
 
 // thread callbacks
@@ -1492,7 +1568,6 @@ void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
-    if (!(execSem = allocSafe(1))) ERROR(); // protect atomic pipe reads
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(pressSem = allocSafe(1))) ERROR(); // protect glfw queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
@@ -1767,7 +1842,7 @@ void planeInit(uftype copy, wftype cont, nftype call, vftype fork, zftype gnfo, 
     callInfo = info;
     callJnfo = jnfo;
     callKnfo = knfo;
-    callHnfo = hnfo;
+    callHnfo = hnfo; // TODO is this needed? can expression extensions evaluate expressions?
     callCmnd = cmnd;
     callWait = wait;
     callWake = wake;
