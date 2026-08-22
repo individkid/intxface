@@ -1138,11 +1138,11 @@ function showForeach(list)
 		end
 	end
 	result = result.."\n"
-	result = result.."#define FOREACH_INNER(APPLY)"
+	result = result.."#define FOREACH_BASIC_INNER(APPLY)"
 	for k,v in ipairs(list) do
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then
-		elseif (v == "Dat") or (v == "Str") then
+		elseif (v == "Dat") or (v == "Str") or (v == "Chr") then
 		else
 			result = result.." \\\n"
 			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
@@ -1161,6 +1161,17 @@ function showForeach(list)
 	end
 	result = result.."\n"
 	result = result.."#define FOREACH_ENUM(APPLY)"
+	for k,v in ipairs(list) do
+		if (not (Structz[v] == nil)) then
+		elseif (not (Enumz[v] == nil)) then
+			result = result.." \\\n"
+			result = result.."APPLY("..v..","..(k-1)..","..showCtypeC(v)..")"
+		elseif (v == "Dat") or (v == "Str") then
+		else
+		end
+	end
+	result = result.."\n"
+	result = result.."#define FOREACH_ENUM_INNER(APPLY)"
 	for k,v in ipairs(list) do
 		if (not (Structz[v] == nil)) then
 		elseif (not (Enumz[v] == nil)) then

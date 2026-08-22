@@ -724,19 +724,19 @@ void machineDemo(int sig, int *arg)
     demoMenu(menu);
     machinePlace(src,sig,arg,DemoArgs,DemoSrc,DemoSrcSub);
 }
-int machineIval(struct Express *exp);
-struct Extend *machineRefer(int sub); // leave to be changed in place
-void machineDeref(int sub, struct Extend **ext); // compare sub to asr/sub to decide whether to move
+int moveIval(struct Express *exp);
+struct Extend *moveRefer(int sub); // leave to be changed in place
+void moveDeref(int sub, struct Extend **ext); // compare sub to asr/sub to decide whether to move
 void machineMove(struct Express *sub, struct Express *exp, int siz)
 {
     if (siz > 9) ERROR();
     if (waitSafe(copySem) != 0) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
-    int num[siz]; for (int i = 0; i < siz; i++) num[i] = machineIval(&sub[i]);
+    int num[siz]; for (int i = 0; i < siz; i++) num[i] = moveIval(&sub[i]);
     // negative num refers to a queue, positive is sub into center
     for (int i = 0; i < siz; i++) {
-    struct Extend *ptr = machineRefer(num[i]);
+    struct Extend *ptr = moveRefer(num[i]);
     int empty = (ptr == 0); if (empty) {allocExtend(&ptr,1); ptr->asr = PullAsr;}
     writeExtend(ptr,datxClr(0));
     char str[3]; str[0] = '_'; str[1] = '0' + i; str[2] = 0;
@@ -746,7 +746,7 @@ void machineMove(struct Express *sub, struct Express *exp, int siz)
     free(dat0); free(dat1);}
     // each expression does pull from num and place to exp.asr/sub
     for (int i = 0; i < siz; i++) {
-    struct Extend *ptr = machineRefer(num[i]);
+    struct Extend *ptr = moveRefer(num[i]);
     writeExtend(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -755,7 +755,7 @@ void machineMove(struct Express *sub, struct Express *exp, int siz)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEExtend);
     if (typ != TYPEExtend) ERROR();
     freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
-    machineDeref(num[i],&ptr);}
+    moveDeref(num[i],&ptr);}
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
     if (postSafe(pipeSem) != 1) ERROR();
     if (postSafe(copySem) != 1) ERROR();
@@ -829,6 +829,65 @@ void machineSwitch(struct Machine *mptr)
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
     case (Demo): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDemo(mptr->sig,arg);} break;}
+}
+
+// unprotected called by big hammer
+int moveIval(struct Express *exp)
+{
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
+    if (typ != TYPEInt) ERROR();
+    int val = readInt(datxPut(0,dat));
+    free(dat);
+    return val;
+}
+void moveSize(int idx)
+{
+    if (idx < 0) ERROR();
+    if (idx >= centers) {int size = idx+1; center = realloc(center,size*sizeof(struct Extend *));
+    for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
+}
+struct Extend *moveRefer(int sub)
+{
+    struct Extend *ptr = 0;
+    enum Assert asr = (sub < 0 ? -asr : PlaceAsr);
+    if (sub == -1) asr = PullAsr;
+    switch (asr) {default: ERROR();
+    break; case (PullAsr):
+    break; case (PlaceAsr): moveSize(sub); ptr = center[sub];
+    break; case (PipeAsr): ptr = frontCenterq(internal);
+    break; case (RespAsr): ptr = frontCenterq(response);
+    break; case (DoneAsr): ptr = frontCenterq(replace);}
+    return ptr;
+}
+void moveDeref(int sub, struct Extend **ext)
+{
+    struct Extend *ptr = *ext;
+    struct Extend *chk = moveRefer(sub);
+    if (ptr->asr == PullAsr && chk == 0) chk = ptr;
+    if (chk != ptr) ERROR();
+    // PullAsr in sub moves from nowhere
+    // PullAsr in ptr moves to nowhere
+    // LoopAsr in ptr does pop/push in sub and changes ptr to sub
+    // sub equal to ptr does nothing; ptr already changed in place
+    // otherwise set pointer at sub to zero, deallocate poiner at ptr, and set pointer at ptr to ptr
+    enum Assert asr = (sub < 0 ? -asr : PlaceAsr);
+    if (sub == -1) asr = PullAsr;
+    void *que = 0; switch(asr) {default: ERROR();
+    break; case (PullAsr): case (PlaceAsr):
+    break; case (PipeAsr): que = internal;
+    break; case (RespAsr): que = response;
+    break; case (DoneAsr): que = replace;}
+    if (ptr->asr == LoopAsr && que == 0) ERROR();
+    int equal = (ptr->asr == asr && (asr != PlaceAsr || ptr->sub == sub));
+    if (ptr->asr == LoopAsr) ptr->asr = asr;
+    if (equal) return;
+    if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
+    switch (ptr->asr) {default: ERROR();
+    break; case (PullAsr): freeExtend(ptr); allocExtend(ext,0);
+    break; case (PlaceAsr): moveSize(ptr->sub); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
+    break; case (PipeAsr): pushCenterq(ptr,internal);
+    break; case (RespAsr): pushCenterq(ptr,response);
+    break; case (DoneAsr): pushCenterq(ptr,replace);}
 }
 
 int demoJect(struct Menu *menu)
@@ -941,7 +1000,6 @@ void planeWake(enum Thread tag, int idx)
     postSafe(safeSafe(tag,idx));
 }
 
-
 void machineArg(int *arg, int sig, struct Express *exp)
 {
     for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
@@ -956,49 +1014,6 @@ void machinePop(int sig, int chk, int dst, void *que)
     if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
     if (ptr == 0) centerClear(dst);
     else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
-}
-struct Extend *machineRefer(int sub)
-{
-    struct Extend *ptr = 0;
-    enum Assert asr = (sub < 0 ? -asr : PlaceAsr);
-    if (sub == -1) asr = PullAsr;
-    switch (asr) {default: ERROR();
-    break; case (PullAsr):
-    break; case (PlaceAsr): centerSize(sub); ptr = center[sub];
-    break; case (PipeAsr): ptr = frontCenterq(internal);
-    break; case (RespAsr): ptr = frontCenterq(response);
-    break; case (DoneAsr): ptr = frontCenterq(replace);}
-    return ptr;
-}
-void machineDeref(int sub, struct Extend **ext)
-{
-    struct Extend *ptr = *ext;
-    struct Extend *chk = machineRefer(sub);
-    if (ptr->asr == PullAsr && chk == 0) chk = ptr;
-    if (chk != ptr) ERROR();
-    // PullAsr in num[i] moves from nowhere
-    // PullAsr in ptr moves to nowhere
-    // LoopAsr in ptr does pop/push in num[i] and changes ptr to num[i]
-    // num[i] equal to asr/sub in ptr does nothing; *ptr already changed by free/readExtend
-    // otherwise set pointer at num[i] to zero, deallocate poiner at asr/sub, and set pointer at asr/sub to ptr
-    enum Assert asr = (sub < 0 ? -asr : PlaceAsr);
-    if (sub == -1) asr = PullAsr;
-    void *que = 0; switch(asr) {default: ERROR();
-    break; case (PullAsr): case (PlaceAsr):
-    break; case (PipeAsr): que = internal;
-    break; case (RespAsr): que = response;
-    break; case (DoneAsr): que = replace;}
-    if (ptr->asr == LoopAsr && que == 0) ERROR();
-    int equal = (ptr->asr == asr && (asr != PlaceAsr || ptr->sub == sub));
-    if (ptr->asr == LoopAsr) ptr->asr = asr;
-    if (equal) return;
-    if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
-    switch (ptr->asr) {default: ERROR();
-    break; case (PullAsr): freeExtend(ptr); allocExtend(ext,0);
-    break; case (PlaceAsr): freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
-    break; case (PipeAsr): pushCenterq(ptr,internal);
-    break; case (RespAsr): pushCenterq(ptr,response);
-    break; case (DoneAsr): pushCenterq(ptr,replace);}
 }
 void planeMachine(enum Thread tag, int idx);
 void machineExec(int idx, struct Extend *ext)

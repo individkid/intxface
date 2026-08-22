@@ -602,6 +602,10 @@ int datxIrrexe(const char *str, int idx)
 	if (typ == -1) typ = typ0; if (typ0 != typ1 || typ != typ0) ERROR();
 #define BINARY_DONE() ERROR();\
 	free(dat0); free(dat1);}
+#define BINARY_CAST(APPLY)\
+	switch (typ0) {default: ERROR(); \
+	FOREACH_ENUM(APPLY)} \
+	free(dat0); free(dat1);}
 #define BINARY_TYPE(TYP,NAME,GET,SET,OP)\
 	if (typ0 == TYPE ## NAME) {\
 	TYP lft = GET(0,dat0);\
@@ -615,21 +619,24 @@ int datxIrrexe(const char *str, int idx)
 	BINARY_TYPE(double,Num,*datxNumz,datxNum,OP) else\
 	BINARY_TYPE(float,Old,*datxOldz,datxOld,OP) else\
 	BINARY_DONE()
-#define BINARY_SET(DAT,VAL) datxInt(DAT,VAL)
 #define BINARY_CMP(DAT,VAL) datxInt(DAT,datxComp(VAL,exp->cmp))
-#define CAST_INNER(NAME,NUM,TYP) \
-break; case (TYPE ## NAME): \
-datx ## NAME(dat,val); typ = TYPE ## NAME;
+// outer typ0 val is cast to inner typ1 by passing to datx
+#define CAST_BASIC_BASIC(NAME,NUM,TYP) break; case (TYPE ## NAME): datx ## NAME (dat,val); typ = TYPE ## NAME;
+#define CAST_BASIC_ENUM(NAME,NUM,TYP) break; case (TYPE ## NAME): datxInt (dat,val); typ = TYPE ## NAME;
+#define CAST_ENUM_BASIC(NAME,NUM,TYP) break; case (TYPE ## NAME): datx ## NAME (dat,val); typ = TYPE ## NAME;
+#define CAST_ENUM_ENUM(NAME,NUM,TYP) break; case (TYPE ## NAME): datxInt (dat,val); typ = TYPE ## NAME;
 #define CAST_BASIC(NAME,NUM,TYP) \
-break; case (TYPE ## NAME): { \
-TYP val = *datx ## NAME ## z(0,dat0); \
-switch (typ1) {default: ERROR(); \
-FOREACH_INNER(CAST_INNER)}}
+	break; case (TYPE ## NAME): { \
+	TYP val = *datx ## NAME ## z(0,dat0); \
+	switch (typ1) {default: ERROR(); \
+	FOREACH_BASIC_INNER(CAST_BASIC_BASIC) \
+	FOREACH_ENUM_INNER(CAST_BASIC_ENUM)}}
 #define CAST_ENUM(NAME,NUM,TYP) \
-break; case (TYPE ## NAME): { \
-int val = *datxIntz(0,dat0); \
-switch (typ1) {default: ERROR(); \
-FOREACH_INNER(CAST_INNER)}}
+	break; case (TYPE ## NAME): { \
+	int val = *datxIntz(0,dat0); \
+	switch (typ1) {default: ERROR(); \
+	FOREACH_BASIC_INNER(CAST_ENUM_BASIC) \
+	FOREACH_ENUM_INNER(CAST_ENUM_ENUM)}}
 int datxEval(void **dat, struct Express *exp, int typ)
 {
 	/*{char *opr = 0; showOperate(exp->opr,&opr);
