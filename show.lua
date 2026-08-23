@@ -1122,7 +1122,16 @@ function showDefine(list)
 end
 function showInit(list)
 	local result = ""
-	result = result.."typedef void (*initFunc)(int num, int fld, int sub, int typ, void *arg);\n"
+	result = result.."#ifndef DATXFUNC\n"
+	result = result.."#define DATXFUNC\n"
+	result = result.."enum DatxEnum {KeepDat,MergeDat,CopyDat,ZeroDat};\n"
+	result = result.."struct DatxField {\n"
+	result = result..showIndent(1).."int num, sub; // which field changed\n"
+	result = result..showIndent(1).."int ftp, fld; // values changed to\n"
+	result = result..showIndent(1).."int stp, idx; // rgt descriptor in merge\n"
+	result = result.."};\n"
+	result = result.."typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);\n"
+	result = result.."#endif\n"
 	return result
 end
 function showForeach(list)
@@ -1249,6 +1258,90 @@ function showCopyC(name,struct)
 	result = result.."}"
 	return result
 end
+function showMergeC(name,struct)
+	local result = ""
+	local depth = 1
+	result = result.."void merge"..name.."(int dst, int src, initFunc fnc, struct DatxField *arg)"
+	if prototype then return result..";" end
+	result = result.."\n{\n"
+	result = result..showIndent(depth).."struct "..name.." res = {0}; struct "..name.." *ptr = &res;\n"
+	result = result..showIndent(1).."int fld = 0;\n"
+	for ky,vl in ipairs(struct) do
+		local condit = showCondC(vl)
+		local limit = showLimitC(vl)
+		local limits = showLimitsC(vl)
+		local arg = ""..#limits
+		local lval = "ptr->"..vl[1]
+		local alloc = "alloc"..vl[2].."("
+		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
+		sub = "0"
+		for key,val in ipairs(limits) do
+			lval = lval.."[sub"..key.."]"
+			sub = "sub"..key
+		end
+		-- TODO deal with multidimensional arrays
+		local func = "fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg)"
+		if (condit ~= "") then
+			result = result..showIndent(depth).."if ("..condit..") {\n"
+			depth = depth + 1
+		end
+		if (type(vl[4]) == "number" or (type(vl[4]) == "string" and vl[4] ~= "")) then
+			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..","..limit..");\n"
+		end
+		for key,val in ipairs(limits) do
+			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
+			depth = depth + 1
+		end
+		if (Enumz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."{enum DatxEnum repl = ("..func.."); int temp = 0;\n"
+			result = result..showIndent(depth).."if (repl == MergeDat) {readInt(src); temp = readInt(arg->idx);}\n"
+			result = result..showIndent(depth).."if (repl == KeepDat) {temp = readInt(src);}\n"
+			result = result..showIndent(depth).."if (repl == CopyDat) {readInt(src); temp = readInt(arg->fld);}\n"
+			result = result..showIndent(depth).."if (repl == ZeroDat) {readInt(src);}\n"
+			result = result..showIndent(depth)..""..lval.." = temp;}\n"
+		elseif (Structz[vl[2]]~=nil) then
+			result = result..showIndent(depth).."{enum DatxEnum repl = ("..func.."); struct "..vl[2].." temp = {0};\n"
+			result = result..showIndent(depth).."if (repl == MergeDat) {read"..vl[2].."(&temp,src); read"..vl[2].."(&"..lval..",arg->idx);}\n"
+			result = result..showIndent(depth).."if (repl == KeepDat) {read"..vl[2].."(&"..lval..",src);}\n"
+			result = result..showIndent(depth).."if (repl == CopyDat) {read"..vl[2].."(&temp,src); read"..vl[2].."(&"..lval..",arg->fld);}\n"
+			result = result..showIndent(depth).."if (repl == ZeroDat) {read"..vl[2].."(&temp,src); copy"..vl[2].."(&"..lval..",&temp);}\n"
+			result = result..showIndent(depth).."free"..vl[2].."(&temp);}\n"
+		elseif (vl[2] == "Str") then
+			result = result..showIndent(depth).."{enum DatxEnum repl = ("..func.."); char *temp = 0;\n"
+			result = result..showIndent(depth).."if (repl == MergeDat) {readStr(&temp,src); readStr(&"..lval..",arg->idx);}\n"
+			result = result..showIndent(depth).."if (repl == KeepDat) {readStr(&"..lval..",src);}\n"
+			result = result..showIndent(depth).."if (repl == CopyDat) {readStr(&temp,src); readStr(&"..lval..",arg->fld);}\n"
+			result = result..showIndent(depth).."if (repl == ZeroDat) {readStr(&temp,src); "..lval.." = 0;}\n"
+			result = result..showIndent(depth).."free(temp);}\n"
+		elseif (vl[2] == "Dat") then
+			result = result..showIndent(depth).."{enum DatxEnum repl = ("..func.."); void *temp = 0;\n"
+			result = result..showIndent(depth).."if (repl == MergeDat) {readDat(&temp,src); readDat(&"..lval..",arg->idx);}\n"
+			result = result..showIndent(depth).."if (repl == KeepDat) {readDat(&"..lval..",src);}\n"
+			result = result..showIndent(depth).."if (repl == CopyDat) {readDat(&temp,src); readDat(&"..lval..",arg->fld);}\n"
+			result = result..showIndent(depth).."if (repl == ZeroDat) {readDat(&temp,src); "..lval.." = 0;}\n"
+			result = result..showIndent(depth).."free(temp);}\n"
+		else
+			result = result..showIndent(depth).."{enum DatxEnum repl = ("..func.."); "..showTypeCF(vl[2]).." temp = {0};\n"
+			result = result..showIndent(depth).."if (repl == MergeDat) {read"..vl[2].."(src); temp = read"..vl[2].."(arg->idx);}\n"
+			result = result..showIndent(depth).."if (repl == KeepDat) {temp = read"..vl[2].."(src);}\n"
+			result = result..showIndent(depth).."if (repl == CopyDat) {read"..vl[2].."(src); temp = read"..vl[2].."(arg->fld);}\n"
+			result = result..showIndent(depth).."if (repl == ZeroDat) {read"..vl[2].."(src);}\n"
+			result = result..showIndent(depth)..""..lval.." = temp;}\n"
+		end	
+		for key,val in ipairs(limits) do
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		if (condit ~= "") then
+			depth = depth - 1
+			result = result..showIndent(depth).."}\n"
+		end
+		result = result..showIndent(depth).."fld += 1;\n"
+	end
+	result = result..showIndent(depth).."write"..name.."(ptr,dst);\n"
+	result = result..showIndent(depth).."free"..name.."(ptr);\n"
+	return result.."}"
+end
 function showInitC(name,struct)
 	local result = ""
 	result = result.."void init"..name.."(struct "..name.." *ptr, initFunc fnc, void *arg)"
@@ -1269,6 +1362,7 @@ function showInitC(name,struct)
 			lval = lval.."[sub"..key.."]"
 			sub = "sub"..key
 		end
+		local func = "fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg)"
 		if (condit ~= "") then
 			result = result..showIndent(depth).."if ("..condit..") {\n"
 			depth = depth + 1
@@ -2729,6 +2823,7 @@ function showFuncC(args)
 	result = result..showLtypeC(types).."\n"
 	result = result..showIdentC(types).."\n" end
 	result = result..showCall(Structs,Structz,showCopyC,args,"copy").."\n"
+	result = result..showCall(Structs,Structz,showMergeC,args,"merge").."\n"
 	result = result..showCall(Structs,Structz,showInitC,args,"init").."\n"
 	result = result..showCall(Structs,Structz,showFvalidC,args,"fvalid").."\n"
 	result = result..showCall(Structs,Structz,showFreadC,args,"fread").."\n"

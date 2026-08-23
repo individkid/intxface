@@ -341,55 +341,8 @@ struct InitCenter {
     struct Extend *sav;
     struct Extend *dst;
 };
-void centerField(int num, int fld, int sub, int typ, void *arg)
-{
-    struct InitCenter *cst = (struct InitCenter *)arg;
-    struct Center *src = cst->src->ptr;
-    struct Center *dst = cst->dst->ptr;
-    if (waitSafe(loopSem) != 0) ERROR();
-    if (num == TYPECenter && fld == 1) {
-    writeInt(cst->siz,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(src,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && typ == TYPEKernel && sub < src->siz) {
-    fwriteCenter(src,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && typ == TYPEKernel) {
-    struct Kernel init;
-    identmat(init.saved.mat,4);
-    identmat(init.local.mat,4);
-    identmat(init.sent.mat,4);
-    identmat(init.global.mat,4);
-    writeKernel(&init,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    if (postSafe(loopSem) != 1) ERROR();
-}
-void centerElem(int num, int fld, int sub, int typ, void *arg)
-{
-    struct InitCenter *cst = (struct InitCenter *)arg;
-    struct Center *src = cst->src->ptr;
-    struct Center *sav = cst->sav->ptr;
-    struct Center *dst = cst->dst->ptr;
-    if (waitSafe(loopSem) != 0) ERROR();
-    if (num == TYPECenter && fld == 1) {
-    writeInt(cst->tot,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(sav,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub < cst->ddx) {
-    fwriteCenter(sav,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub >= cst->ddx && sub < cst->ddx+cst->siz && sub-cst->ddx+cst->sdx < src->siz) {
-    fwriteCenter(src,fld,sub-cst->ddx+cst->sdx,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub >= cst->ddx+cst->siz) {
-    fwriteCenter(sav,fld,sub-cst->siz,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    if (postSafe(loopSem) != 1) ERROR();
-}
+enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
+enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *arg);
 void centerInit(struct Extend *src, struct Extend *dst)
 {
     dst->src = src->src;
@@ -883,8 +836,8 @@ void moveDeref(int sub, struct Extend **ext)
     if (equal) return;
     if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
     switch (ptr->asr) {default: ERROR();
-    break; case (PullAsr): freeExtend(ptr); allocExtend(ext,0);
-    break; case (PlaceAsr): moveSize(ptr->sub); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
+    break; case (PullAsr): if (ptr) deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
+    break; case (PlaceAsr): moveSize(ptr->sub); if (center[ptr->sub]) deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
     break; case (PipeAsr): pushCenterq(ptr,internal);
     break; case (RespAsr): pushCenterq(ptr,response);
     break; case (DoneAsr): pushCenterq(ptr,replace);}
@@ -1090,7 +1043,7 @@ void planeMachine(enum Thread tag, int idx)
     if (waitSafe(safeSafe(MachThd,idx)) < 0) next = -1;
     else next += 1;}}}}
     for (int i = 0; i < size; i++) if (boot[i] < 0) {
-    freeExtend(cent[i]); allocExtend(&cent[i],0);}
+    if (cent[i]) deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
     free(boot); free(cent);
     waitSafe(safeSem);
     machine[idx] = -1;
@@ -1498,6 +1451,79 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 }
 
 // expression callbacks
+enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
+{
+    struct InitCenter *cst = (struct InitCenter *)arg;
+    struct Center *src = cst->src->ptr;
+    struct Center *dst = cst->dst->ptr;
+    if (waitSafe(loopSem) != 0) ERROR();
+    if (num == TYPECenter && fld == 1) {
+    writeInt(cst->siz,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && fld < 4) {
+    fwriteCenter(src,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && typ == TYPEKernel && sub < src->siz) {
+    fwriteCenter(src,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && typ == TYPEKernel) {
+    struct Kernel init;
+    identmat(init.saved.mat,4);
+    identmat(init.local.mat,4);
+    identmat(init.sent.mat,4);
+    identmat(init.global.mat,4);
+    writeKernel(&init,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    if (postSafe(loopSem) != 1) ERROR();
+    return 0; // TODO return whether changed
+}
+enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *arg)
+{
+    struct InitCenter *cst = (struct InitCenter *)arg;
+    struct Center *src = cst->src->ptr;
+    struct Center *sav = cst->sav->ptr;
+    struct Center *dst = cst->dst->ptr;
+    if (waitSafe(loopSem) != 0) ERROR();
+    if (num == TYPECenter && fld == 1) {
+    writeInt(cst->tot,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && fld < 4) {
+    fwriteCenter(sav,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub < cst->ddx) {
+    fwriteCenter(sav,fld,sub,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub >= cst->ddx && sub < cst->ddx+cst->siz && sub-cst->ddx+cst->sdx < src->siz) {
+    fwriteCenter(src,fld,sub-cst->ddx+cst->sdx,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    else if (num == TYPECenter && sub >= cst->ddx+cst->siz) {
+    fwriteCenter(sav,fld,sub-cst->siz,loopfd);
+    freadCenter(dst,fld,sub,loopfd);}
+    if (postSafe(loopSem) != 1) ERROR();
+    return 0; // TODO return whether changed
+}
+/*
+struct DatxField {
+    int num, sub; // which field changed
+    int fld; // value changed from
+    int idx; // value changed to
+};
+typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);
+*/
+// fldptr(<dst/src type number>,<field position>,<field subscript>,<field type number>,&arg)
+// -1: read from original; 0: read zeroes; 1: read from given; 2: read from given after copying field to given
+enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg)
+{
+    int changed = 0; enum Memory mem = Memorys;
+    int resized = 0; int size = 0;
+    if (num == TYPECenter && resized && sub >= size) return 0;
+    if (num == TYPECenter && changed) return 0;
+    if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {changed = 1; mem = readInt(arg->fld);}
+    if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {resized = 1; size = readInt(arg->fld);}
+    if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {writeInt(otherSmart(readInt(arg->fld)),arg->idx); return 1;}
+    if (fld == arg->num && sub == arg->sub) return 2;
+    return -1;
+}
 const char *planeGetstr()
 {
     if (waitSafe(stdioSem) != 0) ERROR();
@@ -1534,6 +1560,7 @@ int planeRetcfg(int sub)
 {
     return planeInfo(sub,0,planeRcfg);
 }
+
 void planeSugar(const char *str)
 {
     struct Express **exp = 0;
@@ -1626,7 +1653,7 @@ void initSafe()
     callBack(ManipBase,registerMove);
     callBack(ManipAngle,registerRoll);
     callBack(CenterLog,registerLog);
-    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr);
+    datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr,planeField);
     start = processTime();
 }
 void initBoot()

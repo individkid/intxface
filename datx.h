@@ -44,4 +44,14 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put);
+#ifndef DATXFUNC
+#define DATXFUNC
+enum DatxEnum {KeepDat,MergeDat,CopyDat,ZeroDat};
+struct DatxField {
+    int num, sub; // which field changed
+    int fld; // value changed from
+    int idx; // value changed to
+};
+typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);
+#endif
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put, initFunc fld);
