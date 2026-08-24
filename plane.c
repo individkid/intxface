@@ -1506,7 +1506,19 @@ enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *a
 {
     int changed = 0; enum Memory mem = Memorys;
     int resized = 0; int size = 0;
-    // TODO special cases as for identmat in Kernelz and Matrixz
+    if (num == TYPECenter && resized && sub >= size && typ == TYPEMatrix) {
+    struct Matrix init;
+    identmat(init.mat,4);
+    writeMatrix(&init,arg->idx);
+    return InsrDat;}
+    if (num == TYPECenter && resized && sub >= size && typ == TYPEKernel) {
+    struct Kernel init;
+    identmat(init.saved.mat,4);
+    identmat(init.local.mat,4);
+    identmat(init.sent.mat,4);
+    identmat(init.global.mat,4);
+    writeKernel(&init,arg->idx);
+    return InsrDat;}
     if (num == TYPECenter && resized && sub >= size) return ZeroDat;
     if (num == TYPECenter && changed) return DscdDat;
     if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {changed = 1; mem = readInt(arg->fld);}
