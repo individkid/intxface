@@ -57,8 +57,9 @@ enum DatxEnum {
 };
 struct DatxField {
     int num, sub; // which field changed
-    int fld; // value changed from
-    int idx; // value changed to
+    int src; // value changed
+    int fld; // value written
+    int idx; // value used
 };
 typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);
 #endif

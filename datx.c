@@ -378,10 +378,10 @@ void datxField(void **dst, void *src, void *fld, int num, int sub, int stp, int 
 {
 	switch (stp) {
 	default: {readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);}
-	break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(1,fld),datxClr(3)};
-	mergeExtend(datxClr(2),datxPut(0,src),fldptr,&arg); datxGet(2,dst);}
-	break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(1,fld),datxClr(3)};
-	mergeCenter(datxClr(2),datxPut(0,src),fldptr,&arg); datxGet(2,dst);}
+	break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+	mergeExtend(datxClr(2),fldptr,&arg); datxGet(2,dst);}
+	break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+	mergeCenter(datxClr(2),fldptr,&arg); datxGet(2,dst);}
 	}
 }
 void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)

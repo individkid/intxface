@@ -705,7 +705,7 @@ void machineMove(struct Express *sub, struct Express *exp, int siz)
     void *dat1 = 0; datxGet(0,&dat1);
     datxInsert(dat0,dat1,TYPEExtend);
     free(dat0); free(dat1);
-    void *dat = 0; int typ = datxEval(&dat,exp,TYPEExtend);
+    void *dat = 0; int typ = datxEval(&dat,&exp[i],TYPEExtend);
     if (typ != TYPEExtend) ERROR();
     freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
     moveDeref(num[i],&ptr);}
@@ -1502,10 +1502,11 @@ enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *a
     if (postSafe(loopSem) != 1) ERROR();
     return 0; // TODO return whether changed
 }
+int changed = 0; enum Memory mem = Memorys;
+int resized = 0; int size = 0;
 enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg)
 {
-    int changed = 0; enum Memory mem = Memorys;
-    int resized = 0; int size = 0;
+    if (fld == 0) changed = resized = 0;
     if (num == TYPECenter && resized && sub >= size && typ == TYPEMatrix) {
     struct Matrix init;
     identmat(init.mat,4);
@@ -1521,8 +1522,8 @@ enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *a
     return InsrDat;}
     if (num == TYPECenter && resized && sub >= size) return ZeroDat;
     if (num == TYPECenter && changed) return DscdDat;
-    if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {changed = 1; mem = readInt(arg->fld);}
-    if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {resized = 1; size = readInt(arg->fld);}
+    if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {changed = 1; mem = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
+    if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {resized = 1; size = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
     if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
     if (fld == arg->num && sub == arg->sub) return CopyDat;
     return KeepDat;
