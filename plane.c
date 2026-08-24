@@ -1502,27 +1502,18 @@ enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *a
     if (postSafe(loopSem) != 1) ERROR();
     return 0; // TODO return whether changed
 }
-/*
-struct DatxField {
-    int num, sub; // which field changed
-    int fld; // value changed from
-    int idx; // value changed to
-};
-typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);
-*/
-// fldptr(<dst/src type number>,<field position>,<field subscript>,<field type number>,&arg)
-// -1: read from original; 0: read zeroes; 1: read from given; 2: read from given after copying field to given
 enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg)
 {
     int changed = 0; enum Memory mem = Memorys;
     int resized = 0; int size = 0;
-    if (num == TYPECenter && resized && sub >= size) return 0;
-    if (num == TYPECenter && changed) return 0;
+    // TODO special cases as for identmat in Kernelz and Matrixz
+    if (num == TYPECenter && resized && sub >= size) return ZeroDat;
+    if (num == TYPECenter && changed) return DscdDat;
     if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {changed = 1; mem = readInt(arg->fld);}
     if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {resized = 1; size = readInt(arg->fld);}
-    if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {writeInt(otherSmart(readInt(arg->fld)),arg->idx); return 1;}
-    if (fld == arg->num && sub == arg->sub) return 2;
-    return -1;
+    if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
+    if (fld == arg->num && sub == arg->sub) return CopyDat;
+    return KeepDat;
 }
 const char *planeGetstr()
 {

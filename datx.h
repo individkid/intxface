@@ -46,7 +46,15 @@ void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
 #ifndef DATXFUNC
 #define DATXFUNC
-enum DatxEnum {KeepDat,MergeDat,CopyDat,ZeroDat};
+enum DatxEnum {
+	KeepDat, // read from src
+	ReplDat, // read from src and idx
+	CopyDat, // read from src and fld
+	DscdDat, // read from src
+	InsrDat, // read from idx
+	PsteDat, // read from fld
+	ZeroDat, // read from
+};
 struct DatxField {
     int num, sub; // which field changed
     int fld; // value changed from

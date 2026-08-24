@@ -374,24 +374,14 @@ void datxTypstr(void **dat, int typ)
 	FOREACH_ENUM(TYPSTR_CASE)
 	FOREACH_STRUCT(TYPSTR_CASE)}
 }
-struct DatxField {
-    int num, sub; // which field changed
-    int fld; // value changed from
-    int idx; // value changed to
-};
-typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);
 void datxField(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp)
 {
-	// datxField(<destination>,<source>,<field value>,<field position>,<field subscript>,<dst/src type number>,<field type number>)
-	// fldptr(<dst/src type number>,<field position>,<field subscript>,<field type number>,&arg)
-	// void mergeCenter(int dst, int lft, int rgt, initFunc fnc, void *arg)
-	// void readField(int typ, int fld, int sub, int ifd, int xfd, int ofd)" reads into field of struct
 	switch (stp) {
 	default: {readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);}
-	// TODO break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(1,fld),datxClr(3)};
-	// TODO mergeExtend(datxClr(2),datxPut(0,src),fldptr,&arg); datxGet(2,dst);}
-	// TODO break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(1,fld),datxClr(3)};
-	// TODO mergeCenter(datxClr(2),datxPut(0,src),fldptr,&arg); datxGet(2,dst);}
+	break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(1,fld),datxClr(3)};
+	mergeExtend(datxClr(2),datxPut(0,src),fldptr,&arg); datxGet(2,dst);}
+	break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(1,fld),datxClr(3)};
+	mergeCenter(datxClr(2),datxPut(0,src),fldptr,&arg); datxGet(2,dst);}
 	}
 }
 void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)
