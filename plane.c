@@ -589,6 +589,15 @@ void machineMopy(int sig, int *arg)
     centerPlace(src);
     centerPlace(dst);
 }
+void demoMenu(struct Menu *menu);
+void machineNopy(int sig, int *arg)
+{
+    if (sig != NopyArgs) ERROR();
+    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,"Nopy");
+    struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
+    demoMenu(menu);
+    machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
+}
 void machinePop(int sig, int chk, int dst, void *que);
 void machinePopy(int sig, int *arg)
 {
@@ -609,73 +618,21 @@ void machineRopy(int sig, int *arg)
 {
     machinePop(sig,RopyArgs,arg[RopyDst],replace);
 }
-void machineStage(enum Configure *cfg, int siz, int idx)
+void machineStage(enum Configure cfg, int idx);
+void machineSopy(int sig, int *arg)
 {
-    centerSize(idx);
-    struct Extend *ext = centerPeek(idx,"Stage");
-    struct Center *ptr = (ext?ext->ptr:0);
-    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
-    for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
-    case (CenterMem): planeJnfo(cfg[i],(ptr?ptr->mem:0),planeWcfg); break;
-    case (CenterSiz): planeJnfo(cfg[i],(ptr?ptr->siz:0),planeWcfg); break;
-    case (CenterIdx): planeJnfo(cfg[i],(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterSlf): planeJnfo(cfg[i],(ptr?ptr->slf:0),planeWcfg); break;
-    case (CenterInt): planeJnfo(cfg[i],(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterPtr): planeJnfo(cfg[i],(ext!=0),planeWcfg); break;
-    case (CenterSrc): planeJnfo(cfg[i],(ext?ext->src:0),planeWcfg); break;
-    case (CenterRsp): planeJnfo(cfg[i],(ext?ext->rsp:0),planeWcfg); break;
-    case (CenterRet): planeJnfo(cfg[i],(ext?ext->ret:0),planeWcfg); break;
-    case (CenterAsr): planeJnfo(cfg[i],(ext?ext->asr:0),planeWcfg); break;
-    case (CenterSub): planeJnfo(cfg[i],(ext?ext->sub:0),planeWcfg); break;
-    case (CenterSav): planeJnfo(cfg[i],(ext?ext->sav:0),planeWcfg); break;
-    case (CenterLog): planeJnfo(cfg[i],(ext?ext->log:0),planeWcfg); break;
-    case (FixedLeft): planeJnfo(cfg[i],(met?met->fix[0]:0),planeWcfg); break;
-    case (FixedBase): planeJnfo(cfg[i],(met?met->fix[1]:0),planeWcfg); break;
-    case (FixedDeep): planeJnfo(cfg[i],(met?met->fix[2]:0),planeWcfg); break;
-    case (NormalLeft): planeJnfo(cfg[i],(met?met->nor[0]:0),planeWcfg); break;
-    case (NormalBase): planeJnfo(cfg[i],(met?met->nor[1]:0),planeWcfg); break;
-    case (NormalDeep): planeJnfo(cfg[i],(met?met->nor[2]:0),planeWcfg); break;
-    case (SelectIdx): planeJnfo(cfg[i],(met?met->idx:0),planeWcfg); break;
-    case (MetricAct): planeJnfo(cfg[i],(met?met->act:0),planeWcfg); break;}
-    centerPlace(ext);
+    if (sig != SopyArgs) ERROR();
+    int src = arg[SopySrc];
+    enum Configure cfg = arg[SopyCfg];
+    machineStage(cfg,src);
 }
-void machineTsage(enum Configure *cfg, int siz, int idx)
+void machineTsage(enum Configure cfg, int idx);
+void machineTopy(int sig, int *arg)
 {
-    struct Extend *ext = centerPull(idx,"Tsage");
-    struct Center *ptr = (ext?ext->ptr:0);
-    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
-    for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
-    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterSiz): {int siz = planeInfo(cfg[i],0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);} break;
-    case (CenterIdx): ptr->idx = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterInt): {int sub = planeInfo(cfg[i],0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
-    case (CenterPtr): ERROR();
-    case (CenterSrc): ext->src = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterRsp): ext->rsp = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterRet): ext->ret = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterAsr): ERROR();
-    case (CenterSub): ext->sub = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterSav): ext->sav = planeInfo(cfg[i],0,planeRcfg); break;
-    case (CenterLog): if (ext->log) deleteSmart(ext->log); ext->log = otherSmart(planeInfo(cfg[i],0,planeRcfg)); break;
-    case (FixedLeft): met->fix[0] = planeInfo(cfg[i],0,planeRcfg); break;
-    case (FixedBase): met->fix[1] = planeInfo(cfg[i],0,planeRcfg); break;
-    case (FixedDeep): met->fix[2] = planeInfo(cfg[i],0,planeRcfg); break;
-    case (NormalLeft): met->nor[0] = planeInfo(cfg[i],0,planeRcfg); break;
-    case (NormalBase): met->nor[1] = planeInfo(cfg[i],0,planeRcfg); break;
-    case (NormalDeep): met->nor[2] = planeInfo(cfg[i],0,planeRcfg); break;
-    case (SelectIdx): met->idx = planeInfo(cfg[i],0,planeRcfg); break;
-    case (MetricAct): met->act = planeInfo(cfg[i],0,planeRcfg); break;}
-    centerPlace(ext);
-}
-void demoMenu(struct Menu *menu);
-void machineDemo(int sig, int *arg)
-{
-    if (sig != DemoArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,DemoArgs,DemoSrc,DemoSrcSub,"Demo");
-    struct Menu *menu = machineMenu(src,sig,arg,DemoArgs,DemoSrc,DemoSrcSub);
-    demoMenu(menu);
-    machinePlace(src,sig,arg,DemoArgs,DemoSrc,DemoSrcSub);
+    if (sig != TopyArgs) ERROR();
+    int src = arg[TopySrc];
+    enum Configure cfg = arg[TopyCfg];
+    machineTsage(cfg,src);
 }
 int moveIval(struct Express *exp);
 struct Extend *moveRefer(int sub); // leave to be changed in place
@@ -761,8 +718,8 @@ void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
-    case (Stage): machineStage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break; // TODO remove when tests changed over to Move
-    case (Tsage): machineTsage(mptr->sav,mptr->siz,machineIval(mptr->idx)); break; // TODO remove when tests changed over to Move
+    case (Stage): {int idx = machineIval(mptr->idx); for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],idx);} break;
+    case (Tsage): {int idx = machineIval(mptr->idx); for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],idx);} break;
     case (Dump): *(int*)0=0; break;
     case (Move): machineMove(mptr->sub,mptr->fun,mptr->atm); break; // each fun takes Extend @_, and Extend's in @0 @1 @2 ... indicated by sub, and returns Extend
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
@@ -774,14 +731,16 @@ void machineSwitch(struct Machine *mptr)
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
     case (Self): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSelf(mptr->sig,arg);} break;
     case (Glob): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineGlob(mptr->sig,arg);} break;
-    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break; // TODO remove when tests changed over to Move
-    case (Demo): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDemo(mptr->sig,arg);} break;}
+    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
+    case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
+    case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
+    case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break;
+    case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
+    case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
+    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
+    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
+    case (Sopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSopy(mptr->sig,arg);} break;
+    case (Topy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineTopy(mptr->sig,arg);} break;}
 }
 
 // unprotected called by big hammer
@@ -953,6 +912,78 @@ void planeWake(enum Thread tag, int idx)
     postSafe(safeSafe(tag,idx));
 }
 
+void machineStage(enum Configure cfg, int idx)
+{
+    centerSize(idx);
+    struct Extend *ext = centerPeek(idx,"Stage");
+    struct Center *ptr = (ext?ext->ptr:0);
+    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
+    switch (cfg) {default: ERROR();
+    case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
+    case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
+    case (CenterIdx): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;
+    case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
+    case (CenterPtr): planeJnfo(cfg,(ext!=0),planeWcfg); break;
+    case (CenterSrc): planeJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
+    case (CenterRsp): planeJnfo(cfg,(ext?ext->rsp:0),planeWcfg); break;
+    case (CenterRet): planeJnfo(cfg,(ext?ext->ret:0),planeWcfg); break;
+    case (CenterAsr): planeJnfo(cfg,(ext?ext->asr:0),planeWcfg); break;
+    case (CenterSub): planeJnfo(cfg,(ext?ext->sub:0),planeWcfg); break;
+    case (CenterSav): planeJnfo(cfg,(ext?ext->sav:0),planeWcfg); break;
+    case (CenterLog): planeJnfo(cfg,(ext?ext->log:0),planeWcfg); break;
+    case (FixedLeft): planeJnfo(cfg,(met?met->fix[0]:0),planeWcfg); break;
+    case (FixedBase): planeJnfo(cfg,(met?met->fix[1]:0),planeWcfg); break;
+    case (FixedDeep): planeJnfo(cfg,(met?met->fix[2]:0),planeWcfg); break;
+    case (NormalLeft): planeJnfo(cfg,(met?met->nor[0]:0),planeWcfg); break;
+    case (NormalBase): planeJnfo(cfg,(met?met->nor[1]:0),planeWcfg); break;
+    case (NormalDeep): planeJnfo(cfg,(met?met->nor[2]:0),planeWcfg); break;
+    case (SelectIdx): planeJnfo(cfg,(met?met->idx:0),planeWcfg); break;
+    case (MetricAct): planeJnfo(cfg,(met?met->act:0),planeWcfg); break;}
+    centerPlace(ext);
+}
+enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg);
+void machineTsage(enum Configure cfg, int idx)
+{
+    struct Extend *ext = centerPull(idx,"Tsage");
+    struct Center *ptr = (ext?ext->ptr:0);
+    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
+    switch (cfg) {default: ERROR();
+    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSiz): {
+    waitSafe(evalSem);
+    int src = datxClr(0); writeCenter(ptr,src);
+    int siz = planeInfo(cfg,0,planeRcfg);
+    int fld = datxClr(1); writeInt(siz,fld);
+    int dst = datxClr(2);
+    struct DatxField arg = {identField(TYPECenter,"siz"),0,src,fld,datxClr(3)};
+    mergeCenter(dst,planeField,&arg);
+    readCenter(ptr,dst);
+    postSafe(evalSem);
+    // int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);
+    // {char *st0 = 0; showMemory(ext->ptr->mem,&st0); fprintf(stderr,"Tsage mem:%s siz:%d\n",st0,ext->ptr->siz); free(st0);}
+    } break;
+    case (CenterIdx): ptr->idx = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
+    case (CenterPtr): ERROR();
+    case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterRsp): ext->rsp = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterRet): ext->ret = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterAsr): ERROR();
+    case (CenterSub): ext->sub = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterSav): ext->sav = planeInfo(cfg,0,planeRcfg); break;
+    case (CenterLog): if (ext->log) deleteSmart(ext->log); ext->log = otherSmart(planeInfo(cfg,0,planeRcfg)); break;
+    case (FixedLeft): met->fix[0] = planeInfo(cfg,0,planeRcfg); break;
+    case (FixedBase): met->fix[1] = planeInfo(cfg,0,planeRcfg); break;
+    case (FixedDeep): met->fix[2] = planeInfo(cfg,0,planeRcfg); break;
+    case (NormalLeft): met->nor[0] = planeInfo(cfg,0,planeRcfg); break;
+    case (NormalBase): met->nor[1] = planeInfo(cfg,0,planeRcfg); break;
+    case (NormalDeep): met->nor[2] = planeInfo(cfg,0,planeRcfg); break;
+    case (SelectIdx): met->idx = planeInfo(cfg,0,planeRcfg); break;
+    case (MetricAct): met->act = planeInfo(cfg,0,planeRcfg); break;}
+    centerPlace(ext);
+}
 void machineArg(int *arg, int sig, struct Express *exp)
 {
     for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
@@ -1502,6 +1533,7 @@ enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *a
     if (postSafe(loopSem) != 1) ERROR();
     return 0; // TODO return whether changed
 }
+// following protected by evalSem
 int changed = 0; enum Memory mem = Memorys;
 int resized = 0; int size = 0;
 enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg)

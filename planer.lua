@@ -91,8 +91,10 @@ end
 function readConfig(list,res,cfg)
 	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
 	list[#list+1] = centSugar(cent) -- this prevents Pull blocking
-	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
-	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(#"..(castMemory("Memorys")+1).."))")
+	-- CenterSiz used by other threads; have to use Move or Eval instead of Tsage
+	-- list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
+	-- list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(#"..(castMemory("Memorys")+1).."))")
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz)))")
 	for i,v in ipairs(cfg) do
 	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
 	end

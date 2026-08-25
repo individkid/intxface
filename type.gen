@@ -353,14 +353,16 @@ Transfer = { -- what user machine does
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
-	"Demo", -- handle input
 	"Bopy", -- move to resource
 	"Copy", -- execute center
-	"Dopy", -- copy to center
+	"Dopy", -- duplicate center
 	"Mopy", -- merge memories
-	"Popy", -- queue to center
-	"Qopy", -- move to queue
-	"Ropy", -- move to queu
+	"Nopy", -- handle input
+	"Popy", -- internal to center
+	"Qopy", -- center to response
+	"Ropy", -- center to replace
+	"Sopy", -- center to configure
+	"Topy", -- configure to center
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
@@ -405,10 +407,6 @@ GlobArg = {
 	"GlobDst",
 	"GlobDstSub",
 }
-DemoArg = {
-	"DemoSrc",
-	"DemoSrcSub",
-}
 BopyArg = {
 	"BopySrc",
 	"BopyAlt",
@@ -428,6 +426,10 @@ MopyArg = {
 	"MopyDstSub",
 	"MopySiz",
 }
+NopyArg = {
+	"NopySrc",
+	"NopySrcSub",
+}
 PopyArg = {
 	"PopyDst",
 }
@@ -436,6 +438,14 @@ QopyArg = {
 }
 RopyArg = {
 	"RopyDst",
+}
+SopyArg = {
+	"SopySrc",
+	"SopyCfg",
+}
+TopyArg = {
+	"TopySrc",
+	"TopyCfg",
 }
 Plan = { -- which test to run
 	"Bringup",
@@ -1999,7 +2009,13 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Nest(lvl:7)"..
 		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Stage(siz:7sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntsav[6]:CenterLogidx[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterPtr\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterMem\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterSiz\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterSlf\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterIdx\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterInt\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterLog\"))))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
 		  "#0 == EC ?CenterPtr #0 Cmp , #7"..
 		  "#0 == Or EC ?CenterMem #%(return castMemory(\"Transferz\")) Cmp EC ?CenterMem #%(return castMemory(\"Rebootz\")) Cmp Bit , #6"..
@@ -2015,13 +2031,13 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"matrix\"))]:Nest(lvl:-1)"..
-		  -- Demo Matrixz to process Self or Glob matrix
+		  -- Nopy Matrixz to process Self or Glob matrix
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
 		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
-		  "mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrAfterOp , EndOp Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
@@ -2081,7 +2097,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO do following for Regress and Release
 		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
-		-- "mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		-- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"done\"))]:Nest(lvl:-1)".. -- 5
@@ -2118,7 +2134,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
 		-- disable and change manipulation
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrPrssMskOpOp))"..
-		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"proj\"))]:Nest(lvl:-1)".. -- 8
@@ -2137,28 +2153,28 @@ Bootstrap = {
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrEoodMskOp , EndOp Op))"..
 		-- wait for window resize
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrEoodMskOpOp))"..
-		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 10
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrMoveMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was roller; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrMoveMskOpOp))"..
-		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 11
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
 		-- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrClckMskOpOp))"..
-		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRollMskOp , EndOp Op))"..
 		-- do Form if enabled and last manipulate was move; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrRollMskOpOp))"..
-		"mch[%(return jdx())]:Demo(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"unif\"))]:Nest(lvl:-1)".. -- 13
@@ -2339,13 +2355,13 @@ Machine = { -- info for user defined action
 	{"sub","Express",{["xfr"]={["Move"]=true}},"atm"},
 	{"fun","Express",{["xfr"]={["Move"]=true}},"atm"},
 	{"sig","Int",{["xfr"]={
-		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,["Demo"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,
-		["Popy"]=true,["Qopy"]=true,["Ropy"]=true}},{}},
+		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,["Nopy"]=true,
+		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,["Sopy"]=true,["Topy"]=true}},{}},
 	{"arg","Express",{["xfr"]={
-		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,["Demo"]=true,
-		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,
-		["Popy"]=true,["Qopy"]=true,["Ropy"]=true}},"sig"},
+		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
+		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,["Nopy"]=true,
+		["Popy"]=true,["Qopy"]=true,["Ropy"]=true,["Sopy"]=true,["Topy"]=true}},"sig"},
 	{"exp","Express",{["xfr"]={["Jump"]=true,["Goto"]=true,["Void"]=true}},1},
 	{"lvl","Int",{["xfr"]={["Nest"]=true}},{}},
 }
@@ -2356,9 +2372,9 @@ Metric = { -- information about pierce point
 	{"idx","Int",{},{}},
 }
 Menu = { -- state to handle user input
-	-- these could be Configure, DemoArg, or ValOp instead,
-	-- if Demo were not for demonstration purposes only
-	{"msk","Mask",{},{}}, -- action for Sync or Demo
+	-- these could be Configure, NopyArg, or ValOp instead,
+	-- if Nopy were not for demonstration purposes only
+	{"msk","Mask",{},{}}, -- action for Sync or Nopy
 	{"act","Action",{},{}},
 	{"jec","Scope",{},{}},
 	{"dev","Device",{},{}},
