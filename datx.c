@@ -19,7 +19,7 @@ setfp wocptr = 0;
 rawfp rawptr = 0;
 getfp getptr = 0;
 putfp putptr = 0;
-initFunc fldptr = 0;
+fieldFunc fldptr = 0;
 float fntime;
 
 // these are not thread safe
@@ -373,16 +373,6 @@ void datxTypstr(void **dat, int typ)
 	FOREACH_POINTER(TYPSTR_CASE)
 	FOREACH_ENUM(TYPSTR_CASE)
 	FOREACH_STRUCT(TYPSTR_CASE)}
-}
-void datxField(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp)
-{
-	switch (stp) {
-	default: {readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);}
-	break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
-	mergeExtend(datxClr(2),fldptr,&arg); datxGet(2,dst);}
-	break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
-	mergeCenter(datxClr(2),fldptr,&arg); datxGet(2,dst);}
-	}
 }
 void datxExtract(void **fld, void *src, int num, int sub, int stp, int ftp)
 {
@@ -770,7 +760,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (identSubtype(typ0,num) != typ1) ERROR();
 		if (typ == -1) typ = typ0; if (typ != typ0) ERROR();
 		if (typ2 != TYPEInt) ERROR();
-		datxField(dat,dat0,dat1,num,*datxIntz(0,dat2),typ0,typ1);
+		fldptr(dat,dat0,dat1,num,*datxIntz(0,dat2),typ0,typ1);
 		free(dat0); free(dat1);} break;
 	case (ExtOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,&exp->ext[0],-1);
@@ -828,7 +818,7 @@ void datxChanged(rktype fnc)
 {
 	datxNoteFp = fnc;
 }
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put, initFunc fld)
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put, fieldFunc fld)
 {
 	retptr = ret;
 	setptr = set;

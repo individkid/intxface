@@ -44,23 +44,5 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
-#ifndef DATXFUNC
-#define DATXFUNC
-enum DatxEnum {
-	KeepDat, // read from src
-	ReplDat, // read from src and idx
-	CopyDat, // read from src and fld
-	DscdDat, // read from src
-	InsrDat, // read from idx
-	PsteDat, // read from fld
-	ZeroDat, // read from
-};
-struct DatxField {
-    int num, sub; // which field changed
-    int src; // value changed
-    int fld; // value written
-    int idx; // value used
-};
-typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);
-#endif
-void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put, initFunc fld);
+typedef void (*fieldFunc)(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp);
+void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put, fieldFunc fld);

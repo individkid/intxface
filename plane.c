@@ -341,9 +341,9 @@ struct InitCenter {
     struct Extend *sav;
     struct Extend *dst;
 };
-enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
+enum DatxEnum centerInit(int num, int fld, int sub, int typ, struct DatxField *arg);
 enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *arg);
-void centerInit(struct Extend *src, struct Extend *dst)
+void centerCopy(struct Extend *src, struct Extend *dst)
 {
     dst->src = src->src;
     dst->sub = src->sub;
@@ -356,8 +356,8 @@ void centerResize(struct Extend **ptr, int siz)
 {
     struct InitCenter init = {0,0,siz,0,*ptr,0,0};
     allocExtend(&init.dst,1);
-    centerInit(*ptr,init.dst);
-    initCenter(init.dst->ptr,centerField,&init);
+    centerCopy(*ptr,init.dst); // TODO could use initExtend
+    initCenter(init.dst->ptr,centerInit,&init);
     if ((*ptr) != 0) deleteSmart((*ptr)->log);
     freeExtend(*ptr); allocExtend(ptr,0);
     *ptr = init.dst;
@@ -366,7 +366,7 @@ void centerMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int 
 {
     struct InitCenter init = {sdx,ddx,siz,(*dst)->ptr->siz+siz,src,*dst,0};
     allocExtend(&init.dst,1);
-    centerInit(*dst,init.dst);
+    centerCopy(*dst,init.dst); // TODO could use initExtend
     initCenter(init.dst->ptr,centerElem,&init);
     if ((*dst) != 0) deleteSmart((*dst)->log);
     freeExtend(*dst); allocExtend(dst,0);
@@ -942,7 +942,7 @@ void machineStage(enum Configure cfg, int idx)
     case (MetricAct): planeJnfo(cfg,(met?met->act:0),planeWcfg); break;}
     centerPlace(ext);
 }
-enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg);
+enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineTsage(enum Configure cfg, int idx)
 {
     struct Extend *ext = centerPull(idx,"Tsage");
@@ -957,7 +957,7 @@ void machineTsage(enum Configure cfg, int idx)
     int fld = datxClr(1); writeInt(siz,fld);
     int dst = datxClr(2);
     struct DatxField arg = {identField(TYPECenter,"siz"),0,src,fld,datxClr(3)};
-    mergeCenter(dst,planeField,&arg);
+    mergeCenter(dst,centerField,&arg);
     readCenter(ptr,dst);
     postSafe(evalSem);
     // int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);
@@ -1481,8 +1481,8 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
     deleteSmart(center[i]->log); center[i]->log = 0;}
 }
 
-// expression callbacks
-enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
+//generic callbacks
+enum DatxEnum centerInit(int num, int fld, int sub, int typ, struct DatxField *arg)
 {
     struct InitCenter *cst = (struct InitCenter *)arg;
     struct Center *src = cst->src->ptr;
@@ -1536,7 +1536,7 @@ enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *a
 // following protected by evalSem
 int changed = 0; enum Memory mem = Memorys;
 int resized = 0; int size = 0;
-enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *arg)
+enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
 {
     if (fld == 0) changed = resized = 0;
     if (num == TYPECenter && resized && sub >= size && typ == TYPEMatrix) {
@@ -1559,6 +1559,17 @@ enum DatxEnum planeField(int num, int fld, int sub, int typ, struct DatxField *a
     if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
     if (fld == arg->num && sub == arg->sub) return CopyDat;
     return KeepDat;
+}
+
+// expression callbacks
+void planeField(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp)
+{
+    switch (stp) {
+    default: {readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);}
+    break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+    mergeExtend(datxClr(2),centerField,&arg); datxGet(2,dst);}
+    break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+    mergeCenter(datxClr(2),centerField,&arg); datxGet(2,dst);}}
 }
 const char *planeGetstr()
 {

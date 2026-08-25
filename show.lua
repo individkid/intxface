@@ -1122,8 +1122,6 @@ function showDefine(list)
 end
 function showInit(list)
 	local result = ""
-	result = result.."#ifndef DATXFUNC\n"
-	result = result.."#define DATXFUNC\n"
 	result = result.."enum DatxEnum {\n"
 	result = result..showIndent(1).."KeepDat, // read from src\n"
 	result = result..showIndent(1).."ReplDat, // read from src and idx\n"
@@ -1140,7 +1138,6 @@ function showInit(list)
 	result = result..showIndent(1).."int idx; // value used\n"
 	result = result.."};\n"
 	result = result.."typedef enum DatxEnum (*initFunc)(int num, int fld, int sub, int typ, struct DatxField *arg);\n"
-	result = result.."#endif\n"
 	return result
 end
 function showForeach(list)
