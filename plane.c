@@ -756,13 +756,11 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
     return next;
 }
 void machineArg(int *arg, int sig, struct Express *exp);
-void machineStage(enum Configure cfg, int idx);
 void machineTsage(enum Configure cfg, int idx);
 void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
-    case (Stage): {int idx = machineIval(mptr->idx); for (int i = 0; i < mptr->siz; i++) machineStage(mptr->sav[i],idx);} break;
     case (Tsage): {int idx = machineIval(mptr->idx); for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],idx);} break;
     case (Dump): *(int*)0=0; break;
     case (Move): machineMove(mptr->sub,mptr->fun,mptr->atm); break; // each fun takes Extend @_, and Extend's in @0 @1 @2 ... indicated by sub, and returns Extend
@@ -889,7 +887,6 @@ void demoMenu(struct Menu *menu)
     demoDisp(menu);}
     break; case (DoneMsk): {
     // TODO add field to menu for place to hold Metric
-    // TODO add to Configure Stage Tsage to get/put Metric fields from/to Piercez mem in Center
     // TODO Getoldz is only depth; calculate other coordinates from UniformWid/Hei and Focal*
     // TODO following only if Metric is completed
     // TODO mark Metric as the opposite of complete
@@ -956,36 +953,6 @@ void planeWake(enum Thread tag, int idx)
     postSafe(safeSafe(tag,idx));
 }
 
-void machineStage(enum Configure cfg, int idx)
-{
-    centerSize(idx);
-    struct Extend *ext = centerPeek(idx,"Stage");
-    struct Center *ptr = (ext?ext->ptr:0);
-    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
-    switch (cfg) {default: ERROR();
-    case (CenterMem): planeJnfo(cfg,(ptr?ptr->mem:0),planeWcfg); break;
-    case (CenterSiz): planeJnfo(cfg,(ptr?ptr->siz:0),planeWcfg); break;
-    case (CenterIdx): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterSlf): planeJnfo(cfg,(ptr?ptr->slf:0),planeWcfg); break;
-    case (CenterInt): planeJnfo(cfg,(ptr?ptr->idx:0),planeWcfg); break;
-    case (CenterPtr): planeJnfo(cfg,(ext!=0),planeWcfg); break;
-    case (CenterSrc): planeJnfo(cfg,(ext?ext->src:0),planeWcfg); break;
-    case (CenterRsp): planeJnfo(cfg,(ext?ext->rsp:0),planeWcfg); break;
-    case (CenterRet): planeJnfo(cfg,(ext?ext->ret:0),planeWcfg); break;
-    case (CenterAsr): planeJnfo(cfg,(ext?ext->asr:0),planeWcfg); break;
-    case (CenterSub): planeJnfo(cfg,(ext?ext->sub:0),planeWcfg); break;
-    case (CenterSav): planeJnfo(cfg,(ext?ext->sav:0),planeWcfg); break;
-    case (CenterLog): planeJnfo(cfg,(ext?ext->log:0),planeWcfg); break;
-    case (FixedLeft): planeJnfo(cfg,(met?met->fix[0]:0),planeWcfg); break;
-    case (FixedBase): planeJnfo(cfg,(met?met->fix[1]:0),planeWcfg); break;
-    case (FixedDeep): planeJnfo(cfg,(met?met->fix[2]:0),planeWcfg); break;
-    case (NormalLeft): planeJnfo(cfg,(met?met->nor[0]:0),planeWcfg); break;
-    case (NormalBase): planeJnfo(cfg,(met?met->nor[1]:0),planeWcfg); break;
-    case (NormalDeep): planeJnfo(cfg,(met?met->nor[2]:0),planeWcfg); break;
-    case (SelectIdx): planeJnfo(cfg,(met?met->idx:0),planeWcfg); break;
-    case (MetricAct): planeJnfo(cfg,(met?met->act:0),planeWcfg); break;}
-    centerPlace(ext);
-}
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineTsage(enum Configure cfg, int idx)
 {

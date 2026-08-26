@@ -258,7 +258,7 @@ Default = { -- constant array value interpretation
 	"CmntDef",
 }
 Configure = { -- integer variables for user expressions to query and control the ungenerated program
-	-- TODO remove Center* Stage Tsage *opy, replacing with Eval that takes multiple from array and queues
+	-- TODO remove Center* Tsage, replacing with Topy
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
@@ -333,7 +333,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ScratchHandls",
 }
 Transfer = { -- what user machine does
-	"Stage", -- center fields to configure
 	"Tsage", -- configure to center fields
 	"Dump", -- throw core dump
 	"Eval", -- call datxEval to rmw center
@@ -361,6 +360,7 @@ Transfer = { -- what user machine does
 	"Popy", -- internal to center
 	"Qopy", -- center to response
 	"Ropy", -- center to replace
+	-- TODO add sugar for Sopy Topy
 	"Sopy", -- center to configure
 	"Topy", -- configure to center
 	"Goto", -- jump to value
@@ -2014,7 +2014,12 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Nest(lvl:7)"..
 		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Stage(siz:6sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntidx[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrmemOp)arg[2]:$(#0)arg[3]:$(CenterPtr := #1)arg[4]:$(CenterPtr := #0))"..
+		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrmemOp)arg[2]:$(#0)arg[3]:$(CenterMem := Cst @_ #0 Op)arg[4]:$(CenterMem := #%(return castMemory(\"Memorys\"))))"..
+		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrsizOp)arg[2]:$(#0)arg[3]:$(CenterSiz := @_)arg[4]:$(CenterSiz := #0))"..
+		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrslfOp)arg[2]:$(#0)arg[3]:$(CenterSlf := @_)arg[4]:$(CenterSlf := #0))"..
+		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StridxOp)arg[2]:$(#0)arg[3]:$(CenterIdx := @_)arg[4]:$(CenterIdx := #0))"..
+		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StridxOp)arg[2]:$(#0)arg[3]:$(CenterInt := @_)arg[4]:$(CenterInt := #0))"..
 		 "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrlogOp)arg[2]:$(#0)arg[3]:$(CenterLog := @_)arg[4]:$(CenterLog := #0))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
 		  "#0 == EC ?CenterPtr #0 Cmp , #7"..
@@ -2080,7 +2085,9 @@ Bootstrap = {
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(exp[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op))"..
 		-- Jump if Center at Memorys is null, empty, or not Transferz
-		"mch[%(return jdx())]:Stage(siz:3sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizidx[0]:$(@transfer))"..
+		"mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@transfer)arg[1]:$(StrmemOp)arg[2]:$(#0)arg[3]:$(CenterPtr := #1)arg[4]:$(CenterPtr := #0))"..
+		"mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@transfer)arg[1]:$(StrmemOp)arg[2]:$(#0)arg[3]:$(CenterMem := Cst @_ #0 Op)arg[4]:$(CenterMem := #%(return castMemory(\"Memorys\"))))"..
+		"mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@transfer)arg[1]:$(StrsizOp)arg[2]:$(#0)arg[3]:$(CenterSiz := @_)arg[4]:$(CenterSiz := #0))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(Cnd ?CenterSiz <= @bootstr , #1 ; #0 , #2 Op))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2104,7 +2111,10 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrDoneMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Nest(lvl:2)"..
 		  "mch[%(return jdx())]:Ropy(sig:1arg[0]:$(@memorys))"..
-		  "mch[%(return jdx())]:Stage(siz:4sav[0]:CenterPtrsav[1]:CenterRetsav[2]:CenterMemsav[3]:CenterSavidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrmemOp)arg[2]:$(#0)arg[3]:$(CenterPtr := #1)arg[4]:$(CenterPtr := #0))"..
+		  "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrretOp)arg[2]:$(#0)arg[3]:$(CenterRet := Cst @_ #0 Op)arg[4]:$(CenterRet := #%(return castRetval(\"Retvals\"))))"..
+		  "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrmemOp)arg[2]:$(#0)arg[3]:$(CenterMem := Cst @_ #0 Op)arg[4]:$(CenterMem := #%(return castMemory(\"Memorys\"))))"..
+		  "mch[%(return jdx())]:Sopy(sig:5arg[0]:$(@memorys)arg[1]:$(StrsavOp)arg[2]:$(#0)arg[3]:$(CenterSav := @_)arg[4]:$(CenterSav := #0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non ?CenterPtr == #0 Op , #2 ; #0 == #1 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Cnd "..
@@ -2346,9 +2356,9 @@ Express = { -- simple expression
 }
 Machine = { -- info for user defined action
 	{"xfr","Transfer",{},""},
-	{"siz","Int",{["xfr"]={["Stage"]=true,["Tsage"]=true}},{}},
-	{"sav","Configure",{["xfr"]={["Stage"]=true,["Tsage"]=true}},"siz"},
-	{"idx","Express",{["xfr"]={["Stage"]=true,["Tsage"]=true}},1},
+	{"siz","Int",{["xfr"]={["Tsage"]=true}},{}},
+	{"sav","Configure",{["xfr"]={["Tsage"]=true}},"siz"},
+	{"idx","Express",{["xfr"]={["Tsage"]=true}},1},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"atm","Int",{["xfr"]={["Move"]=true}},{}},
