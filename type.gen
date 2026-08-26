@@ -441,7 +441,9 @@ RopyArg = {
 }
 SopyArg = {
 	"SopySrc",
-	"SopyCfg",
+	"SopyStr",
+	"SopySub",
+	"SopyVal",
 }
 TopyArg = {
 	"TopySrc",
@@ -2011,13 +2013,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Nest(lvl:7)"..
 		 "mch[%(return jdx())]:Popy(sig:1arg[0]:$(@memorys))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterPtr\"))))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterMem\"))))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterSiz\"))))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterSlf\"))))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterIdx\"))))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterInt\"))))"..
-		 "mch[%(return jdx())]:Sopy(sig:2arg[0]:$(@memorys)arg[1]:$(#%(return castConfigure(\"CenterLog\"))))"..
+		 "mch[%(return jdx())]:Stage(siz:7sav[0]:CenterPtrsav[1]:CenterMemsav[2]:CenterSizsav[3]:CenterSlfsav[4]:CenterIdxsav[5]:CenterIntsav[6]:CenterLogidx[0]:$(@memorys))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
 		  "#0 == EC ?CenterPtr #0 Cmp , #7"..
 		  "#0 == Or EC ?CenterMem #%(return castMemory(\"Transferz\")) Cmp EC ?CenterMem #%(return castMemory(\"Rebootz\")) Cmp Bit , #6"..

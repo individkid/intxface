@@ -618,15 +618,30 @@ void machineRopy(int sig, int *arg)
 {
     machinePop(sig,RopyArgs,arg[RopyDst],replace);
 }
-void machineStage(enum Configure cfg, int idx);
-void machineSopy(int sig, int *arg)
-{
-    if (sig != SopyArgs) ERROR();
-    int src = arg[SopySrc];
-    enum Configure cfg = arg[SopyCfg];
-    machineStage(cfg,src);
-}
 int machineIval(struct Express *exp);
+void machineSopy(int sig, struct Express *arg)
+{
+    if (sig != TopyArgs) ERROR();
+    int idx = machineIval(&arg[TopySrc]);
+    struct Extend *ptr = centerPull(idx,"Topy");
+    void *str = 0; int typ0 = datxEval(&str,&arg[TopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
+    int num, stp, ftp; int found = 0;
+    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
+    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
+    num = identField(stp,datxChrz(0,str)); if (num >= 0) {found = 1;
+    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    int sub = machineIval(&arg[TopySub]);
+    int src = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend(ptr,src);
+    break; case (TYPECenter): writeCenter(ptr->ptr,src);
+    break; case (TYPEMetric): writeMetric(ptr->ptr->met,src);}
+    int fld = datxClr(1); writeField(stp,num,sub,src,fld);
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(1,&dat1);
+    datxInsert(dat0,dat1,ftp);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,&arg[TopyVal],-1); free(dat);
+}
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineTopy(int sig, struct Express *arg)
 {
@@ -736,6 +751,7 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
     return next;
 }
 void machineArg(int *arg, int sig, struct Express *exp);
+void machineStage(enum Configure cfg, int idx);
 void machineTsage(enum Configure cfg, int idx);
 void machineSwitch(struct Machine *mptr)
 {
@@ -762,7 +778,7 @@ void machineSwitch(struct Machine *mptr)
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
-    case (Sopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSopy(mptr->sig,arg);} break;
+    case (Sopy): {int arg[mptr->sig]; machineSopy(mptr->sig,mptr->arg);} break;
     case (Topy): {int arg[mptr->sig]; machineTopy(mptr->sig,mptr->arg);} break;}
 }
 
