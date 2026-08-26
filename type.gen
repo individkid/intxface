@@ -445,7 +445,9 @@ SopyArg = {
 }
 TopyArg = {
 	"TopySrc",
-	"TopyCfg",
+	"TopyStr",
+	"TopySub",
+	"TopyVal",
 }
 Plan = { -- which test to run
 	"Bringup",

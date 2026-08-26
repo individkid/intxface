@@ -57,6 +57,7 @@ function pipeTest()
 	list[#list+1] = centSugar("Center(mem:Getcfgzsiz:0idx:0slf:0)") -- this prevents Pull blocking
 	list[#list+1] = exprSugar("$(CenterSrc := #"..castProgram(tests[found]["typ"])..")")
 	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
+	-- list[#list+1] = machSugar("Machine(xfr:Topysiz:4arg[0]:$(@getcfg)arg[1]:$(StrsrcOp)arg[2]:$(#0)arg[3]:$(#"..castProgram(tests[found]["typ"]).."))")
 	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"],"Pipe")
 	center = readCenter(tests[found]["idx"])

@@ -626,13 +626,35 @@ void machineSopy(int sig, int *arg)
     enum Configure cfg = arg[SopyCfg];
     machineStage(cfg,src);
 }
-void machineTsage(enum Configure cfg, int idx);
-void machineTopy(int sig, int *arg)
+int machineIval(struct Express *exp);
+enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
+void machineTopy(int sig, struct Express *arg)
 {
     if (sig != TopyArgs) ERROR();
-    int src = arg[TopySrc];
-    enum Configure cfg = arg[TopyCfg];
-    machineTsage(cfg,src);
+    int idx = machineIval(&arg[TopySrc]);
+    struct Extend *ptr = centerPull(idx,"Topy");
+    void *str = 0; int typ0 = datxEval(&str,&arg[TopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
+    int num, stp, ftp; int found = 0;
+    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
+    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
+    num = identField(stp,datxChrz(0,str)); if (num >= 0) {found = 1;
+    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    int sub = machineIval(&arg[TopySub]);
+    int src = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend(ptr,src);
+    break; case (TYPECenter): writeCenter(ptr->ptr,src);
+    break; case (TYPEMetric): writeMetric(ptr->ptr->met,src);}
+    void *fld = 0; int typ1 = datxEval(&fld,&arg[TopyVal],ftp); if (typ1 != ftp) ERROR(); 
+    struct DatxField dtf = {num,sub,src,datxPut(1,fld),datxClr(3)};
+    int dst = datxClr(2); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): mergeExtend(dst,centerField,&dtf);
+    break; case (TYPECenter): mergeCenter(dst,centerField,&dtf);
+    break; case (TYPEMetric): mergeMetric(dst,centerField,&dtf);}
+    switch (stp) {default: ERROR();
+    break; case (TYPEExtend): readExtend(ptr,dst);
+    break; case (TYPECenter): readCenter(ptr->ptr,dst);
+    break; case (TYPEMetric): readMetric(ptr->ptr->met,dst);}
+    centerPlace(ptr);
 }
 int moveIval(struct Express *exp);
 struct Extend *moveRefer(int sub); // leave to be changed in place
@@ -714,6 +736,7 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
     return next;
 }
 void machineArg(int *arg, int sig, struct Express *exp);
+void machineTsage(enum Configure cfg, int idx);
 void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
@@ -740,7 +763,7 @@ void machineSwitch(struct Machine *mptr)
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
     case (Sopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSopy(mptr->sig,arg);} break;
-    case (Topy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineTopy(mptr->sig,arg);} break;}
+    case (Topy): {int arg[mptr->sig]; machineTopy(mptr->sig,mptr->arg);} break;}
 }
 
 // unprotected called by big hammer
