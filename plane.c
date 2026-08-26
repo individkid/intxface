@@ -621,55 +621,60 @@ void machineRopy(int sig, int *arg)
 int machineIval(struct Express *exp);
 void machineSopy(int sig, struct Express *arg)
 {
-    if (sig != TopyArgs) ERROR();
-    int idx = machineIval(&arg[TopySrc]);
-    struct Extend *ptr = centerPull(idx,"Topy");
-    void *str = 0; int typ0 = datxEval(&str,&arg[TopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
+    if (sig != SopyArgs) ERROR();
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    void *src = 0; int typ1 = datxEval(&src,&arg[SopySrc],TYPEInt); if (typ1 != TYPEInt) ERROR();
+    void *str = 0; int typ0 = datxEval(&str,&arg[SopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
+    void *sub = 0; int typ2 = datxEval(&sub,&arg[SopySub],TYPEInt); if (typ2 != TYPEInt) ERROR();
+    struct Extend *ptr = centerPeek(*datxIntz(0,src),"Sopy");
     int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
     for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
-    num = identField(stp,datxChrz(0,str)); if (num >= 0) {found = 1;
+    num = identField(types[i],datxChrz(0,str)); if (num >= 0) {found = 1;
     stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
-    int sub = machineIval(&arg[TopySub]);
-    int src = datxClr(0); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): writeExtend(ptr,src);
-    break; case (TYPECenter): writeCenter(ptr->ptr,src);
-    break; case (TYPEMetric): writeMetric(ptr->ptr->met,src);}
-    int fld = datxClr(1); writeField(stp,num,sub,src,fld);
-    void *dat0 = 0; datxStr(&dat0,"_");
-    void *dat1 = 0; datxGet(1,&dat1);
-    datxInsert(dat0,dat1,ftp);
-    free(dat0); free(dat1);
-    void *dat = 0; int typ = datxEval(&dat,&arg[TopyVal],-1); free(dat);
+    int rfd = datxClr(0); int wfd = datxClr(1); int valid = 0;
+    switch (stp) {default: ERROR();
+    break; case (TYPEExtend): if (ptr) {valid = 1; writeExtend(ptr,rfd);}
+    break; case (TYPECenter): if (ptr) {valid = 1; writeCenter(ptr->ptr,rfd);}
+    break; case (TYPEMetric): if (ptr && ptr->ptr->mem == Metricz && ptr->ptr->siz > 0) {valid = 1; writeMetric(ptr->ptr->met,rfd);}}
+    void *val = 0; if (valid) {writeField(stp,num,*datxIntz(0,sub),rfd,wfd);
+    void *dat0 = 0; datxStr(&dat0,"_"); void *dat1 = 0; datxGet(1,&dat1);
+    datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);
+    int typ3 = datxEval(&val,&arg[SopyVal],-1);}
+    else {int typ3 = datxEval(&val,&arg[SopyNil],-1);}
+    if (ptr) centerPlace(ptr); free(src); free(str); free(sub); free(val);
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineTopy(int sig, struct Express *arg)
 {
     if (sig != TopyArgs) ERROR();
-    int idx = machineIval(&arg[TopySrc]);
-    struct Extend *ptr = centerPull(idx,"Topy");
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    void *src = 0; int typ1 = datxEval(&src,&arg[TopySrc],TYPEInt); if (typ1 != TYPEInt) ERROR();
     void *str = 0; int typ0 = datxEval(&str,&arg[TopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
+    void *sub = 0; int typ2 = datxEval(&sub,&arg[TopySub],TYPEInt); if (typ2 != TYPEInt) ERROR();
+    struct Extend *ptr = centerPull(*datxIntz(0,src),"Topy");
     int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
     for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
     num = identField(stp,datxChrz(0,str)); if (num >= 0) {found = 1;
     stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
-    int sub = machineIval(&arg[TopySub]);
-    int src = datxClr(0); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): writeExtend(ptr,src);
-    break; case (TYPECenter): writeCenter(ptr->ptr,src);
-    break; case (TYPEMetric): writeMetric(ptr->ptr->met,src);}
-    void *fld = 0; int typ1 = datxEval(&fld,&arg[TopyVal],ftp); if (typ1 != ftp) ERROR(); 
-    struct DatxField dtf = {num,sub,src,datxPut(1,fld),datxClr(3)};
-    int dst = datxClr(2); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): mergeExtend(dst,centerField,&dtf);
-    break; case (TYPECenter): mergeCenter(dst,centerField,&dtf);
-    break; case (TYPEMetric): mergeMetric(dst,centerField,&dtf);}
+    void *val = 0; int typ3 = datxEval(&val,&arg[TopyVal],ftp); if (typ3 != ftp) ERROR(); 
+    int rfd = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend(ptr,rfd);
+    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
+    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
+    struct DatxField dtf = {num,*datxIntz(0,sub),rfd,datxPut(1,val),datxClr(3)};
+    int wfd = datxClr(2); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
+    break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
+    break; case (TYPEMetric): mergeMetric(wfd,centerField,&dtf);}
     switch (stp) {default: ERROR();
-    break; case (TYPEExtend): readExtend(ptr,dst);
-    break; case (TYPECenter): readCenter(ptr->ptr,dst);
-    break; case (TYPEMetric): readMetric(ptr->ptr->met,dst);}
-    centerPlace(ptr);
+    break; case (TYPEExtend): readExtend(ptr,wfd);
+    break; case (TYPECenter): readCenter(ptr->ptr,wfd);
+    break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);}
+    centerPlace(ptr); free(src); free(str); free(sub); free(val);
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
 int moveIval(struct Express *exp);
 struct Extend *moveRefer(int sub); // leave to be changed in place
