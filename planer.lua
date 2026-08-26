@@ -20,13 +20,6 @@ for i,v in ipairs(tests) do
 		pass = i
 	end
 end
-function readPrint(test)
-	center = readCenter(tests[found]["idx"])
-	print(test["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
-	-- for i,v in ipairs(center["cfg"]) do print(test["typ"].." cfg["..(i-1).."]:"..v) end
-	-- for i,v in ipairs(center["val"]) do print(test["typ"].." val["..(i-1).."]:"..v) end
-	-- print(showCenter(center))
-end
 function centSugar(cent)
 	show = sugarRepl(cent)
 	center,len = hideCenter(show,0)
@@ -40,8 +33,9 @@ function exprSugar(expr)
 	return machSugar("Machine(xfr:Voidexp[0]:"..expr..")")
 end
 index = 0
+list = {}
 function atomSugar(list,idx,str)
-	-- io.stderr:write(str..":"..index..":"..#list.."\n")
+	if #list > 0 then
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
 	index = index + 1
 	for i,v in ipairs(list) do
@@ -57,45 +51,38 @@ function atomSugar(list,idx,str)
 	writeCenter(center,idx)
 	for i,v in ipairs(list) do
 	writeCenter(v,idx) end
-	for i in pairs(list) do list[i] = nil end
-end
-function listSugar(src)
-	mach1 = exprSugar("$(CenterSrc := #"..castProgram(src)..")")
-	mach2 = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
-	mach3 = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
-	return {mach1,mach2,mach3}
+	for i in pairs(list) do list[i] = nil end end
 end
 function pipeTest()
-	list = listSugar(tests[found]["typ"])
-	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
-	list[#list+1] = centSugar(cent) -- this prevents Pull blocking
+	list[#list+1] = centSugar("Center(mem:Getcfgzsiz:0idx:0slf:0)") -- this prevents Pull blocking
+	list[#list+1] = exprSugar("$(CenterSrc := #"..castProgram(tests[found]["typ"])..")")
+	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"],"Pipe")
-	readPrint(tests[found])
+	center = readCenter(tests[found]["idx"])
+	print(tests[found]["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
 end
 function doneTest()
-	list = listSugar(tests[found]["oth"])
+	list[#list+1] = exprSugar("$(CenterSrc := #"..castProgram(tests[found]["oth"])..")")
+	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"],"Done")
-	center = exprSugar("$(RegisterExit := #1)")
-	writeCenter(center,tests[found]["idx"])
-	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
+	writeCenter(exprSugar("$(RegisterExit := #1)"),tests[found]["idx"])
+	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function flushTest()
-	list = listSugar(tests[found]["oth"])
+	list[#list+1] = exprSugar("$(CenterSrc := #"..castProgram(tests[found]["oth"])..")")
+	list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSrcidx[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"],"Done")
 	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
 	readConfig(list,config,{"ScratchDescrs"})
 	print("pass:"..config[1])
 	-- above read forces all prior Rebootz to complete before following Exit
-	center = exprSugar("$(RegisterExit := #1)")
-	writeCenter(center,tests[found]["idx"])
-	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
+	writeCenter(exprSugar("$(RegisterExit := #1)"),tests[found]["idx"])
+	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function readConfig(list,res,cfg)
-	cent = "Center(mem:Getcfgzsiz:0idx:0slf:0)"
-	list[#list+1] = centSugar(cent) -- this prevents Pull blocking
-	-- CenterSiz used by other threads; have to use Move or Eval instead of Tsage
-	-- list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(CenterSiz := #"..#cfg.."))")
-	-- list[#list+1] = machSugar("Machine(xfr:Tsagesiz:1sav[0]:CenterSizidx[0]:$(#"..(castMemory("Memorys")+1).."))")
 	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(ImmStrGetcfgzOpOp)fld[2]:$(#0)fid:Str(mem)))") 
 	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz)))") 
 	for i,v in ipairs(cfg) do
@@ -122,7 +109,7 @@ function listResrc(lst,res,arg)
 	for i,v in ipairs(arg) do cent = cent.."arg["..(i-1).."]:"..v end
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Void and Tsage to set rsp to RptRsp
+	-- TODO Move or Topy or Eval to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..(castMemory("Memorys")+1)..")arg[1]:$(#0))")
 	-- prevent overwrite of Memorys+1 by response from Bopy; wait for read of response before sending next Rebootz
 	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
@@ -134,7 +121,7 @@ function listMemory(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Void and Tsage to set rsp to RptRsp
+	-- TODO Move or Topy or Eval to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
 end
 function listSpoof(lst,mem,fld,arg)
@@ -142,18 +129,18 @@ function listSpoof(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
+	-- TODO use move to internal instead of slf:-1; remove hack from planeCenter
 	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..castMemory(mem).."))")
 	atomSugar(list,tests[found]["idx"],"Spoof")
 end
 function writeCent(lst,mem,idx,slf,fld,arg)
-	if #lst > 0 then atomSugar(lst,tests[found]["idx"],"Cent") end
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:"..idx.."slf:"..slf
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	writeCenter(centSugar(cent),tests[found]["idx"]);
 end
 function initTest()
-	list = {}; listResrc(list,"SwapRes",{})
+	listResrc(list,"SwapRes",{})
 	atomSugar(list,tests[found]["idx"],"Swap")
 	config = {} readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
@@ -224,10 +211,12 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 end
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Planez" then
 	-- behave as vulkanCpp would
-	readPrint(tests[found])
+	center = readCenter(tests[found]["idx"])
+	print(tests[found]["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
 	center = exprSugar("$(Wos RegisterWake #1 << #"..castMask("TestMsk").." Op)")
 	writeCenter(center,tests[found]["idx"])
-	readPrint(tests[found])
+	center = readCenter(tests[found]["idx"])
+	print(tests[found]["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"])
 	return
 end
