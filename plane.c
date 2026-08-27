@@ -581,38 +581,12 @@ void machineRopy(int sig, int *arg)
 {
     machinePop(sig,RopyArgs,arg[RopyDst],replace);
 }
-void machineSopy(int sig, struct Express *arg)
-{
-    if (sig != SopyArgs) ERROR();
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
-    void *src = 0; int typ1 = datxEval(&src,&arg[SopySrc],TYPEInt); if (typ1 != TYPEInt) ERROR();
-    void *str = 0; int typ0 = datxEval(&str,&arg[SopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
-    void *sub = 0; int typ2 = datxEval(&sub,&arg[SopySub],TYPEInt); if (typ2 != TYPEInt) ERROR();
-    struct Extend *ptr = centerPeek(*datxIntz(0,src),"Sopy");
-    int num, stp, ftp; int found = 0;
-    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
-    num = identField(types[j],datxChrz(0,str)); if (num >= 0) {found = 1;
-    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
-    int rfd = datxClr(0); int wfd = datxClr(1); int valid = 0;
-    switch (stp) {default: ERROR();
-    break; case (TYPEExtend): if (ptr) {valid = 1; writeExtend(ptr,rfd);}
-    break; case (TYPECenter): if (ptr) {valid = 1; writeCenter(ptr->ptr,rfd);}
-    break; case (TYPEMetric): if (ptr && ptr->ptr->mem == Metricz && ptr->ptr->siz > 0) {valid = 1; writeMetric(ptr->ptr->met,rfd);}}
-    void *val = 0; if (valid) {writeField(stp,num,*datxIntz(0,sub),rfd,wfd);
-    void *dat0 = 0; datxStr(&dat0,"_"); void *dat1 = 0; datxGet(1,&dat1);
-    datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);
-    int typ3 = datxEval(&val,&arg[SopyVal],-1);}
-    else {int typ3 = datxEval(&val,&arg[SopyNil],-1);}
-    if (ptr) centerPlace(ptr); free(src); free(str); free(sub); free(val);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
-}
 int machineIval(struct Express *exp);
 void machineTage(int sim, struct Express *num, char **nam)
 {
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     int src = machineIval(num);
     struct Extend *ptr = centerPeek(src,"Tage");
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
     for (int i = 0; i < sim; i++) {
     int wfd = datxClr(1); int ftp;
     if (strcmp(nam[i],"ptr") == 0) {
@@ -635,36 +609,6 @@ void machineTage(int sim, struct Express *num, char **nam)
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
-void machineTopy(int sig, struct Express *arg)
-{
-    if (sig != TopyArgs) ERROR();
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
-    void *src = 0; int typ1 = datxEval(&src,&arg[TopySrc],TYPEInt); if (typ1 != TYPEInt) ERROR();
-    void *str = 0; int typ0 = datxEval(&str,&arg[TopyStr],TYPEStr); if (typ0 != TYPEStr) ERROR();
-    void *sub = 0; int typ2 = datxEval(&sub,&arg[TopySub],TYPEInt); if (typ2 != TYPEInt) ERROR();
-    struct Extend *ptr = centerPull(*datxIntz(0,src),"Topy");
-    int num, stp, ftp; int found = 0;
-    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
-    num = identField(types[j],datxChrz(0,str)); if (num >= 0) {found = 1;
-    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
-    void *val = 0; int typ3 = datxEval(&val,&arg[TopyVal],ftp); if (typ3 != ftp) ERROR(); 
-    int rfd = datxClr(0); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): writeExtend(ptr,rfd);
-    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
-    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
-    struct DatxField dtf = {num,*datxIntz(0,sub),rfd,datxPut(1,val),datxClr(3)};
-    int wfd = datxClr(2); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
-    break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
-    break; case (TYPEMetric): mergeMetric(wfd,centerField,&dtf);}
-    switch (stp) {default: ERROR();
-    break; case (TYPEExtend): readExtend(ptr,wfd);
-    break; case (TYPECenter): readCenter(ptr->ptr,wfd);
-    break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);}
-    centerPlace(ptr); free(src); free(str); free(sub); free(val);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
-}
 void machineSage(int sim, struct Express *num, char **nam)
 {
     int src = machineIval(num);
@@ -802,8 +746,6 @@ void machineSwitch(struct Machine *mptr)
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
-    case (Sopy): machineSopy(mptr->sig,mptr->arg); break;
-    case (Topy): machineTopy(mptr->sig,mptr->arg); break;
     case (Tage): machineTage(mptr->sim,mptr->num,mptr->nam); break; // stage named fields to @ of same name
     case (Sage): machineSage(mptr->sim,mptr->num,mptr->nam); break; // tsage named fields from @ of same name
     }
@@ -1468,10 +1410,10 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != CenterLog) ERROR();
     if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
-    if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
+    /*if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
     if (center[i] != 0 && center[i]->log != 0) {
-    // this is to allow centerPeek from machineSopy to get placed log
-    deleteSmart(center[i]->log); center[i]->log = 0;}
+    // this is to allow centerPeek from machineTage to get placed log
+    deleteSmart(center[i]->log); center[i]->log = 0;}*/
 }
 
 //generic callbacks
