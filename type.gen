@@ -258,7 +258,7 @@ Default = { -- constant array value interpretation
 	"CmntDef",
 }
 Configure = { -- integer variables for user expressions to query and control the ungenerated program
-	-- TODO remove Center* Tsage, replacing with Topy
+	-- TODO remove Center*, replacing with @
 	"CenterMem", -- staged field
 	"CenterSiz",
 	"CenterIdx",
@@ -333,7 +333,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ScratchHandls",
 }
 Transfer = { -- what user machine does
-	"Tsage", -- configure to center fields
 	"Dump", -- throw core dump
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
@@ -2032,13 +2031,14 @@ Bootstrap = {
 		 "mch[%(return kdx(\"normal\"))]:Nest(lvl:-1)"..
 		  -- Bopy normal memory to gpu
 		  "mch[%(return jdx())]:Void(exp[0]:$(Non CenterSub := ?CenterMem ; CenterRsp := #%(return castResponse(\"RptRsp\")) Op))"..
-		  "mch[%(return jdx())]:Tsage(siz:2sav[0]:CenterSubsav[1]:CenterRspidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrrspOp)arg[2]:$(#0)arg[3]:$(Cst ?CenterRsp ImmStrResonsesOpOp Op))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"matrix\"))]:Nest(lvl:-1)"..
 		  -- Nopy Matrixz to process Self or Glob matrix
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
@@ -2048,7 +2048,7 @@ Bootstrap = {
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Trianglez CenterSiz
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
@@ -2056,20 +2056,20 @@ Bootstrap = {
 		 "mch[%(return kdx(\"index\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Indexz CenterSiz
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"non-gpu\"))]:Nest(lvl:-1)"..
-		  -- Tsage only for non-gpu memory
+		  -- Topy only for non-gpu memory
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"atomic\"))]:Nest(lvl:-1)"..
 		  -- Copy immediate and atomic memory
 		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
 		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#1))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2095,7 +2095,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@transfer)arg[1]:$(@memorys))"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(@_ .= exe#0 @_ . exe@bootstr))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(CenterSiz := #1))"..
-		"mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSizidx[0]:$(@memorys))"..
+		"mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsizOp)arg[2]:$(#0)arg[3]:$(?CenterSiz))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
 		-- Void copy slf to RegisterSelf and set slf to -1
 		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf#0) non[1]:$(@_ .= slf#0 #-1) non[2]:$(@_) ))"..
@@ -2131,7 +2131,7 @@ Bootstrap = {
 		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		  "#0 : @_ Op))"..
 		 "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterSav))"..
-		 "mch[%(return jdx())]:Tsage(siz:1sav[0]:CenterSubidx[0]:$(@memorys))"..
+		 "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2356,9 +2356,6 @@ Express = { -- simple expression
 }
 Machine = { -- info for user defined action
 	{"xfr","Transfer",{},""},
-	{"siz","Int",{["xfr"]={["Tsage"]=true}},{}},
-	{"sav","Configure",{["xfr"]={["Tsage"]=true}},"siz"},
-	{"idx","Express",{["xfr"]={["Tsage"]=true}},1},
 	{"res","Express",{["xfr"]={["Eval"]=true}},1},
 	{"fnc","Express",{["xfr"]={["Eval"]=true}},1},
 	{"atm","Int",{["xfr"]={["Move"]=true}},{}},

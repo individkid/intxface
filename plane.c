@@ -335,43 +335,6 @@ int centerMod(struct Extend *ptr)
     break; case (Basisz): return sizeof(struct Basis);}
     return 0;
 }
-struct InitCenter {
-    int sdx, ddx, siz, tot;
-    struct Extend *src;
-    struct Extend *sav;
-    struct Extend *dst;
-};
-enum DatxEnum centerInit(int num, int fld, int sub, int typ, struct DatxField *arg);
-enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *arg);
-void centerCopy(struct Extend *src, struct Extend *dst)
-{
-    dst->src = src->src;
-    dst->sub = src->sub;
-    dst->sav = src->sav;
-    dst->rsp = src->rsp;
-    dst->ret = src->ret;
-    if (src->log) dst->log = otherSmart(src->log); else dst->log = 0;
-}
-void centerResize(struct Extend **ptr, int siz)
-{
-    struct InitCenter init = {0,0,siz,0,*ptr,0,0};
-    allocExtend(&init.dst,1);
-    centerCopy(*ptr,init.dst); // TODO could use initExtend
-    initCenter(init.dst->ptr,centerInit,&init);
-    if ((*ptr) != 0) deleteSmart((*ptr)->log);
-    freeExtend(*ptr); allocExtend(ptr,0);
-    *ptr = init.dst;
-}
-void centerMerge(struct Extend *src, struct Extend **dst, int sdx, int ddx, int siz)
-{
-    struct InitCenter init = {sdx,ddx,siz,(*dst)->ptr->siz+siz,src,*dst,0};
-    allocExtend(&init.dst,1);
-    centerCopy(*dst,init.dst); // TODO could use initExtend
-    initCenter(init.dst->ptr,centerElem,&init);
-    if ((*dst) != 0) deleteSmart((*dst)->log);
-    freeExtend(*dst); allocExtend(dst,0);
-    *dst = init.dst;
-}
 void centerSize(int idx)
 {
     if (waitSafe(copySem) != 0) ERROR();
@@ -585,7 +548,7 @@ void machineMopy(int sig, int *arg)
     int siz = arg[MopySiz];
     struct Extend *src = centerPull(srcSub,"Mopy");
     struct Extend *dst = centerPull(dstSub,"Mopy");
-    centerMerge(src,&dst,srcOfs,dstOfs,siz);
+    // TODO use mergeCenter or something
     centerPlace(src);
     centerPlace(dst);
 }
@@ -657,7 +620,7 @@ void machineTopy(int sig, struct Express *arg)
     int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
     for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
-    num = identField(stp,datxChrz(0,str)); if (num >= 0) {found = 1;
+    num = identField(types[i],datxChrz(0,str)); if (num >= 0) {found = 1;
     stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
     void *val = 0; int typ3 = datxEval(&val,&arg[TopyVal],ftp); if (typ3 != ftp) ERROR(); 
     int rfd = datxClr(0); switch (stp) {default: ERROR();
@@ -756,12 +719,10 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
     return next;
 }
 void machineArg(int *arg, int sig, struct Express *exp);
-void machineTsage(enum Configure cfg, int idx);
 void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
-    case (Tsage): {int idx = machineIval(mptr->idx); for (int i = 0; i < mptr->siz; i++) machineTsage(mptr->sav[i],idx);} break;
     case (Dump): *(int*)0=0; break;
     case (Move): machineMove(mptr->sub,mptr->fun,mptr->atm); break; // each fun takes Extend @_, and Extend's in @0 @1 @2 ... indicated by sub, and returns Extend
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
@@ -892,7 +853,7 @@ void demoMenu(struct Menu *menu)
     // TODO mark Metric as the opposite of complete
     switch (menu->act) {default: ERROR();
     break; case (Indicate): {
-    // TODO Tsage from Metric
+    // TODO Topy to Metric
     menu->act = Manipulate;}
     break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
     /*TODO relay menu->act Fixed* Normal* SelectIdx to other process*/}}}
@@ -953,48 +914,6 @@ void planeWake(enum Thread tag, int idx)
     postSafe(safeSafe(tag,idx));
 }
 
-enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
-void machineTsage(enum Configure cfg, int idx)
-{
-    struct Extend *ext = centerPull(idx,"Tsage");
-    struct Center *ptr = (ext?ext->ptr:0);
-    struct Metric *met = (ptr&&ptr->mem==Metricz?ptr->met:0);
-    switch (cfg) {default: ERROR();
-    case (CenterMem): freeCenter(ptr); ptr->siz = 0; ptr->mem = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSiz): {
-    waitSafe(evalSem);
-    int src = datxClr(0); writeCenter(ptr,src);
-    int siz = planeInfo(cfg,0,planeRcfg);
-    int fld = datxClr(1); writeInt(siz,fld);
-    int dst = datxClr(2);
-    struct DatxField arg = {identField(TYPECenter,"siz"),0,src,fld,datxClr(3)};
-    mergeCenter(dst,centerField,&arg);
-    readCenter(ptr,dst);
-    postSafe(evalSem);
-    // int siz = planeInfo(cfg,0,planeRcfg); if (siz != ptr->siz) centerResize(&ext,siz);
-    // {char *st0 = 0; showMemory(ext->ptr->mem,&st0); fprintf(stderr,"Tsage mem:%s siz:%d\n",st0,ext->ptr->siz); free(st0);}
-    } break;
-    case (CenterIdx): ptr->idx = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSlf): ptr->slf = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterInt): {int sub = planeInfo(cfg,0,planeRcfg); if (sub >= ptr->siz) centerResize(&ext,sub+1);} break;
-    case (CenterPtr): ERROR();
-    case (CenterSrc): ext->src = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterRsp): ext->rsp = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterRet): ext->ret = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterAsr): ERROR();
-    case (CenterSub): ext->sub = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterSav): ext->sav = planeInfo(cfg,0,planeRcfg); break;
-    case (CenterLog): if (ext->log) deleteSmart(ext->log); ext->log = otherSmart(planeInfo(cfg,0,planeRcfg)); break;
-    case (FixedLeft): met->fix[0] = planeInfo(cfg,0,planeRcfg); break;
-    case (FixedBase): met->fix[1] = planeInfo(cfg,0,planeRcfg); break;
-    case (FixedDeep): met->fix[2] = planeInfo(cfg,0,planeRcfg); break;
-    case (NormalLeft): met->nor[0] = planeInfo(cfg,0,planeRcfg); break;
-    case (NormalBase): met->nor[1] = planeInfo(cfg,0,planeRcfg); break;
-    case (NormalDeep): met->nor[2] = planeInfo(cfg,0,planeRcfg); break;
-    case (SelectIdx): met->idx = planeInfo(cfg,0,planeRcfg); break;
-    case (MetricAct): met->act = planeInfo(cfg,0,planeRcfg); break;}
-    centerPlace(ext);
-}
 void machineArg(int *arg, int sig, struct Express *exp)
 {
     for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
@@ -1488,62 +1407,11 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
     if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
     if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
     if (center[i] != 0 && center[i]->log != 0) {
-    // this is to allow centerPeek from machineTsage to get placed log
+    // this is to allow centerPeek from machineSopy to get placed log
     deleteSmart(center[i]->log); center[i]->log = 0;}
 }
 
 //generic callbacks
-enum DatxEnum centerInit(int num, int fld, int sub, int typ, struct DatxField *arg)
-{
-    struct InitCenter *cst = (struct InitCenter *)arg;
-    struct Center *src = cst->src->ptr;
-    struct Center *dst = cst->dst->ptr;
-    if (waitSafe(loopSem) != 0) ERROR();
-    if (num == TYPECenter && fld == 1) {
-    writeInt(cst->siz,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(src,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && typ == TYPEKernel && sub < src->siz) {
-    fwriteCenter(src,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && typ == TYPEKernel) {
-    struct Kernel init;
-    identmat(init.saved.mat,4);
-    identmat(init.local.mat,4);
-    identmat(init.sent.mat,4);
-    identmat(init.global.mat,4);
-    writeKernel(&init,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    if (postSafe(loopSem) != 1) ERROR();
-    return 0; // TODO return whether changed
-}
-enum DatxEnum centerElem(int num, int fld, int sub, int typ, struct DatxField *arg)
-{
-    struct InitCenter *cst = (struct InitCenter *)arg;
-    struct Center *src = cst->src->ptr;
-    struct Center *sav = cst->sav->ptr;
-    struct Center *dst = cst->dst->ptr;
-    if (waitSafe(loopSem) != 0) ERROR();
-    if (num == TYPECenter && fld == 1) {
-    writeInt(cst->tot,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && fld < 4) {
-    fwriteCenter(sav,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub < cst->ddx) {
-    fwriteCenter(sav,fld,sub,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub >= cst->ddx && sub < cst->ddx+cst->siz && sub-cst->ddx+cst->sdx < src->siz) {
-    fwriteCenter(src,fld,sub-cst->ddx+cst->sdx,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    else if (num == TYPECenter && sub >= cst->ddx+cst->siz) {
-    fwriteCenter(sav,fld,sub-cst->siz,loopfd);
-    freadCenter(dst,fld,sub,loopfd);}
-    if (postSafe(loopSem) != 1) ERROR();
-    return 0; // TODO return whether changed
-}
 // following protected by evalSem
 int changed = 0; enum Memory mem = Memorys;
 int resized = 0; int size = 0;

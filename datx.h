@@ -44,5 +44,6 @@ struct Express;
 int datxEval(void **dat, struct Express *exp, int typ);
 void datxPrefix(const char *str);
 void datxChanged(rktype fnc);
+void datxSingle();
 typedef void (*fieldFunc)(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp);
 void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get, putfp put, fieldFunc fld);

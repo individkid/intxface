@@ -1302,7 +1302,7 @@ function showMergeC(name,struct)
 			result = result..showIndent(depth).."{enum DatxEnum repl = ("..func.."); int temp = 0; int init = 0;\n"
 			result = result..showIndent(depth).."if (repl == KeepDat) {temp = readInt(arg->src);}\n"
 			result = result..showIndent(depth).."if (repl == ReplDat) {readInt(arg->src); temp = readInt(arg->idx);}\n"
-			result = result..showIndent(depth).."if (repl == CopyDat) {temp = readInt(arg->src);}\n"
+			result = result..showIndent(depth).."if (repl == CopyDat) {readInt(arg->src); temp = readInt(arg->fld);}\n"
 			result = result..showIndent(depth).."if (repl == DscdDat) {readInt(arg->src); temp = init;}\n"
 			result = result..showIndent(depth).."if (repl == InsrDat) {temp = readInt(arg->idx);}\n"
 			result = result..showIndent(depth).."if (repl == PsteDat) {temp = readInt(arg->fld);}\n"
@@ -1362,64 +1362,6 @@ function showMergeC(name,struct)
 	result = result..showIndent(depth).."write"..name.."(ptr,dst);\n"
 	result = result..showIndent(depth).."free"..name.."(ptr);\n"
 	return result.."}"
-end
-function showInitC(name,struct)
-	local result = ""
-	result = result.."void init"..name.."(struct "..name.." *ptr, initFunc fnc, void *arg)"
-	if prototype then return result..";\n" end
-	result = result.."\n{\n"
-	result = result..showIndent(1).."if (fnc == 0 || ptr == 0) ERROR();\n"
-	result = result..showIndent(1).."free"..name.."(ptr);\n"
-	result = result..showIndent(1).."int fld = 0;\n"
-	for ky,vl in ipairs(struct) do
-		local condit = showCondC(vl)
-		local limits = showLimitsC(vl)
-		local depth = 1
-		local lval = "ptr->"..vl[1] -- NOTE expects size field before array fields
-		local alloc = "alloc"..vl[2].."("
-		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
-		sub = "0"
-		for key,val in ipairs(limits) do
-			lval = lval.."[sub"..key.."]"
-			sub = "sub"..key
-		end
-		local func = "fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg)"
-		if (condit ~= "") then
-			result = result..showIndent(depth).."if ("..condit..") {\n"
-			depth = depth + 1
-		end
-		if (type(vl[4]) == "number") then
-			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..","..vl[4]..");\n"
-		elseif (type(vl[4]) == "string" and vl[4] ~= "") then
-			result = result..showIndent(depth)..alloc.."&ptr->"..vl[1]..",ptr->"..vl[4]..");\n"
-		end
-		for key,val in ipairs(limits) do
-			result = result..showIndent(depth).."for (int sub"..key.." = 0; sub"..key.." < "..val.."; sub"..key.."++) {\n"
-			depth = depth + 1
-		end
-		if (not (Structz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
-		elseif (not (Enumz[vl[2]] == nil)) then
-			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
-		elseif (vl[2] == "Str") then
-			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
-		elseif (vl[2] == "Dat") then
-			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
-		else
-			result = result..showIndent(depth).."fnc(TYPE"..name..",fld,"..sub..",TYPE"..vl[2]..",arg); // "..vl[1].."\n"
-		end
-		for key,val in ipairs(limits) do
-			depth = depth - 1
-			result = result..showIndent(depth).."}\n"
-		end
-		if (condit ~= "") then
-			depth = depth - 1
-			result = result..showIndent(depth).."}\n"
-		end
-		result = result..showIndent(depth).."fld += 1;\n"
-	end
-	result = result.."}"
-	return result
 end
 function showFvalidC(name,struct)
 	local result = ""
@@ -2845,7 +2787,6 @@ function showFuncC(args)
 	result = result..showIdentC(types).."\n" end
 	result = result..showCall(Structs,Structz,showCopyC,args,"copy").."\n"
 	result = result..showCall(Structs,Structz,showMergeC,args,"merge").."\n"
-	result = result..showCall(Structs,Structz,showInitC,args,"init").."\n"
 	result = result..showCall(Structs,Structz,showFvalidC,args,"fvalid").."\n"
 	result = result..showCall(Structs,Structz,showFreadC,args,"fread").."\n"
 	result = result..showCall(Structs,Structz,showFwriteC,args,"fwrite").."\n"
