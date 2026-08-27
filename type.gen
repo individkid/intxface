@@ -2032,15 +2032,14 @@ Bootstrap = {
 		  "#0 == #1 , #1 Op))"..
 		 "mch[%(return kdx(\"normal\"))]:Nest(lvl:-1)"..
 		  -- Bopy normal memory to gpu
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non CenterSub := ?CenterMem ; CenterRsp := #%(return castResponse(\"RptRsp\")) Op))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrrspOp)arg[2]:$(#0)arg[3]:$(Cst ?CenterRsp ImmStrResonsesOpOp Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = ?CenterMem ; rsp := #%(return castResponse(\"RptRsp\")) Op))"..
+		  "mch[%(return jdx())]:Sage(sim:2num[0]:$(@memorys)nam[0]:Str(sub)nam[1]:Str(rsp))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"matrix\"))]:Nest(lvl:-1)"..
 		  -- Nopy Matrixz to process Self or Glob matrix
-		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = ?CenterMem Op))"..
+		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 ?CenterSlf))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
@@ -2049,29 +2048,29 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Trianglez CenterSiz
-		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = ?CenterMem Op))"..
+		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSiz*#3Op))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"index\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Indexz CenterSiz
-		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = ?CenterMem Op))"..
+		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non?CenterSizOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"non-gpu\"))]:Nest(lvl:-1)"..
-		  -- Topy only for non-gpu memory
-		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
+		  -- Sage only for non-gpu memory
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = ?CenterMem Op))"..
+		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"atomic\"))]:Nest(lvl:-1)"..
 		  -- Copy immediate and atomic memory
-		  "mch[%(return jdx())]:Void(exp[0]:$(CenterSub := ?CenterMem))"..
-		  "mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsubOp)arg[2]:$(#0)arg[3]:$(?CenterSub))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = ?CenterMem Op))"..
+		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(?CenterMem)arg[1]:$(#1))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
@@ -2096,8 +2095,8 @@ Bootstrap = {
 		-- Eval a Dopy of Center at Transferz to get Center number @bootstr and Void to increment @bootstr
 		"mch[%(return jdx())]:Dopy(sig:2arg[0]:$(@transfer)arg[1]:$(@memorys))"..
 		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(@_ .= exe#0 @_ . exe@bootstr))"..
-		"mch[%(return jdx())]:Void(exp[0]:$(CenterSiz := #1))"..
-		"mch[%(return jdx())]:Topy(sig:4arg[0]:$(@memorys)arg[1]:$(StrsizOp)arg[2]:$(#0)arg[3]:$(?CenterSiz))"..
+		"mch[%(return jdx())]:Void(exp[0]:$(siz = #1))"..
+		"mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(siz))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
 		-- Void copy slf to RegisterSelf and set slf to -1
 		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf#0) non[1]:$(@_ .= slf#0 #-1) non[2]:$(@_) ))"..

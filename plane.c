@@ -591,9 +591,9 @@ void machineSopy(int sig, struct Express *arg)
     struct Extend *ptr = centerPeek(*datxIntz(0,src),"Sopy");
     int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
-    num = identField(types[i],datxChrz(0,str)); if (num >= 0) {found = 1;
-    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
+    num = identField(types[j],datxChrz(0,str)); if (num >= 0) {found = 1;
+    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
     int rfd = datxClr(0); int wfd = datxClr(1); int valid = 0;
     switch (stp) {default: ERROR();
     break; case (TYPEExtend): if (ptr) {valid = 1; writeExtend(ptr,rfd);}
@@ -619,9 +619,9 @@ void machineTage(int sim, struct Express *num, char **nam)
     writeInt((ptr != 0),wfd); ftp = TYPEInt;}
     else if (ptr) {int num, stp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
-    num = identField(types[i],nam[i]); if (num >= 0) {found = 1;
-    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
+    num = identField(types[j],nam[i]); if (num >= 0) {found = 1;
+    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
     int rfd = datxClr(0); switch (stp) {default: ERROR();
     break; case (TYPEExtend): writeExtend(ptr,rfd);
     break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
@@ -645,9 +645,9 @@ void machineTopy(int sig, struct Express *arg)
     struct Extend *ptr = centerPull(*datxIntz(0,src),"Topy");
     int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
-    num = identField(types[i],datxChrz(0,str)); if (num >= 0) {found = 1;
-    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
+    num = identField(types[j],datxChrz(0,str)); if (num >= 0) {found = 1;
+    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
     void *val = 0; int typ3 = datxEval(&val,&arg[TopyVal],ftp); if (typ3 != ftp) ERROR(); 
     int rfd = datxClr(0); switch (stp) {default: ERROR();
     break; case (TYPEExtend): writeExtend(ptr,rfd);
@@ -678,9 +678,9 @@ void machineSage(int sim, struct Express *num, char **nam)
     else if (strcmp(nam[i],"ptr") == 0) continue;
     else {int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
-    num = identField(types[i],nam[i]); if (num >= 0) {found = 1;
-    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
+    num = identField(types[j],nam[i]); if (num >= 0) {found = 1;
+    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
     int rfd = datxClr(0); switch (stp) {default: ERROR();
     break; case (TYPEExtend): writeExtend(ptr,rfd);
     break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
