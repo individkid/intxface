@@ -337,6 +337,8 @@ Transfer = { -- what user machine does
 	"Eval", -- call datxEval to rmw center
 	"Void", -- discard result of datxEval
 	"Move", -- replace list from array/queues
+	"Tage", -- assign fields to same name
+	"Sage", -- set fields from same name
 	"Proj", -- depends on UniformWid/Hei
 	"Bnry", -- two matrices into one
 	-- identity I
@@ -359,7 +361,7 @@ Transfer = { -- what user machine does
 	"Popy", -- internal to center
 	"Qopy", -- center to response
 	"Ropy", -- center to replace
-	-- TODO add sugar for Sopy Topy
+	-- TODO remove Sopy and Topy after using Tage and Sage instead
 	"Sopy", -- center to configure
 	"Topy", -- configure to center
 	"Goto", -- jump to value
@@ -2361,6 +2363,9 @@ Machine = { -- info for user defined action
 	{"atm","Int",{["xfr"]={["Move"]=true}},{}},
 	{"sub","Express",{["xfr"]={["Move"]=true}},"atm"},
 	{"fun","Express",{["xfr"]={["Move"]=true}},"atm"},
+	{"sim","Int",{["xfr"]={["Tage"]=true,["Sage"]=true}},{}},
+	{"num","Express",{["xfr"]={["Tage"]=true,["Sage"]=true}},1},
+	{"nam","Str",{["xfr"]={["Tage"]=true,["Sage"]=true}},"sim"},
 	{"sig","Int",{["xfr"]={
 		["Proj"]=true,["Comp"]=true,["Form"]=true,["Send"]=true,["Self"]=true,["Glob"]=true,
 		["Bopy"]=true,["Copy"]=true,["Dopy"]=true,["Mopy"]=true,["Nopy"]=true,

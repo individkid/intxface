@@ -55,21 +55,25 @@ function atomSugar(list,idx,str)
 end
 function pipeTest()
 	list[#list+1] = centSugar("Center(mem:Getcfgzsiz:0idx:0slf:0)") -- this prevents Pull blocking
-	list[#list+1] = machSugar("Machine(xfr:Topysig:4arg[0]:$(@getcfg)arg[1]:$(StrsrcOp)arg[2]:$(#0)arg[3]:$(ImmStr"..tests[found]["typ"].."OpOp))")
+	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(src = ImmStr"..tests[found]["typ"].."OpOp))")
+	list[#list+1] = machSugar("Machine(xfr:Sagesim:1num[0]:$(@getcfg)nam[0]:Str(src))")
 	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"],"Pipe")
 	center = readCenter(tests[found]["idx"])
 	print(tests[found]["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
 end
 function doneTest()
-	list[#list+1] = machSugar("Machine(xfr:Topysig:4arg[0]:$(@getcfg)arg[1]:$(StrsrcOp)arg[2]:$(#0)arg[3]:$(ImmStr"..tests[found]["oth"].."OpOp))")
+	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp))")
+	list[#list+1] = machSugar("Machine(xfr:Sagesim:1num[0]:$(@getcfg)nam[0]:Str(src))")
 	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
+	list[#list+1] = machSugar("Machine(xfr:Sagesim:1num[0]:$(@getcfg)nam[0]:Str(src))") -- wait for replace
+	list[#list+1] = exprSugar("$(RegisterExit := #1)")
 	atomSugar(list,tests[found]["idx"],"Done")
-	writeCenter(exprSugar("$(RegisterExit := #1)"),tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function flushTest()
-	list[#list+1] = machSugar("Machine(xfr:Topysig:4arg[0]:$(@getcfg)arg[1]:$(StrsrcOp)arg[2]:$(#0)arg[3]:$(ImmStr"..tests[found]["oth"].."OpOp))")
+	list[#list+1] = machSugar("Machine(xfr:Voidexp[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp))")
+	list[#list+1] = machSugar("Machine(xfr:Sagesim:1num[0]:$(@getcfg)nam[0]:Str(src))")
 	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(@getcfg))")
 	atomSugar(list,tests[found]["idx"],"Done")
 	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
@@ -106,7 +110,7 @@ function listResrc(lst,res,arg)
 	for i,v in ipairs(arg) do cent = cent.."arg["..(i-1).."]:"..v end
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Move or Topy or Eval to set rsp to RptRsp
+	-- TODO Move or Sage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..(castMemory("Memorys")+1)..")arg[1]:$(#0))")
 	-- prevent overwrite of Memorys+1 by response from Bopy; wait for read of response before sending next Rebootz
 	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
@@ -118,7 +122,7 @@ function listMemory(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Move or Topy or Eval to set rsp to RptRsp
+	-- TODO Move or Sage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..castMemory(mem)..")arg[1]:$(#0))")
 end
 function listSpoof(lst,mem,fld,arg)

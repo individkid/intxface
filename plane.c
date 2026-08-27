@@ -548,7 +548,7 @@ void machineMopy(int sig, int *arg)
     int siz = arg[MopySiz];
     struct Extend *src = centerPull(srcSub,"Mopy");
     struct Extend *dst = centerPull(dstSub,"Mopy");
-    // TODO use mergeCenter or something
+    // TODO use mergeCenter of centerRange
     centerPlace(src);
     centerPlace(dst);
 }
@@ -581,7 +581,6 @@ void machineRopy(int sig, int *arg)
 {
     machinePop(sig,RopyArgs,arg[RopyDst],replace);
 }
-int machineIval(struct Express *exp);
 void machineSopy(int sig, struct Express *arg)
 {
     if (sig != SopyArgs) ERROR();
@@ -606,6 +605,33 @@ void machineSopy(int sig, struct Express *arg)
     int typ3 = datxEval(&val,&arg[SopyVal],-1);}
     else {int typ3 = datxEval(&val,&arg[SopyNil],-1);}
     if (ptr) centerPlace(ptr); free(src); free(str); free(sub); free(val);
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+}
+int machineIval(struct Express *exp);
+void machineTage(int sim, struct Express *num, char **nam)
+{
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    int src = machineIval(num);
+    struct Extend *ptr = centerPeek(src,"Tage");
+    for (int i = 0; i < sim; i++) {
+    int wfd = datxClr(1); int ftp;
+    if (strcmp(nam[i],"ptr") == 0) {
+    writeInt((ptr != 0),wfd); ftp = TYPEInt;}
+    else if (ptr) {int num, stp; int found = 0;
+    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
+    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
+    num = identField(types[i],nam[i]); if (num >= 0) {found = 1;
+    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    int rfd = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend(ptr,rfd);
+    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
+    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
+    writeField(stp,num,0,rfd,wfd);}
+    else continue;
+    void *dat0 = 0; datxStr(&dat0,nam[i]);
+    void *dat1 = 0; datxGet(1,&dat1);
+    datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);}
+    if (ptr) centerPlace(ptr);
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
@@ -637,6 +663,39 @@ void machineTopy(int sig, struct Express *arg)
     break; case (TYPECenter): readCenter(ptr->ptr,wfd);
     break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);}
     centerPlace(ptr); free(src); free(str); free(sub); free(val);
+    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+}
+void machineSage(int sim, struct Express *num, char **nam)
+{
+    int src = machineIval(num);
+    struct Extend *ptr = centerPull(src,"Sage");
+    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    for (int i = 0; i < sim; i++) {
+    void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
+    if (val == 0) ERROR();
+    if (strcmp(nam[i],"ptr") == 0 && *datxIntz(0,val) == 0) {
+    freeExtend(ptr); allocExtend(&ptr,0); break;}
+    else if (strcmp(nam[i],"ptr") == 0) continue;
+    else {int num, stp, ftp; int found = 0;
+    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
+    for (int i = 0; i < sizeof(types)/sizeof(int) && !found; i++) {
+    num = identField(types[i],nam[i]); if (num >= 0) {found = 1;
+    stp = types[i]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    int rfd = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend(ptr,rfd);
+    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
+    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
+    struct DatxField dtf = {num,0,rfd,datxPut(1,val),datxClr(3)};
+    int wfd = datxClr(2); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
+    break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
+    break; case (TYPEMetric): mergeMetric(wfd,centerField,&dtf);}
+    switch (stp) {default: ERROR();
+    break; case (TYPEExtend): readExtend(ptr,wfd);
+    break; case (TYPECenter): readCenter(ptr->ptr,wfd);
+    break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);}}
+    free(val);}
+    centerPlace(ptr);
     if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
 }
 int moveIval(struct Express *exp);
@@ -723,6 +782,7 @@ void machineSwitch(struct Machine *mptr)
 {
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
+    // numer of arguments: 0 3 2 1 2...2 3 3
     case (Dump): *(int*)0=0; break;
     case (Move): machineMove(mptr->sub,mptr->fun,mptr->atm); break; // each fun takes Extend @_, and Extend's in @0 @1 @2 ... indicated by sub, and returns Extend
     case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
@@ -742,8 +802,11 @@ void machineSwitch(struct Machine *mptr)
     case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
     case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
     case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
-    case (Sopy): {int arg[mptr->sig]; machineSopy(mptr->sig,mptr->arg);} break;
-    case (Topy): {int arg[mptr->sig]; machineTopy(mptr->sig,mptr->arg);} break;}
+    case (Sopy): machineSopy(mptr->sig,mptr->arg); break;
+    case (Topy): machineTopy(mptr->sig,mptr->arg); break;
+    case (Tage): machineTage(mptr->sim,mptr->num,mptr->nam); break; // stage named fields to @ of same name
+    case (Sage): machineSage(mptr->sim,mptr->num,mptr->nam); break; // tsage named fields from @ of same name
+    }
 }
 
 // unprotected called by big hammer
@@ -1018,7 +1081,7 @@ void planeCenter(enum Thread tag, int idx)
     struct Extend *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
     if (center != 0 && center->asr != RespAsr) ERROR(); else if (center != 0) center->asr = PullAsr;
-    if (center && center->ptr->slf < 0) {
+    if (center && center->ptr->slf < 0) { // TODO remove slf<0 hack; use Move or Sage to internal instead
     center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
     {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"Loop %s",st0); free(st0);}
     center->asr = PipeAsr;
