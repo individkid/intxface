@@ -266,7 +266,7 @@ struct Extend *centerPull(int idx, const char *log)
     centerSize(idx);
     if (funcSafe(copySem,centerFunc,center+idx) < 0) ERROR();
     struct Extend *ret = center[idx];
-    deleteSmart(ret->log); ret->log = otherSmart(planeInfo(CenterLog,0,planeRcfg));
+    deleteSmart(ret->log); ret->log = otherSmart(planeInfo(RegisterLog,0,planeRcfg));
     center[idx] = 0;
     if (postSafe(copySem) != 1) ERROR();
     printfSmart(ret->log,"Pull %d %s",idx,log);
@@ -1408,7 +1408,7 @@ void registerRoll(enum Configure cfg, int sav, int val, int act)
 }
 void registerLog(enum Configure cfg, int sav, int val, int act)
 {
-    if (cfg != CenterLog) ERROR();
+    if (cfg != RegisterLog) ERROR();
     if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
     /*if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
     if (center[i] != 0 && center[i]->log != 0) {
@@ -1583,7 +1583,7 @@ void initSafe()
     callBack(ManipLeft,registerMove);
     callBack(ManipBase,registerMove);
     callBack(ManipAngle,registerRoll);
-    callBack(CenterLog,registerLog);
+    callBack(RegisterLog,registerLog);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr,planeField);
     start = processTime();
 }
