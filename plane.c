@@ -566,10 +566,10 @@ void machinePopy(int sig, int *arg)
 {
     machinePop(sig,PopyArgs,arg[PopyDst],PipeAsr,internal,"Popy");
 }
-void machinePush(int sig, int chk, int src, enum Assert asr, void *que, const char *log);
+void machinePush(int sig, int chk, int src, enum Assert asr, enum Mask msk, void *que, const char *log);
 void machineQopy(int sig, int *arg)
 {
-    machinePush(sig,QopyArgs,arg[QopySrc],RespAsr,response,"Qopy");
+    machinePush(sig,QopyArgs,arg[QopySrc],RespAsr,RespMsk,response,"Qopy");
 }
 void machineRopy(int sig, int *arg)
 {
@@ -800,9 +800,7 @@ void moveDeref(int sub, struct Extend **ext)
     break; case (PullAsr): if (ptr) deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
     break; case (PlaceAsr): moveSize(ptr->sub); if (center[ptr->sub]) deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
     break; case (PipeAsr): pushCenterq(ptr,internal); planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
-    break; case (RespAsr): pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
-    // TODO have RegisterWake signal other threads besides MachThd, add RespMsk, initialize to wake PipeThd with RespMsk,
-    // TODO and use planeJnfo for push to response as well as for push to internal and replace
+    break; case (RespAsr): pushCenterq(ptr,response); planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
     break; case (DoneAsr): pushCenterq(ptr,replace); planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);}
 }
 
@@ -929,7 +927,7 @@ void machinePop(int sig, int chk, int dst, enum Assert asr, void *que, const cha
     if (ptr == 0) centerClear(dst);
     else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
 }
-void machinePush(int sig, int chk, int src, enum Assert asr, void *que, const char *log)
+void machinePush(int sig, int chk, int src, enum Assert asr, enum Mask msk, void *que, const char *log)
 {
     if (sig != chk) ERROR();
     struct Extend *ptr = centerPull(src,log);
@@ -937,7 +935,7 @@ void machinePush(int sig, int chk, int src, enum Assert asr, void *que, const ch
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,que);
     if (postSafe(pipeSem) != 1) ERROR();
-    postSafe(safeSafe(PipeThd,0));
+    planeJnfo(RegisterWake,(1<<msk),planeWots);
 }
 void planeMachine(enum Thread tag, int idx);
 void machineExec(int idx, struct Extend *ext)
@@ -1255,29 +1253,29 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterWake) ERROR();
-    int mask = act&~sav;
-    int wake = 0;
+    int mask = act&~sav; // mask of events
+    int wake = 0; // mask of threads
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
+    // i is an event
     int able = (sizeIntq(ableq) > i ? *ptrIntq(i,ableq) : 0);
+    // able is mask of threads for the event
     wake |= able;}
+    // wake is mask of threads for events in given mask of events
     wake &= planeGnfo(RegisterOpen,0,planeRcfg);
-    for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) {
-    planeWake(MachThd,i);}
+    // wake is mask of running threads
+    for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) planeWake(i,0);
 }
 void registerAble(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterAble) ERROR();
-    int wake = val & 0xff; // thread to wake
+    int thrd = val & 0xff; // thread
     int mask = val >> 8; // mask of events
-    while (sizeIntq(maskq) <= wake) pushIntq(0,maskq);
-    int even = *ptrIntq(wake,maskq);
-    for (int i = ffs(even)-1; even; i = ffs(even&=~(1<<i))-1) {
-    while (sizeIntq(ableq) <= i) pushIntq(0,ableq);
-    *ptrIntq(i,ableq) &= ~(1<<wake);}
-    *ptrIntq(wake,maskq) = mask;
+    while (sizeIntq(maskq) <= thrd) pushIntq(0,maskq);
+    *ptrIntq(thrd,maskq) = mask;
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
+    // i is an event
     while (sizeIntq(ableq) <= i) pushIntq(0,ableq);
-    *ptrIntq(i,ableq) |= 1<<wake;}
+    *ptrIntq(i,ableq) |= 1<<thrd;}
 }
 void registerTime(enum Configure cfg, int sav, int val, int act)
 {
@@ -1622,7 +1620,7 @@ void initBoot()
     break; case (Bringup): case (Builtin):
     planeJnfo(RegisterPoll,1,planeWcfg);
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|0),planeWcfg);
+    planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|MachThd),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
@@ -1631,8 +1629,8 @@ void initBoot()
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk))<<8)|0),planeWcfg);
-    // the RegisterAble mask of events remembered per indicated MachThd wakes up the thread upon wos of event mask to RegisterWake
+    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk))<<8)|MachThd),planeWcfg);
+    planeJnfo(RegisterAble,(((1<<RespMsk)<<8)|PipeThd),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
