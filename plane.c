@@ -1425,34 +1425,40 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 
 //generic callbacks
 // following protected by evalSem, could move to PlaneField
+// currently powerful enough only for structs with only one size and only after the tag
 int changed = 0; enum Memory newmem = Memorys;
 int resized = 0; int oldsize = 0; int newsize = 0;
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
 {
     struct PlaneField *usr = (struct PlaneField*)arg->usr;
     if (fld == 0) changed = resized = 0;
-    if (num == TYPECenter && resized && sub >= oldsize && typ == TYPEMatrix) {
+    switch (num) {default:
+    break; case (TYPECenter):
+    if (resized && sub >= oldsize) switch (typ) {
+    default: return ZeroDat;
+    break; case (TYPEMatrix): {
     struct Matrix init;
     identmat(init.mat,4);
     writeMatrix(&init,arg->idx);
     return InsrDat;}
-    if (num == TYPECenter && resized && sub >= oldsize && typ == TYPEKernel) {
+    break; case (TYPEKernel): {
     struct Kernel init;
     identmat(init.saved.mat,4);
     identmat(init.local.mat,4);
     identmat(init.sent.mat,4);
     identmat(init.global.mat,4);
     writeKernel(&init,arg->idx);
-    return InsrDat;}
-    if (num == TYPECenter && resized && sub >= oldsize) return ZeroDat;
-    if (num == TYPECenter && resized && sub == newsize-1 && oldsize > newsize) return ReptDat;
-    if (num == TYPECenter && changed) return DscdDat;
-    if (num == TYPECenter && fld == identField(num,"mem") && fld == usr->num) {
+    return InsrDat;}}
+    if (resized && sub == newsize-1 && oldsize > newsize) return ReptDat;
+    // if changed, then size must be zero, so none of the above apply
+    if (changed) return DscdDat;
+    if (fld == identField(num,"mem") && fld == usr->num) {
     changed = 1; newmem = readInt(arg->src); return PsteDat;}
-    if (num == TYPECenter && fld == identField(num,"siz") && fld == usr->num) {
+    if (fld == identField(num,"siz") && fld == usr->num) {
     resized = 1; oldsize = readInt(arg->src); newsize = readInt(arg->fld); writeInt(newsize,arg->idx); return InsrDat;}
-    if (num == TYPEExtend && fld == identField(num,"log") && fld == usr->num) {
-    writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
+    break; case (TYPEExtend):
+    if (fld == identField(num,"log") && fld == usr->num) {
+    writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}}
     if (fld == usr->num && sub == usr->sub) return CopyDat;
     return KeepDat;
 }
