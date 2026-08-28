@@ -1122,7 +1122,7 @@ void planeTest(enum Thread tag, int idx)
     struct Extend *blk = centerPull(Memorys+1,(debug?"Test":0));
     centerPlace(blk);
 
-    while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
+    while (timeSafe(safeSafe(TestThd,idx),0.001) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
 
@@ -1170,7 +1170,7 @@ void planeTest(enum Thread tag, int idx)
     struct Extend *blk = centerPull(Memorys+1,(debug?"Test":0));
     centerPlace(blk);
 
-    while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
+    while (timeSafe(safeSafe(TestThd,idx),0.001) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
 
