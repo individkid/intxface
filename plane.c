@@ -580,7 +580,7 @@ void machineTage(int sim, struct Express *num, char **nam)
 {
     int src = machineIval(num);
     struct Extend *ptr = centerPeek(src,"Tage");
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
     for (int i = 0; i < sim; i++) {
     int wfd = datxClr(1); int ftp;
     if (strcmp(nam[i],"ptr") == 0) {
@@ -600,14 +600,14 @@ void machineTage(int sim, struct Express *num, char **nam)
     void *dat1 = 0; datxGet(1,&dat1);
     datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);}
     if (ptr) centerPlace(ptr);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
 }
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineSage(int sim, struct Express *num, char **nam)
 {
     int src = machineIval(num);
     struct Extend *ptr = centerPull(src,"Sage");
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
     for (int i = 0; i < sim; i++) {
     void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
     if (val == 0) ERROR();
@@ -634,7 +634,7 @@ void machineSage(int sim, struct Express *num, char **nam)
     break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);}}
     free(val);}
     centerPlace(ptr);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
 }
 int moveIval(struct Express *exp);
 struct Extend *moveRefer(int sub); // leave to be changed in place
@@ -644,7 +644,7 @@ void machineMove(struct Express *sub, struct Express *exp, int siz)
     if (siz > 9) ERROR();
     if (waitSafe(copySem) != 0) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
     int num[siz]; for (int i = 0; i < siz; i++) num[i] = moveIval(&sub[i]);
     // negative num refers to a queue, positive is sub into center
     for (int i = 0; i < siz; i++) {
@@ -668,7 +668,7 @@ void machineMove(struct Express *sub, struct Express *exp, int siz)
     if (typ != TYPEExtend) ERROR();
     freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
     moveDeref(num[i],&ptr);}
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
     if (postSafe(pipeSem) != 1) ERROR();
     if (postSafe(copySem) != 1) ERROR();
 }
@@ -676,7 +676,7 @@ void machineEval(struct Express *exp, int idx)
 {
     struct Extend *ext = centerPull(idx,"Eval");
     struct Center *ptr = ext->ptr;
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -685,23 +685,23 @@ void machineEval(struct Express *exp, int idx)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPECenter);
     if (typ != TYPECenter) ERROR();
     freeCenter(ptr); readCenter(ptr,datxPut(0,dat)); free(dat);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
     centerPlace(ext);
 }
 void machineVoid(struct Express *exp)
 {
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
 }
 int machineIval(struct Express *exp)
 {
-    if (callHnfo() <= 1 && waitSafe(evalSem) != 0) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
     if (typ != TYPEInt) ERROR();
     int val = readInt(datxPut(0,dat));
     free(dat);
-    if (callHnfo() <= 1 && postSafe(evalSem) != 1) ERROR();
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
     return val;
 }
 int machineEscape(struct Machine *mch, int siz, int level, int next)
@@ -1825,7 +1825,7 @@ void planeInit(uftype copy, wftype cont, nftype call, vftype fork, zftype gnfo, 
     callInfo = info;
     callJnfo = jnfo;
     callKnfo = knfo;
-    callHnfo = hnfo; // TODO is this needed? can expression extensions evaluate expressions?
+    callHnfo = hnfo;
     callCmnd = cmnd;
     callWait = wait;
     callWake = wake;
