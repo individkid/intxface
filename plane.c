@@ -561,25 +561,19 @@ void machineNopy(int sig, int *arg)
     demoMenu(menu);
     machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
 }
-void machinePop(int sig, int chk, int dst, void *que);
+void machinePop(int sig, int chk, int dst, enum Assert asr, void *que, const char *log);
 void machinePopy(int sig, int *arg)
 {
-    machinePop(sig,PopyArgs,arg[PopyDst],internal);
+    machinePop(sig,PopyArgs,arg[PopyDst],PipeAsr,internal,"Popy");
 }
+void machinePush(int sig, int chk, int src, enum Assert asr, void *que, const char *log);
 void machineQopy(int sig, int *arg)
 {
-    if (sig != QopyArgs) ERROR();
-    int src = arg[QopySrc];
-    struct Extend *ptr = centerPull(src,"Qopy");
-    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
-    if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(ptr,response);
-    if (postSafe(pipeSem) != 1) ERROR();
-    postSafe(safeSafe(PipeThd,0));
+    machinePush(sig,QopyArgs,arg[QopySrc],RespAsr,response,"Qopy");
 }
 void machineRopy(int sig, int *arg)
 {
-    machinePop(sig,RopyArgs,arg[RopyDst],replace);
+    machinePop(sig,RopyArgs,arg[RopyDst],DoneAsr,replace,"Ropy");
 }
 int machineIval(struct Express *exp);
 void machineTage(int sim, struct Express *num, char **nam)
@@ -805,9 +799,11 @@ void moveDeref(int sub, struct Extend **ext)
     switch (ptr->asr) {default: ERROR();
     break; case (PullAsr): if (ptr) deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
     break; case (PlaceAsr): moveSize(ptr->sub); if (center[ptr->sub]) deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
-    break; case (PipeAsr): pushCenterq(ptr,internal);
-    break; case (RespAsr): pushCenterq(ptr,response);
-    break; case (DoneAsr): pushCenterq(ptr,replace);}
+    break; case (PipeAsr): pushCenterq(ptr,internal); planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    break; case (RespAsr): pushCenterq(ptr,response); postSafe(safeSafe(PipeThd,0));
+    // TODO have RegisterWake signal other threads besides MachThd, add RespMsk, initialize to wake PipeThd with RespMsk,
+    // TODO and use planeJnfo for push to response as well as for push to internal and replace
+    break; case (DoneAsr): pushCenterq(ptr,replace); planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);}
 }
 
 int demoJect(struct Menu *menu)
@@ -923,22 +919,32 @@ void machineArg(int *arg, int sig, struct Express *exp)
 {
     for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
 }
-void machinePop(int sig, int chk, int dst, void *que)
+void machinePop(int sig, int chk, int dst, enum Assert asr, void *que, const char *log)
 {
     if (sig != chk) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *ptr = maybeCenterq(0,que);
     if (postSafe(pipeSem) != 1) ERROR();
-    enum Assert asr = (que==internal?PipeAsr:DoneAsr);
     if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
     if (ptr == 0) centerClear(dst);
     else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
+}
+void machinePush(int sig, int chk, int src, enum Assert asr, void *que, const char *log)
+{
+    if (sig != chk) ERROR();
+    struct Extend *ptr = centerPull(src,log);
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = asr;
+    if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(ptr,que);
+    if (postSafe(pipeSem) != 1) ERROR();
+    postSafe(safeSafe(PipeThd,0));
 }
 void planeMachine(enum Thread tag, int idx);
 void machineExec(int idx, struct Extend *ext)
 {
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: ERROR();
+    case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break;
     case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
     case (Machinez): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->mch[i]); break;
     case (Rebootz): {
@@ -955,7 +961,7 @@ void machineExec(int idx, struct Extend *ext)
     if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
-    if (nxt->src != ext->src/*TODO || nxt->ptr->slf != ptr->slf*/) {
+    if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
     nxt->asr = PipeAsr; pushCenterq(nxt,repush); continue;}
     printfSmart(ext->log,"Exec %d/%d:%d %05d:%s",i,ptr->siz,ptr->sub[i],numberSmart(nxt->log),nameSmart(nxt->log));
     boot[i] = ptr->sub[i]; cent[i] = nxt;}
@@ -980,12 +986,10 @@ void machineExec(int idx, struct Extend *ext)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
-    funcSafe(safeSem,safeGunc,&idx); // wait for machine[idx] >= 0
     int index = machine[idx];
     int *boot = reboot[idx]; reboot[idx] = 0;
     struct Extend **cent = recent[idx]; recent[idx] = 0;
     int size = resize[idx]; resize[idx] = 0;
-    postSafe(safeSem);
     if (index < 0) ERROR(); if (size == 0) {size = 1;
     boot = malloc(sizeof(int)); boot[0] = -1;
     cent = malloc(sizeof(struct Extend *));
@@ -1022,16 +1026,8 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (center != 0 && center->asr != RespAsr) ERROR(); else if (center != 0) center->asr = PullAsr;
-    if (center && center->ptr->slf < 0) { // TODO remove slf<0 hack; use Move or Sage to internal instead
-    center->ptr->slf = planeInfo(RegisterSelf,0,planeRcfg);
-    {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"Loop %s",st0); free(st0);}
-    center->asr = PipeAsr;
-    if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(center,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
-    else if (center && center->ptr->slf >= 0) {
+    if (center == 0) continue;
+    if (center->asr != RespAsr) ERROR(); else center->asr = PullAsr;
     if (center->src < 0 || center->src >= Programs) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     int sub = inverse[center->src];
@@ -1039,7 +1035,7 @@ void planeCenter(enum Thread tag, int idx)
     {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"Write %s",st0); free(st0);}
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
-    centerDone(center);}}
+    centerDone(center);}
 }
 void planeExternal(enum Thread tag, int idx)
 {
@@ -1048,7 +1044,7 @@ void planeExternal(enum Thread tag, int idx)
     int temp = external;
     if (postSafe(pipeSem) != 1) ERROR();
     int sub = waitRead(0.0,(temp|(1<<extdone)));
-    // WARN semaphore inside of pipeSem will deadlock,
+    // NOTE semaphore inside of pipeSem will deadlock,
     // because callbacks inside of Jnfo semaphore wait on pipeSem.
     // Nested semaphores are fine if they are nested in the same order.
     if (sub == extdone) {if (readChr(extdone)) break; else continue;}
@@ -1418,6 +1414,7 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 
 //generic callbacks
 // following protected by evalSem
+// NOTE this only works if there is only one size and array, and array comes last
 int changed = 0; enum Memory mem = Memorys;
 int resized = 0; int size = 0;
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
@@ -1438,9 +1435,12 @@ enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *
     return InsrDat;}
     if (num == TYPECenter && resized && sub >= size) return ZeroDat;
     if (num == TYPECenter && changed) return DscdDat;
-    if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {changed = 1; mem = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
-    if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {resized = 1; size = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
-    if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
+    if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {
+    changed = 1; mem = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
+    if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {
+    resized = 1; size = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
+    if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {
+    writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
     if (fld == arg->num && sub == arg->sub) return CopyDat;
     return KeepDat;
 }

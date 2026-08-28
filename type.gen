@@ -274,7 +274,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterAble", -- interrupts enable
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
-	"RegisterSelf", -- self for loopback
 	"RegisterVerb", -- transaction logging
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
@@ -348,7 +347,7 @@ Transfer = { -- what user machine does
 	"Nopy", -- handle input
 	"Popy", -- internal to center
 	"Qopy", -- center to response
-	"Ropy", -- center to replace
+	"Ropy", -- replace to center
 	"Goto", -- jump to value
 	"Jump", -- skip by value
 	"Nest", -- nest by value
@@ -2063,10 +2062,9 @@ Bootstrap = {
 		"mch[%(return jdx())]:Void(exp[0]:$(siz = #1))"..
 		"mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(siz))"..
 		"mch[%(return jdx())]:Void(exp[0]:$(bootstr = @bootstr + #1))"..
-		-- Void copy slf to RegisterSelf and set slf to -1
-		"mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:NonOp(num:3 non[0]:$(RegisterSelf := @_ . slf#0) non[1]:$(@_ .= slf#0 #-1) non[2]:$(@_) ))"..
-		-- Qopy to push Center to response queue
-		"mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
+		-- Move to push Center to response queue
+		-- "mch[%(return jdx())]:Qopy(sig:1arg[0]:$(@memorys))"..
+		"mch[%(return jdx())]:Move(atm:1sub[0]:$(@memorys)fun[0]:$(@_ .= asr#0 ImmStrPipeAsrOpOp))"..
 		"mch[%(return jdx())]:Nest(lvl:-1)"..
 		-- TODO do following for Regress and Release
 		-- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp))"..
