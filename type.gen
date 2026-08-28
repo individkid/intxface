@@ -2099,7 +2099,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 6
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrRespMskOp , EndOp Op))"..
+		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrRespMskOp , EndOp Op))"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 7
@@ -2114,7 +2114,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"proj\"))]:Nest(lvl:-1)".. -- 9
-		"mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
+		-- "mch[%(return jdx())]:Void(exp[0]:$(Put StrProjMskOp , EndOp Op))"..
 		-- TODO change window matrix; do Proj and Draw
 		"mch[%(return jdx())]:Nest(lvl:2)"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit , #1 ; #0 == #1 , #2 Op))"..
