@@ -268,9 +268,9 @@ struct Extend *centerPull(int idx, const char *log)
     struct Extend *ret = center[idx];
     deleteSmart(ret->log); ret->log = otherSmart(planeInfo(RegisterLog,0,planeRcfg));
     center[idx] = 0;
-    if (postSafe(copySem) != 1) ERROR();
     printfSmart(ret->log,"Pull %d %s",idx,log);
     if (ret->asr != PlaceAsr) ERROR(); else ret->asr = PullAsr;
+    if (postSafe(copySem) != 1) ERROR();
     return ret;
 }
 struct Extend *centerPeek(int idx, const char *log)
@@ -279,20 +279,20 @@ struct Extend *centerPeek(int idx, const char *log)
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
     center[idx] = 0;
-    if (postSafe(copySem) != 1) ERROR();
     // if (ret) printfSmart(ret->log,"Peek %d %s",idx,log);
     if (ret != 0 && ret->asr != PlaceAsr) ERROR(); else if (ret != 0) ret->asr = PullAsr;
+    if (postSafe(copySem) != 1) ERROR();
     return ret;
 }
 void centerFree(int idx, const char *log);
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
-    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = PlaceAsr;
     // printfSmart(ptr->log,"Place %d",ptr->sub);
     centerSize(ptr->sub);
     centerFree(ptr->sub,"Place");
     if (waitSafe(copySem) != 0) ERROR();
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = PlaceAsr;
     if (center[ptr->sub] != 0) ERROR();
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
@@ -1119,6 +1119,9 @@ void planeTest(enum Thread tag, int idx)
     int debug = 0; int count = 0; float time = 0.0; int tested = 0; int alt = 0;
     int mode = (planeInfo(RegisterPlan,0,planeRcfg)==Bringup);
 
+    struct Extend *blk = centerPull(Memorys+1,(debug?"Test":0));
+    centerPlace(blk);
+
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -1164,6 +1167,9 @@ void planeTest(enum Thread tag, int idx)
     int hiv[] = {width,height,0,12}; // width,height,idx,siz
     int fiv[] = {width,height}; // width,height
 
+    struct Extend *blk = centerPull(Memorys+1,(debug?"Test":0));
+    centerPlace(blk);
+
     while (timeSafe(safeSafe(TestThd,idx),0.0) >= 0) {
     if (time == 0.0) time = processTime();
     if (processTime()-time > 0.1) {time = processTime(); count += 1;}
@@ -1196,7 +1202,11 @@ void planeTest(enum Thread tag, int idx)
     vec->sub = Vectorz; vec->rsp = RptRsp;
     callCopy(vec,0,(debug?"getvec":0));}
 
-    tested = count;}}}
+    tested = count;}}
+
+    break; case (2):{
+
+    }}
 }
 
 // register callbacks
@@ -1243,12 +1253,14 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         doneSafe(safeSafe(TimeThd,0));}
     if ((act & (1<<TestThd)) && !(sav & (1<<TestThd))) {
-        safeInit(TestThd,2,0);
+        safeInit(TestThd,3,0);
         callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);
-        callFork(TestThd,1,planeTest,planeClose,planeJoin,planeWake);}
+        callFork(TestThd,1,planeTest,planeClose,planeJoin,planeWake);
+        callFork(TestThd,2,planeTest,planeClose,planeJoin,planeWake);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
         doneSafe(safeSafe(TestThd,0));
-        doneSafe(safeSafe(TestThd,1));}
+        doneSafe(safeSafe(TestThd,1));
+        doneSafe(safeSafe(TestThd,2));}
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
@@ -1404,10 +1416,6 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterLog) ERROR();
     if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
-    /*if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
-    if (center[i] != 0 && center[i]->log != 0) {
-    // this is to allow centerPeek from machineTage to get placed log
-    deleteSmart(center[i]->log); center[i]->log = 0;}*/
 }
 
 //generic callbacks
@@ -1668,6 +1676,8 @@ void initTest()
     default: ERROR();
 
     break; case (Bringup): mode = true; case (Builtin): {
+    planeJnfo(RegisterOpen,(1<<TestThd),planeWots);
+
     int frames = planeInfo(ScratchFrames,0,planeRcfg);
 
     int test = selfSmart("Init");
@@ -1798,7 +1808,8 @@ void initTest()
     callCopy(fil,0,(debug?"relate":0));
     while (!centerCheck(Drawz)) callWait();}
 
-    planeJnfo(RegisterOpen,(1<<TestThd),planeWots);}
+    struct Extend *start = 0; allocExtend(&start,1); start->sub = Memorys+1;
+    centerPlace(start);}
 
     break; case(Regress): case(Release): break;}
 }
