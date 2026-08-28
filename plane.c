@@ -1205,8 +1205,9 @@ void planeTest(enum Thread tag, int idx)
     tested = count;}}
 
     break; case (2):{
-
-    }}
+    while (timeSafe(safeSafe(TestThd,idx),0.1) >= 0) {
+    planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
+    }}}
 }
 
 // register callbacks
