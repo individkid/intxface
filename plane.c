@@ -602,6 +602,9 @@ void machineTage(int sim, struct Express *num, char **nam)
     if (ptr) centerPlace(ptr);
     if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
 }
+struct PlaneField {
+    int num, sub;
+};
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineSage(int sim, struct Express *num, char **nam)
 {
@@ -623,7 +626,8 @@ void machineSage(int sim, struct Express *num, char **nam)
     break; case (TYPEExtend): writeExtend(ptr,rfd);
     break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
     break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
-    struct DatxField dtf = {num,0,rfd,datxPut(1,val),datxClr(3)};
+    struct PlaneField usr = {num,0};
+    struct DatxField dtf = {&usr,rfd,datxPut(1,val),datxClr(3)};
     int wfd = datxClr(2); switch (stp) {default: ERROR();
     break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
     break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
@@ -1420,19 +1424,19 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 }
 
 //generic callbacks
-// following protected by evalSem
-// NOTE this only works if there is only one size and array, and array comes last
-int changed = 0; enum Memory mem = Memorys;
-int resized = 0; int size = 0;
+// following protected by evalSem, could move to PlaneField
+int changed = 0; enum Memory newmem = Memorys;
+int resized = 0; int oldsize = 0; int newsize = 0;
 enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
 {
+    struct PlaneField *usr = (struct PlaneField*)arg->usr;
     if (fld == 0) changed = resized = 0;
-    if (num == TYPECenter && resized && sub >= size && typ == TYPEMatrix) {
+    if (num == TYPECenter && resized && sub >= oldsize && typ == TYPEMatrix) {
     struct Matrix init;
     identmat(init.mat,4);
     writeMatrix(&init,arg->idx);
     return InsrDat;}
-    if (num == TYPECenter && resized && sub >= size && typ == TYPEKernel) {
+    if (num == TYPECenter && resized && sub >= oldsize && typ == TYPEKernel) {
     struct Kernel init;
     identmat(init.saved.mat,4);
     identmat(init.local.mat,4);
@@ -1440,15 +1444,16 @@ enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *
     identmat(init.global.mat,4);
     writeKernel(&init,arg->idx);
     return InsrDat;}
-    if (num == TYPECenter && resized && sub >= size) return ZeroDat;
+    if (num == TYPECenter && resized && sub >= oldsize) return ZeroDat;
+    if (num == TYPECenter && resized && sub == newsize-1 && oldsize > newsize) return ReptDat;
     if (num == TYPECenter && changed) return DscdDat;
-    if (num == TYPECenter && fld == identField(num,"mem") && fld == arg->num) {
-    changed = 1; mem = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
-    if (num == TYPECenter && fld == identField(num,"siz") && fld == arg->num) {
-    resized = 1; size = readInt(arg->src); writeInt(readInt(arg->fld),arg->idx); return InsrDat;}
-    if (num == TYPEExtend && fld == identField(num,"log") && fld == arg->num) {
+    if (num == TYPECenter && fld == identField(num,"mem") && fld == usr->num) {
+    changed = 1; newmem = readInt(arg->src); return PsteDat;}
+    if (num == TYPECenter && fld == identField(num,"siz") && fld == usr->num) {
+    resized = 1; oldsize = readInt(arg->src); newsize = readInt(arg->fld); writeInt(newsize,arg->idx); return InsrDat;}
+    if (num == TYPEExtend && fld == identField(num,"log") && fld == usr->num) {
     writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}
-    if (fld == arg->num && sub == arg->sub) return CopyDat;
+    if (fld == usr->num && sub == usr->sub) return CopyDat;
     return KeepDat;
 }
 
@@ -1457,9 +1462,13 @@ void planeField(void **dst, void *src, void *fld, int num, int sub, int stp, int
 {
     switch (stp) {
     default: {readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);}
-    break; case (TYPEExtend): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+    break; case (TYPEExtend): {
+    struct PlaneField usr = {num,sub};
+    struct DatxField arg = {&usr,datxPut(0,src),datxPut(1,fld),datxClr(3)};
     mergeExtend(datxClr(2),centerField,&arg); datxGet(2,dst);}
-    break; case (TYPECenter): {struct DatxField arg = {num,sub,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+    break; case (TYPECenter): {
+    struct PlaneField usr = {num,sub};
+    struct DatxField arg = {&usr,datxPut(0,src),datxPut(1,fld),datxClr(3)};
     mergeCenter(datxClr(2),centerField,&arg); datxGet(2,dst);}}
 }
 const char *planeGetstr()
