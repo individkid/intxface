@@ -541,7 +541,7 @@ void machineDopy(int sig, int *arg)
 struct PlaneRange {
     int src, dst, siz;
 };
-enum DatxEnum centerRange(int num, int fld, int sub, int typ, struct DatxField *arg);
+struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStruct *arg);
 void machineMopy(int sig, int *arg)
 {
     if (sig != MopyArgs) ERROR();
@@ -564,7 +564,7 @@ void machineMopy(int sig, int *arg)
     int sfd = datxClr(0); writeCenter(src->ptr,sfd);
     int dfd = datxClr(1); writeCenter(dst->ptr,dfd);
     struct PlaneRange usr = {srcOfs,dstOfs,siz};
-    struct DatxField dtf = {&usr,sfd,dfd,datxClr(3)};
+    struct MergeStruct dtf = {&usr,sfd,dfd,datxClr(3)};
     int wfd = datxClr(2); mergeCenter(wfd,centerRange,&dtf);
     readCenter(dst->ptr,wfd);
     centerPlace(src);
@@ -623,7 +623,7 @@ void machineTage(int sim, struct Express *num, char **nam)
 struct PlaneField {
     int num, sub;
 };
-enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg);
+struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStruct *arg);
 void machineSage(int sim, struct Express *num, char **nam)
 {
     int src = machineIval(num);
@@ -645,7 +645,7 @@ void machineSage(int sim, struct Express *num, char **nam)
     break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
     break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
     struct PlaneField usr = {num,0};
-    struct DatxField dtf = {&usr,rfd,datxPut(1,val),datxClr(3)};
+    struct MergeStruct dtf = {&usr,rfd,datxPut(1,val),datxClr(3)};
     int wfd = datxClr(2); switch (stp) {default: ERROR();
     break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
     break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
@@ -1446,19 +1446,20 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
 // currently powerful enough only for structs with only one size and only after the tag
 int changed = 0; enum Memory newmem = Memorys;
 int resized = 0; int oldsize = 0; int newsize = 0;
-enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *arg)
+struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStruct *arg)
 {
     struct PlaneField *usr = (struct PlaneField*)arg->usr;
+    // fprintf(stderr,"Field %d %d %d %d %d %d\n",num,fld,sub,typ,usr->num,usr->sub);
     if (fld == 0) changed = resized = 0;
     switch (num) {default:
     break; case (TYPECenter):
     if (resized && sub >= oldsize) switch (typ) {
-    default: return ZeroDat;
+    default: return (struct MergeEnum){ZerMrg,0};
     break; case (TYPEMatrix): {
     struct Matrix init;
     identmat(init.mat,4);
     writeMatrix(&init,arg->idx);
-    return InsrDat;}
+    return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
     break; case (TYPEKernel): {
     struct Kernel init;
     identmat(init.saved.mat,4);
@@ -1466,34 +1467,35 @@ enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *
     identmat(init.sent.mat,4);
     identmat(init.global.mat,4);
     writeKernel(&init,arg->idx);
-    return InsrDat;}}
-    if (resized && sub == newsize-1 && oldsize > newsize) return ReptDat;
+    return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}}
+    if (resized && sub == newsize-1 && oldsize > newsize) {oldsize -= 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
     // if changed, then size must be zero, so none of the above apply
-    if (changed) return DscdDat;
+    if (changed) return (struct MergeEnum){ZerMrg,0};
     if (fld == identField(num,"mem") && fld == usr->num) {
-    changed = 1; newmem = readInt(arg->src); return PsteDat;}
+    changed = 1; newmem = readInt(arg->lft); return (struct MergeEnum){RgtMrg,(1<<RgtMrg)};}
     if (fld == identField(num,"siz") && fld == usr->num) {
-    resized = 1; oldsize = readInt(arg->src); newsize = readInt(arg->fld); writeInt(newsize,arg->idx); return InsrDat;}
+    resized = 1; oldsize = readInt(arg->lft); newsize = readInt(arg->rgt); writeInt(newsize,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
     break; case (TYPEExtend):
     if (fld == identField(num,"log") && fld == usr->num) {
-    writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}}
-    if (fld == usr->num && sub == usr->sub) return CopyDat;
-    return KeepDat;
+    writeInt(otherSmart(readInt(arg->rgt)),arg->idx); return (struct MergeEnum){IdxMrg,(1<<LftMrg)|(1<<IdxMrg)};}}
+    if (fld == usr->num && sub == usr->sub) return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
+    return (struct MergeEnum){LftMrg,(1<<LftMrg)};
 }
 int skipped = 0; int toread = 0;
-enum DatxEnum centerRange(int num, int fld, int sub, int typ, struct DatxField *arg)
+struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStruct *arg)
 {
     struct PlaneRange *usr = (struct PlaneRange*)arg->usr;
+    // fprintf(stderr,"Range %d %d %d %d %d %d %d\n",num,fld,sub,typ,usr->src,usr->dst,usr->siz);
     if (fld == 0) {skipped = 0; toread = 0;}
     switch (num) {default:
     break; case (TYPECenter):
-    if (fld == identField(num,"siz")) {int siz = readInt(arg->fld); toread = readInt(arg->src); writeInt(siz+usr->siz,arg->idx); return InsrDat;}
+    if (fld == identField(num,"siz")) {int siz = readInt(arg->rgt); toread = readInt(arg->lft); writeInt(siz+usr->siz,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
     if (fld >= identField(num,"ind")) if (toread > 0) {toread -= 1;
-    if (sub == 0 && skipped < usr->src) {skipped += 1; return ReptDat;}
-    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return KeepDat;
-    else if (sub == usr->dst+usr->siz) return ReptDat;}
-    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return ZeroDat; else return PsteDat;}
-    return CopyDat;
+    if (sub == 0 && skipped < usr->src) {skipped += 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){LftMrg,(1<<LftMrg)|(1<<RgtMrg)};
+    else if (sub == usr->dst+usr->siz) return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
+    return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
 }
 
 // expression callbacks
@@ -1503,11 +1505,11 @@ void planeField(void **dst, void *src, void *fld, int num, int sub, int stp, int
     default: {readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2)); datxGet(2,dst);}
     break; case (TYPEExtend): {
     struct PlaneField usr = {num,sub};
-    struct DatxField arg = {&usr,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+    struct MergeStruct arg = {&usr,datxPut(0,src),datxPut(1,fld),datxClr(3)};
     mergeExtend(datxClr(2),centerField,&arg); datxGet(2,dst);}
     break; case (TYPECenter): {
     struct PlaneField usr = {num,sub};
-    struct DatxField arg = {&usr,datxPut(0,src),datxPut(1,fld),datxClr(3)};
+    struct MergeStruct arg = {&usr,datxPut(0,src),datxPut(1,fld),datxClr(3)};
     mergeCenter(datxClr(2),centerField,&arg); datxGet(2,dst);}}
 }
 const char *planeGetstr()
