@@ -538,6 +538,10 @@ void machineDopy(int sig, int *arg)
     centerPlace(ptr);
     centerPlace(cpy);
 }
+struct PlaneRange {
+    int src, dst, siz;
+};
+enum DatxEnum centerRange(int num, int fld, int sub, int typ, struct DatxField *arg);
 void machineMopy(int sig, int *arg)
 {
     if (sig != MopyArgs) ERROR();
@@ -546,11 +550,25 @@ void machineMopy(int sig, int *arg)
     int dstSub = arg[MopyDst];
     int dstOfs = arg[MopyDstSub];
     int siz = arg[MopySiz];
+    if (srcSub == dstSub && srcOfs > dstOfs) {
+    struct Extend *ptr = centerPull(srcSub,"Mopy");
+    // TODO decrease size and pack out from dstOfs to srcOfs
+    centerPlace(ptr);}
+    else if (srcSub == dstSub && srcOfs < dstOfs) {
+    struct Extend *ptr = centerPull(srcSub,"Mopy");
+    // TODO increase size and fill srcOfs to dstOfs with init
+    centerPlace(ptr);}
+    else if (srcSub != dstSub) {
     struct Extend *src = centerPull(srcSub,"Mopy");
     struct Extend *dst = centerPull(dstSub,"Mopy");
-    // TODO use mergeCenter of centerRange
+    int sfd = datxClr(0); writeCenter(src->ptr,sfd);
+    int dfd = datxClr(1); writeCenter(dst->ptr,dfd);
+    struct PlaneRange usr = {srcOfs,dstOfs,siz};
+    struct DatxField dtf = {&usr,sfd,dfd,datxClr(3)};
+    int wfd = datxClr(2); mergeCenter(wfd,centerRange,&dtf);
+    readCenter(dst->ptr,wfd);
     centerPlace(src);
-    centerPlace(dst);
+    centerPlace(dst);}
 }
 void demoMenu(struct Menu *menu);
 void machineNopy(int sig, int *arg)
@@ -1461,6 +1479,21 @@ enum DatxEnum centerField(int num, int fld, int sub, int typ, struct DatxField *
     writeInt(otherSmart(readInt(arg->fld)),arg->idx); return ReplDat;}}
     if (fld == usr->num && sub == usr->sub) return CopyDat;
     return KeepDat;
+}
+int skipped = 0; int toread = 0;
+enum DatxEnum centerRange(int num, int fld, int sub, int typ, struct DatxField *arg)
+{
+    struct PlaneRange *usr = (struct PlaneRange*)arg->usr;
+    if (fld == 0) {skipped = 0; toread = 0;}
+    switch (num) {default:
+    break; case (TYPECenter):
+    if (fld == identField(num,"siz")) {int siz = readInt(arg->fld); toread = readInt(arg->src); writeInt(siz+usr->siz,arg->idx); return InsrDat;}
+    if (fld >= identField(num,"ind")) if (toread > 0) {toread -= 1;
+    if (sub == 0 && skipped < usr->src) {skipped += 1; return ReptDat;}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return KeepDat;
+    else if (sub == usr->dst+usr->siz) return ReptDat;}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return ZeroDat; else return PsteDat;}
+    return CopyDat;
 }
 
 // expression callbacks
