@@ -444,6 +444,18 @@ void machineBnry(int sig, int *arg)
     machinePlace(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
     machinePlace(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
 }
+void machinePose(int sig, int *arg)
+{
+    if (sig != PoseArgs) ERROR();
+    struct Extend *src = machineCenter(sig,arg,PoseArgs,PoseSrc,PoseSrcSub,"Pose");
+    struct Kernel *kernel = machineKernel(src,sig,arg,PoseArgs,PoseSrc,PoseSrcSub);
+    struct Extend *dst = machineCenter(sig,arg,PoseArgs,PoseDst,PoseDstSub,"Pose");
+    struct Matrix *matrix = machineMatrix(dst,sig,arg,PoseArgs,PoseDst,PoseDstSub);
+    // compose for draw -- M = GSLT
+    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
+    machinePlace(src,sig,arg,PoseArgs,PoseSrc,PoseSrcSub);
+    machinePlace(dst,sig,arg,PoseArgs,PoseDst,PoseDstSub);
+}
 void machineComp(int sig, int *arg)
 {
     if (sig != CompArgs) ERROR();
@@ -749,6 +761,7 @@ void machineSwitch(struct Machine *mptr)
     case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
     case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineProj(mptr->sig,arg);} break;
     case (Bnry): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBnry(mptr->sig,arg);} break;
+    case (Pose): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePose(mptr->sig,arg);} break;
     case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
     case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
     case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
@@ -828,105 +841,111 @@ void moveDeref(int sub, struct Extend **ext)
 
 int demoJect(struct Menu *menu)
 {
+    // this is to choose Kernel, and for idx in machineBopy of menu->tmp
     switch (menu->jec) {default: ERROR();
     break; case(Inject): return menu->inj;
     break; case(Object): return menu->obj;
     break; case(Subject): return menu->suj;}
     return 0;
 }
+void demoSend(struct Menu *menu)
+{
+    // TODO call planeJnfo for menu->tmp as Metricz to machineQopy
+}
 void demoDone(struct Menu *menu)
 {
-    int arg[4] = {menu->ker,demoJect(menu),menu->mat,menu->sub}; machineSend(4,arg);
+    // TODO call machineSend for menu->tmp as Matrixz to machineQopy
 }
 void demoCont(struct Menu *menu)
 {
     int arg[2] = {menu->ker,demoJect(menu)}; machineForm(2,arg);
 }
-void demoPack(struct Menu *menu)
-{
-    int arg[2] = {menu->mat,menu->tmp}; machineDopy(2,arg);
-    // TODO move menu->sub in menu->tmp to 0 in menu->tmp, resize menu->tmp to 1, and change idx in menu->tmp to menu->sub
-    int cpy[2] = {menu->tmp,0}; machineCopy(2,cpy);
-}
 void demoSize(struct Menu *menu)
 {
-    int pro[2] = {menu->mat,menu->sub}; machineProj(2,pro);
-    demoPack(menu);
-    int drw[2] = {menu->drw,0}; machineCopy(2,drw);
+    // TODO call machineProj for menu->tmp as Matrix at menu->pro to machineBopy
+}
+void demoComp(struct Menu *menu)
+{
+    // TODO call machineComp for menu->tmp as Matrix at demoJect to machineBopy
+}
+void demoPose(struct Menu *menu)
+{
+    // TODO call machinePose for menu->tmp as Matrix at demoJect to machineBopy
 }
 void demoDisp(struct Menu *menu)
 {
-    int cmp[4] = {menu->ker,demoJect(menu),menu->mat,menu->sub}; machineComp(4,cmp);
-    int mat[2] = {menu->mat,0}; machineCopy(2,mat);
-    int drw[2] = {menu->drw,0}; machineCopy(2,drw); // TODO do Dopy first, so Drawz is never zero
+    // TODO call machineBopy on menu->drw/dsp
+}
+void demoDraw(struct Menu *menu)
+{
+    // TODO call machineBopy on menu->drw/pie/nor/sel
 }
 void demoMenu(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk): {
-    int arg[4] = {menu->mat,menu->sub,menu->ker,demoJect(menu)};
-    struct Extend *mat = centerPull(menu->mat,"Demo");
-    if (menu->mat != menu->tmp) ERROR();
+    struct Extend *mat = centerPull(menu->tmp,"Demo");
     int slf = mat->ptr->slf;
+    if (mat->ptr->mem != Matrixz) ERROR();
     centerPlace(mat);
+    int arg[4] = {menu->tmp,0,menu->ker,demoJect(menu)};
     if (slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
-    demoDisp(menu);}
+    demoPose(menu); demoDisp(menu);}
     break; case (DoneMsk): {
+    // collect pierce point information
     struct Extend *tmp = centerPull(menu->tmp,"Demo");
-    struct Extend *met = centerPull(menu->met,"Demo");
     int left = planeInfo(ClickLeft,0,planeRcfg);
     int base = planeInfo(ClickBase,0,planeRcfg);
     int width = planeInfo(UniformWid,0,planeRcfg);
     int height = planeInfo(UniformHei,0,planeRcfg);
+    switch (tmp->ptr->mem) {default: ERROR();
+    break; case (Getoldz): {
     int depth = planeInfo(FocalDepth,0,planeRcfg);
     int slope = planeInfo(FocalSlope,0,planeRcfg);
-    switch (tmp->ptr->mem) {default: ERROR();
-    break; case (Getoldz):
-    met->ptr->met->fix[2] = tmp->ptr->old[base*width+left];
-    // TODO Getoldz is only depth; calculate other coordinates from UniformWid/Hei and Focal*
-    planeJnfo(FixedLeft,met->ptr->met->fix[0],planeWcfg);
-    planeJnfo(FixedBase,met->ptr->met->fix[1],planeWcfg);
-    planeJnfo(FixedDeep,met->ptr->met->fix[2],planeWcfg);
-    menu->cmp |= (1<<Getoldz);
+    int deep = tmp->ptr->old[base*width+left];
+    // TODO Getoldz is only depth; calculate FixedLeft/Base from FixedDeep UniformWid/Hei and Focal*
+    int left = 0;
+    int base = 0;
+    planeJnfo(FixedDeep,deep,planeWcfg);
+    planeJnfo(FixedLeft,left,planeWcfg);
+    planeJnfo(FixedBase,base,planeWcfg);
+    menu->met |= (1<<Getoldz);}
     break; case (Getintz):
-    met->ptr->met->idx = tmp->ptr->uns[base*width+left];
-    planeJnfo(SelectIdent,met->ptr->met->idx,planeWcfg);
-    menu->cmp |= (1<<Getintz);
+    planeJnfo(SelectIdent,tmp->ptr->uns[base*width+left],planeWcfg);
+    menu->met |= (1<<Getintz);
     break; case (Vectorz):
-    met->ptr->met->nor[0] = tmp->ptr->vec[base*width+left].vec[0];
-    met->ptr->met->nor[1] = tmp->ptr->vec[base*width+left].vec[1];
-    met->ptr->met->nor[2] = tmp->ptr->vec[base*width+left].vec[2];
-    planeJnfo(NormalLeft,met->ptr->met->nor[0],planeWcfg);
-    planeJnfo(NormalBase,met->ptr->met->nor[1],planeWcfg);
-    planeJnfo(NormalDeep,met->ptr->met->nor[2],planeWcfg);
-    menu->cmp |= (1<<Vectorz);}
+    planeJnfo(NormalLeft,tmp->ptr->vec[base*width+left].vec[0],planeWcfg);
+    planeJnfo(NormalBase,tmp->ptr->vec[base*width+left].vec[1],planeWcfg);
+    planeJnfo(NormalDeep,tmp->ptr->vec[base*width+left].vec[2],planeWcfg);
+    menu->met |= (1<<Vectorz);}
     int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
-    if ((menu->cmp&msk)==msk) {menu->cmp = 0;
+    if ((menu->met&msk)==msk) {menu->met = 0;
     if (planeJnfo(ClickQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<ClckMsk),planeWots);
     switch (menu->act) {default: ERROR();
-    break; case (Indicate): {
-    menu->act = Manipulate;
-    centerPlace(met);}
+    break; case (Indicate): menu->act = Manipulate;
     break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    met->ptr->met->act = menu->act;
-    /*TODO relay met to other process*/}}}
-    else {centerPlace(met);}
+    // do Send of Metricz
+    demoSend(menu);}}}
     centerPlace(tmp);}
-    break; case (PrssMsk): { // do Send; change menu state
+    break; case (PrssMsk): {
+    // do Send of Matrixz
     demoDone(menu);
+    // change menu state
     char key = planeInfo(PressKey,0,planeRcfg);
     if (planeJnfo(PressQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<PrssMsk),planeWots);
+    menu->act = Indicate; menu->dev = Devices;
+    // now MoveMsk and RollMsk will call demoCont, so change of mode is continuous
     switch (key) {default:
-    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
-    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); menu->act = Indicate;
-    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); menu->act = Indicate;
-    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
-    break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
-    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
-    break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); menu->act = Indicate;
-    break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); menu->act = Indicate;
-    break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); menu->act = Indicate;
-    break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); menu->act = Indicate;
+    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor);
+    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal);
+    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho);
+    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho);
+    break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal);
+    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor);
+    break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal);
+    break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho);
+    break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal);
+    break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce);
     break; case ('A'): menu->act = Additive;
     break; case ('S'): menu->act = Subtractive;
     break; case ('B'): menu->act = Divisive;
@@ -934,20 +953,24 @@ void demoMenu(struct Menu *menu)
     break; case ('W'): /*TODO Warp to last metric sent*/}}
     break; case (ProjMsk): demoSize(menu);
     break; case (EoodMsk): // TODO wait for window resize
-    break; case (MoveMsk): if (menu->act == Manipulate) { // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
-    if (menu->dev == Angle) {demoCont(menu); menu->dev = Coord;}
+    break; case (MoveMsk): if (menu->act == Manipulate) {
+    // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
+    if (menu->dev != Coord) {demoCont(menu); menu->dev = Coord;}
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
-    demoDisp(menu);}
+    demoComp(menu); demoDisp(menu);}
     break; case (ClckMsk): if (planeInfo(ClickQueue,0,planeRcfg)) switch (menu->act) {default: ERROR();
-    break; case (Manipulate): {demoDone(menu); menu->act = Indicate;
+    break; case (Manipulate): {
+    // send matrix and disable manipulation
+    demoDone(menu); menu->act = Indicate;
     if (planeJnfo(ClickQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<ClckMsk),planeWots);}
-    break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    // TODO Dopy/Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
-    }}
-    break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
-    if (menu->dev == Coord) {demoCont(menu); menu->dev = Angle;}
+    break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):
+    // send requests for pierce point information
+    demoDraw(menu);}
+    break; case (RollMsk): if (menu->act == Manipulate) {
+    // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
+    if (menu->dev != Angle) {demoCont(menu); menu->dev = Angle;}
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
-    demoDisp(menu);}}
+    demoComp(menu); demoDisp(menu);}}
 }
 
 // phase callbacks
@@ -1477,7 +1500,10 @@ void registerRoll(enum Configure cfg, int sav, int val, int act)
 void registerLog(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterLog) ERROR();
-    if (sav != act) {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
+    if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
+    {deleteSmart(center[i]->log); center[i]->log = 0;}
+    if (sav != act)
+    {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
 }
 
 //generic callbacks

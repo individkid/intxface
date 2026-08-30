@@ -333,8 +333,10 @@ Transfer = { -- what user machine does
 	-- Kernel.sent S
 	-- Kernel.global G
 	-- input output matrix M
+	"Pose", -- M = GSLT
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
+	-- NOTE if C == T, then Form has no effect
 	"Send", -- M = L; S = SL; L = I
 	"Self", -- G = GM; S = M'S
 	"Glob", -- G = GM
@@ -361,6 +363,12 @@ BnryArg = {
 	"BnryRgtSub",
 	"BnryDst",
 	"BnryDstSub",
+}
+PoseArg = {
+	"PoseSrc",
+	"PoseSrcSub",
+	"PoseDst",
+	"PoseDstSub",
 }
 CompArg = {
 	"CompSrc",
@@ -1967,7 +1975,7 @@ Bootstrap = {
 	-- TODO add Micro for Vectorz Getoldz Getintz
 	-- TODO add change of arg to {width,height,0,12} when UniformWid/Hie and Trianglez siz change
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3met:%(return castMemory(\"Metricz\"))cmp:0))"},
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0met:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0pro:2drw:%(return castMemory(\"Drawz\"))dsp:0pie:1nor:2sel:3tmp:%(return castMemory(\"Memorys\"))))"},
 	{"Int","%(return idx())","Str","!(metric = #%(return count))Metricz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
@@ -2357,19 +2365,18 @@ Menu = { -- state to handle user input
 	{"dev","Device",{},{}},
 	{"coo","Int",{},{}}, -- ManipFixed for Coord
 	{"ang","Int",{},{}}, -- ManipFixed for Angle
-	{"ker","Int",{},{}}, -- center for kernels
-	{"inj","Int",{},{}}, -- kernel when jec is Inject
-	{"obj","Int",{},{}}, -- kernel when jec is Object
-	{"suj","Int",{},{}}, -- kernel when jec is Subject
-	{"mat","Int",{},{}}, -- center for matrix
-	{"sub","Int",{},{}}, -- element for matrix
-	{"tmp","Int",{},{}}, -- scratch matrix center
-	{"drw","Int",{},{}}, -- center for draw
+	{"met","Int",{},{}}, -- metric completion mask
+	{"ker","Int",{},{}}, -- extend for kernels
+	{"inj","Int",{},{}}, -- kernel/idx for Inject
+	{"obj","Int",{},{}}, -- kernel/idx for Object
+	{"suj","Int",{},{}}, -- kernel/idx for Subject
+	{"pro","Int",{},{}}, -- idx for projection
+	{"drw","Int",{},{}}, -- extend for draw
+	{"dsp","Int",{},{}}, -- center for display
 	{"pie","Int",{},{}}, -- center for pierce
 	{"nor","Int",{},{}}, -- center for normal
 	{"sel","Int",{},{}}, -- center for select
-	{"met","Int",{},{}}, -- center for metric
-	{"cmp","Int",{},{}}, -- metric completion mask
+	{"tmp","Int",{},{}}, -- input output matrix
 }
 Uniform = { -- how to interpret subscripts into gpu buffers
 	{"all","Int32",{},{}}, -- which subject to use
