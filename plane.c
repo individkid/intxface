@@ -902,6 +902,7 @@ void demoMenu(struct Menu *menu)
     menu->cmp |= (1<<Vectorz);}
     int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
     if ((menu->cmp&msk)==msk) {menu->cmp = 0;
+    if (planeJnfo(ClickQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<ClckMsk),planeWots);
     switch (menu->act) {default: ERROR();
     break; case (Indicate): {
     menu->act = Manipulate;
@@ -914,7 +915,7 @@ void demoMenu(struct Menu *menu)
     break; case (PrssMsk): { // do Send; change menu state
     demoDone(menu);
     char key = planeInfo(PressKey,0,planeRcfg);
-    planeJnfo(PressQueue,-1,planeRmw);
+    if (planeJnfo(PressQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<PrssMsk),planeWots);
     switch (key) {default:
     break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); menu->act = Indicate;
     break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); menu->act = Indicate;
@@ -937,12 +938,12 @@ void demoMenu(struct Menu *menu)
     if (menu->dev == Angle) {demoCont(menu); menu->dev = Coord;}
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
     demoDisp(menu);}
-    break; case (ClckMsk): switch (menu->act) {default: ERROR();
-    break; case (Manipulate): {demoDone(menu); menu->act = Indicate;}
+    break; case (ClckMsk): if (planeInfo(ClickQueue,0,planeRcfg)) switch (menu->act) {default: ERROR();
+    break; case (Manipulate): {demoDone(menu); menu->act = Indicate;
+    if (planeJnfo(ClickQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<ClckMsk),planeWots);}
     break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    planeJnfo(ClickQueue,1,planeWcfg); // discard to last click
     // TODO Dopy/Draw for pierce point, and in DoneMsk, get Fixed* Normal* SelectIdx from Getoldz Vectorz Getintz at Click*
-    planeJnfo(ClickQueue,0,planeWcfg);}}
+    }}
     break; case (RollMsk): if (menu->act == Manipulate) { // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
     if (menu->dev == Coord) {demoCont(menu); menu->dev = Angle;}
     planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
@@ -1424,13 +1425,14 @@ void registerQue(enum Configure cfg, int val, enum Configure ary[], void *ptr[],
     planeKnfo(RegisterWake,(1<<msk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
 }
-void registerQues(enum Configure cfg, int act, enum Configure chk, void *ptr[], int siz, int msk)
+void registerQues(int act, enum Configure ary[], void *ptr[], int siz, int msk)
 {
-    if (cfg != chk) ERROR();
+    if (act < 0) ERROR();
     if (waitSafe(pressSem) != 0) ERROR();
     for (int i = 0; i < siz; i++) {
     while (act < sizeIntq(ptr[i])) popIntq(ptr[i]);
-    while (act > sizeIntq(ptr[i])) pushIntq(0,ptr[i]);}
+    while (act > sizeIntq(ptr[i])) pushIntq(0,ptr[i]);
+    if (act > 0) planeGnfo(ary[i],frontIntq(ptr[i]),planeWcfg);}
     int num = 0; for (int i = 0; i < siz; i++)
     if (sizeIntq(ptr[i]) > 0) num += 1;
     if (num > 0) planeKnfo(RegisterWake,(1<<msk),planeWots);
@@ -1444,8 +1446,10 @@ void registerChar(enum Configure cfg, int sav, int val, int act)
 }
 void registerChars(enum Configure cfg, int sav, int val, int act)
 {
+    if (cfg != PressQueue) ERROR();
+    enum Configure ary[1] = {PressKey};
     void *ptr[1] = {charq};
-    registerQues(cfg,act,PressQueue,ptr,1,PrssMsk);
+    registerQues(act,ary,ptr,1,PrssMsk);
 }
 void registerClick(enum Configure cfg, int sav, int val, int act)
 {
@@ -1455,8 +1459,10 @@ void registerClick(enum Configure cfg, int sav, int val, int act)
 }
 void registerClicks(enum Configure cfg, int sav, int val, int act)
 {
+    if (cfg != ClickQueue) ERROR();
+    enum Configure ary[3] = {ClickLeft,ClickBase,ClickAngle};
     void *ptr[3] = {leftq,baseq,angleq};
-    registerQues(cfg,act,ClickQueue,ptr,3,ClckMsk);
+    registerQues(act,ary,ptr,3,ClckMsk);
 }
 void registerMove(enum Configure cfg, int sav, int val, int act)
 {
