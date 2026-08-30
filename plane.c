@@ -865,19 +865,52 @@ void demoMenu(struct Menu *menu)
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk): {
     int arg[4] = {menu->mat,menu->sub,menu->ker,demoJect(menu)};
-    if (menu->slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
+    struct Extend *mat = centerPull(menu->mat,"Demo");
+    if (menu->mat != menu->tmp) ERROR();
+    int slf = mat->ptr->slf;
+    centerPlace(mat);
+    if (slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
     demoDisp(menu);}
     break; case (DoneMsk): {
-    // TODO add field to menu for place to hold Metric
+    struct Extend *tmp = centerPull(menu->tmp,"Demo");
+    struct Extend *met = centerPull(menu->met,"Demo");
+    int left = planeInfo(ClickLeft,0,planeRcfg);
+    int base = planeInfo(ClickBase,0,planeRcfg);
+    int width = planeInfo(UniformWid,0,planeRcfg);
+    int height = planeInfo(UniformHei,0,planeRcfg);
+    int depth = planeInfo(FocalDepth,0,planeRcfg);
+    int slope = planeInfo(FocalSlope,0,planeRcfg);
+    switch (tmp->ptr->mem) {default: ERROR();
+    break; case (Getoldz):
+    met->ptr->met->fix[2] = tmp->ptr->old[base*width+left];
     // TODO Getoldz is only depth; calculate other coordinates from UniformWid/Hei and Focal*
-    // TODO following only if Metric is completed
-    // TODO mark Metric as the opposite of complete
+    planeJnfo(FixedLeft,met->ptr->met->fix[0],planeWcfg);
+    planeJnfo(FixedBase,met->ptr->met->fix[1],planeWcfg);
+    planeJnfo(FixedDeep,met->ptr->met->fix[2],planeWcfg);
+    menu->cmp |= (1<<Getoldz);
+    break; case (Getintz):
+    met->ptr->met->idx = tmp->ptr->uns[base*width+left];
+    planeJnfo(SelectIdent,met->ptr->met->idx,planeWcfg);
+    menu->cmp |= (1<<Getintz);
+    break; case (Vectorz):
+    met->ptr->met->nor[0] = tmp->ptr->vec[base*width+left].vec[0];
+    met->ptr->met->nor[1] = tmp->ptr->vec[base*width+left].vec[1];
+    met->ptr->met->nor[2] = tmp->ptr->vec[base*width+left].vec[2];
+    planeJnfo(NormalLeft,met->ptr->met->nor[0],planeWcfg);
+    planeJnfo(NormalBase,met->ptr->met->nor[1],planeWcfg);
+    planeJnfo(NormalDeep,met->ptr->met->nor[2],planeWcfg);
+    menu->cmp |= (1<<Vectorz);}
+    int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
+    if ((menu->cmp&msk)==msk) {menu->cmp = 0;
     switch (menu->act) {default: ERROR();
     break; case (Indicate): {
-    // TODO Topy to Metric
-    menu->act = Manipulate;}
+    menu->act = Manipulate;
+    centerPlace(met);}
     break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    /*TODO relay menu->act Fixed* Normal* SelectIdx to other process*/}}}
+    met->ptr->met->act = menu->act;
+    /*TODO relay met to other process*/}}}
+    else {centerPlace(met);}
+    centerPlace(tmp);}
     break; case (PrssMsk): { // do Send; change menu state
     demoDone(menu);
     char key = planeInfo(PressKey,0,planeRcfg);

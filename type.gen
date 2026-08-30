@@ -275,6 +275,8 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterVerb", -- transaction logging
+	"FetchBase", -- fetch modify read
+	"FetchSize", -- fetch modify read
 	"UniformAll", -- which subject to use
 	"UniformOne", -- which element to use
 	"UniformIdx", -- which plane to manipulate
@@ -287,10 +289,8 @@ Configure = { -- integer variables for user expressions to query and control the
 	"UniformMod", -- value to fill
 	"UniformWid", -- width of image
 	"UniformHei", -- height of image
-	"FetchBase", -- fetch modify read
-	"FetchSize", -- fetch modify read
-	"PressKey", -- queued keyboard
-	"PressQueue", -- queued size
+	"FocalDepth", -- configure for window
+	"FocalSlope", -- configure for window
 	"ManipFixed", -- configured mode
 	"ManipLeft", -- volatile mouse
 	"ManipBase", -- volatile mouse
@@ -305,11 +305,9 @@ Configure = { -- integer variables for user expressions to query and control the
 	"NormalLeft", -- return from vector
 	"NormalBase", -- return from vector
 	"NormalDeep", -- return from vector
-	"SelectIdx", -- return from int
-	"MetricAct", -- type of click
-	-- TODO Focal* do not interact with the ungenerated program yet
-	"FocalDepth", -- configure for window
-	"FocalSlope", -- configure for window
+	"SelectIdent", -- return from ident
+	"PressKey", -- queued keyboard
+	"PressQueue", -- queued size
 	-- following are scratch registers initialized with resource limits
 	"ScratchDescrs",
 	"ScratchMicros",
@@ -1969,7 +1967,7 @@ Bootstrap = {
 	-- TODO add Micro for Vectorz Getoldz Getintz
 	-- TODO add change of arg to {width,height,0,12} when UniformWid/Hie and Trianglez siz change
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3met:%(return castMemory(\"Metricz\"))slf:0idx:0))"},
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0mat:%(return castMemory(\"Matrixz\"))sub:0tmp:%(return castMemory(\"Memorys\"))drw:%(return castMemory(\"Drawz\"))pie:1nor:2sel:3met:%(return castMemory(\"Metricz\"))cmp:0))"},
 	{"Int","%(return idx())","Str","!(metric = #%(return count))Metricz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
@@ -2008,7 +2006,7 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
-		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= slf#0 @slf))"..
+		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @sub))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
 		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrAfterOp , EndOp Op))"..
@@ -2094,6 +2092,9 @@ Bootstrap = {
 		  "#0 : @_ Op))"..
 		 "mch[%(return jdx())]:Void(exp[0]:$(sub = @sav))"..		 
 		 "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
+		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp))"..
+		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @sub))"..
+		 -- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2368,8 +2369,7 @@ Menu = { -- state to handle user input
 	{"nor","Int",{},{}}, -- center for normal
 	{"sel","Int",{},{}}, -- center for select
 	{"met","Int",{},{}}, -- center for metric
-	{"slf","Int",{},{}}, -- in case msk is SlctMsk
-	{"idx","Int",{},{}}, -- in case msk is SlctMsk
+	{"cmp","Int",{},{}}, -- metric completion mask
 }
 Uniform = { -- how to interpret subscripts into gpu buffers
 	{"all","Int32",{},{}}, -- which subject to use
