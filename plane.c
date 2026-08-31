@@ -487,8 +487,7 @@ void machineSend(int sig, int *arg)
     struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
     struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub,"Send");
     struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
-    // move local to sent -- T = C; M = L; S = SL; L = I
-    float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
+    // move local to sent -- M = L; S = SL; L = I
     copymat(matrix->mat,kernel->local.mat,4); // M = L
     timesmat(kernel->sent.mat,kernel->local.mat,4); // S = SL
     identmat(kernel->local.mat,4); // L = I
@@ -847,13 +846,47 @@ int demoJect(struct Menu *menu)
     break; case(Subject): return menu->suj;}
     return 0;
 }
-void demoSend(struct Menu *menu)
+void demoMetr(struct Menu *menu)
 {
-    // TODO call planeJnfo for menu->tmp as Metricz to machineQopy
+    // do Jnfo for menu->tmp as Metricz to Qopy
+    struct Extend *tmp = centerPull(menu->tmp,"Size");
+    freeCenter(tmp->ptr); tmp->ptr->mem = Metricz;
+    tmp->ptr->idx = demoJect(menu); tmp->ptr->siz = 1;
+    allocMetric(&tmp->ptr->met,tmp->ptr->siz);
+    struct Metric *met = tmp->ptr->met;
+    met->act = menu->act;
+    met->fix[0] = planeJnfo(FixedLeft,0,planeRcfg);
+    met->fix[1] = planeJnfo(FixedBase,0,planeRcfg);
+    met->fix[2] = planeJnfo(FixedDeep,0,planeRcfg);
+    met->nor[0] = planeJnfo(NormalLeft,0,planeRcfg);
+    met->nor[1] = planeJnfo(NormalBase,0,planeRcfg);
+    met->nor[2] = planeJnfo(NormalDeep,0,planeRcfg);
+    met->act = planeJnfo(SelectIdent,0,planeRcfg);
+    if (tmp->asr != PullAsr) ERROR(); else tmp->asr = RespAsr;
+    if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(tmp,response);
+    if (postSafe(pipeSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
 }
 void demoDone(struct Menu *menu)
 {
-    // TODO call machineSend for menu->tmp as Matrixz to machineQopy
+    // do Send for menu->tmp as Matrixz at demoJect to Qopy
+    struct Extend *tmp = centerPull(menu->tmp,"Size");
+    struct Extend *ptr = centerPull(menu->ker,"Size");
+    freeCenter(tmp->ptr); tmp->ptr->mem = Matrixz;
+    tmp->ptr->idx = demoJect(menu); tmp->ptr->siz = 1;
+    allocMatrix(&tmp->ptr->mat,tmp->ptr->siz);
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    struct Matrix *mat = tmp->ptr->mat;
+    copymat(mat->mat,ker->local.mat,4); // M = L
+    timesmat(ker->sent.mat,ker->local.mat,4); // S = SL
+    identmat(ker->local.mat,4); // L = I
+    if (tmp->asr != PullAsr) ERROR(); else tmp->asr = RespAsr;
+    if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(tmp,response);
+    if (postSafe(pipeSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
+    centerPlace(ptr);
 }
 void demoCont(struct Menu *menu)
 {
@@ -865,18 +898,46 @@ void demoCont(struct Menu *menu)
 }
 void demoSize(struct Menu *menu)
 {
-    // TODO do machineProj for menu->tmp as Matrix at menu->pro to planeCall with alt 1
+    // do Proj for menu->tmp as Matrix at menu->pro to planeCall with alt 1
+    struct Extend *tmp = centerPull(menu->tmp,"Size");
+    freeCenter(tmp->ptr); tmp->ptr->mem = Matrixz;
+    tmp->ptr->idx = menu->pro; tmp->ptr->siz = 1;
+    allocMatrix(&tmp->ptr->mat,tmp->ptr->siz);
+    planeWindow(tmp->ptr->mat->mat);
+    callCont(tmp,1,tmp->log);
 }
 void demoComp(struct Menu *menu)
 {
-    // TODO do machineComp for menu->tmp as Matrix at demoJect to planeCall with alt 1
+    // do Comp for menu->tmp as Matrixz at demoJect to planeCall with alt 1
+    struct Extend *tmp = centerPull(menu->tmp,"Size");
+    struct Extend *ptr = centerPull(menu->ker,"Size");
+    freeCenter(tmp->ptr); tmp->ptr->mem = Matrixz;
+    tmp->ptr->idx = demoJect(menu); tmp->ptr->siz = 1;
+    allocMatrix(&tmp->ptr->mat,tmp->ptr->siz);
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    struct Matrix *mat = tmp->ptr->mat;
+    planeMatrix(ker->saved.mat); // T = C
+    timesmat(timesmat(timesmat(copymat(mat->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),ker->saved.mat,4); // M = GSLT
+    callCont(tmp,1,tmp->log);
+    centerPlace(ptr);
 }
 void demoPose(struct Menu *menu)
 {
-    // TODO do machinePose for menu->tmp as Matrix at demoJect to planeCall with alt 1
+    // do Pose for menu->tmp as Matrix at demoJect to planeCall with alt 1
+    struct Extend *tmp = centerPull(menu->tmp,"Size");
+    struct Extend *ptr = centerPull(menu->ker,"Size");
+    freeCenter(tmp->ptr); tmp->ptr->mem = Matrixz;
+    tmp->ptr->idx = demoJect(menu); tmp->ptr->siz = 1;
+    allocMatrix(&tmp->ptr->mat,tmp->ptr->siz);
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    struct Matrix *mat = tmp->ptr->mat;
+    timesmat(timesmat(timesmat(copymat(mat->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),ker->saved.mat,4); // M = GSLT
+    callCont(tmp,1,tmp->log);
+    centerPlace(ptr);
 }
 void demoDisp(struct Menu *menu)
 {
+    // do Bopy of menu->drw with all but menu->dsp disabled
     struct Extend *drw = centerPull(menu->drw,"Draw");
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
@@ -885,6 +946,7 @@ void demoDisp(struct Menu *menu)
 }
 void demoDraw(struct Menu *menu)
 {
+    // do Bopy of menu->drw with all but menu->pie/nor/sel disabled
     struct Extend *drw = centerPull(menu->drw,"Draw");
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
@@ -943,7 +1005,7 @@ void demoMenu(struct Menu *menu)
         break; case (Indicate):
             menu->act = Manipulate;
         break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
-            demoSend(menu);}}
+            demoMetr(menu);}}
         centerPlace(tmp);}
     break; case (PrssMsk): if (planeInfo(PressQueue,0,planeRcfg)) {
         demoDone(menu); demoWake(menu); menu->act = Indicate; menu->dev = Devices;
