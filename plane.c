@@ -841,7 +841,6 @@ void moveDeref(int sub, struct Extend **ext)
 
 int demoJect(struct Menu *menu)
 {
-    // this is to choose Kernel, and for idx in machineBopy of menu->tmp
     switch (menu->jec) {default: ERROR();
     break; case(Inject): return menu->inj;
     break; case(Object): return menu->obj;
@@ -858,119 +857,129 @@ void demoDone(struct Menu *menu)
 }
 void demoCont(struct Menu *menu)
 {
+    enum Device dev = (menu->msk==MoveMsk?Coord:Angle);
+    if (menu->dev != dev) {menu->dev = dev;
     int arg[2] = {menu->ker,demoJect(menu)}; machineForm(2,arg);
+    int fix = (menu->msk==MoveMsk?menu->coo:menu->ang);
+    planeJnfo(ManipFixed,fix,planeWcfg);}
 }
 void demoSize(struct Menu *menu)
 {
-    // TODO call machineProj for menu->tmp as Matrix at menu->pro to machineBopy
+    // TODO do machineProj for menu->tmp as Matrix at menu->pro to planeCall with alt 1
 }
 void demoComp(struct Menu *menu)
 {
-    // TODO call machineComp for menu->tmp as Matrix at demoJect to machineBopy
+    // TODO do machineComp for menu->tmp as Matrix at demoJect to planeCall with alt 1
 }
 void demoPose(struct Menu *menu)
 {
-    // TODO call machinePose for menu->tmp as Matrix at demoJect to machineBopy
+    // TODO do machinePose for menu->tmp as Matrix at demoJect to planeCall with alt 1
 }
 void demoDisp(struct Menu *menu)
 {
-    // TODO call machineBopy on menu->drw/dsp
+    struct Extend *drw = centerPull(menu->drw,"Draw");
+    if (drw->ptr->mem != Drawz) ERROR();
+    for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
+    drw->ptr->drw[menu->dsp].siz = abs(drw->ptr->drw[menu->dsp].siz);
+    callCont(drw,0,drw->log);
 }
 void demoDraw(struct Menu *menu)
 {
-    // TODO call machineBopy on menu->drw/pie/nor/sel
+    struct Extend *drw = centerPull(menu->drw,"Draw");
+    if (drw->ptr->mem != Drawz) ERROR();
+    for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
+    drw->ptr->drw[menu->pie].siz = abs(drw->ptr->drw[menu->pie].siz);
+    drw->ptr->drw[menu->nor].siz = abs(drw->ptr->drw[menu->nor].siz);
+    drw->ptr->drw[menu->sel].siz = abs(drw->ptr->drw[menu->sel].siz);
+    callCont(drw,0,drw->log);
+}
+void demoWake(struct Menu *menu)
+{
+    enum Configure cfg = (menu->msk==PrssMsk?PressQueue:ClickQueue);
+    if (planeJnfo(cfg,-1,planeRmw)>1) {
+    planeJnfo(RegisterWake,(1<<menu->msk),planeWots);}
 }
 void demoMenu(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk): {
-    struct Extend *mat = centerPull(menu->tmp,"Demo");
-    int slf = mat->ptr->slf;
-    if (mat->ptr->mem != Matrixz) ERROR();
-    centerPlace(mat);
-    int arg[4] = {menu->tmp,0,menu->ker,demoJect(menu)};
-    if (slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
-    demoPose(menu); demoDisp(menu);}
+        struct Extend *mat = centerPull(menu->tmp,"Demo");
+        int slf = mat->ptr->slf;
+        if (mat->ptr->mem != Matrixz) ERROR();
+        centerPlace(mat);
+        int arg[4] = {menu->tmp,0,menu->ker,demoJect(menu)};
+        if (slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
+        demoPose(menu); demoDisp(menu);}
     break; case (DoneMsk): {
-    // collect pierce point information
-    struct Extend *tmp = centerPull(menu->tmp,"Demo");
-    int left = planeInfo(ClickLeft,0,planeRcfg);
-    int base = planeInfo(ClickBase,0,planeRcfg);
-    int width = planeInfo(UniformWid,0,planeRcfg);
-    int height = planeInfo(UniformHei,0,planeRcfg);
-    switch (tmp->ptr->mem) {default: ERROR();
-    break; case (Getoldz): {
-    int depth = planeInfo(FocalDepth,0,planeRcfg);
-    int slope = planeInfo(FocalSlope,0,planeRcfg);
-    int deep = tmp->ptr->old[base*width+left];
-    // TODO Getoldz is only depth; calculate FixedLeft/Base from FixedDeep UniformWid/Hei and Focal*
-    int left = 0;
-    int base = 0;
-    planeJnfo(FixedDeep,deep,planeWcfg);
-    planeJnfo(FixedLeft,left,planeWcfg);
-    planeJnfo(FixedBase,base,planeWcfg);
-    menu->met |= (1<<Getoldz);}
-    break; case (Getintz):
-    planeJnfo(SelectIdent,tmp->ptr->uns[base*width+left],planeWcfg);
-    menu->met |= (1<<Getintz);
-    break; case (Vectorz):
-    planeJnfo(NormalLeft,tmp->ptr->vec[base*width+left].vec[0],planeWcfg);
-    planeJnfo(NormalBase,tmp->ptr->vec[base*width+left].vec[1],planeWcfg);
-    planeJnfo(NormalDeep,tmp->ptr->vec[base*width+left].vec[2],planeWcfg);
-    menu->met |= (1<<Vectorz);}
-    int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
-    if ((menu->met&msk)==msk) {menu->met = 0;
-    if (planeJnfo(ClickQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<ClckMsk),planeWots);
-    switch (menu->act) {default: ERROR();
-    break; case (Indicate): menu->act = Manipulate;
-    break; case (Divisive): case (Additive): case (Subtractive): case (Operative): {
-    // do Send of Metricz
-    demoSend(menu);}}}
-    centerPlace(tmp);}
-    break; case (PrssMsk): {
-    // do Send of Matrixz
-    demoDone(menu);
-    // change menu state
-    char key = planeInfo(PressKey,0,planeRcfg);
-    if (planeJnfo(PressQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<PrssMsk),planeWots);
-    menu->act = Indicate; menu->dev = Devices;
-    // now MoveMsk and RollMsk will call demoCont, so change of mode is continuous
-    switch (key) {default:
-    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor);
-    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal);
-    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho);
-    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho);
-    break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal);
-    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor);
-    break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal);
-    break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho);
-    break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal);
-    break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce);
-    break; case ('A'): menu->act = Additive;
-    break; case ('S'): menu->act = Subtractive;
-    break; case ('B'): menu->act = Divisive;
-    break; case ('M'): menu->act = Operative;
-    break; case ('W'): /*TODO Warp to last metric sent*/}}
-    break; case (ProjMsk): demoSize(menu);
-    break; case (EoodMsk): // TODO wait for window resize
-    break; case (MoveMsk): if (menu->act == Manipulate) {
-    // if enabled: do Form last manipulate was roller; change manipulate mode; do Comp Copy Display
-    if (menu->dev != Coord) {demoCont(menu); menu->dev = Coord;}
-    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
-    demoComp(menu); demoDisp(menu);}
+        struct Extend *tmp = centerPull(menu->tmp,"Demo");
+        int left = planeInfo(ClickLeft,0,planeRcfg);
+        int base = planeInfo(ClickBase,0,planeRcfg);
+        int width = planeInfo(UniformWid,0,planeRcfg);
+        int height = planeInfo(UniformHei,0,planeRcfg);
+        switch (tmp->ptr->mem) {default: ERROR();
+        break; case (Getoldz): {
+            int depth = planeInfo(FocalDepth,0,planeRcfg);
+            int slope = planeInfo(FocalSlope,0,planeRcfg);
+            int deep = tmp->ptr->old[base*width+left];
+            // TODO Getoldz is only depth; calculate FixedLeft/Base from FixedDeep UniformWid/Hei and Focal*
+            int left = 0;
+            int base = 0;
+            planeJnfo(FixedDeep,deep,planeWcfg);
+            planeJnfo(FixedLeft,left,planeWcfg);
+            planeJnfo(FixedBase,base,planeWcfg);
+            menu->met |= (1<<Getoldz);}
+        break; case (Getintz):
+            planeJnfo(SelectIdent,tmp->ptr->uns[base*width+left],planeWcfg);
+            menu->met |= (1<<Getintz);
+        break; case (Vectorz):
+            planeJnfo(NormalLeft,tmp->ptr->vec[base*width+left].vec[0],planeWcfg);
+            planeJnfo(NormalBase,tmp->ptr->vec[base*width+left].vec[1],planeWcfg);
+            planeJnfo(NormalDeep,tmp->ptr->vec[base*width+left].vec[2],planeWcfg);
+            menu->met |= (1<<Vectorz);}
+        int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
+        if ((menu->met&msk)==msk) {
+        menu->met = 0; demoWake(menu);
+        switch (menu->act) {default: ERROR();
+        break; case (Indicate):
+            menu->act = Manipulate;
+        break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
+            demoSend(menu);}}
+        centerPlace(tmp);}
+    break; case (PrssMsk): if (planeInfo(PressQueue,0,planeRcfg)) {
+        demoDone(menu); demoWake(menu); menu->act = Indicate; menu->dev = Devices;
+        switch (planeInfo(PressKey,0,planeRcfg)) {default:
+        break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor);
+        break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal);
+        break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho);
+        break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho);
+        break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal);
+        break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor);
+        break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal);
+        break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho);
+        break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal);
+        break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce);
+        break; case ('A'): menu->act = Additive;
+        break; case ('S'): menu->act = Subtractive;
+        break; case ('B'): menu->act = Divisive;
+        break; case ('M'): menu->act = Operative;
+        break; case ('W'): /*TODO Warp to last metric sent*/}}
+    break; case (ProjMsk):
+        demoSize(menu);
+    break; case (EoodMsk):
+        // TODO wait for window resize
+    break; case (MoveMsk): switch (menu->act) {default: ERROR();
+        break; case (Manipulate):
+            demoCont(menu); demoComp(menu); demoDisp(menu);
+        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):}
     break; case (ClckMsk): if (planeInfo(ClickQueue,0,planeRcfg)) switch (menu->act) {default: ERROR();
-    break; case (Manipulate): {
-    // send matrix and disable manipulation
-    demoDone(menu); menu->act = Indicate;
-    if (planeJnfo(ClickQueue,-1,planeRmw)>1) planeJnfo(RegisterWake,(1<<ClckMsk),planeWots);}
-    break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):
-    // send requests for pierce point information
-    demoDraw(menu);}
-    break; case (RollMsk): if (menu->act == Manipulate) {
-    // if enabled: do Form if last manipulate was move; change manipulate state; do Comp and Display
-    if (menu->dev != Angle) {demoCont(menu); menu->dev = Angle;}
-    planeInfo(ManipFixed,(menu->dev==Coord?menu->coo:menu->ang),planeWcfg);
-    demoComp(menu); demoDisp(menu);}}
+        break; case (Manipulate):
+            menu->act = Indicate; demoDone(menu); demoWake(menu);
+        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):
+            demoDraw(menu);}
+    break; case (RollMsk): switch (menu->act) {default: ERROR();
+        break; case (Manipulate):
+            demoCont(menu); demoComp(menu); demoDisp(menu);
+        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):}}
 }
 
 // phase callbacks
@@ -1218,7 +1227,7 @@ void planeTest(enum Thread tag, int idx)
     float cur[] = {leg,leg};
     planeRotateFocalMouse(mat->ptr->mat[1].mat,fix,0,org,cur);}
     else planeMatrix(mat->ptr->mat[0].mat);
-    mat->sub = Matrixz; mat->rsp = RptRsp;
+    mat->sub = Matrixz; mat->rsp = RptRsp; mat->ret = NoneRet;
     callCopy(mat,1,(debug?"matrix":0));
     if (alt) alt = 0; else alt = 1;
 
@@ -1235,7 +1244,7 @@ void planeTest(enum Thread tag, int idx)
     drw->ptr->drw[0].siz = sizeof(giv)/sizeof(int);
     allocInt(&drw->ptr->drw[0].arg,drw->ptr->drw[0].siz);
     for (int i = 0; i < drw->ptr->drw[0].siz; i++) drw->ptr->drw[0].arg[i] = giv[i];
-    drw->sub = Drawz; drw->rsp = RetRsp;
+    drw->sub = Drawz; drw->rsp = RetRsp; drw->ret = NoneRet;
     callCopy(drw,1,(debug?"test":0));}
     tested = count;}}
 
@@ -1260,7 +1269,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(eek->ptr);
     eek->ptr->mem = Getoldz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocOld(&eek->ptr->old,eek->ptr->siz);
-    eek->sub = Getoldz; eek->rsp = RptRsp;
+    eek->sub = Getoldz; eek->rsp = RptRsp; eek->ret = NoneRet;
     callCopy(eek,0,(debug?"peek":0));}
 
     else if (count%6 == 2 || count%6 == 5) {
@@ -1268,7 +1277,7 @@ void planeTest(enum Thread tag, int idx)
     freeCenter(eek->ptr);
     eek->ptr->mem = Getintz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocInt(&eek->ptr->uns,eek->ptr->siz);
-    eek->sub = Getintz; eek->rsp = RptRsp;
+    eek->sub = Getintz; eek->rsp = RptRsp; eek->ret = NoneRet;
     callCopy(eek,0,(debug?"ident":0));}
 
     else if (count%6 == 3 || count%6 == 0) {
@@ -1278,7 +1287,7 @@ void planeTest(enum Thread tag, int idx)
     allocVector(&vec->ptr->vec,vec->ptr->siz);
     vec->ptr->vec[0].vec[0] = 1.0; vec->ptr->vec[0].vec[1] = 2.0;
     vec->ptr->vec[0].vec[2] = 3.0; vec->ptr->vec[0].vec[3] = 4.0;
-    vec->sub = Vectorz; vec->rsp = RptRsp;
+    vec->sub = Vectorz; vec->rsp = RptRsp; vec->ret = NoneRet;
     callCopy(vec,0,(debug?"getvec":0));}
 
     tested = count;}}
@@ -1805,7 +1814,7 @@ void initTest()
     allocDraw(&ptr->ptr->drw,ptr->ptr->siz);
     ptr->ptr->drw[0].con.tag = ResrcCon;
     ptr->ptr->drw[0].con.res = SwapRes;
-    ptr->sub = Drawz; ptr->rsp = RptRsp;
+    ptr->sub = Drawz; ptr->rsp = RptRsp; ptr->ret = NoneRet;
     callCopy(ptr,0,(debug?"swap":0));
     while (!centerCheck(Drawz)) usleep(1000);
     // UniformWid and UniformHei set by swap resize
@@ -1823,7 +1832,7 @@ void initTest()
     allocInt(&ptr->ptr->drw[i].arg,ptr->ptr->drw[i].siz);
     for (int j = 0; j < ptr->ptr->drw[i].siz; j++) {
     ptr->ptr->drw[i].arg[j] = arg[j];}}
-    ptr->sub = Drawz; ptr->rsp = MptRsp;
+    ptr->sub = Drawz; ptr->rsp = MptRsp; ptr->ret = NoneRet;
     callCopy(ptr,0,(debug?"pipe":0));
     while (!centerCheck(Drawz)) usleep(1000);
 
@@ -1833,7 +1842,7 @@ void initTest()
     allocDraw(&ptr->ptr->drw,ptr->ptr->siz);
     ptr->ptr->drw[0].con.tag = ResrcCon;
     ptr->ptr->drw[0].con.res = ChainRes;
-    ptr->sub = Drawz; ptr->rsp = RptRsp;
+    ptr->sub = Drawz; ptr->rsp = RptRsp; ptr->ret = NoneRet;
     callCopy(ptr,0,(debug?"chain":0));
     while (!centerCheck(Drawz)) usleep(1000);}
 
@@ -1841,20 +1850,20 @@ void initTest()
     uni->ptr->mem = Uniformz; uni->ptr->siz = 1; allocUniform(&uni->ptr->uni,uni->ptr->siz);
     uni->ptr->uni[0].all = 0; uni->ptr->uni[0].one = 1; uni->ptr->uni[0].pro = 2;
     uni->ptr->uni[0].wid = width; uni->ptr->uni[0].hei = height;
-    uni->sub = Uniformz; uni->rsp = RptRsp;
+    uni->sub = Uniformz; uni->rsp = RptRsp; uni->ret = NoneRet;
     callCopy(uni,0,(debug?"uniform":0));
     {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {width,height}; callJnfo(cfg,val,2,planeWcfg);}
 
     struct Extend *img = centerPull(Imagez,(debug?"Init4":0)); freeCenter(img->ptr);
     img->ptr->mem = Imagez; img->ptr->siz = 1; allocImage(&img->ptr->img,img->ptr->siz);
     fmtxStbi(&img->ptr->img[0].dat,&img->ptr->img[0].wid,&img->ptr->img[0].hei,&img->ptr->img[0].cha,"texture.jpg");
-    img->sub = Imagez; img->rsp = RptRsp;
+    img->sub = Imagez; img->rsp = RptRsp; img->ret = NoneRet;
     callCopy(img,0,(debug?"image":0));
 
     struct Extend *sto = centerPull(Storagez,(debug?"Init5":0)); freeCenter(sto->ptr);
     sto->ptr->mem = Storagez; sto->ptr->siz = 1; allocInt32(&sto->ptr->sto,sto->ptr->siz);
     sto->ptr->sto[0] = 456;
-    sto->sub = Storagez; sto->rsp = RptRsp;
+    sto->sub = Storagez; sto->rsp = RptRsp; sto->ret = NoneRet;
     callCopy(sto,0,(debug?"storage":0));
 
     for (int i = 0; i < frames; i++) {
@@ -1867,33 +1876,33 @@ void initTest()
     copymat(mat->ptr->mat[2].mat,proj,4);  // uni.pro
     copymat(mat->ptr->mat[3].mat,ident,4); // tri.pol
     copymat(mat->ptr->mat[4].mat,ident,4); // tri.pol
-    mat->sub = Matrixz; mat->rsp = RptRsp;
+    mat->sub = Matrixz; mat->rsp = RptRsp; mat->ret = NoneRet;
     callCopy(mat,0,(debug?"initmat":0));
     while (!centerCheck(Matrixz)) callWait();}
 
     struct Extend *bup = centerPull(Bringupz,(debug?"Init7":0)); freeCenter(bup->ptr);
     bup->ptr->mem = Bringupz; bup->ptr->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&bup->ptr->ver,bup->ptr->siz);
     for (int i = 0; i < bup->ptr->siz; i++) memcpy(&bup->ptr->ver[i],&vertices[i],sizeof(struct Vertex));
-    bup->sub = Bringupz; bup->rsp = RptRsp;
+    bup->sub = Bringupz; bup->rsp = RptRsp; bup->ret = NoneRet;
     callCopy(bup,0,(debug?"bringup":0));
 
     struct Extend *idt = centerPull(Identz,(debug?"Init8":0)); freeCenter(idt->ptr);
     idt->ptr->mem = Identz; idt->ptr->siz = sizeof(primitive)/sizeof(uint32_t); allocInt32(&idt->ptr->idt,idt->ptr->siz);
     for (int i = 0; i < idt->ptr->siz; i++) memcpy(&idt->ptr->idt[i],&primitive[i],sizeof(uint32_t));
-    idt->sub = Identz; idt->rsp = RptRsp;
+    idt->sub = Identz; idt->rsp = RptRsp; idt->ret = NoneRet;
     callCopy(idt,0,(debug?"ident":0));
 
     struct Extend *ind = centerPull(Indexz,(debug?"Init9":0)); freeCenter(ind->ptr);
     ind->ptr->mem = Indexz; ind->ptr->siz = sizeof(indices)/sizeof(int32_t); allocInt32(&ind->ptr->ind,ind->ptr->siz);
     memcpy(ind->ptr->ind,indices,sizeof(indices)); // note that two int16_t are packed into each int32_t; don't care
-    ind->sub = Indexz; ind->rsp = RptRsp;
+    ind->sub = Indexz; ind->rsp = RptRsp; ind->ret = NoneRet;
     callCopy(ind,0,(debug?"index":0));
 
     struct Extend *vtx = centerPull(Vertexz,(debug?"Init10":0)); freeCenter(vtx->ptr);
     vtx->ptr->mem = Vertexz; vtx->ptr->siz = sizeof(vertices)/sizeof(struct Vertex); allocVertex(&vtx->ptr->vtx,vtx->ptr->siz);
     for (int i = 0; i < vtx->ptr->siz; i++) memcpy(&vtx->ptr->vtx[i],&vertices[i],sizeof(struct Vertex));
     // for (int i = 4; i < 8; i++) vtx->ptr->vtx[i].vec[2] = 0.9;
-    vtx->sub = Vertexz; vtx->rsp = RptRsp;
+    vtx->sub = Vertexz; vtx->rsp = RptRsp; vtx->ret = NoneRet;
     callCopy(vtx,0,(debug?"vertex":0));
 
     struct Extend *tri = centerPull(Trianglez,(debug?"Init11":0)); freeCenter(tri->ptr);
@@ -1907,7 +1916,7 @@ void initTest()
     fprintf(stderr," %f",vtx->ptr->vtx[tri->ptr->tri[i].vtx[j]].vec[0]);
     for (int k = 1; k < 4; k++) fprintf(stderr,"/%f",vtx->ptr->vtx[tri->ptr->tri[i].vtx[j]].vec[k]);
     fprintf(stderr,"\n");}}*/
-    tri->sub = Trianglez; tri->rsp = RptRsp;
+    tri->sub = Trianglez; tri->rsp = RptRsp; tri->ret = NoneRet;
     callCopy(tri,0,(debug?"triangle":0));
 
     int giv[] = {width,height};
@@ -1920,7 +1929,7 @@ void initTest()
     fil->ptr->drw[0].siz = sizeof((i?giw:giv))/sizeof(int);
     allocInt(&fil->ptr->drw[0].arg,fil->ptr->drw[0].siz);
     for (int j = 0; j < fil->ptr->drw[0].siz; j++) fil->ptr->drw[0].arg[j] = (i?giw:giv)[j];
-    fil->sub = Drawz; fil->rsp = RetRsp;
+    fil->sub = Drawz; fil->rsp = RetRsp; fil->ret = NoneRet;
     callCopy(fil,0,(debug?"relate":0));
     while (!centerCheck(Drawz)) callWait();}
 

@@ -334,6 +334,7 @@ Transfer = { -- what user machine does
 	-- Kernel.global G
 	-- input output matrix M
 	"Pose", -- M = GSLT
+	-- NOTE Pose is G, after Self of Send, after Form of I
 	"Comp", -- T = C; M = GSLT
 	"Form", -- L = LTC'; T = C
 	-- NOTE if C == T, then Form has no effect

@@ -1704,10 +1704,11 @@ struct CopyState {
         break; case (Basisz): push(ptr->mem,(void*)ptr->bas,val,aiz,ext,ary,log);}}
         break; case (Drawz): {
             int mask = 0;
-            for (int i = 0; i < ptr->siz; i++) {
+            for (int i = 0; i < ptr->siz; i++) if (ptr->drw[i].siz>=0) {
             if (ptr->mem != Drawz) *(int*)0=0; // TODO rewrite in rust
             push(ptr->drw[i],ext,ary,log);
             if (ext->ret == FailRet) mask |= 1<<(i<32?i:31);}
+            else ptr->drw[i].siz = -ptr->drw[i].siz;
             ext->ret = (mask?FailRet:PassRet);
             /*TODO ext->msk = mask;*/}
         break; case (Instrz): {
