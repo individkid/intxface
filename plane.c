@@ -633,13 +633,13 @@ void machineMopy(int sig, int *arg)
     centerPlace(src);
     centerPlace(dst);}
 }
-void demoMenu(struct Menu *menu);
+void demoDemo(struct Menu *menu);
 void machineNopy(int sig, int *arg)
 {
     if (sig != NopyArgs) ERROR();
     struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,"Nopy");
     struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
-    demoMenu(menu);
+    demoDemo(menu);
     machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
 }
 void machinePop(int sig, int chk, int dst, enum Assert asr, void *que, const char *log);
@@ -920,7 +920,7 @@ void demoMetr(struct Menu *menu)
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
 }
-void demoDone(struct Menu *menu)
+void demoSend(struct Menu *menu)
 {
     // do Send for menu->tmp as Matrixz at demoJect to Qopy
     struct Extend *tmp = centerPull(menu->tmp,"Size");
@@ -973,19 +973,75 @@ void demoComp(struct Menu *menu)
     callCont(tmp,1,tmp->log);
     centerPlace(ptr);
 }
-void demoPose(struct Menu *menu)
+void demoPipe(struct Menu *menu)
 {
+    // do Glob or Self for menu->ker[demoJect] using Matrix at menu->tmp
+    struct Extend *tmp = centerPull(menu->tmp,"Pose");
+    struct Extend *ptr = centerPull(menu->ker,"Pose");
+    struct Matrix *mat = tmp->ptr->mat;
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    int slf = tmp->ptr->slf;
+    if (tmp->ptr->mem != Matrixz) ERROR();
+    timesmat(ker->global.mat,mat->mat,4); // G = GM
+    if (slf < 0) {float inv[16]; jumpmat(ker->sent.mat,invmat(copymat(inv,mat->mat,4),4),4);} // S = M'S
     // do Pose for menu->tmp as Matrix at demoJect to planeCall with alt 1
-    struct Extend *tmp = centerPull(menu->tmp,"Size");
-    struct Extend *ptr = centerPull(menu->ker,"Size");
     freeCenter(tmp->ptr); tmp->ptr->mem = Matrixz;
     tmp->ptr->idx = demoJect(menu); tmp->ptr->siz = 1;
-    allocMatrix(&tmp->ptr->mat,tmp->ptr->siz);
-    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    struct Matrix *mat = tmp->ptr->mat;
+    allocMatrix(&tmp->ptr->mat,tmp->ptr->siz); mat = tmp->ptr->mat;
     timesmat(timesmat(timesmat(copymat(mat->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),ker->saved.mat,4); // M = GSLT
     callCont(tmp,1,tmp->log);
     centerPlace(ptr);
+}
+void demoMask(struct Menu *menu)
+{
+    struct Extend *tmp = centerPull(menu->tmp,"Demo");
+    int left = planeInfo(ClickLeft,0,planeRcfg);
+    int base = planeInfo(ClickBase,0,planeRcfg);
+    int width = planeInfo(UniformWid,0,planeRcfg);
+    int height = planeInfo(UniformHei,0,planeRcfg);
+    switch (tmp->ptr->mem) {default: ERROR();
+    break; case (Getoldz): {
+        int depth = planeInfo(FocalDepth,0,planeRcfg);
+        int slope = planeInfo(FocalSlope,0,planeRcfg);
+        int deep = tmp->ptr->old[base*width+left];
+        // TODO Getoldz is only depth; calculate FixedLeft/Base from FixedDeep UniformWid/Hei and Focal*
+        int left = 0;
+        int base = 0;
+        planeJnfo(FixedDeep,deep,planeWcfg);
+        planeJnfo(FixedLeft,left,planeWcfg);
+        planeJnfo(FixedBase,base,planeWcfg);
+        menu->met |= (1<<Getoldz);}
+    break; case (Getintz):
+        planeJnfo(SelectIdent,tmp->ptr->uns[base*width+left],planeWcfg);
+        menu->met |= (1<<Getintz);
+    break; case (Vectorz):
+        planeJnfo(NormalLeft,tmp->ptr->vec[base*width+left].vec[0],planeWcfg);
+        planeJnfo(NormalBase,tmp->ptr->vec[base*width+left].vec[1],planeWcfg);
+        planeJnfo(NormalDeep,tmp->ptr->vec[base*width+left].vec[2],planeWcfg);
+        menu->met |= (1<<Vectorz);}
+    centerPlace(tmp);
+}
+void demoMenu(struct Menu *menu)
+{
+    switch (planeInfo(PressKey,0,planeRcfg)) {default:
+    break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); // Cursor
+    break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); // Normal
+    break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); // Ortho
+    break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); // Translate
+    break; case ('S'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); // Slide
+    break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); // Rotate
+    break; case ('F'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); // Focal
+    break; case ('D'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); // Depth
+    break; case ('P'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); // Parallel
+    break; case ('M'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); // Magnify
+    break; case ('I'): menu->jec = Inject; // Inject
+    break; case ('J'): menu->jec = Object; // obJect
+    break; case ('U'): menu->jec = Subject; // sUbject;
+    break; case ('A'): menu->act = Additive; // Additive
+    break; case ('B'): menu->act = Subtractive; // suBtractive
+    break; case ('V'): menu->act = Divisive; // diVisive
+    break; case ('Q'): menu->act = Operative; // Query
+    break; case ('W'): /*TODO Warp to last metric sent*/}
 }
 void demoDisp(struct Menu *menu)
 {
@@ -1015,73 +1071,27 @@ void demoWake(struct Menu *menu)
     if (planeJnfo(cfg,-1,planeRmw)>1) {
     planeJnfo(RegisterWake,(1<<menu->msk),planeWots);}
 }
-void demoMenu(struct Menu *menu)
+void demoDone(struct Menu *menu)
+{
+    int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
+    if ((menu->met&msk)==msk) {
+    menu->met = 0; demoWake(menu);
+    switch (menu->act) {default: ERROR();
+    break; case (Indicate):
+        menu->act = Manipulate;
+    break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
+        demoMetr(menu);}}
+}
+void demoDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk): {
-        struct Extend *mat = centerPull(menu->tmp,"Demo");
-        int slf = mat->ptr->slf;
-        if (mat->ptr->mem != Matrixz) ERROR();
-        centerPlace(mat);
-        int arg[4] = {menu->tmp,0,menu->ker,demoJect(menu)};
-        if (slf >= 0) machineGlob(4,arg); else machineSelf(4,arg);
-        demoPose(menu); demoDisp(menu);}
-    break; case (DoneMsk): {
-        struct Extend *tmp = centerPull(menu->tmp,"Demo");
-        int left = planeInfo(ClickLeft,0,planeRcfg);
-        int base = planeInfo(ClickBase,0,planeRcfg);
-        int width = planeInfo(UniformWid,0,planeRcfg);
-        int height = planeInfo(UniformHei,0,planeRcfg);
-        switch (tmp->ptr->mem) {default: ERROR();
-        break; case (Getoldz): {
-            int depth = planeInfo(FocalDepth,0,planeRcfg);
-            int slope = planeInfo(FocalSlope,0,planeRcfg);
-            int deep = tmp->ptr->old[base*width+left];
-            // TODO Getoldz is only depth; calculate FixedLeft/Base from FixedDeep UniformWid/Hei and Focal*
-            int left = 0;
-            int base = 0;
-            planeJnfo(FixedDeep,deep,planeWcfg);
-            planeJnfo(FixedLeft,left,planeWcfg);
-            planeJnfo(FixedBase,base,planeWcfg);
-            menu->met |= (1<<Getoldz);}
-        break; case (Getintz):
-            planeJnfo(SelectIdent,tmp->ptr->uns[base*width+left],planeWcfg);
-            menu->met |= (1<<Getintz);
-        break; case (Vectorz):
-            planeJnfo(NormalLeft,tmp->ptr->vec[base*width+left].vec[0],planeWcfg);
-            planeJnfo(NormalBase,tmp->ptr->vec[base*width+left].vec[1],planeWcfg);
-            planeJnfo(NormalDeep,tmp->ptr->vec[base*width+left].vec[2],planeWcfg);
-            menu->met |= (1<<Vectorz);}
-        int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
-        if ((menu->met&msk)==msk) {
-        menu->met = 0; demoWake(menu);
-        switch (menu->act) {default: ERROR();
-        break; case (Indicate):
-            menu->act = Manipulate;
-        break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
-            demoMetr(menu);}}
-        centerPlace(tmp);}
+        demoPipe(menu); demoDisp(menu);}
+    break; case (DoneMsk):
+        demoMask(menu); demoDone(menu);
     break; case (PrssMsk): if (planeInfo(PressQueue,0,planeRcfg)) {
-        demoDone(menu); demoWake(menu); menu->act = Indicate; menu->dev = Devices;
-        switch (planeInfo(PressKey,0,planeRcfg)) {default:
-        break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); // Cursor
-        break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); // Normal
-        break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); // Ortho
-        break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); // Translate
-        break; case ('S'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); // Slide
-        break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); // Rotate
-        break; case ('F'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); // Focal
-        break; case ('D'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); // Depth
-        break; case ('P'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); // Parallel
-        break; case ('M'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); // Magnify
-        break; case ('I'): menu->jec = Inject; // Inject
-        break; case ('J'): menu->jec = Object; // obJect
-        break; case ('U'): menu->jec = Subject; // sUbject;
-        break; case ('A'): menu->act = Additive; // Additive
-        break; case ('B'): menu->act = Subtractive; // suBtractive
-        break; case ('V'): menu->act = Divisive; // diVisive
-        break; case ('Q'): menu->act = Operative; // Query
-        break; case ('W'): /*TODO Warp to last metric sent*/}}
+        menu->act = Indicate; menu->dev = Devices;
+        demoSend(menu); demoWake(menu); demoMenu(menu);}
     break; case (ProjMsk):
         demoSize(menu);
     break; case (EoodMsk):
@@ -1092,7 +1102,7 @@ void demoMenu(struct Menu *menu)
         break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):}
     break; case (ClckMsk): if (planeInfo(ClickQueue,0,planeRcfg)) switch (menu->act) {default: ERROR();
         break; case (Manipulate):
-            menu->act = Indicate; demoDone(menu); demoWake(menu);
+            menu->act = Indicate; demoSend(menu); demoWake(menu);
         break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):
             demoDraw(menu);}
     break; case (RollMsk): switch (menu->act) {default: ERROR();
