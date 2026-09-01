@@ -202,14 +202,17 @@ float *planeMouseRotateCursor(float *mat, float *fix, float *nml, float *org, fl
 }
 float *planeMouseRotateNormal(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // tip by angle A=(fix+nml) B=fix C=(fix+nml+(cur-org)); line through B, perpendicular to plane containing A B C, is fixed.
     // TODO
 }
 float *planeMouseRotateOrtho(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // tip by angle A=(fix-{0,0,fix[2]}) B=fix C=(fix-{0,0,fix[2]}+(cur-org)); line through B, perpendicular to plane containing A B C, is fixed.
     // TODO
 }
 float *planeMouseSlideOrtho(float *mat, float *fix, float *nrm, float *org, float *cur)
 {
+    // slide by (cur-org) leaving [2] fixed.
     float v[4]; zerovec(v,4); v[0] = cur[0]-org[0]; v[1] = cur[1]-org[1];
     float h0[4], h1[4]; zerovec(h0,3); h0[3] = 1.0; plusvec(copyvec(h1,h0,4),v,4);
     float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,4);
@@ -219,6 +222,7 @@ float *planeMouseSlideOrtho(float *mat, float *fix, float *nrm, float *org, floa
 }
 float *planeMouseSlideNormal(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // slide parallel to nml by dot(nml,(cur-fix))-dot(nml,(org-fix))
     // TODO
 }
 float *planeRollerRotateCursor(float *mat, float *fix, float *nml, float *org, float *cur)
@@ -243,18 +247,22 @@ float *planeRollerRotateCursor(float *mat, float *fix, float *nml, float *org, f
 }
 float *planeRollerRotateFocal(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // rotate by cur[2]-org[2] angle, keeping line from fix to focal point fixed
     // TODO
 }
 float *planeRollerSlideOrtho(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // change [2] by cur[2]-org[2]
     // TODO
 }
 float *planeRollerSlideNormal(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // slide parallel to nml by cur[2]-org[2]
     // TODO
 }
 float *planeRollerScalePierce(float *mat, float *fix, float *nml, float *org, float *cur)
 {
+    // multiply distance from fix by log(cur[2]-org[2])
     // TODO
 }
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
@@ -282,14 +290,23 @@ float *planeMatrix(float *mat)
 float *planeWindow(float *mat)
 {
     identmat(mat,4);
-    enum Configure cfg[2] = {UniformWid,UniformHei};
-    int val[2] = {0,0};
-    callInfo(cfg,val,2,planeRcfg);
+    enum Configure cfg[5] = {UniformWid,UniformHei,FocalFull,FocalDepth,FocalSlope};
+    int val[5] = {0,0,0,0,0};
+    callInfo(cfg,val,5,planeRcfg);
     float width = val[0];
     float height = val[1];
-    *matrc(mat,3,2,4) = 0.83; // b; // row major; row number 3; column number 2
-    *matrc(mat,3,3,4) = 0.58; // a; // w = a + bz
-    *matrc(mat,0,0,4) = height/width; // y'=y x'=x*height/width
+    float full = val[2];
+    float length = val[3];
+    float slope = val[4];
+    // length is from focal point to zero z. slope is change of w per unit z.
+    // w = a + bz, y'=y/w, x'=x/w; fullscreen is a at z=0; fullscreen is 1 at z=(1-a)/b
+    // slope = a/length, slope = 1/(length+(1-a)/b); a=slope*length, slope*(length+(1-a)/b)=1;
+    // slope*length*b+slope*(1-a)=b; slope*(1-a)=b-b*slope*length; b=slope*(1-a)/(1-slope*length);
+    // b=slope*(1-slope*length)/(1-slope*length); a=slope*length, b=slope;
+    *matrc(mat,3,2,4) = slope/full; // row major; row number 3; column number 2
+    *matrc(mat,3,3,4) = slope*length/(full*full);
+    *matrc(mat,0,0,4) = full/width; // x'=x*full/width
+    *matrc(mat,1,1,4) = full/height; // y'=y*full/height
     return mat;
 }
 
@@ -1927,6 +1944,10 @@ void initTest()
     // UniformWid and UniformHei set by swap resize
     int width,height; {enum Configure cfg[2] = {UniformWid,UniformHei}; int val[2] = {0,0};
     callInfo(cfg,val,2,planeRcfg); width = val[0]; height = val[1];}
+    // 0.83 = slope/full, 0.58 = slope*length/(full*full);
+    int full = (width+height)/2; int length = 0.58*full/0.83; int slope = 0.83*full;
+    {enum Configure cfg[3] = {FocalFull,FocalDepth,FocalSlope}; int val[3] = {full,length,slope};
+    callInfo(cfg,val,3,planeWcfg);}
 
     ptr = centerPull(Drawz,(debug?"Init1":0)); freeCenter(ptr->ptr);
     ptr->ptr->mem = Drawz; ptr->ptr->siz = Micros;

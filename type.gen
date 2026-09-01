@@ -291,6 +291,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"UniformHei", -- height of image
 	"FocalDepth", -- configure for window
 	"FocalSlope", -- configure for window
+	"FocalFull", -- configure for window
 	"ManipFixed", -- configured mode
 	"ManipLeft", -- volatile mouse
 	"ManipBase", -- volatile mouse
