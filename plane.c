@@ -185,7 +185,7 @@ float *planeSolve(float *mat, float *domain, float *range, int dim)
 }
 // Rotate functions find 2 fixed and 2 rotated, put all but 1 rotated in the 1.0 space,
 // and put 1 rotated in the 0.0 space by subtracting one of the fixed.
-float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, float *cur)
+float *planeMouseRotateCursor(float *mat, float *fix, float *nml, float *org, float *cur)
 {
     // tip by angle org fix cur; line through fix, perpendicular to plane containing org fix cur, is fixed.
     float fix0[4]; copyvec(fix0,fix,3); fix0[3] = 1.0;
@@ -200,7 +200,28 @@ float *planeRotateFocalMouse(float *mat, float *fix, float *nml, float *org, flo
     float dst1[4]; plusvec(crossvec(copyvec(dst1,w,3),v),fix0,3); dst1[3] = 1.0;
     return planeTransform(mat,fix0,fix0,fix1,fix1,src0,dst0,plusvec(src1,neg0,4),plusvec(dst1,neg0,4));
 }
-float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, float *cur)
+float *planeMouseRotateNormal(float *mat, float *fix, float *nml, float *org, float *cur)
+{
+    // TODO
+}
+float *planeMouseRotateOrtho(float *mat, float *fix, float *nml, float *org, float *cur)
+{
+    // TODO
+}
+float *planeMouseSlideOrtho(float *mat, float *fix, float *nrm, float *org, float *cur)
+{
+    float v[4]; zerovec(v,4); v[0] = cur[0]-org[0]; v[1] = cur[1]-org[1];
+    float h0[4], h1[4]; zerovec(h0,3); h0[3] = 1.0; plusvec(copyvec(h1,h0,4),v,4);
+    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,4);
+    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,4);
+    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,4);
+    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
+}
+float *planeMouseSlideNormal(float *mat, float *fix, float *nml, float *org, float *cur)
+{
+    // TODO
+}
+float *planeRollerRotateCursor(float *mat, float *fix, float *nml, float *org, float *cur)
 {
     // rotate by cur[2]-org[2] angle, keeping line from fix to cur fixed.
     float ang = cur[2]-org[2];
@@ -220,22 +241,36 @@ float *planeRotateCursorRoller(float *mat, float *fix, float *nml, float *org, f
     float src1[4]; copyvec(src1,k,3); src1[3] = 1.0;
     return planeTransform(mat,fix0,fix0,fix1,fix1,src0,rot0,plusvec(src1,neg0,4),plusvec(rot1,neg0,4));
 }
-float *planeSlideOrthoMouse(float *mat, float *fix, float *nrm, float *org, float *cur)
+float *planeRollerRotateFocal(float *mat, float *fix, float *nml, float *org, float *cur)
 {
-    float v[4]; zerovec(v,4); v[0] = cur[0]-org[0]; v[1] = cur[1]-org[1];
-    float h0[4], h1[4]; zerovec(h0,3); h0[3] = 1.0; plusvec(copyvec(h1,h0,4),v,4);
-    float i0[4], i1[4]; unitvec(i0,3,0); i0[3] = 1.0; plusvec(copyvec(i1,i0,4),v,4);
-    float j0[4], j1[4]; unitvec(j0,3,1); j0[3] = 1.0; plusvec(copyvec(j1,j0,4),v,4);
-    float k0[4], k1[4]; unitvec(k0,3,2); k0[3] = 1.0; plusvec(copyvec(k1,k0,4),v,4);
-    return planeTransform(mat,h0,h1,i0,i1,j0,j1,k0,k1);
+    // TODO
+}
+float *planeRollerSlideOrtho(float *mat, float *fix, float *nml, float *org, float *cur)
+{
+    // TODO
+}
+float *planeRollerSlideNormal(float *mat, float *fix, float *nml, float *org, float *cur)
+{
+    // TODO
+}
+float *planeRollerScalePierce(float *mat, float *fix, float *nml, float *org, float *cur)
+{
+    // TODO
 }
 typedef float *(*planeXform)(float *mat, float *fix, float *nrm, float *org, float *cur);
 float *planeMatrix(float *mat)
 {
     planeXform fnc = 0; int tmp; int cfg = planeInfo(ManipFixed,0,planeRcfg);
-    tmp = ((1<<Slide)|(1<<Ortho)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeSlideOrthoMouse;
-    tmp = ((1<<Rotate)|(1<<Focal)|(1<<Mouse)); if ((cfg&tmp)==tmp) fnc = planeRotateFocalMouse;
-    tmp = ((1<<Rotate)|(1<<Cursor)|(1<<Roller)); if ((cfg&tmp)==tmp) fnc = planeRotateCursorRoller;
+    tmp = ((1<<Mouse)|(1<<Rotate)|(1<<Cursor)); if ((cfg&tmp)==tmp) fnc = planeMouseRotateCursor;
+    tmp = ((1<<Mouse)|(1<<Rotate)|(1<<Normal)); if ((cfg&tmp)==tmp) fnc = planeMouseRotateNormal;
+    tmp = ((1<<Mouse)|(1<<Rotate)|(1<<Ortho)); if ((cfg&tmp)==tmp) fnc = planeMouseRotateOrtho;
+    tmp = ((1<<Mouse)|(1<<Slide)|(1<<Ortho)); if ((cfg&tmp)==tmp) fnc = planeMouseSlideOrtho;
+    tmp = ((1<<Mouse)|(1<<Slide)|(1<<Normal)); if ((cfg&tmp)==tmp) fnc = planeMouseSlideNormal;
+    tmp = ((1<<Roller)|(1<<Rotate)|(1<<Cursor)); if ((cfg&tmp)==tmp) fnc = planeRollerRotateCursor;
+    tmp = ((1<<Roller)|(1<<Rotate)|(1<<Focal)); if ((cfg&tmp)==tmp) fnc = planeRollerRotateFocal;
+    tmp = ((1<<Roller)|(1<<Slide)|(1<<Ortho)); if ((cfg&tmp)==tmp) fnc = planeRollerSlideOrtho;
+    tmp = ((1<<Roller)|(1<<Slide)|(1<<Normal)); if ((cfg&tmp)==tmp) fnc = planeRollerSlideNormal;
+    tmp = ((1<<Roller)|(1<<Scale)|(1<<Pierce)); if ((cfg&tmp)==tmp) fnc = planeRollerScalePierce;
     if (!fnc) return identmat(mat,4);
     float fix[3]; float nrm[3]; float org[3]; float cur[3];
     return fnc(identmat(mat,4),
@@ -941,7 +976,9 @@ void demoDisp(struct Menu *menu)
     struct Extend *drw = centerPull(menu->drw,"Draw");
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
-    drw->ptr->drw[menu->dsp].siz = abs(drw->ptr->drw[menu->dsp].siz);
+    int sub[] = {menu->dsp};
+    for (int i = 0; i < sizeof(sub)/sizeof(int); i++)
+    drw->ptr->drw[i].siz = abs(drw->ptr->drw[i].siz);
     callCont(drw,0,drw->log);
 }
 void demoDraw(struct Menu *menu)
@@ -950,9 +987,9 @@ void demoDraw(struct Menu *menu)
     struct Extend *drw = centerPull(menu->drw,"Draw");
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
-    drw->ptr->drw[menu->pie].siz = abs(drw->ptr->drw[menu->pie].siz);
-    drw->ptr->drw[menu->nor].siz = abs(drw->ptr->drw[menu->nor].siz);
-    drw->ptr->drw[menu->sel].siz = abs(drw->ptr->drw[menu->sel].siz);
+    int sub[] = {menu->pie,menu->nor,menu->sel};
+    for (int i = 0; i < sizeof(sub)/sizeof(int); i++)
+    drw->ptr->drw[i].siz = abs(drw->ptr->drw[i].siz);
     callCont(drw,0,drw->log);
 }
 void demoWake(struct Menu *menu)
@@ -1010,20 +1047,23 @@ void demoMenu(struct Menu *menu)
     break; case (PrssMsk): if (planeInfo(PressQueue,0,planeRcfg)) {
         demoDone(menu); demoWake(menu); menu->act = Indicate; menu->dev = Devices;
         switch (planeInfo(PressKey,0,planeRcfg)) {default:
-        break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor);
-        break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal);
-        break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho);
-        break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho);
-        break; case ('P'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal);
-        break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor);
-        break; case ('U'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal);
-        break; case ('Z'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho);
-        break; case ('Q'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal);
-        break; case ('F'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce);
-        break; case ('A'): menu->act = Additive;
-        break; case ('S'): menu->act = Subtractive;
-        break; case ('B'): menu->act = Divisive;
-        break; case ('M'): menu->act = Operative;
+        break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); // Cursor
+        break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); // Normal
+        break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); // Ortho
+        break; case ('T'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Ortho); // Translate
+        break; case ('S'): menu->coo = (1<<Mouse)|(1<<Slide)|(1<<Normal); // Slide
+        break; case ('R'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Cursor); // Rotate
+        break; case ('F'): menu->ang = (1<<Roller)|(1<<Rotate)|(1<<Focal); // Focal
+        break; case ('D'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Ortho); // Depth
+        break; case ('P'): menu->ang = (1<<Roller)|(1<<Slide)|(1<<Normal); // Parallel
+        break; case ('M'): menu->ang = (1<<Roller)|(1<<Scale)|(1<<Pierce); // Magnify
+        break; case ('I'): menu->jec = Inject; // Inject
+        break; case ('J'): menu->jec = Object; // obJect
+        break; case ('U'): menu->jec = Subject; // sUbject;
+        break; case ('A'): menu->act = Additive; // Additive
+        break; case ('B'): menu->act = Subtractive; // suBtractive
+        break; case ('V'): menu->act = Divisive; // diVisive
+        break; case ('Q'): menu->act = Operative; // Query
         break; case ('W'): /*TODO Warp to last metric sent*/}}
     break; case (ProjMsk):
         demoSize(menu);
@@ -1042,25 +1082,6 @@ void demoMenu(struct Menu *menu)
         break; case (Manipulate):
             demoCont(menu); demoComp(menu); demoDisp(menu);
         break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):}}
-}
-
-// phase callbacks
-void planeClose(enum Thread tag, int idx)
-{
-    planeJnfo(RegisterOpen,(1<<tag),planeWotc);
-}
-void planeJoin(enum Thread tag, int idx)
-{
-    switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i); closeIdent(extdone);}
-    break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
-    break; case (MachThd): case (TimeThd): case (TestThd):}
-}
-void planeWake(enum Thread tag, int idx)
-{
-    switch (tag) {default: ERROR();
-    break; case (PipeThd): case (StdioThd): case (MachThd): case (TimeThd): case (TestThd):}
-    postSafe(safeSafe(tag,idx));
 }
 
 void machineArg(int *arg, int sig, struct Express *exp)
@@ -1088,6 +1109,7 @@ void machinePush(int sig, int chk, int src, enum Assert asr, enum Mask msk, void
     planeJnfo(RegisterWake,(1<<msk),planeWots);
 }
 void planeMachine(enum Thread tag, int idx);
+void planeFork(enum Thread thd, int idx, mftype fnc);
 void machineExec(int idx, struct Extend *ext)
 {
     struct Center *ptr = ext->ptr;
@@ -1126,7 +1148,7 @@ void machineExec(int idx, struct Extend *ext)
     if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
     free(reboot[idx]); free(recent[idx]); resize[idx] = 0;
     reboot[idx] = boot; recent[idx] = cent; resize[idx] = ptr->siz; machine[idx] = 0;
-    callFork(MachThd,idx,planeMachine,planeClose,planeJoin,planeWake);
+    planeFork(MachThd,idx,planeMachine);
     if (postSafe(safeSem) != 1) ERROR();}
     break;}
 }
@@ -1287,7 +1309,7 @@ void planeTest(enum Thread tag, int idx)
     float time = processTime();
     float leg = 0.4f*sinf(time*8.0f);
     float cur[] = {leg,leg};
-    planeRotateFocalMouse(mat->ptr->mat[1].mat,fix,0,org,cur);}
+    planeMouseRotateCursor(mat->ptr->mat[1].mat,fix,0,org,cur);}
     else planeMatrix(mat->ptr->mat[0].mat);
     mat->sub = Matrixz; mat->rsp = RptRsp; mat->ret = NoneRet;
     callCopy(mat,1,(debug?"matrix":0));
@@ -1360,6 +1382,29 @@ void planeTest(enum Thread tag, int idx)
     }}}
 }
 
+// phase callbacks
+void planeClose(enum Thread tag, int idx)
+{
+    planeJnfo(RegisterOpen,(1<<tag),planeWotc);
+}
+void planeJoin(enum Thread tag, int idx)
+{
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): if (idx) {for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i); closeIdent(extdone);}
+    break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
+    break; case (MachThd): case (TimeThd): case (TestThd):}
+}
+void planeWake(enum Thread tag, int idx)
+{
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): case (StdioThd): case (MachThd): case (TimeThd): case (TestThd):}
+    postSafe(safeSafe(tag,idx));
+}
+void planeFork(enum Thread thd, int idx, mftype fnc)
+{
+    callFork(thd,idx,fnc,planeClose,planeJoin,planeWake);
+}
+
 // register callbacks
 void registerCall(enum Configure cfg, int sav, int val, int act)
 {
@@ -1371,7 +1416,7 @@ void registerCall(enum Configure cfg, int sav, int val, int act)
     if (funcSafe(safeSem,safeFunc,&wake) != 0) ERROR(); // wait for machine[wake] < 0
     machine[wake] = indx;
     if (postSafe(safeSem) != 1) ERROR();
-    callFork(MachThd,wake,planeMachine,planeClose,planeJoin,planeWake);}
+    planeFork(MachThd,wake,planeMachine);}
     else doneSafe(safeSafe(MachThd,wake));
 }
 void registerOpen(enum Configure cfg, int sav, int val, int act)
@@ -1380,8 +1425,8 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
     if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
         extdone = openPipe();
         safeInit(PipeThd,1,0);
-        callFork(PipeThd,0,planeCenter,planeClose,planeJoin,planeWake);
-        callFork(PipeThd,1,planeExternal,planeClose,planeJoin,planeWake);}
+        planeFork(PipeThd,0,planeCenter);
+        planeFork(PipeThd,1,planeExternal);}
     if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
         doneSafe(safeSafe(PipeThd,0));
         writeChr(1,extdone);}
@@ -1389,8 +1434,8 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         condone = openPipe();
         if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
         safeInit(StdioThd,1,0);
-        callFork(StdioThd,0,planeString,planeClose,planeJoin,planeWake);
-        callFork(StdioThd,1,planeConsole,planeClose,planeJoin,planeWake);}
+        planeFork(StdioThd,0,planeString);
+        planeFork(StdioThd,1,planeConsole);}
     if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
         doneSafe(safeSafe(StdioThd,0));
         writeChr(0,condone);}
@@ -1400,14 +1445,14 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
         planeKnfo(RegisterCall,(-1<<8),planeWcfg);}
     if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
         safeInit(TimeThd,1,0);
-        callFork(TimeThd,0,planeTime,planeClose,planeJoin,planeWake);}
+        planeFork(TimeThd,0,planeTime);}
     if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
         doneSafe(safeSafe(TimeThd,0));}
     if ((act & (1<<TestThd)) && !(sav & (1<<TestThd))) {
         safeInit(TestThd,3,0);
-        callFork(TestThd,0,planeTest,planeClose,planeJoin,planeWake);
-        callFork(TestThd,1,planeTest,planeClose,planeJoin,planeWake);
-        callFork(TestThd,2,planeTest,planeClose,planeJoin,planeWake);}
+        planeFork(TestThd,0,planeTest);
+        planeFork(TestThd,1,planeTest);
+        planeFork(TestThd,2,planeTest);}
     if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
         doneSafe(safeSafe(TestThd,0));
         doneSafe(safeSafe(TestThd,1));

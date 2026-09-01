@@ -107,3 +107,10 @@ Regress:
 
 Question:
   If the regression terminates because all new boundaries in the cospace are just duplicates of existing boundaries, then the question of whether the migration is constructible is answered. Does the regression always terminate?
+
+Speculations:
+
+If a sequence of cospaces never repeats, then it specifies a particular collection of hyperplanes, because each element in the sequence makes the hyperplane positions more precise.
+If a sequence of cospaces repeats, then it is constructible, and specifies a blob of hyperplane collections.
+Some cospace sequences repeat, so unless the space of hyperplane collections is swiss cheese, all cospace sequences eventually repeat.
+The blob of hyperplane collections of a repeating cospace sequence is open. I suspect non-repeating cospaces sequences are at best isolated.
