@@ -73,22 +73,26 @@ produces points and element arrays for opengl.
 
 plane.lua allows user to manipulate polytopes.
 Mouse transformations include
- — (C) rotate around Cross of pierce to clicked cursor and pierce to moved cursor,
+ — (C) rotate around cross of pierce to clicked Cursor and pierce to moved cursor,
  — (N) cross of pierce to Normal through picture and pierce to normal through picture moved by same delta as cursor,
  — (O) cross between pierce to Ortho through picture and pierce to ortho through picture moved by same delta as cursor,
  — (T) Translate parallel to picture,
- — (P) Parallel to pierced plane.
+ — (S) Slide parallel to pierced plane.
 Roller transformations include
- — (R) Rotate around moved leg of cross,
- — (U) rotate around Unmoved leg of cross,
- — (Z) translate perpendicular to picture,
- — (Q) perpendicular to pierced plane,
- — (F) resize with pierce Fixed.
+ — (R) Rotate around fixed to cursor,
+ — (F) rotate around fixed to Focal,
+ — (D) translate orthogonal Depth,
+ — (P) translate Perpendicular to pierced,
+ — (M) Magnify with pierced fixed.
+Target transformations include
+ — (I) tranform Inject element of object
+ — (J) tranform Object
+ — (U) tranform Subject all objects
 Click actions include
  — (A) Add facet,
- — (S) Subtract facet,
- — (B) random Boundary through point,
- — (M) send pierce point as Metric,
+ — (B) suBtract facet,
+ — (V) diVide by boundary through point,
+ — (Q) Query for metric at pierce point,
  — (W) Warp to last metric sent.
 
 space.lua finds and/or prettifies complete sets of spaces and tetrahedron overlaps.

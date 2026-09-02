@@ -1977,7 +1977,7 @@ Bootstrap = {
 	-- TODO add Micro for Vectorz Getoldz Getintz
 	-- TODO add change of arg to {width,height,0,12} when UniformWid/Hie and Trianglez siz change
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0met:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0pro:2drw:%(return castMemory(\"Drawz\"))dsp:0pie:1nor:2sel:3tmp:%(return castMemory(\"Memorys\"))))"},
+	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0met:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0pro:2drw:%(return castMemory(\"Drawz\"))dsp:0pie:1nor:2sel:3src:%(return castMemory(\"Memorys\"))dst:%(return castMemory(\"Memorys\")+1)))"},
 	{"Int","%(return idx())","Str","!(metric = #%(return count))Metricz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
 		"Machinez(siz:^(return dount+1)idx:0slf:0"..
@@ -2017,9 +2017,7 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @sub))"..
-		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrBeforeOp , EndOp Op))"..
 		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
-		  "mch[%(return jdx())]:Void(exp[0]:$(Put StrAfterOp , EndOp Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Trianglez @siz
@@ -2100,11 +2098,11 @@ Bootstrap = {
 		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		  "#0 : @_ Op))"..
+		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp))"..
+		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @memorys))"..
+		 -- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		 "mch[%(return jdx())]:Void(exp[0]:$(sub = @sav))"..		 
 		 "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
-		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp))"..
-		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @sub))"..
-		 -- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2378,7 +2376,8 @@ Menu = { -- state to handle user input
 	{"pie","Int",{},{}}, -- center for pierce
 	{"nor","Int",{},{}}, -- center for normal
 	{"sel","Int",{},{}}, -- center for select
-	{"tmp","Int",{},{}}, -- input output matrix
+	{"src","Int",{},{}}, -- input matrix pierce
+	{"dst","Int",{},{}}, -- output response place
 }
 Uniform = { -- how to interpret subscripts into gpu buffers
 	{"all","Int32",{},{}}, -- which subject to use
