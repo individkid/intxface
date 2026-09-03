@@ -929,45 +929,8 @@ void demoMenu(struct Menu *menu)
     break; case ('Q'): menu->act = Operative; // Query
     break; case ('W'): /*TODO Warp to last metric sent*/}
 }
-void demoSend(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrixz
-{
-    // do Send for menu->dst as Matrixz at demoJect to Qopy
-    struct Extend *dst = 0; allocExtend(&dst,1);
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
-    dst->sub = menu->dst; dst->asr = RespAsr;
-    freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
-    dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
-    allocMatrix(&dst->ptr->mat,dst->ptr->siz);
-    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    struct Matrix *mat = dst->ptr->mat;
-    copymat(mat->mat,ker->local.mat,4); // M = L
-    timesmat(ker->sent.mat,ker->local.mat,4); // S = SL
-    identmat(ker->local.mat,4); // L = I
-    if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(dst,response);
-    if (postSafe(pipeSem) != 1) ERROR();
-    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
-    centerPlace(ptr);
-}
-void demoComp(struct Menu *menu) // pull/modify/place Kernelz, alloc/send Matrixz
-{
-    // do Comp for menu->dst as Matrixz at demoJect to planeCall with alt 1
-    struct Extend *dst = 0; allocExtend(&dst,1);
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
-    dst->sub = menu->dst; dst->asr = PullAsr;
-    freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
-    dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
-    allocMatrix(&dst->ptr->mat,dst->ptr->siz);
-    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    struct Matrix *mat = dst->ptr->mat;
-    planeMatrix(ker->saved.mat); // T = C
-    timesmat(timesmat(timesmat(copymat(mat->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),ker->saved.mat,4); // M = GSLT
-    callCont(dst,1,dst->log);
-    centerPlace(ptr);
-}
 void demoRead(struct Menu *menu) // pull/modify/place Kernelz, pull/read/place Matrixz
 {
-    // do Glob or Self for menu->ker[demoJect] using Matrix at menu->src
     struct Extend *src = centerPull(menu->src,"Demo");
     struct Extend *ptr = centerPull(menu->ker,"Demo");
     int slf = src->ptr->slf;
@@ -979,9 +942,8 @@ void demoRead(struct Menu *menu) // pull/modify/place Kernelz, pull/read/place M
     centerPlace(src);
     centerPlace(ptr);
 }
-void demoPush(struct Menu *menu) // pull/read/place Kernelz, alloc/send Matrixz
+void demoSend(struct Menu *menu) // pull/read/place Kernelz, alloc/send Matrixz
 {
-    // do Pose for menu->dst as Matrix at demoJect to planeCall with alt 1
     struct Extend *dst = 0; allocExtend(&dst,1);
     struct Extend *ptr = centerPull(menu->ker,"Demo");
     dst->sub = menu->dst; dst->asr = PullAsr;
@@ -998,49 +960,33 @@ void demoCont(struct Menu *menu) // pull/modify/place Kernelz
 {
     enum Device dev = (menu->msk==MoveMsk?Coord:Angle);
     if (menu->dev != dev) {menu->dev = dev;
-    int arg[2] = {menu->ker,demoJect(menu)}; machineForm(2,arg);
+    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
+    timesmat(timesmat(ker->local.mat,ker->saved.mat,4),inv,4); // L = LTC'
+    copymat(ker->saved.mat,mat,4); // T = C
+    centerPlace(ptr);
     int fix = (menu->msk==MoveMsk?menu->coo:menu->ang);
     planeJnfo(ManipFixed,fix,planeWcfg);}
 }
-void demoSize(struct Menu *menu) // alloc/send Matrixz
+void demoPush(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrixz
 {
-    // do Proj for menu->dst as Matrix at menu->pro to planeCall with alt 1
     struct Extend *dst = 0; allocExtend(&dst,1);
-    dst->sub = menu->dst; dst->asr = PullAsr;
+    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    dst->sub = menu->dst; dst->asr = RespAsr;
     freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
-    dst->ptr->idx = menu->pro; dst->ptr->siz = 1;
+    dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
     allocMatrix(&dst->ptr->mat,dst->ptr->siz);
-    planeWindow(dst->ptr->mat->mat);
-    callCont(dst,1,dst->log);
-}
-void demoDone(struct Menu *menu) // maybe alloc/push Metricz
-{
-    int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
-    if ((menu->met&msk)==msk) {
-    menu->met = 0; demoWake(menu);
-    switch (menu->act) {default: ERROR();
-    break; case (Indicate):
-        menu->act = Manipulate;
-    break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
-        // do Jnfo for menu->dst as Metricz to Qopy
-        struct Extend *dst = 0; allocExtend(&dst,1);
-        dst->sub = menu->dst; dst->asr = RespAsr;
-        freeCenter(dst->ptr); dst->ptr->mem = Metricz;
-        dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
-        allocMetric(&dst->ptr->met,dst->ptr->siz);
-        struct Metric *met = dst->ptr->met;
-        met->act = menu->act;
-        met->fix[0] = planeJnfo(FixedLeft,0,planeRcfg);
-        met->fix[1] = planeJnfo(FixedBase,0,planeRcfg);
-        met->fix[2] = planeJnfo(FixedDeep,0,planeRcfg);
-        met->nor[0] = planeJnfo(NormalLeft,0,planeRcfg);
-        met->nor[1] = planeJnfo(NormalBase,0,planeRcfg);
-        met->nor[2] = planeJnfo(NormalDeep,0,planeRcfg);
-        met->act = planeJnfo(SelectIdent,0,planeRcfg);
-        if (waitSafe(pipeSem) != 0) ERROR();
-        pushCenterq(dst,response);
-        if (postSafe(pipeSem) != 1) ERROR();
-        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}}
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    struct Matrix *mat = dst->ptr->mat;
+    copymat(mat->mat,ker->local.mat,4); // M = L
+    timesmat(ker->sent.mat,ker->local.mat,4); // S = SL
+    identmat(ker->local.mat,4); // L = I
+    if (waitSafe(pipeSem) != 0) ERROR();
+    pushCenterq(dst,response);
+    if (postSafe(pipeSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
+    centerPlace(ptr);
 }
 void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
 {
@@ -1072,9 +1018,37 @@ void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
         menu->met |= (1<<Vectorz);}
     centerPlace(src);
 }
+void demoDone(struct Menu *menu) // maybe alloc/push Metricz
+{
+    int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
+    if ((menu->met&msk)==msk) {
+    menu->met = 0; demoWake(menu);
+    switch (menu->act) {default: ERROR();
+    break; case (Indicate):
+        menu->act = Manipulate;
+    break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
+        // do Jnfo for menu->dst as Metricz to Qopy
+        struct Extend *dst = 0; allocExtend(&dst,1);
+        dst->sub = menu->dst; dst->asr = RespAsr;
+        freeCenter(dst->ptr); dst->ptr->mem = Metricz;
+        dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
+        allocMetric(&dst->ptr->met,dst->ptr->siz);
+        struct Metric *met = dst->ptr->met;
+        met->act = menu->act;
+        met->fix[0] = planeJnfo(FixedLeft,0,planeRcfg);
+        met->fix[1] = planeJnfo(FixedBase,0,planeRcfg);
+        met->fix[2] = planeJnfo(FixedDeep,0,planeRcfg);
+        met->nor[0] = planeJnfo(NormalLeft,0,planeRcfg);
+        met->nor[1] = planeJnfo(NormalBase,0,planeRcfg);
+        met->nor[2] = planeJnfo(NormalDeep,0,planeRcfg);
+        met->act = planeJnfo(SelectIdent,0,planeRcfg);
+        if (waitSafe(pipeSem) != 0) ERROR();
+        pushCenterq(dst,response);
+        if (postSafe(pipeSem) != 1) ERROR();
+        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}}
+}
 void demoDisp(struct Menu *menu) // pull/send Drawz
 {
-    // do Bopy of menu->drw with all but menu->dsp disabled
     struct Extend *drw = centerPull(menu->drw,"Draw");
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
@@ -1083,9 +1057,8 @@ void demoDisp(struct Menu *menu) // pull/send Drawz
     drw->ptr->drw[i].siz = abs(drw->ptr->drw[i].siz);
     callCont(drw,0,drw->log);
 }
-void demoDraw(struct Menu *menu) // pull/send Drawz
+void demoPute(struct Menu *menu) // pull/send Drawz
 {
-    // do Bopy of menu->drw with all but menu->pie/nor/sel disabled
     struct Extend *drw = centerPull(menu->drw,"Draw");
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
@@ -1094,55 +1067,57 @@ void demoDraw(struct Menu *menu) // pull/send Drawz
     drw->ptr->drw[i].siz = abs(drw->ptr->drw[i].siz);
     callCont(drw,0,drw->log);
 }
+void demoSize(struct Menu *menu) // alloc/send Matrixz
+{
+    struct Extend *dst = 0; allocExtend(&dst,1);
+    dst->sub = menu->dst; dst->asr = PullAsr;
+    freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
+    dst->ptr->idx = menu->pro; dst->ptr->siz = 1;
+    allocMatrix(&dst->ptr->mat,dst->ptr->siz);
+    planeWindow(dst->ptr->mat->mat);
+    callCont(dst,1,dst->log);
+}
 void demoDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
-    break; case (SlctMsk):
-        demoRead(menu); // pull/modify/place Kernelz, pull/read/place Matrixz
-        demoPush(menu); // pull/read/place Kernelz, alloc/send Matrixz
-        demoDisp(menu); // pull/send Drawz
-    break; case (DoneMsk):
-        demoMask(menu); // pull/read/place Getoldz\Getintz\Vectorz
-        demoDone(menu); // maybe alloc/push Metricz
-    break; case (PrssMsk):
-        if (planeInfo(PressQueue,0,planeRcfg) == 0) break;
-        menu->act = Indicate; menu->dev = Devices;
-        demoSend(menu); // pull/modify/place Kernelz, alloc/push Matrixz
-        demoWake(menu);
-        demoMenu(menu);
-    break; case (ProjMsk):
-        demoSize(menu); // alloc/send Matrixz
+    break; case (SlctMsk): // G = GM/ S = M'S; M = GSLT Call; Disp
+    demoRead(menu); // pull/modify/place Kernelz, pull/read/place Matrixz
+    demoSend(menu); // pull/read/place Kernelz, alloc/send Matrixz
+    demoDisp(menu); // pull/send Drawz
+    break; case (DoneMsk): // Read Push
+    demoMask(menu); // pull/read/place Getoldz\Getintz\Vectorz
+    demoDone(menu); // maybe alloc/push Metricz
+    break; case (PrssMsk): // M = L; S = SL; L = I; Push
+    if (planeInfo(PressQueue,0,planeRcfg) == 0) break;
+    menu->act = Indicate; menu->dev = Devices;
+    demoPush(menu); // pull/modify/place Kernelz, alloc/push Matrixz
+    demoWake(menu);
+    demoMenu(menu);
+    break; case (ProjMsk): // Proj Disp
+    demoSize(menu); // alloc/send Matrixz
     break; case (EoodMsk):
-        // TODO wait for window resize
-    break; case (MoveMsk): switch (menu->act) {default: ERROR();
-        break; case (Manipulate):
-            demoCont(menu); // pull/modify/place Kernelz
-            demoComp(menu); // pull/modify/place Kernelz, alloc/send Matrixz
-            demoDisp(menu); // pull/send Drawz
-        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):}
-    break; case (ClckMsk):
-        if (planeInfo(ClickQueue,0,planeRcfg) == 0) break;
-        switch (menu->act) {default: ERROR();
-        break; case (Manipulate):
-            menu->act = Indicate;
-            demoSend(menu); // pull/modify/place Kernelz, alloc/push Matrixz
-            demoWake(menu);
-        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):
-            demoDraw(menu);} // pull/send Drawz
-    break; case (RollMsk):
-        switch (menu->act) {default: ERROR();
-        break; case (Manipulate):
-            demoCont(menu); // pull/modify/place Kernelz
-            demoComp(menu); // pull/modify/place Kernelz, alloc/send Matrixz
-            demoDisp(menu); // pull/send Drawz
-        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):}
-    break; case (TimeMsk):
-        switch (menu->act) {default: ERROR();
-        break; case (Manipulate):
-            demoSend(menu); // pull/modify/place Kernelz, alloc/push Matrixz
-            demoWake(menu);
-        break; case (Indicate): case (Divisive): case (Additive): case (Subtractive): case (Operative):
-        }}
+    // TODO wait for window resize
+    break; case (MoveMsk): // L = LTC'; T = C; M = GSLT Call; Disp
+    if (menu->act == Manipulate) {
+    demoCont(menu); // pull/modify/place Kernelz
+    demoSend(menu); // pull/modify/place Kernelz, alloc/send Matrixz
+    demoDisp(menu);} // pull/send Drawz
+    break; case (ClckMsk): // M = L; S = SL; L = I; Push; Call
+    if (planeInfo(ClickQueue,0,planeRcfg) == 0) break;
+    if (menu->act == Manipulate) {
+    menu->act = Indicate;
+    demoPush(menu); // pull/modify/place Kernelz, alloc/push Matrixz
+    demoWake(menu);} else {
+    demoPute(menu);} // pull/send Drawz
+    break; case (RollMsk): // L = LTC'; T = C; M = GSLT Call; Disp
+    if (menu->act == Manipulate) {
+    demoCont(menu); // pull/modify/place Kernelz
+    demoSend(menu); // pull/modify/place Kernelz, alloc/send Matrixz
+    demoDisp(menu);} // pull/send Drawz
+    break; case (TimeMsk): // M = L; S = SL; L = I; Push
+    if (menu->act == Manipulate) {
+    demoPush(menu); // pull/modify/place Kernelz, alloc/push Matrixz
+    demoWake(menu);}}
 }
 
 // queue and thread helpers
