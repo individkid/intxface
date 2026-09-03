@@ -2013,11 +2013,10 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"matrix\"))]:Nest(lvl:-1)"..
 		  -- Nopy Matrixz to process Self or Glob matrix
+		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
+		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
-		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @sub))"..
-		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Trianglez @siz
@@ -2098,9 +2097,12 @@ Bootstrap = {
 		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		  "#0 : @_ Op))"..
-		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp))"..
-		 -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= tmp#0 @memorys))"..
-		 -- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		 "mch[%(return jdx())]:Nest(lvl:2)"..
+		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Or EC Cst @mem #0 Op #%(return castMemory(\"Getoldz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Getintz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Vectorz\")) Cmp Bit , #1 ; #0 == #1 , #2 Op))"..
+		   "mch[%(return jdx())]:Nest(lvl:-1)"..
+		  -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp))"..
+		  -- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Void(exp[0]:$(sub = @sav))"..		 
 		 "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2357,12 +2359,10 @@ Metric = { -- information about pierce point
 	{"idx","Int",{},{}},
 }
 Menu = { -- state to handle user input
-	-- these could be Configure, NopyArg, or ValOp instead,
-	-- if Nopy were not for demonstration purposes only
-	{"msk","Mask",{},{}}, -- action for Sync or Nopy
-	{"act","Action",{},{}},
-	{"jec","Scope",{},{}},
-	{"dev","Device",{},{}},
+	{"msk","Mask",{},{}}, -- event triggered by user
+	{"act","Action",{},{}}, -- what click does
+	{"jec","Scope",{},{}}, -- what manipulated
+	{"dev","Device",{},{}}, -- how manipulated
 	{"coo","Int",{},{}}, -- ManipFixed for Coord
 	{"ang","Int",{},{}}, -- ManipFixed for Angle
 	{"met","Int",{},{}}, -- metric completion mask

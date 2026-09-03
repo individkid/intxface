@@ -1044,22 +1044,23 @@ void demoDone(struct Menu *menu) // maybe alloc/push Metricz
 }
 void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
 {
-    struct Extend *src = centerPull(menu->src,"Demo");
     int left = planeInfo(ClickLeft,0,planeRcfg);
     int base = planeInfo(ClickBase,0,planeRcfg);
     int width = planeInfo(UniformWid,0,planeRcfg);
-    int height = planeInfo(UniformHei,0,planeRcfg);
+    struct Extend *src = centerPull(menu->src,"Demo");
     switch (src->ptr->mem) {default: ERROR();
     break; case (Getoldz): {
+        int full = planeInfo(FocalFull,0,planeRcfg);
         int depth = planeInfo(FocalDepth,0,planeRcfg);
         int slope = planeInfo(FocalSlope,0,planeRcfg);
-        int deep = src->ptr->old[base*width+left];
-        // TODO Getoldz is only depth; calculate FixedLeft/Base from FixedDeep UniformWid/Hei and Focal*
-        int left = 0;
-        int base = 0;
-        planeJnfo(FixedDeep,deep,planeWcfg);
-        planeJnfo(FixedLeft,left,planeWcfg);
-        planeJnfo(FixedBase,base,planeWcfg);
+        float b = 1.0*slope/full;
+        float a = b*depth/full;
+        float x = 1.0*left/full;
+        float y = 1.0*base/full;
+        float z = src->ptr->old[base*width+left];
+        planeJnfo(FixedLeft,x*(a+b*z)*full,planeWcfg);
+        planeJnfo(FixedBase,y*(a+b*z)*full,planeWcfg);
+        planeJnfo(FixedDeep,z*full,planeWcfg);
         menu->met |= (1<<Getoldz);}
     break; case (Getintz):
         planeJnfo(SelectIdent,src->ptr->uns[base*width+left],planeWcfg);
