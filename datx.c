@@ -637,6 +637,12 @@ int datxEval(void **dat, struct Express *exp, int typ)
 {
 	/*{char *opr = 0; showOperate(exp->opr,&opr);
 	fprintf(stderr,"datxEval %s\n",opr); free(opr);}*/
+	// TODO add scalar vector matrix operations:
+	// TODO scale by scalar: Matrixz = Matrixz */ Old, Matrixz = Old */ Matrixz,
+	// TODO per cell and row per column: Matrixz = Matrixz *+- Matrixz,
+	// TODO transform and cross: Vectorz = Matrixz * Vectorz, Vectorz = Matrixz * Matrixz
+	// TODO dot and per: Old = Vectorz * Vectorz, Vectorz = Old */+- Vectorz, Vectorz = Vectorz */+- Old
+	// TODO add InvOp to find negative of integers/vectors or inverse of scalars/matrices 
 	switch (exp->opr) {
 	case (AddOp): BINARY_BLOCK(BINARY_ADD,opa) break;
 	case (SubOp): BINARY_BLOCK(BINARY_SUB,opa) break;

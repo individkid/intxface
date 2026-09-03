@@ -11,8 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 
-struct Extend **center = 0; // only for planeSwitch
-int centers = 0; // only for planeSwitch
+struct Extend **center = 0; // only for planeMachine
+int centers = 0; // only for planeMachine
 void *copySem = 0; // protect centers
 int extdone = 0; // done for planeExternal
 int external = 0; // pipes to planeExternal
@@ -26,8 +26,8 @@ int condone = 0; // done for planeConsole
 void *strin = 0; // queue of string
 void *strout = 0; // queue of string
 void *stdioSem = 0; // protect strin and strout
-void *maskq = 0; // map from event to thread mask
-void *ableq = 0; // map from thread to vector mask
+void *maskq = 0; // map from thread to event mask
+void *ableq = 0; // map from event to thread mask
 void *timeq = 0; // queue of wakeup times
 void *wakeq = 0; // queue of wakeup threads
 void *timep = 0; // map from thread to time
@@ -37,18 +37,16 @@ void *leftq = 0; // queue of mouse presses
 void *baseq = 0; // queue of mouse presses
 void *angleq = 0; // queue of mouse presses
 void *pressSem = 0; // protect press queues
-void **wakeSem[Threads] = {0};
-int sizeSem[Threads] = {0};
-int *machine = 0;
-int **reboot = 0;
-struct Extend ***recent = 0;
-int *resize = 0;
+void **wakeSem[Threads] = {0}; // for event driven threads
+int sizeSem[Threads] = {0}; // number of thread instances
+int *machine = 0; // Machinez for free running MachThd
+int **reboot = 0; // initializations done in a MachThd
+struct Extend ***recent = 0; // resources for initialization
+int *resize = 0; // number of initializations
 void *safeSem = 0; // protect reboot recent resize and wakeSem
-// initialized before threads so safe
+// following initialized before threads so safe
 void *tempq = 0; // temporary queue to convert chars to str
-int loopfd = 0; // pipe from one struct to another
-void *loopSem = 0; // protect loopfd
-void *evalSem = 0;
+void *evalSem = 0; // protect state in expressions
 uftype callCopy = 0;
 wftype callCont = 0;
 nftype callBack = 0;
@@ -71,6 +69,7 @@ DECLARE_DEQUE(int, Intq)
 
 DECLARE_MAP(int,float,Timep)
 
+// simple registers access; for structured registers, see "resource access" below
 int planeWots(int *ref, int val)
 {
     int ret = *ref&val; *ref |= val; return ret;
@@ -112,6 +111,7 @@ int planeKnfo(enum Configure cfg, int val, yftype fnc)
     callKnfo(&cfg,&val,1,fnc); return val;
 }
 
+// thread sharing
 void safeInit(enum Thread thd, int siz, int val)
 {
     waitSafe(safeSem);
@@ -310,7 +310,7 @@ float *planeWindow(float *mat)
     return mat;
 }
 
-// resource accessors
+// resource access
 void centerSize(int idx);
 int centerFunc(void *arg);
 struct Extend *centerPull(int idx, const char *log)
@@ -411,7 +411,7 @@ int centerFunc(void *arg)
     return (*center != 0);
 }
 
-// machine extensions
+// numbered resources
 struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub, const char *log)
 {
     if (sig != lim) ERROR();
@@ -459,20 +459,19 @@ void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int s
     centerPlace(ptr);
 }
 
+// special transfers
 // manipulation C
 // Kernel.saved T
 // Kernel.local L
 // Kernel.sent S
 // Kernal.global G
 // Matrix M
-// upon pipe from other, cursor, or roller, send machineComp to gpu
-// upon change between cursor and roller, or change to manipulation mode, call machineForm
-// periodically send machineSend to pipe
-// upon pipe back from self call machineSelf on it
-// upon pipe from other call machineGlob on it
-// T goes to I without changing Comp, when C is I upon Form
-// L goes to I without changing Comp, upon Send
-// S goes to I without changing Comp, upon last outstanding Self
+// T goes to C thus changing Pose, when C is not I upon Comp
+// T goes to C without changing Pose, upon Form
+// T goes to I without changing Pose, when C is I upon Form
+// L goes to I without changing Pose, upon Send
+// S goes to I without changing Pose, upon last outstanding Self
+// G changes by M thus changing Pose, upon Glob
 void machineProj(int sig, int *arg)
 {
     if (sig != ProjArgs) ERROR();
@@ -571,6 +570,8 @@ void machineGlob(int sig, int *arg)
     machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
     machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
 }
+
+// general transfers
 void machineBopy(int sig, int *arg)
 {
     if (sig != BopyArgs) ERROR();
@@ -890,6 +891,7 @@ void moveDeref(int sub, struct Extend **ext)
     break; case (DoneAsr): pushCenterq(ptr,replace); planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);}
 }
 
+// expanded minimal experience
 int demoJect(struct Menu *menu)
 {
     switch (menu->jec) {default: ERROR();
@@ -907,6 +909,7 @@ void demoWake(struct Menu *menu)
 void demoMenu(struct Menu *menu)
 {
     switch (planeInfo(PressKey,0,planeRcfg)) {default:
+    // C NOT SenioR Fire DePartment Man
     break; case ('C'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Cursor); // Cursor
     break; case ('N'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Normal); // Normal
     break; case ('O'): menu->coo = (1<<Mouse)|(1<<Rotate)|(1<<Ortho); // Ortho
@@ -962,24 +965,31 @@ void demoComp(struct Menu *menu) // pull/modify/place Kernelz, alloc/send Matrix
     callCont(dst,1,dst->log);
     centerPlace(ptr);
 }
-void demoPipe(struct Menu *menu) // pull/modify/place Kernelz, pull/read/place Matrixz, alloc/send Matrixz
+void demoRead(struct Menu *menu) // pull/modify/place Kernelz, pull/read/place Matrixz
 {
     // do Glob or Self for menu->ker[demoJect] using Matrix at menu->src
     struct Extend *src = centerPull(menu->src,"Demo");
     struct Extend *ptr = centerPull(menu->ker,"Demo");
-    struct Matrix *mat = src->ptr->mat;
-    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     int slf = src->ptr->slf;
     if (src->ptr->mem != Matrixz) ERROR();
+    struct Matrix *mat = src->ptr->mat;
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     timesmat(ker->global.mat,mat->mat,4); // G = GM
     if (slf < 0) {float inv[16]; jumpmat(ker->sent.mat,invmat(copymat(inv,mat->mat,4),4),4);} // S = M'S
     centerPlace(src);
-    // do Pose for menu->src as Matrix at demoJect to planeCall with alt 1
+    centerPlace(ptr);
+}
+void demoPush(struct Menu *menu) // pull/read/place Kernelz, alloc/send Matrixz
+{
+    // do Pose for menu->dst as Matrix at demoJect to planeCall with alt 1
     struct Extend *dst = 0; allocExtend(&dst,1);
+    struct Extend *ptr = centerPull(menu->ker,"Demo");
     dst->sub = menu->dst; dst->asr = PullAsr;
     freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
     dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
-    allocMatrix(&dst->ptr->mat,dst->ptr->siz); mat = dst->ptr->mat;
+    allocMatrix(&dst->ptr->mat,dst->ptr->siz);
+    struct Matrix *mat = dst->ptr->mat;
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     timesmat(timesmat(timesmat(copymat(mat->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),ker->saved.mat,4); // M = GSLT
     callCont(dst,1,dst->log);
     centerPlace(ptr);
@@ -1003,29 +1013,7 @@ void demoSize(struct Menu *menu) // alloc/send Matrixz
     planeWindow(dst->ptr->mat->mat);
     callCont(dst,1,dst->log);
 }
-void demoMetr(struct Menu *menu) // alloc/push Metricz
-{
-    // do Jnfo for menu->dst as Metricz to Qopy
-    struct Extend *dst = 0; allocExtend(&dst,1);
-    dst->sub = menu->dst; dst->asr = RespAsr;
-    freeCenter(dst->ptr); dst->ptr->mem = Metricz;
-    dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
-    allocMetric(&dst->ptr->met,dst->ptr->siz);
-    struct Metric *met = dst->ptr->met;
-    met->act = menu->act;
-    met->fix[0] = planeJnfo(FixedLeft,0,planeRcfg);
-    met->fix[1] = planeJnfo(FixedBase,0,planeRcfg);
-    met->fix[2] = planeJnfo(FixedDeep,0,planeRcfg);
-    met->nor[0] = planeJnfo(NormalLeft,0,planeRcfg);
-    met->nor[1] = planeJnfo(NormalBase,0,planeRcfg);
-    met->nor[2] = planeJnfo(NormalDeep,0,planeRcfg);
-    met->act = planeJnfo(SelectIdent,0,planeRcfg);
-    if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(dst,response);
-    if (postSafe(pipeSem) != 1) ERROR();
-    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
-}
-void demoDone(struct Menu *menu) // alloc/push Metricz
+void demoDone(struct Menu *menu) // maybe alloc/push Metricz
 {
     int msk = (1<<Getoldz)|(1<<Getintz)|(1<<Vectorz);
     if ((menu->met&msk)==msk) {
@@ -1034,7 +1022,25 @@ void demoDone(struct Menu *menu) // alloc/push Metricz
     break; case (Indicate):
         menu->act = Manipulate;
     break; case (Divisive): case (Additive): case (Subtractive): case (Operative):
-        demoMetr(menu);}}
+        // do Jnfo for menu->dst as Metricz to Qopy
+        struct Extend *dst = 0; allocExtend(&dst,1);
+        dst->sub = menu->dst; dst->asr = RespAsr;
+        freeCenter(dst->ptr); dst->ptr->mem = Metricz;
+        dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
+        allocMetric(&dst->ptr->met,dst->ptr->siz);
+        struct Metric *met = dst->ptr->met;
+        met->act = menu->act;
+        met->fix[0] = planeJnfo(FixedLeft,0,planeRcfg);
+        met->fix[1] = planeJnfo(FixedBase,0,planeRcfg);
+        met->fix[2] = planeJnfo(FixedDeep,0,planeRcfg);
+        met->nor[0] = planeJnfo(NormalLeft,0,planeRcfg);
+        met->nor[1] = planeJnfo(NormalBase,0,planeRcfg);
+        met->nor[2] = planeJnfo(NormalDeep,0,planeRcfg);
+        met->act = planeJnfo(SelectIdent,0,planeRcfg);
+        if (waitSafe(pipeSem) != 0) ERROR();
+        pushCenterq(dst,response);
+        if (postSafe(pipeSem) != 1) ERROR();
+        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}}
 }
 void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
 {
@@ -1091,11 +1097,12 @@ void demoDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk):
-        demoPipe(menu); // pull/modify/place Kernelz, pull/read/place Matrixz, alloc/send Matrixz
+        demoRead(menu); // pull/modify/place Kernelz, pull/read/place Matrixz
+        demoPush(menu); // pull/read/place Kernelz, alloc/send Matrixz
         demoDisp(menu); // pull/send Drawz
     break; case (DoneMsk):
         demoMask(menu); // pull/read/place Getoldz\Getintz\Vectorz
-        demoDone(menu); // alloc/push Metricz
+        demoDone(menu); // maybe alloc/push Metricz
     break; case (PrssMsk):
         if (planeInfo(PressQueue,0,planeRcfg) == 0) break;
         menu->act = Indicate; menu->dev = Devices;
@@ -1137,6 +1144,7 @@ void demoDemo(struct Menu *menu)
         }}
 }
 
+// queue and thread helpers
 void machineArg(int *arg, int sig, struct Express *exp)
 {
     for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
@@ -1675,7 +1683,7 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
     {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
 }
 
-//generic callbacks
+// generic callbacks
 // following protected by evalSem, could move to PlaneField
 // currently powerful enough only for structs with only one size and only after the tag
 int changed = 0; enum Memory newmem = Memorys;
@@ -1828,6 +1836,7 @@ void planeArgv(int argc, char **argv)
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,argv[i]); exit(-1);}}
 }
 
+// initialization
 void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
@@ -1837,12 +1846,11 @@ void initSafe()
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
-    if (!(loopSem = allocSafe(1))) ERROR(); // protect field pipe
     internal = allocCenterq(); response = allocCenterq(); replace = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
     charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
     timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();
-    ableq = allocIntq(); maskq = allocIntq(); loopfd = openPipe(); 
+    ableq = allocIntq(); maskq = allocIntq(); 
     callBack(RegisterCall,registerCall);
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
@@ -2103,6 +2111,7 @@ void initTest()
     break; case(Regress): case(Release): break;}
 }
 
+// called by main
 void planeInit(uftype copy, wftype cont, nftype call, vftype fork, zftype gnfo, zftype info, zftype jnfo, zftype knfo, bftype hnfo, oftype cmnd, aftype wait, aftype wake)
 {
     callCopy = copy;

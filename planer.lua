@@ -42,9 +42,9 @@ function atomSugar(list,idx,str)
 	if v["mem"] == "Transferz" then
 	cent = cent.."sub["..(i-1).."]:-1"
 	elseif v["mem"] == "Drawz" then
-	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+1)
+	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+2)
 	elseif v["mem"] == "Getcfgz" then
-	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+1)
+	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+2)
 	else cent = cent.."sub["..(i-1).."]:"..castMemory(v["mem"]) end end
 	cent = cent..")"
 	center = centSugar(cent)
@@ -84,12 +84,12 @@ function flushTest()
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function readConfig(list,res,cfg)
-	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(ImmStrGetcfgzOpOp)fld[2]:$(#0)fid:Str(mem)))") 
-	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz)))") 
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+2)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(ImmStrGetcfgzOpOp)fld[2]:$(#0)fid:Str(mem)))") 
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+2)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz)))") 
 	for i,v in ipairs(cfg) do
-	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+1)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Evalres[0]:$(#"..(castMemory("Memorys")+2)..")fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg)))")
 	end
-	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
+	list[#list+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+2).."))")
 	str = "Read"
 	for i,v in ipairs(cfg) do str = str..":"..v end
 	atomSugar(list,tests[found]["idx"],str)
@@ -111,9 +111,9 @@ function listResrc(lst,res,arg)
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Move or Sage to set rsp to RptRsp
-	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..(castMemory("Memorys")+1)..")arg[1]:$(#0))")
-	-- prevent overwrite of Memorys+1 by response from Bopy; wait for read of response before sending next Rebootz
-	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+1).."))")
+	lst[#lst+1] = machSugar("Machine(xfr:Bopysig:2arg[0]:$(#"..(castMemory("Memorys")+2)..")arg[1]:$(#0))")
+	-- prevent overwrite of Memorys+2 by response from Bopy; wait for read of response before sending next Rebootz
+	lst[#lst+1] = machSugar("Machine(xfr:Qopysig:1arg[0]:$(#"..(castMemory("Memorys")+2).."))")
 	atomSugar(lst,tests[found]["idx"],"Resrc")
 	readCenter(tests[found]["idx"])
 end
