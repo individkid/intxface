@@ -987,6 +987,7 @@ void demoPush(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrix
     if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
     centerPlace(ptr);
+    demoWake(menu);
 }
 void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
 {
@@ -1080,44 +1081,43 @@ void demoSize(struct Menu *menu) // alloc/send Matrixz
 void demoDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
-    break; case (SlctMsk): // G = GM/ S = M'S; M = GSLT Call; Disp
-    demoRead(menu); // pull/modify/place Kernelz, pull/read/place Matrixz
-    demoSend(menu); // pull/read/place Kernelz, alloc/send Matrixz
-    demoDisp(menu); // pull/send Drawz
-    break; case (DoneMsk): // Read Push
-    demoMask(menu); // pull/read/place Getoldz\Getintz\Vectorz
-    demoDone(menu); // maybe alloc/push Metricz
-    break; case (PrssMsk): // M = L; S = SL; L = I; Push
+    break; case (SlctMsk): // G = GM, maybe S = M'S; M = GSLT, Call; Disp
+    demoRead(menu); // Self or Glob
+    demoSend(menu); // Pose, Bopy dst
+    demoDisp(menu); // Bopy dsp
+    break; case (DoneMsk): // Read; Push
+    demoMask(menu); // Void
+    demoDone(menu); // Qopy dst
+    break; case (PrssMsk): // M = L, S = SL, L = I, Push
     if (planeInfo(PressQueue,0,planeRcfg) == 0) break;
     menu->act = Indicate; menu->dev = Devices;
-    demoPush(menu); // pull/modify/place Kernelz, alloc/push Matrixz
-    demoWake(menu);
-    demoMenu(menu);
-    break; case (ProjMsk): // Proj Disp
-    demoSize(menu); // alloc/send Matrixz
+    demoPush(menu); // Send, Qopy dst
+    demoMenu(menu); // Void
+    break; case (ProjMsk): // Proj, Call; Disp
+    demoSize(menu); // Proj, Bopy dst
+    demoDisp(menu); // Bopy dsp
     break; case (EoodMsk):
     // TODO wait for window resize
-    break; case (MoveMsk): // L = LTC'; T = C; M = GSLT Call; Disp
-    if (menu->act == Manipulate) {
-    demoCont(menu); // pull/modify/place Kernelz
-    demoSend(menu); // pull/modify/place Kernelz, alloc/send Matrixz
-    demoDisp(menu);} // pull/send Drawz
-    break; case (ClckMsk): // M = L; S = SL; L = I; Push; Call
+    break; case (MoveMsk):
+    if (menu->act == Manipulate) { // L = LTC', T = C; M = GSLT, Call; Disp
+    demoCont(menu); // Form
+    demoSend(menu); // Pose, Bopy dst
+    demoDisp(menu);} // Bopy dsp
+    break; case (ClckMsk):
     if (planeInfo(ClickQueue,0,planeRcfg) == 0) break;
-    if (menu->act == Manipulate) {
+    if (menu->act == Manipulate) { // M = L, S = SL, L = I, Push
     menu->act = Indicate;
-    demoPush(menu); // pull/modify/place Kernelz, alloc/push Matrixz
-    demoWake(menu);} else {
-    demoPute(menu);} // pull/send Drawz
-    break; case (RollMsk): // L = LTC'; T = C; M = GSLT Call; Disp
-    if (menu->act == Manipulate) {
-    demoCont(menu); // pull/modify/place Kernelz
-    demoSend(menu); // pull/modify/place Kernelz, alloc/send Matrixz
-    demoDisp(menu);} // pull/send Drawz
-    break; case (TimeMsk): // M = L; S = SL; L = I; Push
-    if (menu->act == Manipulate) {
-    demoPush(menu); // pull/modify/place Kernelz, alloc/push Matrixz
-    demoWake(menu);}}
+    demoPush(menu);} // Send, Qopy dst
+    else { // Call
+    demoPute(menu);} // Bopy pie/nor/sel
+    break; case (RollMsk):
+    if (menu->act == Manipulate) { // L = LTC'; T = C; M = GSLT Call; Disp
+    demoCont(menu); // Form
+    demoSend(menu); // Pose, Bopy dst
+    demoDisp(menu);} // Bopy dsp
+    break; case (TimeMsk):
+    if (menu->act == Manipulate) { // M = L, S = SL, L = I, Push
+    demoPush(menu);}} // Send, Qopy dst
 }
 
 // queue and thread helpers
