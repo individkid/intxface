@@ -786,6 +786,20 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		skipSugar("Op",str,idx);
 		sav = *idx;
 		continue;}
+	if (strncmp(str+*idx,"Exp",3)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 3;
+		sugarBinary(lst,ExpOp,str,idx);
+		skipSugar("Op",str,idx);
+		sav = *idx;
+		continue;}
+	if (strncmp(str+*idx,"Typ",3)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 3;
+		sugarUnary(lst,TypOp,str,idx);
+		skipSugar("Op",str,idx);
+		sav = *idx;
+		continue;}
 	if (strncmp(str+*idx,"Imm",3)==0) {
 		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
 		*idx += 3;

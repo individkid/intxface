@@ -958,16 +958,20 @@ void demoSend(struct Menu *menu) // pull/read/place Kernelz, alloc/send Matrixz
 }
 void demoCont(struct Menu *menu) // pull/modify/place Kernelz
 {
-    enum Device dev = (menu->msk==MoveMsk?Coord:Angle);
-    if (menu->dev != dev) {menu->dev = dev;
     struct Extend *ptr = centerPull(menu->ker,"Demo");
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
     timesmat(timesmat(ker->local.mat,ker->saved.mat,4),inv,4); // L = LTC'
     copymat(ker->saved.mat,mat,4); // T = C
     centerPlace(ptr);
-    int fix = (menu->msk==MoveMsk?menu->coo:menu->ang);
-    planeJnfo(ManipFixed,fix,planeWcfg);}
+}
+void demoNone(struct Menu *menu) // pull/modify/place Kernelz
+{
+    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
+    timesmat(ker->local.mat,ker->saved.mat,4); // L = LT
+    identmat(ker->saved.mat,4); // T = I
+    centerPlace(ptr);
 }
 void demoPush(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrixz
 {
@@ -1081,43 +1085,47 @@ void demoSize(struct Menu *menu) // alloc/send Matrixz
 void demoDemo(struct Menu *menu)
 {
     switch (menu->msk) {default: ERROR();
-    break; case (SlctMsk): // G = GM, maybe S = M'S; M = GSLT, Call; Disp
-    demoRead(menu); // Self or Glob
-    demoSend(menu); // Pose, Bopy dst
-    demoDisp(menu); // Bopy dsp
-    break; case (DoneMsk): // Read; Push
-    demoMask(menu); // Void
-    demoDone(menu); // Qopy dst
-    break; case (PrssMsk): // M = L, S = SL, L = I, Push
-    if (planeInfo(PressQueue,0,planeRcfg) == 0) break;
+    break; case (SlctMsk): // M from external in src
+    demoRead(menu); // G = GM, maybe S = M'S
+    demoSend(menu); // M = GSLT, Call dst
+    demoDisp(menu); // Draw dsp
+    break; case (DoneMsk): // pierce from replace in src
+    demoMask(menu); // Jnfo geo
+    demoDone(menu); // Push dst
+    break; case (PrssMsk): // Press* in queue
     menu->act = Indicate; menu->dev = Devices;
-    demoPush(menu); // Send, Qopy dst
-    demoMenu(menu); // Void
-    break; case (ProjMsk): // Proj, Call; Disp
-    demoSize(menu); // Proj, Bopy dst
-    demoDisp(menu); // Bopy dsp
+    demoPush(menu); // M = L, S = SL, L = I, Push dst
+    demoMenu(menu); // Jnfo cfg
+    break; case (ProjMsk): // change in Focal* UniformWid/Hei
+    demoSize(menu); // Proj, Call dst
+    demoDisp(menu); // Draw dsp
     break; case (EoodMsk):
     // TODO wait for window resize
-    break; case (MoveMsk):
-    if (menu->act == Manipulate) { // L = LTC', T = C; M = GSLT, Call; Disp
-    demoCont(menu); // Form
-    demoSend(menu); // Pose, Bopy dst
-    demoDisp(menu);} // Bopy dsp
-    break; case (ClckMsk):
-    if (planeInfo(ClickQueue,0,planeRcfg) == 0) break;
-    if (menu->act == Manipulate) { // M = L, S = SL, L = I, Push
+    break; case (MoveMsk): // change in ManipLeft/Base
+    if (menu->act == Manipulate) {
+    if (menu->dev != Coord) {menu->dev = Coord;
+    demoCont(menu); // L = LTC', T = C
+    int fix = (menu->msk==MoveMsk?menu->coo:menu->ang);
+    planeJnfo(ManipFixed,fix,planeWcfg);}
+    demoSend(menu); // M = GSLT, Call dst
+    demoDisp(menu); /* Draw dsp*/}
+    break; case (ClckMsk): // Click* in queue
+    if (menu->act == Manipulate) {
     menu->act = Indicate;
-    demoPush(menu);} // Send, Qopy dst
-    else { // Call
-    demoPute(menu);} // Bopy pie/nor/sel
-    break; case (RollMsk):
-    if (menu->act == Manipulate) { // L = LTC'; T = C; M = GSLT Call; Disp
-    demoCont(menu); // Form
-    demoSend(menu); // Pose, Bopy dst
-    demoDisp(menu);} // Bopy dsp
-    break; case (TimeMsk):
-    if (menu->act == Manipulate) { // M = L, S = SL, L = I, Push
-    demoPush(menu);}} // Send, Qopy dst
+    demoPush(menu); /* M = L, S = SL, L = I, Push dst*/} else {
+    demoPute(menu); /* Draw pie/nor/sel*/}
+    break; case (RollMsk): // change in ManipAngle
+    if (menu->act == Manipulate) {
+    if (menu->dev != Angle) {menu->dev = Angle;
+    demoCont(menu); // L = LTC', T = C
+    planeJnfo(ManipFixed,menu->ang,planeWcfg);}
+    demoSend(menu); // M = GSLT, Call dst
+    demoDisp(menu); /* Draw dsp*/}
+    break; case (TimeMsk): // timer expired
+    if (menu->act == Manipulate) {
+    menu->act = Indicate;
+    demoNone(menu); // L = LT, T = I
+    demoPush(menu); /* M = L, S = SL, L = I, Push dst*/}}
 }
 
 // queue and thread helpers

@@ -639,10 +639,9 @@ int datxEval(void **dat, struct Express *exp, int typ)
 	fprintf(stderr,"datxEval %s\n",opr); free(opr);}*/
 	// TODO add scalar vector matrix operations:
 	// TODO scale by scalar: Matrixz = Matrixz */ Old, Matrixz = Old */ Matrixz,
-	// TODO per cell and row per column: Matrixz = Matrixz *+- Matrixz,
+	// TODO per cell, row per column, and by inverse: Matrixz = Matrixz +-*/ Matrixz,
 	// TODO transform and cross: Vectorz = Matrixz * Vectorz, Vectorz = Matrixz * Matrixz
 	// TODO dot and per: Old = Vectorz * Vectorz, Vectorz = Old */+- Vectorz, Vectorz = Vectorz */+- Old
-	// TODO add InvOp to find negative of integers/vectors or inverse of scalars/matrices 
 	switch (exp->opr) {
 	case (AddOp): BINARY_BLOCK(BINARY_ADD,opa) break;
 	case (SubOp): BINARY_BLOCK(BINARY_SUB,opa) break;
@@ -787,10 +786,22 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		void *dat0 = 0; int typ0 = -1; void *dat1 = 0; int typ1 = -1;
 		typ0 = datxEval(&dat0,&exp->opa[0],typ0);
 		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
+		if (typ1 != TYPEInt) ERROR(); typ1 = *datxIntz(0,dat1);
 		switch (typ0) {default: ERROR();
 		FOREACH_BASIC(CAST_BASIC)
 		FOREACH_ENUM(CAST_ENUM)}
 		free(dat0); free(dat1);} break;
+	case (ExpOp): {
+		int typ0 = -1; void *dat1 = 0; int typ1 = -1;
+		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
+		if (typ1 != TYPEInt) ERROR(); typ = *datxIntz(0,dat1);
+		typ0 = datxEval(dat,&exp->opa[0],typ);
+		if (typ0 != typ) ERROR();
+		free(dat1);} break;
+	case (TypOp): {
+		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
+		if (typ == -1) typ = TYPEInt; if (typ != TYPEInt) ERROR();
+		datxInt(dat,typ0); free(dat0);} break;
 	case (ImmOp): {
 		void *dat0 = 0; int typ0 = datxEval(&dat0,exp->put,-1);
 		if (typ0 == TYPEStr) {

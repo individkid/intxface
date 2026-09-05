@@ -558,7 +558,9 @@ Operate = { -- little language expressions
 	"FldOp", -- fields to struct
 	"ExtOp", -- fields from struct
 	"TimOp", -- time since process start
-	"CstOp", -- cast first to type of second
+	"CstOp", -- cast first to indicated
+	"ExpOp", -- evaluate as indicated
+	"TypOp", -- indicate type of given
 	"ImmOp", -- built in value
 	"IntOp", -- ImmOp sugar
 	"StrOp", -- ImmOp sugar
@@ -1999,15 +2001,15 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Void(exp[0]:$(RegisterLog := @log))"..
 		 "mch[%(return jdx())]:Jump(exp[0]:$(Cnd"..
 		  "#0 == EC @ptr #0 Cmp , #7"..
-		  "#0 == Or EC Cst @mem #0 Op #%(return castMemory(\"Transferz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Rebootz\")) Cmp Bit , #6"..
-		  "#0 == Or EC Cst @mem #0 Op #%(return castMemory(\"Kernelz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Expressz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Machinez\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Metricz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Menuz\")) Cmp Bit , #5"..
-		  "#0 == And EC Cst @mem #0 Op #%(return castMemory(\"Trianglez\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit , #4"..
-		  "#0 == And EC Cst @mem #0 Op #%(return castMemory(\"Indexz\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp Bit , #3"..
-		  "#0 == EC Cst @mem #0 Op #%(return castMemory(\"Matrixz\")) Cmp , #2"..
+		  "#0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Transferz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Rebootz\")) Cmp Bit , #6"..
+		  "#0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Kernelz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Expressz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Machinez\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Metricz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Menuz\")) Cmp Bit , #5"..
+		  "#0 == And EC Cst @mem Typ#0Op Op #%(return castMemory(\"Trianglez\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit , #4"..
+		  "#0 == And EC Cst @mem Typ#0Op Op #%(return castMemory(\"Indexz\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp Bit , #3"..
+		  "#0 == EC Cst @mem Typ#0Op Op #%(return castMemory(\"Matrixz\")) Cmp , #2"..
 		  "#0 == #1 , #1 Op))"..
 		 "mch[%(return kdx(\"normal\"))]:Nest(lvl:-1)"..
 		  -- Bopy normal memory to gpu
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op ; rsp = ImmStrRptRspOpOp Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem Typ#0Op Op ; rsp = ImmStrRptRspOpOp Op))"..
 		  "mch[%(return jdx())]:Sage(sim:2num[0]:$(@memorys)nam[0]:Str(sub)nam[1]:Str(rsp))"..
 		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(@sub)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
@@ -2015,35 +2017,35 @@ Bootstrap = {
 		  -- Nopy Matrixz to process Self or Glob matrix
 		  "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp))"..
 		  "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem Typ#0Op Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Trianglez @siz
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem Typ#0Op Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(Cst @mem #0 Op)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(Cst @mem Typ#0Op Op)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non@siz*#3Op))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"index\"))]:Nest(lvl:-1)"..
 		  -- update Drawz according to Indexz @siz
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem Typ#0Op Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(Cst @mem #0 Op)arg[1]:$(#0))"..
+		  "mch[%(return jdx())]:Bopy(sig:2arg[0]:$(Cst @mem Typ#0Op Op)arg[1]:$(#0))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non@sizOp))"..
 		  "mch[%(return jdx())]:Eval(res[0]:$(@draw)fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"non-gpu\"))]:Nest(lvl:-1)"..
 		  -- Sage only for non-gpu memory
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem Typ#0Op Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return kdx(\"atomic\"))]:Nest(lvl:-1)"..
 		  -- Copy immediate and atomic memory
-		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem #0 Op Op))"..
+		  "mch[%(return jdx())]:Void(exp[0]:$(Non sub = Cst @mem Typ#0Op Op Op))"..
 		  "mch[%(return jdx())]:Sage(sim:1num[0]:$(@memorys)nam[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(Cst @mem #0 Op)arg[1]:$(#1))"..
+		  "mch[%(return jdx())]:Copy(sig:2arg[0]:$(Cst @mem Typ#0Op Op)arg[1]:$(#1))"..
 		  "mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- do nothing if internal queue empty
@@ -2085,20 +2087,20 @@ Bootstrap = {
 		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Non @ptr == #0 Op , #2 ; #0 == #1 , #1 Op))"..
 		  "mch[%(return jdx())]:Nest(lvl:-1)"..
 		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Cnd "..
-		  "EO Cst @ret #0 Op #%(return castRetval(\"PassRet\")) Cmp : Non pass = @pass + #1 ; @_ Op "..
-		  "EO Cst @ret #0 Op #%(return castRetval(\"FailRet\")) Cmp : Non fail = @fail + #1 ; @_ Op "..
-		  "EO Cst @ret #0 Op #%(return castRetval(\"DoneRet\")) Cmp : Non done = @done + #1 ; @_ Op "..
+		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"PassRet\")) Cmp : Non pass = @pass + #1 ; @_ Op "..
+		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"FailRet\")) Cmp : Non fail = @fail + #1 ; @_ Op "..
+		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"DoneRet\")) Cmp : Non done = @done + #1 ; @_ Op "..
 		  "#0 : @_ Op))"..
 		 "mch[%(return jdx())]:Eval(res[0]:$(@memorys)fnc[0]:$(Cnd "..
-		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str old:Op , Imm @_ . old #0 Op , EndOp Op ; @_ Op "..
-		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str uns:Op , Imm @_ . uns #0 Op , EndOp Op ; @_ Op "..
-		  "EO Cst @_ . mem #0 #0 Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
 		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
 		  "#0 : @_ Op))"..
 		 "mch[%(return jdx())]:Nest(lvl:2)"..
-		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Or EC Cst @mem #0 Op #%(return castMemory(\"Getoldz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Getintz\")) Cmp EC Cst @mem #0 Op #%(return castMemory(\"Vectorz\")) Cmp Bit , #1 ; #0 == #1 , #2 Op))"..
+		   "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Getoldz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Getintz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Vectorz\")) Cmp Bit , #1 ; #0 == #1 , #2 Op))"..
 		   "mch[%(return jdx())]:Nest(lvl:-1)"..
 		  -- "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp))"..
 		  -- "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
@@ -2119,9 +2121,13 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 8
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrPrssMskOp , EndOp Op))"..
-		-- disable and change manipulation
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrPrssMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == EO ?PressQueue #0 Cmp , #1 ; #0 == #1 , #2 Op))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- disable and change manipulation
+		 "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrPrssMskOpOp))"..
+		 "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return kdx(\"proj\"))]:Nest(lvl:-1)".. -- 9
@@ -2152,9 +2158,13 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 12
 		"mch[%(return jdx())]:Void(exp[0]:$(Put StrClckMskOp , EndOp Op))"..
-		-- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
-		"mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrClckMskOpOp))"..
-		"mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		"mch[%(return jdx())]:Nest(lvl:2)"..
+		  "mch[%(return jdx())]:Jump(exp[0]:$(Cnd #0 == EO ?ClickQueue #0 Cmp , #1 ; #0 == #1 , #2 Op))"..
+		  "mch[%(return jdx())]:Nest(lvl:-1)"..
+		 -- disable manipulation if enabled; or do pierce Draw Wopy, fill of Fixed Normal from response at Click, and enable
+		 "mch[%(return jdx())]:Eval(res[0]:$(@menu)fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrClckMskOpOp))"..
+		 "mch[%(return jdx())]:Nopy(sig:2arg[0]:$(@menu)arg[1]:$(#0))"..
+		 "mch[%(return jdx())]:Nest(lvl:-1)"..
 		"mch[%(return jdx())]:Jump(exp[0]:$(#-1))"..
 
 		"mch[%(return jdx())]:Nest(lvl:-1)".. -- 13
@@ -2308,7 +2318,7 @@ Irrex = { -- permutation of permutations
 }
 Express = { -- simple expression
 	{"opr","Operate",{},""},
-	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["CstOp"]=true}},2},
+	{"opa","Express",{["opr"]={["AddOp"]=true,["SubOp"]=true,["MulOp"]=true,["DivOp"]=true,["RemOp"]=true,["CstOp"]=true,["ExpOp"]=true}},2},
 	{"bit","Bitwise",{["opr"]={["BitOp"]=true}},{}},
 	{"opb","Express",{["opr"]={["BitOp"]=true}},2},
 	{"cmp","Compare",{["opr"]={["CmpOp"]=true}},{}},
@@ -2324,7 +2334,7 @@ Express = { -- simple expression
 	{"key","Str",{["opr"]={["ValOp"]=true,["RexOp"]=true,["IrxOp"]=true,["StrOp"]=true}},{}},
 	{"lhs","Str",{["opr"]={["SavOp"]=true}},{}},
 	{"rhs","Express",{["opr"]={["SavOp"]=true}},1},
-	{"put","Express",{["opr"]={["SrcOp"]=true,["ImmOp"]=true}},1},
+	{"put","Express",{["opr"]={["SrcOp"]=true,["ImmOp"]=true,["TypOp"]=true}},1},
 	{"fld","Express",{["opr"]={["FldOp"]=true}},3},
 	{"fid","Str",{["opr"]={["FldOp"]=true}},{}},
 	{"ext","Express",{["opr"]={["ExtOp"]=true}},2},
