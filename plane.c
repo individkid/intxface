@@ -311,8 +311,19 @@ float *planeWindow(float *mat)
 }
 
 // resource access
-void centerSize(int idx);
-int centerFunc(void *arg);
+void centerSize(int idx)
+{
+    if (waitSafe(copySem) != 0) ERROR();
+    if (idx < 0) ERROR();
+    if (idx >= centers) {int size = idx+1; center = realloc(center,size*sizeof(struct Extend *));
+    for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
+    if (postSafe(copySem) != 1) ERROR();
+}
+int centerFunc(void *arg)
+{
+    struct Extend **center = (struct Extend **)arg;
+    return (*center != 0);
+}
 struct Extend *centerPull(int idx, const char *log)
 {
     centerSize(idx);
@@ -336,7 +347,16 @@ struct Extend *centerPeek(int idx, const char *log)
     if (postSafe(copySem) != 1) ERROR();
     return ret;
 }
-void centerFree(int idx, const char *log);
+void centerFree(int idx, const char *log)
+{
+    centerSize(idx);
+    struct Extend *ptr = centerPeek(idx,log);
+    if (ptr == 0) return;
+    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = Asserts;
+    deleteSmart(ptr->log);
+    freeExtend(ptr);
+    allocExtend(&ptr,0);
+}
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
@@ -386,450 +406,6 @@ int centerMod(struct Extend *ptr)
     break; case (Vertexz): return sizeof(struct Vertex);
     break; case (Basisz): return sizeof(struct Basis);}
     return 0;
-}
-void centerSize(int idx)
-{
-    if (waitSafe(copySem) != 0) ERROR();
-    if (idx < 0) ERROR();
-    if (idx >= centers) {int size = idx+1; center = realloc(center,size*sizeof(struct Extend *));
-    for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
-    if (postSafe(copySem) != 1) ERROR();
-}
-void centerFree(int idx, const char *log)
-{
-    centerSize(idx);
-    struct Extend *ptr = centerPeek(idx,log);
-    if (ptr == 0) return;
-    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = Asserts;
-    deleteSmart(ptr->log);
-    freeExtend(ptr);
-    allocExtend(&ptr,0);
-}
-int centerFunc(void *arg)
-{
-    struct Extend **center = (struct Extend **)arg;
-    return (*center != 0);
-}
-
-// numbered resources
-struct Extend *machineCenter(int sig, int *arg, int lim, int idx, int sub, const char *log)
-{
-    if (sig != lim) ERROR();
-    int src = arg[idx];
-    int srcSub = arg[sub];
-    struct Extend *srcPtr = centerPull(src,log);
-    if (srcPtr->sub != src) ERROR();
-    if (srcSub < 0 || srcSub >= srcPtr->ptr->siz) ERROR();
-    return srcPtr;
-}
-struct Kernel *machineKernel(struct Extend *ptr, int sig, int *arg, int lim, int idx, int sub)
-{
-    if (sig != lim) ERROR();
-    int src = arg[idx];
-    int srcSub = arg[sub];
-    if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
-    if (ptr->ptr->mem != Kernelz) ERROR();
-    return &ptr->ptr->ker[srcSub];
-}
-struct Matrix *machineMatrix(struct Extend *ptr, int sig, int *arg, int lim, int idx, int sub)
-{
-    if (sig != lim) ERROR();
-    int src = arg[idx];
-    int srcSub = arg[sub];
-    if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
-    if (ptr->ptr->mem != Matrixz) ERROR();
-    return &ptr->ptr->mat[srcSub];
-}
-struct Menu *machineMenu(struct Extend *ptr, int sig, int *arg, int lim, int idx, int sub)
-{
-    if (sig != lim) ERROR();
-    int src = arg[idx];
-    int srcSub = arg[sub];
-    if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
-    if (ptr->ptr->mem != Menuz) ERROR();
-    return &ptr->ptr->men[srcSub];
-}
-void machinePlace(struct Extend *ptr, int sig, int *arg, int lim, int idx, int sub)
-{
-    if (sig != lim) ERROR();
-    int src = arg[idx];
-    int srcSub = arg[sub];
-    if (ptr->sub != src) ERROR();
-    if (srcSub < 0 || srcSub >= ptr->ptr->siz) ERROR();
-    centerPlace(ptr);
-}
-
-// special transfers
-// manipulation C
-// Kernel.saved T
-// Kernel.local L
-// Kernel.sent S
-// Kernal.global G
-// Matrix M
-// T goes to C thus changing Pose, when C is not I upon Comp
-// T goes to C without changing Pose, upon Form
-// T goes to I without changing Pose, when C is I upon Form
-// L goes to I without changing Pose, upon Send
-// S goes to I without changing Pose, upon last outstanding Self
-// G changes by M thus changing Pose, upon Glob
-void machineProj(int sig, int *arg)
-{
-    if (sig != ProjArgs) ERROR();
-    struct Extend *dst = machineCenter(sig,arg,ProjArgs,ProjDst,ProjDstSub,"Proj");
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
-    planeWindow(matrix->mat);
-    machinePlace(dst,sig,arg,ProjArgs,ProjDst,ProjDstSub);
-}
-void machineBnry(int sig, int *arg)
-{
-    if (sig != ProjArgs) ERROR();
-    struct Extend *lft = machineCenter(sig,arg,BnryArgs,BnryLft,BnryLftSub,"Proj");
-    struct Matrix *mft = machineMatrix(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
-    struct Extend *rgt = machineCenter(sig,arg,BnryArgs,BnryRgt,BnryRgtSub,"Proj");
-    struct Matrix *mgt = machineMatrix(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
-    struct Extend *dst = machineCenter(sig,arg,BnryArgs,BnryDst,BnryDstSub,"Proj");
-    struct Matrix *mst = machineMatrix(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
-    float *fft = mft->mat; float *fgt = mgt->mat; float *fst = mst->mat;
-    planeTransform(fst,fft+0,fgt+0,fft+4,fgt+4,fft+8,fgt+8,fft+12,fgt+12);
-    machinePlace(lft,sig,arg,BnryArgs,BnryLft,BnryLftSub);
-    machinePlace(rgt,sig,arg,BnryArgs,BnryRgt,BnryRgtSub);
-    machinePlace(dst,sig,arg,BnryArgs,BnryDst,BnryDstSub);
-}
-void machinePose(int sig, int *arg)
-{
-    if (sig != PoseArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,PoseArgs,PoseSrc,PoseSrcSub,"Pose");
-    struct Kernel *kernel = machineKernel(src,sig,arg,PoseArgs,PoseSrc,PoseSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,PoseArgs,PoseDst,PoseDstSub,"Pose");
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,PoseArgs,PoseDst,PoseDstSub);
-    // compose for draw -- M = GSLT
-    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
-    machinePlace(src,sig,arg,PoseArgs,PoseSrc,PoseSrcSub);
-    machinePlace(dst,sig,arg,PoseArgs,PoseDst,PoseDstSub);
-}
-void machineComp(int sig, int *arg)
-{
-    if (sig != CompArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,CompArgs,CompSrc,CompSrcSub,"Comp");
-    struct Kernel *kernel = machineKernel(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,CompArgs,CompDst,CompDstSub,"Comp");
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,CompArgs,CompDst,CompDstSub);
-    // compose for draw -- T = C; M = GSLT
-    float mat[16]; copymat(kernel->saved.mat,planeMatrix(mat),4); // T = C
-    timesmat(timesmat(timesmat(copymat(matrix->mat,kernel->global.mat,4),kernel->sent.mat,4),kernel->local.mat,4),kernel->saved.mat,4); // M = GSLT
-    machinePlace(src,sig,arg,CompArgs,CompSrc,CompSrcSub);
-    machinePlace(dst,sig,arg,CompArgs,CompDst,CompDstSub);
-}
-void machineForm(int sig, int *arg)
-{
-    if (sig != FormArgs) ERROR();
-    struct Extend *center = machineCenter(sig,arg,FormArgs,FormSrc,FormSrcSub,"Form");
-    struct Kernel *kernel = machineKernel(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
-    // change manipulation matrix -- L = LTC'; T = C
-    float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
-    timesmat(timesmat(kernel->local.mat,kernel->saved.mat,4),inv,4); // L = LTC'
-    copymat(kernel->saved.mat,mat,4); // T = C
-    machinePlace(center,sig,arg,FormArgs,FormSrc,FormSrcSub);
-}
-void machineSend(int sig, int *arg)
-{
-    if (sig != SendArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SendArgs,SendSrc,SendSrcSub,"Send");
-    struct Kernel *kernel = machineKernel(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,SendArgs,SendDst,SendDstSub,"Send");
-    struct Matrix *matrix = machineMatrix(dst,sig,arg,SendArgs,SendDst,SendDstSub);
-    // move local to sent -- M = L; S = SL; L = I
-    copymat(matrix->mat,kernel->local.mat,4); // M = L
-    timesmat(kernel->sent.mat,kernel->local.mat,4); // S = SL
-    identmat(kernel->local.mat,4); // L = I
-    machinePlace(src,sig,arg,SendArgs,SendSrc,SendSrcSub);
-    machinePlace(dst,sig,arg,SendArgs,SendDst,SendDstSub);
-}
-void machineSelf(int sig, int *arg)
-{
-    if (sig != SelfArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,SelfArgs,SelfSrc,SelfSrcSub,"Self");
-    struct Matrix *matrix = machineMatrix(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,SelfArgs,SelfDst,SelfDstSub,"Self");
-    struct Kernel *kernel = machineKernel(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
-    // move portion of sent to global -- G = GM; S = M'S
-    timesmat(kernel->global.mat,matrix->mat,4); // G = GM
-    float inv[16]; jumpmat(kernel->sent.mat,invmat(copymat(inv,matrix->mat,4),4),4); // S = M'S
-    machinePlace(src,sig,arg,SelfArgs,SelfSrc,SelfSrcSub);
-    machinePlace(dst,sig,arg,SelfArgs,SelfDst,SelfDstSub);
-}
-void machineGlob(int sig, int *arg)
-{
-    if (sig != GlobArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,GlobArgs,GlobSrc,GlobSrcSub,"Glob");
-    struct Matrix *matrix = machineMatrix(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
-    struct Extend *dst = machineCenter(sig,arg,GlobArgs,GlobDst,GlobDstSub,"Glob");
-    struct Kernel *kernel = machineKernel(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
-    // absorb discontinuous change -- G = GM
-    timesmat(kernel->global.mat,matrix->mat,4); // G = GM
-    machinePlace(src,sig,arg,GlobArgs,GlobSrc,GlobSrcSub);
-    machinePlace(dst,sig,arg,GlobArgs,GlobDst,GlobDstSub);
-}
-
-// general transfers
-void machineBopy(int sig, int *arg)
-{
-    if (sig != BopyArgs) ERROR();
-    int src = arg[BopySrc];
-    int alt = arg[BopyAlt];
-    struct Extend *ext = centerPull(src,"Bopy");
-    callCont(ext,alt,ext->log);
-}
-void machineExec(int idx, struct Extend *ext);
-void machineCopy(int sig, int *arg)
-{
-    if (sig != CopyArgs) ERROR();
-    int src = arg[CopySrc];
-    int idx = arg[CopyThd];
-    struct Extend *ext = centerPull(src,"Copy");
-    machineExec(idx,ext);
-    centerPlace(ext);
-}
-void machineDopy(int sig, int *arg)
-{
-    if (sig != DopyArgs) ERROR();
-    int src = arg[DopySrc];
-    int dst = arg[DopyDst];
-    struct Extend *cpy = 0; allocExtend(&cpy,1);
-    struct Extend *ptr = centerPull(src,"Dopy");
-    copyExtend(cpy,ptr);
-    cpy->sub = dst; cpy->log = otherSmart(ptr->log);
-    centerPlace(ptr);
-    centerPlace(cpy);
-}
-struct PlaneRange {
-    int src, dst, siz;
-};
-struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStruct *arg);
-void machineMopy(int sig, int *arg)
-{
-    if (sig != MopyArgs) ERROR();
-    int srcSub = arg[MopySrc];
-    int srcOfs = arg[MopySrcSub];
-    int dstSub = arg[MopyDst];
-    int dstOfs = arg[MopyDstSub];
-    int siz = arg[MopySiz];
-    if (srcSub == dstSub && srcOfs > dstOfs) {
-    struct Extend *ptr = centerPull(srcSub,"Mopy");
-    // TODO decrease size and pack out from dstOfs to srcOfs
-    centerPlace(ptr);}
-    else if (srcSub == dstSub && srcOfs < dstOfs) {
-    struct Extend *ptr = centerPull(srcSub,"Mopy");
-    // TODO increase size and fill srcOfs to dstOfs with init
-    centerPlace(ptr);}
-    else if (srcSub != dstSub) {
-    struct Extend *src = centerPull(srcSub,"Mopy");
-    struct Extend *dst = centerPull(dstSub,"Mopy");
-    int sfd = datxClr(0); writeCenter(src->ptr,sfd);
-    int dfd = datxClr(1); writeCenter(dst->ptr,dfd);
-    struct PlaneRange usr = {srcOfs,dstOfs,siz};
-    struct MergeStruct dtf = {&usr,sfd,dfd,datxClr(3)};
-    int wfd = datxClr(2); mergeCenter(wfd,centerRange,&dtf);
-    readCenter(dst->ptr,wfd);
-    centerPlace(src);
-    centerPlace(dst);}
-}
-void demoDemo(struct Menu *menu);
-void machineNopy(int sig, int *arg)
-{
-    if (sig != NopyArgs) ERROR();
-    struct Extend *src = machineCenter(sig,arg,NopyArgs,NopySrc,NopySrcSub,"Nopy");
-    struct Menu *menu = machineMenu(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
-    demoDemo(menu);
-    machinePlace(src,sig,arg,NopyArgs,NopySrc,NopySrcSub);
-}
-void machinePop(int sig, int chk, int dst, enum Assert asr, void *que, const char *log);
-void machinePopy(int sig, int *arg)
-{
-    machinePop(sig,PopyArgs,arg[PopyDst],PipeAsr,internal,"Popy");
-}
-void machinePush(int sig, int chk, int src, enum Assert asr, enum Mask msk, void *que, const char *log);
-void machineQopy(int sig, int *arg)
-{
-    machinePush(sig,QopyArgs,arg[QopySrc],RespAsr,RespMsk,response,"Qopy");
-}
-void machineRopy(int sig, int *arg)
-{
-    machinePop(sig,RopyArgs,arg[RopyDst],DoneAsr,replace,"Ropy");
-}
-int machineIval(struct Express *exp);
-void machineTage(int sim, struct Express *num, char **nam)
-{
-    int src = machineIval(num);
-    struct Extend *ptr = centerPeek(src,"Tage");
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
-    for (int i = 0; i < sim; i++) {
-    int wfd = datxClr(1); int ftp;
-    if (strcmp(nam[i],"ptr") == 0) {
-    writeInt((ptr != 0),wfd); ftp = TYPEInt;}
-    else if (ptr) {int num, stp; int found = 0;
-    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
-    num = identField(types[j],nam[i]); if (num >= 0) {found = 1;
-    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
-    int rfd = datxClr(0); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): writeExtend(ptr,rfd);
-    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
-    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
-    writeField(stp,num,0,rfd,wfd);}
-    else continue;
-    void *dat0 = 0; datxStr(&dat0,nam[i]);
-    void *dat1 = 0; datxGet(1,&dat1);
-    datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);}
-    if (ptr) centerPlace(ptr);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
-}
-struct PlaneField {
-    int num, sub;
-};
-struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStruct *arg);
-void machineSage(int sim, struct Express *num, char **nam)
-{
-    int src = machineIval(num);
-    struct Extend *ptr = centerPull(src,"Sage");
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
-    for (int i = 0; i < sim; i++) {
-    void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
-    if (val == 0) ERROR();
-    if (strcmp(nam[i],"ptr") == 0 && *datxIntz(0,val) == 0) {
-    freeExtend(ptr); allocExtend(&ptr,0); break;}
-    else if (strcmp(nam[i],"ptr") == 0) continue;
-    else {int num, stp, ftp; int found = 0;
-    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
-    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
-    num = identField(types[j],nam[i]); if (num >= 0) {found = 1;
-    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
-    int rfd = datxClr(0); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): writeExtend(ptr,rfd);
-    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
-    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
-    struct PlaneField usr = {num,0};
-    struct MergeStruct dtf = {&usr,rfd,datxPut(1,val),datxClr(3)};
-    int wfd = datxClr(2); switch (stp) {default: ERROR();
-    break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
-    break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
-    break; case (TYPEMetric): mergeMetric(wfd,centerField,&dtf);}
-    switch (stp) {default: ERROR();
-    break; case (TYPEExtend): readExtend(ptr,wfd);
-    break; case (TYPECenter): readCenter(ptr->ptr,wfd);
-    break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);}}
-    free(val);}
-    centerPlace(ptr);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
-}
-int moveIval(struct Express *exp);
-struct Extend *moveRefer(int sub); // leave to be changed in place
-void moveDeref(int sub, struct Extend **ext); // compare sub to asr/sub to decide whether to move
-void machineMove(struct Express *sub, struct Express *exp, int siz)
-{
-    if (siz > 9) ERROR();
-    if (waitSafe(copySem) != 0) ERROR();
-    if (waitSafe(pipeSem) != 0) ERROR();
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
-    int num[siz]; for (int i = 0; i < siz; i++) num[i] = moveIval(&sub[i]);
-    // negative num refers to a queue, positive is sub into center
-    for (int i = 0; i < siz; i++) {
-    struct Extend *ptr = moveRefer(num[i]);
-    int empty = (ptr == 0); if (empty) {allocExtend(&ptr,1); ptr->asr = PullAsr;}
-    writeExtend(ptr,datxClr(0));
-    char str[3]; str[0] = '_'; str[1] = '0' + i; str[2] = 0;
-    void *dat0 = 0; datxStr(&dat0,str);
-    void *dat1 = 0; datxGet(0,&dat1);
-    datxInsert(dat0,dat1,TYPEExtend);
-    free(dat0); free(dat1);}
-    // each expression does pull from num and place to exp.asr/sub
-    for (int i = 0; i < siz; i++) {
-    struct Extend *ptr = moveRefer(num[i]);
-    writeExtend(ptr,datxClr(0));
-    void *dat0 = 0; datxStr(&dat0,"_");
-    void *dat1 = 0; datxGet(0,&dat1);
-    datxInsert(dat0,dat1,TYPEExtend);
-    free(dat0); free(dat1);
-    void *dat = 0; int typ = datxEval(&dat,&exp[i],TYPEExtend);
-    if (typ != TYPEExtend) ERROR();
-    freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
-    moveDeref(num[i],&ptr);}
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (postSafe(copySem) != 1) ERROR();
-}
-void machineEval(struct Express *exp, int idx)
-{
-    struct Extend *ext = centerPull(idx,"Eval");
-    struct Center *ptr = ext->ptr;
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
-    writeCenter(ptr,datxClr(0));
-    void *dat0 = 0; datxStr(&dat0,"_");
-    void *dat1 = 0; datxGet(0,&dat1);
-    datxInsert(dat0,dat1,TYPECenter);
-    free(dat0); free(dat1);
-    void *dat = 0; int typ = datxEval(&dat,exp,TYPECenter);
-    if (typ != TYPECenter) ERROR();
-    freeCenter(ptr); readCenter(ptr,datxPut(0,dat)); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
-    centerPlace(ext);
-}
-void machineVoid(struct Express *exp)
-{
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
-    void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
-}
-int machineIval(struct Express *exp)
-{
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
-    void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
-    if (typ != TYPEInt) ERROR();
-    int val = readInt(datxPut(0,dat));
-    free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
-    return val;
-}
-int machineEscape(struct Machine *mch, int siz, int level, int next)
-{
-    int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
-    while (1) {
-    next += inc;
-    if (next < 0 || next >= siz) break;
-    struct Machine *mptr = &mch[next];
-    if (mptr->xfr == Nest) level += mptr->lvl*inc;
-    if (level <= 0) break;}
-    return next;
-}
-void machineArg(int *arg, int sig, struct Express *exp);
-void machineSwitch(struct Machine *mptr)
-{
-    if (!mptr) ERROR();
-    switch (mptr->xfr) {default: ERROR();
-    // numer of arguments: 0 3 2 1 2...2 3 3
-    case (Dump): *(int*)0=0; break;
-    case (Move): machineMove(mptr->sub,mptr->fun,mptr->atm); break; // each fun takes Extend @_, and Extend's in @0 @1 @2 ... indicated by sub, and returns Extend
-    case (Eval): machineEval(&mptr->fnc[0],machineIval(&mptr->res[0])); break; // takes Center in @_, returns Center
-    case (Void): machineVoid(&mptr->exp[0]); break; // expression has side effects
-    case (Proj): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineProj(mptr->sig,arg);} break;
-    case (Bnry): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBnry(mptr->sig,arg);} break;
-    case (Pose): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePose(mptr->sig,arg);} break;
-    case (Comp): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineComp(mptr->sig,arg);} break;
-    case (Form): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineForm(mptr->sig,arg);} break;
-    case (Send): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSend(mptr->sig,arg);} break;
-    case (Self): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineSelf(mptr->sig,arg);} break;
-    case (Glob): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineGlob(mptr->sig,arg);} break;
-    case (Bopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineBopy(mptr->sig,arg);} break;
-    case (Copy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineCopy(mptr->sig,arg);} break;
-    case (Dopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineDopy(mptr->sig,arg);} break;
-    case (Mopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineMopy(mptr->sig,arg);} break;
-    case (Nopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineNopy(mptr->sig,arg);} break;
-    case (Popy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machinePopy(mptr->sig,arg);} break;
-    case (Qopy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineQopy(mptr->sig,arg);} break;
-    case (Ropy): {int arg[mptr->sig]; machineArg(arg,mptr->sig,mptr->arg); machineRopy(mptr->sig,arg);} break;
-    case (Tage): machineTage(mptr->sim,mptr->num,mptr->nam); break; // stage named fields to @ of same name
-    case (Sage): machineSage(mptr->sim,mptr->num,mptr->nam); break; // tsage named fields from @ of same name
-    }
 }
 
 // unprotected called by big hammer
@@ -1082,77 +658,238 @@ void demoSize(struct Menu *menu) // alloc/send Matrixz
     planeWindow(dst->ptr->mat->mat);
     callCont(dst,1,dst->log);
 }
-void demoDemo(struct Menu *menu)
+
+// generic callbacks
+// following globals protected by evalSem, could move to PlaneField
+// currently powerful enough only for structs with only one size and only after the tag
+struct PlaneField {
+    int num, sub;
+};
+int changed = 0; enum Memory newmem = Memorys;
+int resized = 0; int oldsize = 0; int newsize = 0;
+struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStruct *arg)
 {
-    switch (menu->msk) {default: ERROR();
-    break; case (SlctMsk): // M from external in src
-    demoRead(menu); // G = GM, maybe S = M'S
-    demoSend(menu); // M = GSLT, Call dst
-    demoDisp(menu); // Draw dsp
-    break; case (DoneMsk): // pierce from replace in src
-    demoMask(menu); // Jnfo geo
-    demoDone(menu); // Push dst
-    break; case (PrssMsk): // Press* in queue
-    menu->act = Indicate; menu->dev = Devices;
-    demoPush(menu); // M = L, S = SL, L = I, Push dst
-    demoMenu(menu); // Jnfo cfg
-    break; case (ProjMsk): // change in Focal* UniformWid/Hei
-    demoSize(menu); // Proj, Call dst
-    demoDisp(menu); // Draw dsp
-    break; case (EoodMsk):
-    // TODO wait for window resize
-    break; case (MoveMsk): // change in ManipLeft/Base
-    if (menu->act == Manipulate) {
-    if (menu->dev != Coord) {menu->dev = Coord;
-    demoCont(menu); // L = LTC', T = C
-    int fix = (menu->msk==MoveMsk?menu->coo:menu->ang);
-    planeJnfo(ManipFixed,fix,planeWcfg);}
-    demoSend(menu); // M = GSLT, Call dst
-    demoDisp(menu); /* Draw dsp*/}
-    break; case (ClckMsk): // Click* in queue
-    if (menu->act == Manipulate) {
-    menu->act = Indicate;
-    demoPush(menu); /* M = L, S = SL, L = I, Push dst*/} else {
-    demoPute(menu); /* Draw pie/nor/sel*/}
-    break; case (RollMsk): // change in ManipAngle
-    if (menu->act == Manipulate) {
-    if (menu->dev != Angle) {menu->dev = Angle;
-    demoCont(menu); // L = LTC', T = C
-    planeJnfo(ManipFixed,menu->ang,planeWcfg);}
-    demoSend(menu); // M = GSLT, Call dst
-    demoDisp(menu); /* Draw dsp*/}
-    break; case (TimeMsk): // timer expired
-    if (menu->act == Manipulate) {
-    menu->act = Indicate;
-    demoNone(menu); // L = LT, T = I
-    demoPush(menu); /* M = L, S = SL, L = I, Push dst*/}}
+    struct PlaneField *usr = (struct PlaneField*)arg->usr;
+    // fprintf(stderr,"Field %d %d %d %d %d %d\n",num,fld,sub,typ,usr->num,usr->sub);
+    if (fld == 0) changed = resized = 0;
+    switch (num) {default:
+    break; case (TYPECenter):
+    if (resized && sub >= oldsize) switch (typ) {
+    default: return (struct MergeEnum){ZerMrg,0};
+    break; case (TYPEMatrix): {
+    struct Matrix init;
+    identmat(init.mat,4);
+    writeMatrix(&init,arg->idx);
+    return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
+    break; case (TYPEKernel): {
+    struct Kernel init;
+    identmat(init.saved.mat,4);
+    identmat(init.local.mat,4);
+    identmat(init.sent.mat,4);
+    identmat(init.global.mat,4);
+    writeKernel(&init,arg->idx);
+    return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}}
+    if (resized && sub == newsize-1 && oldsize > newsize) {oldsize -= 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    // if changed, then size must be zero, so none of the above apply
+    if (changed) return (struct MergeEnum){ZerMrg,0};
+    if (fld == identField(num,"mem") && fld == usr->num) {
+    changed = 1; newmem = readInt(arg->lft); return (struct MergeEnum){RgtMrg,(1<<RgtMrg)};}
+    if (fld == identField(num,"siz") && fld == usr->num) {
+    resized = 1; oldsize = readInt(arg->lft); newsize = readInt(arg->rgt); writeInt(newsize,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
+    break; case (TYPEExtend):
+    if (fld == identField(num,"log") && fld == usr->num) {
+    writeInt(otherSmart(readInt(arg->rgt)),arg->idx); return (struct MergeEnum){IdxMrg,(1<<LftMrg)|(1<<IdxMrg)};}}
+    if (fld == usr->num && sub == usr->sub) return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
+    return (struct MergeEnum){LftMrg,(1<<LftMrg)};
+}
+struct PlaneRange {
+    int src, dst, siz;
+};
+int skipped = 0; int toread = 0;
+struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStruct *arg)
+{
+    struct PlaneRange *usr = (struct PlaneRange*)arg->usr;
+    // fprintf(stderr,"Range %d %d %d %d %d %d %d\n",num,fld,sub,typ,usr->src,usr->dst,usr->siz);
+    if (fld == 0) {skipped = 0; toread = 0;}
+    switch (num) {default:
+    break; case (TYPECenter):
+    if (fld == identField(num,"siz")) {int siz = readInt(arg->rgt); toread = readInt(arg->lft); writeInt(siz+usr->siz,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
+    if (fld >= identField(num,"ind")) if (toread > 0) {toread -= 1;
+    if (sub == 0 && skipped < usr->src) {skipped += 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){LftMrg,(1<<LftMrg)|(1<<RgtMrg)};
+    else if (sub == usr->dst+usr->siz) return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
+    return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
 }
 
-// queue and thread helpers
-void machineArg(int *arg, int sig, struct Express *exp)
+void machineEval(struct Express *exp, struct Center *ptr)
 {
-    for (int i = 0; i < sig; i++) arg[i] = machineIval(&exp[i]);
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    writeCenter(ptr,datxClr(0));
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPECenter);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPECenter);
+    if (typ != TYPECenter) ERROR();
+    freeCenter(ptr); readCenter(ptr,datxPut(0,dat)); free(dat);
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
 }
-void machinePop(int sig, int chk, int dst, enum Assert asr, void *que, const char *log)
+void machineKern(struct Express *exp, struct Kernel *ptr)
 {
-    if (sig != chk) ERROR();
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    writeKernel(ptr,datxClr(0));
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEKernel);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEKernel);
+    if (typ != TYPEKernel) ERROR();
+    freeKernel(ptr); readKernel(ptr,datxPut(0,dat)); free(dat);
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+}
+void machineMatr(struct Express *exp, struct Matrix *ptr)
+{
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    writeMatrix(ptr,datxClr(0));
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEMatrix);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEMatrix);
+    if (typ != TYPEMatrix) ERROR();
+    freeMatrix(ptr); readMatrix(ptr,datxPut(0,dat)); free(dat);
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+}
+void machineMetr(struct Express *exp, struct Metric *ptr)
+{
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    writeMetric(ptr,datxClr(0));
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEMetric);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEMetric);
+    if (typ != TYPEMetric) ERROR();
+    freeMetric(ptr); readMetric(ptr,datxPut(0,dat)); free(dat);
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+}
+void machineLine(struct Express *exp, struct Matrix *lft, struct Matrix *rgt)
+{
+    // TODO like machineVoid, except pass planeTransform as @_ to exp
+}
+void machineFunc(float *mat, struct Express *fnc)
+{
+    // TODO like machineVoid, except pass mat as @_ to exp
+}
+void machineVoid(struct Express *exp)
+{
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+}
+void machineMove(struct Express **sub, struct Express **exp, int siz)
+{
+    if (siz > 9) ERROR();
+    if (waitSafe(copySem) != 0) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *ptr = maybeCenterq(0,que);
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    int num[siz]; for (int i = 0; i < siz; i++) num[i] = moveIval(sub[i]);
+    // negative num refers to a queue, positive is sub into center
+    for (int i = 0; i < siz; i++) {
+    struct Extend *ptr = moveRefer(num[i]);
+    int empty = (ptr == 0); if (empty) {allocExtend(&ptr,1); ptr->asr = PullAsr;}
+    writeExtend(ptr,datxClr(0));
+    char str[3]; str[0] = '_'; str[1] = '0' + i; str[2] = 0;
+    void *dat0 = 0; datxStr(&dat0,str);
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEExtend);
+    free(dat0); free(dat1);}
+    // each expression does pull from num and place to exp.asr/sub
+    for (int i = 0; i < siz; i++) {
+    struct Extend *ptr = moveRefer(num[i]);
+    writeExtend(ptr,datxClr(0));
+    void *dat0 = 0; datxStr(&dat0,"_");
+    void *dat1 = 0; datxGet(0,&dat1);
+    datxInsert(dat0,dat1,TYPEExtend);
+    free(dat0); free(dat1);
+    void *dat = 0; int typ = datxEval(&dat,exp[i],TYPEExtend);
+    if (typ != TYPEExtend) ERROR();
+    freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
+    moveDeref(num[i],&ptr);}
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
     if (postSafe(pipeSem) != 1) ERROR();
-    if (ptr != 0 && ptr->asr != asr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
-    if (ptr == 0) centerClear(dst);
-    else {ptr->sav = ptr->sub; ptr->sub = dst; centerPlace(ptr);}
+    if (postSafe(copySem) != 1) ERROR();
 }
-void machinePush(int sig, int chk, int src, enum Assert asr, enum Mask msk, void *que, const char *log)
+void machineTage(int sim, struct Extend *ptr, char **nam)
 {
-    if (sig != chk) ERROR();
-    struct Extend *ptr = centerPull(src,log);
-    if (ptr->asr != PullAsr) ERROR(); else ptr->asr = asr;
-    if (waitSafe(pipeSem) != 0) ERROR();
-    pushCenterq(ptr,que);
-    if (postSafe(pipeSem) != 1) ERROR();
-    planeJnfo(RegisterWake,(1<<msk),planeWots);
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    for (int i = 0; i < sim; i++) {
+    int wfd = datxClr(1); int ftp;
+    if (strcmp(nam[i],"ptr") == 0) {
+    writeInt((ptr != 0),wfd); ftp = TYPEInt;}
+    else if (ptr) {int num, stp; int found = 0;
+    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
+    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
+    num = identField(types[j],nam[i]); if (num >= 0) {found = 1;
+    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    int rfd = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend(ptr,rfd);
+    break; case (TYPECenter): writeCenter(ptr->ptr,rfd);
+    break; case (TYPEMetric): writeMetric(ptr->ptr->met,rfd);}
+    writeField(stp,num,0,rfd,wfd);}
+    else continue;
+    void *dat0 = 0; datxStr(&dat0,nam[i]);
+    void *dat1 = 0; datxGet(1,&dat1);
+    datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);}
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
 }
+void machineSage(int sim, struct Extend **ptr, char **nam)
+{
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    for (int i = 0; i < sim; i++) {
+    void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
+    if (val == 0) ERROR();
+    if (strcmp(nam[i],"ptr") == 0 && *datxIntz(0,val) == 0) {
+    freeExtend(*ptr); allocExtend(ptr,0); break;}
+    else if (strcmp(nam[i],"ptr") == 0) continue;
+    else {int num, stp, ftp; int found = 0;
+    int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
+    for (int j = 0; j < sizeof(types)/sizeof(int) && !found; j++) {
+    num = identField(types[j],nam[i]); if (num >= 0) {found = 1;
+    stp = types[j]; ftp = identSubtype(stp,num);}} if (!found) ERROR();
+    int rfd = datxClr(0); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): writeExtend((*ptr),rfd);
+    break; case (TYPECenter): writeCenter((*ptr)->ptr,rfd);
+    break; case (TYPEMetric): writeMetric((*ptr)->ptr->met,rfd);}
+    struct PlaneField usr = {num,0};
+    struct MergeStruct dtf = {&usr,rfd,datxPut(1,val),datxClr(3)};
+    int wfd = datxClr(2); switch (stp) {default: ERROR();
+    break; case (TYPEExtend): mergeExtend(wfd,centerField,&dtf);
+    break; case (TYPECenter): mergeCenter(wfd,centerField,&dtf);
+    break; case (TYPEMetric): mergeMetric(wfd,centerField,&dtf);}
+    switch (stp) {default: ERROR();
+    break; case (TYPEExtend): readExtend((*ptr),wfd);
+    break; case (TYPECenter): readCenter((*ptr)->ptr,wfd);
+    break; case (TYPEMetric): readMetric((*ptr)->ptr->met,wfd);}}
+    free(val);}
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+}
+void machineDopy(struct Center *src, int sfs, struct Center *dst, int dfs, int siz)
+{
+    if (src == 0 && sfs > dfs) {
+    /*TODO decrease size and pack out from dstOfs to srcOfs*/}
+    else if (src == 0 && sfs < dfs) {
+    /*TODO increase size and fill srcOfs to dstOfs with init*/}
+    else if (sfs != dfs) {
+    int sfd = datxClr(0); writeCenter(src,sfd);
+    int dfd = datxClr(1); writeCenter(dst,dfd);
+    struct PlaneRange usr = {sfs,dfs,siz};
+    struct MergeStruct dtf = {&usr,sfd,dfd,datxClr(3)};
+    int wfd = datxClr(2); mergeCenter(wfd,centerRange,&dtf);
+    readCenter(dst,wfd);}
+}
+void machineSwitch(struct Machine *mptr);
 void planeMachine(enum Thread tag, int idx);
 void planeFork(enum Thread thd, int idx, mftype fnc);
 void machineExec(int idx, struct Extend *ext)
@@ -1197,6 +934,194 @@ void machineExec(int idx, struct Extend *ext)
     if (postSafe(safeSem) != 1) ERROR();}
     break;}
 }
+// identity I
+// current manipulation C
+// Kernel.saved T
+// Kernel.local L
+// Kernel.sent S
+// Kernel.global G
+// Matrix M
+// T goes to C thus changing GSLT, when C is not I upon MoveMsk or RollMsk
+// T goes to C without changing GSLT, upon menu->dev change
+// T goes to I without changing GSLT, when C is I upon menu->dev change
+// L goes to I without changing GSLT, upon Push
+// S goes to I without changing GSLT, upon last outstanding slf<0
+// G changes by M thus changing GSLT, upon slf>=0
+void machineDemo(struct Menu *menu)
+{
+    switch (menu->msk) {default: ERROR();
+    break; case (SlctMsk): // M from external in src
+    demoRead(menu); // G = GM, maybe S = M'S
+    demoSend(menu); // M = GSLT, Call dst
+    demoDisp(menu); // Draw dsp
+    break; case (DoneMsk): // pierce from replace in src
+    demoMask(menu); // Jnfo geo
+    demoDone(menu); // Push dst
+    break; case (PrssMsk): // Press* in queue
+    menu->act = Indicate; menu->dev = Devices;
+    demoPush(menu); // M = L, S = SL, L = I, Push dst
+    demoMenu(menu); // Jnfo cfg
+    break; case (ProjMsk): // change in Focal* UniformWid/Hei
+    demoSize(menu); // Proj, Call dst
+    demoDisp(menu); // Draw dsp
+    break; case (EoodMsk):
+    // TODO wait for window resize
+    break; case (MoveMsk): // change in ManipLeft/Base
+    if (menu->act == Manipulate) {
+    if (menu->dev != Coord) {menu->dev = Coord;
+    demoCont(menu); // L = LTC', T = C
+    planeJnfo(ManipFixed,menu->coo,planeWcfg);}
+    demoSend(menu); // M = GSLT, Call dst
+    demoDisp(menu); /* Draw dsp*/}
+    break; case (ClckMsk): // Click* in queue
+    if (menu->act == Manipulate) {
+    menu->act = Indicate;
+    demoPush(menu); /* M = L, S = SL, L = I, Push dst*/} else {
+    demoPute(menu); /* Draw pie/nor/sel*/}
+    break; case (RollMsk): // change in ManipAngle
+    if (menu->act == Manipulate) {
+    if (menu->dev != Angle) {menu->dev = Angle;
+    demoCont(menu); // L = LTC', T = C
+    planeJnfo(ManipFixed,menu->ang,planeWcfg);}
+    demoSend(menu); // M = GSLT, Call dst
+    demoDisp(menu); /* Draw dsp*/}
+    break; case (TimeMsk): // timer expired
+    if (menu->act == Manipulate) {
+    menu->act = Indicate;
+    demoNone(menu); // L = LT, T = I
+    demoPush(menu); /* M = L, S = SL, L = I, Push dst*/}}
+}
+int machineEscape(struct Machine *mch, int siz, int level, int next)
+{
+    int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
+    while (1) {
+    next += inc;
+    if (next < 0 || next >= siz) break;
+    struct Machine *mptr = &mch[next];
+    if (mptr->xfr == Nest) level += mptr->nia*inc;
+    if (level <= 0) break;}
+    return next;
+}
+int machineIval(struct Express *exp)
+{
+    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
+    if (typ != TYPEInt) ERROR();
+    int val = readInt(datxPut(0,dat));
+    free(dat);
+    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    return val;
+}
+void machineSwitch(struct Machine *mptr)
+{
+    if (!mptr) ERROR();
+    switch (mptr->xfr) {default: ERROR();
+    break; case (Eval): {struct Extend *arg; struct Express *fnc;
+        arg = centerPull(machineIval(mptr->eop[0].sup),"Eval");
+        fnc = mptr->epo[0].fnc; // takes Center in @_, returns Center
+        machineEval(fnc,arg->ptr);
+        centerPlace(arg);}
+    break; case (Kern): {struct Extend *arg; struct Express *fnc; int aub;
+        arg = centerPull(machineIval(mptr->kop[0].sup),"Kern");
+        aub = machineIval(mptr->kop[0].sub);
+        if (arg->ptr->mem != Kernelz || arg->ptr->siz <= aub) ERROR();
+        fnc = mptr->kpo[0].fnc; // takes Kernel in @_, returns Kernel
+        machineKern(fnc,&arg->ptr->ker[aub]);
+        centerPlace(arg);}
+    break; case (Matr): {struct Extend *arg; struct Express *fnc; int aub;
+        arg = centerPull(machineIval(mptr->kop[0].sup),"Matr");
+        aub = machineIval(mptr->kop[0].sub);
+        if (arg->ptr->mem != Matrixz || arg->ptr->siz <= aub) ERROR();
+        fnc = mptr->kpo[0].fnc; // takes Matrix in @_, returns Matrix
+        machineMatr(fnc,&arg->ptr->mat[aub]);
+        centerPlace(arg);}
+    break; case (Metr): {struct Extend *arg; struct Express *fnc; int aub;
+        arg = centerPull(machineIval(mptr->kop[0].sup),"Metr");
+        aub = machineIval(mptr->kop[0].sub);
+        if (arg->ptr->mem != Metricz || arg->ptr->siz <= aub) ERROR();
+        fnc = mptr->kpo[0].fnc; // takes Metric in @_, returns Metric
+        machineMetr(fnc,&arg->ptr->met[aub]);
+        centerPlace(arg);}
+    break; case (Line): {struct Extend *lft; struct Extend *rgt; struct Express *fnc; int lub, rub;
+        lft = centerPull(machineIval(mptr->lop[0].sup),"Line");
+        lub = machineIval(mptr->lop[0].sub);
+        if (lft->ptr->mem != Matrixz || lft->ptr->siz <= lub) ERROR();
+        rgt = centerPull(machineIval(mptr->lop[1].sup),"Line");
+        rub = machineIval(mptr->lop[1].sub);
+        if (rgt->ptr->mem != Matrixz || rgt->ptr->siz <= rub) ERROR();
+        fnc = mptr->lpo[0].fnc; // takes machineBnry in @_, returns nothing
+        machineLine(fnc,&lft->ptr->mat[lub],&rgt->ptr->mat[rub]);
+        centerPlace(lft); centerPlace(rgt);}
+    break; case (Proj): {float mat[16];
+        machineFunc(planeWindow(mat),mptr->fpo[0].fnc);}
+    break; case (Form): {float mat[16];
+        machineFunc(planeMatrix(mat),mptr->fpo[0].fnc);}
+    break; case (Void): {struct Express *fnc;
+        fnc = mptr->fpo[0].fnc;
+        machineVoid(fnc);}
+    break; case (Move): {struct Express *arg[mptr->msz]; struct Express *fnc[mptr->msz];
+        for (int i = 0; i < mptr->msz; i++) arg[i] = mptr->mop[i].sup;
+        for (int i = 0; i < mptr->msz; i++) fnc[i] = mptr->mpo[i].fnc;
+        machineMove(arg,fnc,mptr->msz);}
+    break; case (Tage): {struct Extend *ptr;
+        ptr = centerPeek(machineIval(mptr->sop[0].sup),"Tage");
+        machineTage(mptr->ssz,ptr,mptr->ssa);
+        if (ptr) centerPlace(ptr);}
+    break; case (Sage): {struct Extend *ptr;
+        ptr = centerPull(machineIval(mptr->sop[0].sup),"Sage");
+        machineSage(mptr->ssz,&ptr,mptr->ssa);
+        centerPlace(ptr);}
+    break; case (Bopy): {struct Extend *ext;
+        ext = centerPull(machineIval(mptr->bop[0].sup),"Bopy");
+        callCont(ext,machineIval(mptr->bie[0].val),ext->log);}
+    break; case (Copy): {struct Extend *cpy; struct Extend *ptr; int sub;
+        cpy = 0; allocExtend(&cpy,1);
+        ptr = centerPull(machineIval(mptr->cop[0].sup),"Copy");
+        sub = machineIval(mptr->cop[1].sup);
+        copyExtend(cpy,ptr); cpy->sub = sub; cpy->log = otherSmart(ptr->log);
+        centerPlace(ptr); centerPlace(cpy);}
+    break; case (Dopy): {struct Extend *lft; struct Extend *rgt; int lub, rub, siz;
+        lft = centerPull(machineIval(mptr->dop[0].sup),"Dopy"); lub = machineIval(mptr->dop[0].sub);
+        rgt = centerPull(machineIval(mptr->dop[1].sup),"Dopy"); rub = machineIval(mptr->dop[1].sub);
+        siz = machineIval(mptr->die[0].val);
+        machineDopy(lft->ptr,lub,rgt->ptr,rub,siz);
+        centerPlace(lft); centerPlace(rgt);}
+    break; case (Popy): {struct Extend *ptr; int dst;
+        if (waitSafe(pipeSem) != 0) ERROR();
+        ptr = maybeCenterq(0,internal);
+        if (postSafe(pipeSem) != 1) ERROR();
+        if (ptr != 0 && ptr->asr != PipeAsr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
+        dst = machineIval(mptr->pop[0].sup);
+        if (ptr == 0) centerClear(dst);
+        else {ptr->sav = ptr->sub; ptr->sub = dst;
+        centerPlace(ptr);}}
+    break; case (Qopy): {struct Extend *ptr;
+        ptr = centerPull(machineIval(mptr->pop[0].sup),"Qopy");
+        if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
+        if (waitSafe(pipeSem) != 0) ERROR();
+        pushCenterq(ptr,response);
+        if (postSafe(pipeSem) != 1) ERROR();
+        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}
+    break; case (Ropy): {struct Extend *ptr; int dst;
+        if (waitSafe(pipeSem) != 0) ERROR();
+        ptr = maybeCenterq(0,replace);
+        if (postSafe(pipeSem) != 1) ERROR();
+        if (ptr != 0 && ptr->asr != DoneAsr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
+        dst = machineIval(mptr->pop[0].sup);
+        if (ptr == 0) centerClear(dst);
+        else {ptr->sav = ptr->sub; ptr->sub = dst;
+        centerPlace(ptr);}}
+    break; case (Exec): {struct Extend *exp;
+        exp = centerPull(machineIval(mptr->top[0].sup),"Exec");
+        machineExec(machineIval(mptr->tie[0].val),exp);
+        centerPlace(exp);}
+    break; case (Demo): {struct Extend *arg; int aub;
+        arg = centerPull(machineIval(mptr->nop[0].sup),"Demo");
+        aub = machineIval(mptr->nop[0].sub);
+        if (arg->ptr->mem != Menuz || arg->ptr->siz <= aub) ERROR();
+        machineDemo(&arg->ptr->men[aub]);
+        centerPlace(arg);}}
+}
 
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
@@ -1221,8 +1146,8 @@ void planeMachine(enum Thread tag, int idx)
     struct Machine *mptr = &mach[next];
     int save = next;
     switch (mptr->xfr) {default: machineSwitch(mptr); next += 1; break;
-    case (Goto): next += machineIval(&mptr->exp[0]); break;
-    case (Jump): next = machineEscape(mach,cptr->siz,machineIval(&mptr->exp[0]),next); break;
+    case (Goto): next += machineIval(mptr->jie[0].val); break;
+    case (Jump): next = machineEscape(mach,cptr->siz,machineIval(mptr->jie[0].val),next); break;
     case (Nest): next += 1; break;}
     if (next == save) {
     if (waitSafe(safeSafe(MachThd,idx)) < 0) next = -1;
@@ -1665,63 +1590,6 @@ void registerLog(enum Configure cfg, int sav, int val, int act)
     {deleteSmart(center[i]->log); center[i]->log = 0;}
     if (sav != act)
     {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
-}
-
-// generic callbacks
-// following protected by evalSem, could move to PlaneField
-// currently powerful enough only for structs with only one size and only after the tag
-int changed = 0; enum Memory newmem = Memorys;
-int resized = 0; int oldsize = 0; int newsize = 0;
-struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStruct *arg)
-{
-    struct PlaneField *usr = (struct PlaneField*)arg->usr;
-    // fprintf(stderr,"Field %d %d %d %d %d %d\n",num,fld,sub,typ,usr->num,usr->sub);
-    if (fld == 0) changed = resized = 0;
-    switch (num) {default:
-    break; case (TYPECenter):
-    if (resized && sub >= oldsize) switch (typ) {
-    default: return (struct MergeEnum){ZerMrg,0};
-    break; case (TYPEMatrix): {
-    struct Matrix init;
-    identmat(init.mat,4);
-    writeMatrix(&init,arg->idx);
-    return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
-    break; case (TYPEKernel): {
-    struct Kernel init;
-    identmat(init.saved.mat,4);
-    identmat(init.local.mat,4);
-    identmat(init.sent.mat,4);
-    identmat(init.global.mat,4);
-    writeKernel(&init,arg->idx);
-    return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}}
-    if (resized && sub == newsize-1 && oldsize > newsize) {oldsize -= 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
-    // if changed, then size must be zero, so none of the above apply
-    if (changed) return (struct MergeEnum){ZerMrg,0};
-    if (fld == identField(num,"mem") && fld == usr->num) {
-    changed = 1; newmem = readInt(arg->lft); return (struct MergeEnum){RgtMrg,(1<<RgtMrg)};}
-    if (fld == identField(num,"siz") && fld == usr->num) {
-    resized = 1; oldsize = readInt(arg->lft); newsize = readInt(arg->rgt); writeInt(newsize,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
-    break; case (TYPEExtend):
-    if (fld == identField(num,"log") && fld == usr->num) {
-    writeInt(otherSmart(readInt(arg->rgt)),arg->idx); return (struct MergeEnum){IdxMrg,(1<<LftMrg)|(1<<IdxMrg)};}}
-    if (fld == usr->num && sub == usr->sub) return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
-    return (struct MergeEnum){LftMrg,(1<<LftMrg)};
-}
-int skipped = 0; int toread = 0;
-struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStruct *arg)
-{
-    struct PlaneRange *usr = (struct PlaneRange*)arg->usr;
-    // fprintf(stderr,"Range %d %d %d %d %d %d %d\n",num,fld,sub,typ,usr->src,usr->dst,usr->siz);
-    if (fld == 0) {skipped = 0; toread = 0;}
-    switch (num) {default:
-    break; case (TYPECenter):
-    if (fld == identField(num,"siz")) {int siz = readInt(arg->rgt); toread = readInt(arg->lft); writeInt(siz+usr->siz,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
-    if (fld >= identField(num,"ind")) if (toread > 0) {toread -= 1;
-    if (sub == 0 && skipped < usr->src) {skipped += 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
-    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){LftMrg,(1<<LftMrg)|(1<<RgtMrg)};
-    else if (sub == usr->dst+usr->siz) return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
-    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
-    return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
 }
 
 // expression callbacks
