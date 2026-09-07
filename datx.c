@@ -1,6 +1,7 @@
 #include "datx.h"
 #include "type.h"
 #include "face.h"
+#include "metx.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -365,6 +366,30 @@ void datxOld(void **dat, float val)
 	*(int*)*dat = sizeof(val);
 	*datxOldz(0,*dat) = val;
 }
+void datxVectorz(struct Vector *vec, int num, void *dat)
+{
+	int idx = datxPut(0,dat);
+	for (int i = 0; i < 4*num; i++) readOld(idx);
+	for (int i = 0; i < 4; i++) vec->vec[i] = readOld(idx);
+}
+void datxMatrixz(struct Matrix *mat, int num, void *dat)
+{
+	int idx = datxPut(0,dat);
+	for (int i = 0; i < 16*num; i++) readOld(idx);
+	for (int i = 0; i < 16; i++) mat->mat[i] = readOld(idx);
+}
+void datxVector(void **dat, struct Vector *vec)
+{
+	int idx = datxClr(0);
+	for (int i = 0; i < 4; i++) writeOld(vec->vec[i],idx);
+	datxGet(0,dat);
+}
+void datxMatrix(void **dat, struct Matrix *mat)
+{
+	int idx = datxClr(0);
+	for (int i = 0; i < 16; i++) writeOld(mat->mat[i],idx);
+	datxGet(0,dat);
+}
 #define TYPSTR_CASE(NAME,NUM,TYPE) break; case(NUM): datxStr(dat,#NAME);
 void datxTypstr(void **dat, int typ)
 {
@@ -593,9 +618,8 @@ int datxIrrexe(const char *str, int idx)
 #define BINARY_BIT(LFT,RGT) datxBitwise(LFT,RGT,exp->bit)
 #define BINARY_BEGIN(FLD) {\
 	void *dat0 = 0; void *dat1 = 0; int typ0 = 0; int typ1 = 0;\
-	typ0 = datxEval(&dat0,&exp->FLD[0],typ);\
-	typ1 = datxEval(&dat1,&exp->FLD[1],typ);\
-	if (typ == -1) typ = typ0; if (typ0 != typ1 || typ != typ0) ERROR();
+	typ0 = datxEval(&dat0,&exp->FLD[0],-1);\
+	typ1 = datxEval(&dat1,&exp->FLD[1],-1);
 #define BINARY_DONE() ERROR();\
 	free(dat0); free(dat1);}
 #define BINARY_CAST(APPLY)\
@@ -603,18 +627,17 @@ int datxIrrexe(const char *str, int idx)
 	FOREACH_ENUM(APPLY)} \
 	free(dat0); free(dat1);}
 #define BINARY_TYPE(TYP,NAME,GET,SET,OP)\
-	if (typ0 == TYPE ## NAME) {\
+	if (typ0 == TYPE ## NAME && typ1 == TYPE ## NAME) {\
 	TYP lft = GET(0,dat0);\
 	TYP rgt = GET(0,dat1);\
+	typ = TYPE ## NAME;\
 	SET(dat,OP(lft,rgt));}
-#define BINARY_BLOCK(OP,FLD)\
-	BINARY_BEGIN(FLD)\
+#define BINARY_BLOCK(OP)\
 	BINARY_TYPE(int,Int,*datxIntz,datxInt,OP) else\
 	BINARY_TYPE(long long,New,*datxIntz,datxInt,OP) else\
 	BINARY_TYPE(int32_t,Int32,*datxInt32z,datxInt32,OP) else\
 	BINARY_TYPE(double,Num,*datxNumz,datxNum,OP) else\
-	BINARY_TYPE(float,Old,*datxOldz,datxOld,OP) else\
-	BINARY_DONE()
+	BINARY_TYPE(float,Old,*datxOldz,datxOld,OP) else
 #define BINARY_CMP(DAT,VAL) datxInt(DAT,datxComp(VAL,exp->cmp))
 // outer typ0 val is cast to inner typ1 by passing to datx
 #define CAST_BASIC_BASIC(NAME,NUM,TYP) break; case (TYPE ## NAME): datx ## NAME (dat,val); typ = TYPE ## NAME;
@@ -633,20 +656,66 @@ int datxIrrexe(const char *str, int idx)
 	switch (typ1) {default: ERROR(); \
 	FOREACH_BASIC_INNER(CAST_ENUM_BASIC) \
 	FOREACH_ENUM_INNER(CAST_ENUM_ENUM)}}
+void datxGet(int sub, void **dst);
+int datxPut(int sub, const void *src);
 int datxEval(void **dat, struct Express *exp, int typ)
 {
 	/*{char *opr = 0; showOperate(exp->opr,&opr);
 	fprintf(stderr,"datxEval %s\n",opr); free(opr);}*/
-	// TODO add scalar vector matrix operations:
-	// TODO scale by scalar: Matrixz = Matrixz */ Old, Matrixz = Old */ Matrixz,
-	// TODO per cell, row per column, and by inverse: Matrixz = Matrixz +-*/ Matrixz,
-	// TODO transform and cross: Vectorz = Matrixz * Vectorz, Vectorz = Matrixz * Matrixz
-	// TODO dot and per: Old = Vectorz * Vectorz, Vectorz = Old */+- Vectorz, Vectorz = Vectorz */+- Old
+	// TODO cross, dot, and per: Vectorz = Vectorz * Vectorz, Old = Vectorz * Vectorz, Vectorz = Old */+- Vectorz, Vectorz = Vectorz */+- Old
 	switch (exp->opr) {
-	case (AddOp): BINARY_BLOCK(BINARY_ADD,opa) break;
-	case (SubOp): BINARY_BLOCK(BINARY_SUB,opa) break;
-	case (MulOp): BINARY_BLOCK(BINARY_MUL,opa) break;
-	case (DivOp): BINARY_BLOCK(BINARY_DIV,opa) break;
+	case (AddOp):
+		BINARY_BEGIN(opa)
+		BINARY_BLOCK(BINARY_ADD)
+		// per cell: Matrixz = Matrixz + Matrixz
+		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
+		plusvec(lft.mat,rgt.mat,16); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		BINARY_DONE() break;
+	case (SubOp):
+		BINARY_BEGIN(opa)
+		BINARY_BLOCK(BINARY_SUB)
+		// per cell: Matrixz = Matrixz - Matrixz
+		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
+		plusvec(lft.mat,scalevec(rgt.mat,-1.0,16),16); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		BINARY_DONE() break;
+	case (MulOp):
+		BINARY_BEGIN(opa)
+		BINARY_BLOCK(BINARY_MUL)
+		// scale by scalar: Matrixz = Matrixz * Old
+		if (typ0 == TYPEMatrix && typ1 == TYPEOld && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix tmp; datxMatrixz(&tmp,0,dat0); float val = *datxOldz(0,dat1);
+		scalevec(tmp.mat,val,16); datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
+		// scale by scalar: Matrixz = Old * Matrixz
+		if (typ0 == TYPEOld && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix tmp; datxMatrixz(&tmp,0,dat1); float val = *datxOldz(0,dat0);
+		scalevec(tmp.mat,val,16); datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
+		// row per column: Matrixz = Matrixz * Matrixz
+		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
+		timesmat(lft.mat,rgt.mat,4); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		// transform: Vectorz = Matrixz * Vectorz
+		if (typ0 == TYPEMatrix && typ1 == TYPEVector && (typ == TYPEVector || typ == -1)) {
+		struct Matrix lft; datxMatrixz(&lft,0,dat0); struct Vector rgt; datxVectorz(&rgt,0,dat1);
+		timesvec(rgt.vec,lft.mat,4); datxVector(dat,&rgt); typ = TYPEVector;} else
+		BINARY_DONE() break;
+	case (DivOp):
+		BINARY_BEGIN(opa)
+		BINARY_BLOCK(BINARY_DIV)
+		// scale by scalar: Matrixz = Matrixz / Old
+		if (typ0 == TYPEMatrix && typ1 == TYPEOld && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix tmp; datxMatrixz(&tmp,0,dat0); float val = *datxOldz(0,dat1);
+		scalevec(tmp.mat,1.0/val,16); datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
+		// scale by scalar: Matrixz = Old / Matrixz
+		if (typ0 == TYPEOld && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix tmp; datxMatrixz(&tmp,0,dat1); float val = *datxOldz(0,dat0);
+		for (int i = 0; i < 16; i++) tmp.mat[i] = val/tmp.mat[i]; datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
+		// row per column: Matrixz = Matrixz / Matrixz
+		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
+		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
+		timesmat(lft.mat,invmat(rgt.mat,4),4); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		BINARY_DONE() break;
 	case (RemOp): BINARY_BEGIN(opa)
 		BINARY_TYPE(int,Int,*datxIntz,datxInt,BINARY_REM) else
 		BINARY_TYPE(long long,New,*datxIntz,datxInt,BINARY_REM) else

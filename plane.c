@@ -776,11 +776,16 @@ void machineMetr(struct Express *exp, struct Metric *ptr)
 }
 void machineLine(struct Express *exp, struct Matrix *lft, struct Matrix *rgt)
 {
-    // TODO like machineVoid, except pass planeTransform as @_ to exp
+    float mat[16]; planeTransform(mat,
+    lft->mat+0,rgt->mat+0,lft->mat+4,rgt->mat+4,
+    lft->mat+8,rgt->mat+8,lft->mat+12,rgt->mat+12);
+    struct Matrix tmp; for (int i = 0; i < 16; i++) tmp.mat[i] = mat[i];
+    machineMatr(exp,&tmp);
 }
-void machineFunc(float *mat, struct Express *fnc)
+void machineFunc(struct Express *exp, float *mat)
 {
-    // TODO like machineVoid, except pass mat as @_ to exp
+    struct Matrix tmp; for (int i = 0; i < 16; i++) tmp.mat[i] = mat[i];
+    machineMatr(exp,&tmp);
 }
 void machineVoid(struct Express *exp)
 {
@@ -1049,13 +1054,15 @@ void machineSwitch(struct Machine *mptr)
         rgt = centerPull(machineIval(mptr->lop[1].sup),"Line");
         rub = machineIval(mptr->lop[1].sub);
         if (rgt->ptr->mem != Matrixz || rgt->ptr->siz <= rub) ERROR();
-        fnc = mptr->lpo[0].fnc; // takes machineBnry in @_, returns nothing
+        fnc = mptr->lpo[0].fnc; // takes Matrix in @_, returns nothing
         machineLine(fnc,&lft->ptr->mat[lub],&rgt->ptr->mat[rub]);
         centerPlace(lft); centerPlace(rgt);}
-    break; case (Proj): {float mat[16];
-        machineFunc(planeWindow(mat),mptr->fpo[0].fnc);}
-    break; case (Form): {float mat[16];
-        machineFunc(planeMatrix(mat),mptr->fpo[0].fnc);}
+    break; case (Proj): {float mat[16]; struct Express *fnc;
+        fnc = mptr->fpo[0].fnc;
+        machineFunc(fnc,planeWindow(mat));}
+    break; case (Form): {float mat[16]; struct Express *fnc;
+        fnc = mptr->fpo[0].fnc;
+        machineFunc(fnc,planeMatrix(mat));}
     break; case (Void): {struct Express *fnc;
         fnc = mptr->fpo[0].fnc;
         machineVoid(fnc);}
