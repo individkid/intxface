@@ -2358,6 +2358,9 @@ Vertex = { -- point in space
 	{"ord","Old",{},{4}}, -- coordinate or color
 	{"ref","Int32",{},{4}}, -- backreference to planes
 }
+Scalar = {
+	{"val","Old",{},{1}},
+}
 Vector = {
 	{"vec","Old",{},{4}},
 }
@@ -2480,7 +2483,7 @@ Nested = {
 	{"siz","Int",{},{}},
 	{"lst","Listed",{},"siz"},
 }
-Scalar = {
+Number = {
 	{"num","Old",{},3},
 }
 Change = { -- topology changes
@@ -2488,11 +2491,11 @@ Change = { -- topology changes
 	{"vld","Valid",{},{}},
 	{"idx","Int",{},{}},
 	{"siz","Int",{},{}},
-	{"vec","Scalar",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Planes"]=true}},"siz"},
+	{"vec","Number",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Planes"]=true}},"siz"},
 	{"nst","Nested",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Halfs"]=true,}},"siz"},
 	{"lst","Listed",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Coins"]=true}},"siz"},
 	{"num","Int",{["vld"]={["Toread"]=true,["Towrite"]=true},["cfg"]={["Subsets"]=true}},"siz"},
-	{"pnt","Scalar",{["vld"]={["Toread"]=true},["cfg"]={["Points"]=true}},"siz"},
+	{"pnt","Number",{["vld"]={["Toread"]=true},["cfg"]={["Points"]=true}},"siz"},
 	{"fct","Listed",{["vld"]={["Toread"]=true},["cfg"]={["Facets"]=true}},"siz"},
 }
 Argument = { -- commandline argument

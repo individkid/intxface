@@ -882,17 +882,13 @@ void machineSage(int sim, struct Extend **ptr, char **nam)
 }
 void machineDopy(struct Center *src, int sfs, struct Center *dst, int dfs, int siz)
 {
-    if (src == 0 && sfs > dfs) {
-    /*TODO decrease size and pack out from dstOfs to srcOfs*/}
-    else if (src == 0 && sfs < dfs) {
-    /*TODO increase size and fill srcOfs to dstOfs with init*/}
-    else if (sfs != dfs) {
+    // increase size and fill dfs with siz from sfs
     int sfd = datxClr(0); writeCenter(src,sfd);
     int dfd = datxClr(1); writeCenter(dst,dfd);
     struct PlaneRange usr = {sfs,dfs,siz};
     struct MergeStruct dtf = {&usr,sfd,dfd,datxClr(3)};
     int wfd = datxClr(2); mergeCenter(wfd,centerRange,&dtf);
-    readCenter(dst,wfd);}
+    readCenter(dst,wfd);
 }
 void machineSwitch(struct Machine *mptr);
 void planeMachine(enum Thread tag, int idx);
@@ -1087,10 +1083,11 @@ void machineSwitch(struct Machine *mptr)
         sub = machineIval(mptr->cop[1].sup);
         copyExtend(cpy,ptr); cpy->sub = sub; cpy->log = otherSmart(ptr->log);
         centerPlace(ptr); centerPlace(cpy);}
-    break; case (Dopy): {struct Extend *lft; struct Extend *rgt; int lub, rub, siz;
-        lft = centerPull(machineIval(mptr->dop[0].sup),"Dopy"); lub = machineIval(mptr->dop[0].sub);
-        rgt = centerPull(machineIval(mptr->dop[1].sup),"Dopy"); rub = machineIval(mptr->dop[1].sub);
+    break; case (Dopy): {struct Extend *lft; struct Extend *rgt; int src, dst, lub, rub, siz;
+        src = machineIval(mptr->dop[0].sup); lub = machineIval(mptr->dop[0].sub);
+        dst = machineIval(mptr->dop[1].sup); rub = machineIval(mptr->dop[1].sub);
         siz = machineIval(mptr->die[0].val);
+        lft = centerPull(src,"Dopy"); rgt = centerPull(dst,"Dopy"); 
         machineDopy(lft->ptr,lub,rgt->ptr,rub,siz);
         centerPlace(lft); centerPlace(rgt);}
     break; case (Popy): {struct Extend *ptr; int dst;

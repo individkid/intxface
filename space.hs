@@ -64,7 +64,7 @@ mainH fdx (State a b c d e) (Change (ChangeA1 Type.Coins Type.Towrite idx siz) (
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Planes Type.Toread idx siz) ChangeA5Bs) = do
  writeChange (Change (ChangeA1 Type.Planes Type.Toresp idx siz) (ChangeA5B5 val)) fdx
  mainG fdx state where
- val = planeToScalar idx siz a
+ val = planeToNumber idx siz a
 mainH fdx state@(State a b c d e) (Change (ChangeA1 Type.Halfs Type.Toread idx siz) ChangeA5Bs) = do
  writeChange (Change (ChangeA1 Type.Halfs Type.Toresp idx siz) (ChangeA5B6 val)) fdx
  mainG fdx state where
@@ -140,13 +140,13 @@ mainLG space boundary region regions = ((oppositeOfRegion [boundary] region spac
 mainLH :: Region -> [Region] -> [Region]
 mainLH region regions = filter (\x -> x /= region) regions
 
-mainM :: Int -> Int -> [Plane] -> [[Boundary]] -> [Scalar]
+mainM :: Int -> Int -> [Plane] -> [[Boundary]] -> [Number]
 mainM idx siz planes coins = let
  nopoint = vectorToPoint (Matrix.vector [0.0,0.0,0.0])
  subcoins = take siz (drop idx coins)
  triples = map (\x -> map (\(Boundary y) -> planes !! y) x) subcoins
  points = map (\x -> fromMaybe nopoint (intersectPlanes 3 x)) triples
- in map (\x -> Scalar (ScalarA1 (map GHC.double2Float (Matrix.toList x)))) points
+ in map (\x -> Number (NumberA1 (map GHC.double2Float (Matrix.toList x)))) points
 
 mainN :: Space -> [Region] -> (Map.Map [Boundary] Int) -> [[Int]]
 mainN space regions backs = let
@@ -195,13 +195,13 @@ mainNK backref first next@(boundary,corner) done
  found = head (filter (\x -> x /= corner) (fromMaybe [] (Map.lookup boundary backref)))
  other = head (filter (\x -> x /= boundary) found)
 
-scalarToPlane :: Int -> [Plane] -> [Scalar] -> [Plane]
+scalarToPlane :: Int -> [Plane] -> [Number] -> [Plane]
 scalarToPlane idx planes scalars
  | lim <= num = take idx planes Prelude.++ rep Prelude.++ drop lim planes
  | idx <= num = take idx planes Prelude.++ rep
  | otherwise = undefined where
  num = length planes; lim = idx + (length scalars)
- rep = map (\(Scalar (ScalarA1 floats)) -> Matrix.fromList (map GHC.float2Double floats)) scalars
+ rep = map (\(Number (NumberA1 floats)) -> Matrix.fromList (map GHC.float2Double floats)) scalars
 nestedToHalf :: Int -> Space -> [Nested] -> Space
 nestedToHalf idx space nesteds
  | lim <= num = take idx space Prelude.++ rep Prelude.++ drop lim space
@@ -223,11 +223,11 @@ listedToCoin idx coins listeds
  | otherwise = undefined where
  num = length coins; lim = idx + (length listeds)
  rep = map (\(Listed (ListedA1 _ vals)) -> map Boundary vals) listeds
-planeToScalar :: Int -> Int -> [Plane] -> [Scalar]
-planeToScalar idx siz planes = let
+planeToNumber :: Int -> Int -> [Plane] -> [Number]
+planeToNumber idx siz planes = let
  num = length planes; lim = idx + siz
  sub = map (\x -> map GHC.double2Float (Matrix.toList x)) (drop num (take lim planes))
- in map (\x -> Scalar (ScalarA1 x)) sub
+ in map (\x -> Number (NumberA1 x)) sub
 halfToNested :: Int -> Int -> Space -> [Nested]
 halfToNested idx siz space = let
  num = length space; lim = idx + siz

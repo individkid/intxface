@@ -366,6 +366,12 @@ void datxOld(void **dat, float val)
 	*(int*)*dat = sizeof(val);
 	*datxOldz(0,*dat) = val;
 }
+void datxScalarz(struct Scalar *val, int num, void *dat)
+{
+	int idx = datxPut(0,dat);
+	for (int i = 0; i < 1*num; i++) readOld(idx);
+	for (int i = 0; i < 1; i++) val->val[i] = readOld(idx);
+}
 void datxVectorz(struct Vector *vec, int num, void *dat)
 {
 	int idx = datxPut(0,dat);
@@ -377,6 +383,12 @@ void datxMatrixz(struct Matrix *mat, int num, void *dat)
 	int idx = datxPut(0,dat);
 	for (int i = 0; i < 16*num; i++) readOld(idx);
 	for (int i = 0; i < 16; i++) mat->mat[i] = readOld(idx);
+}
+void datxScalar(void **dat, struct Scalar *val)
+{
+	int idx = datxClr(0);
+	for (int i = 0; i < 1; i++) writeOld(val->val[i],idx);
+	datxGet(0,dat);
 }
 void datxVector(void **dat, struct Vector *vec)
 {
@@ -638,6 +650,18 @@ int datxIrrexe(const char *str, int idx)
 	BINARY_TYPE(int32_t,Int32,*datxInt32z,datxInt32,OP) else\
 	BINARY_TYPE(double,Num,*datxNumz,datxNum,OP) else\
 	BINARY_TYPE(float,Old,*datxOldz,datxOld,OP) else
+#define LEFT_TYPE_TYPE(LFT,RGT,OP)\
+	if (typ0 == TYPE ## LFT && typ1 == TYPE ## RGT && (typ == TYPE ## LFT || typ == -1)) { \
+	struct LFT lft; struct RGT rgt; datx ## LFT ## z(&lft,0,dat0); datx ## RGT ## z(&rgt,0,dat1); \
+	OP; datx ## LFT(dat,&lft); typ = TYPE ## LFT;} else
+#define RIGHT_TYPE_TYPE(LFT,RGT,OP)\
+	if (typ0 == TYPE ## LFT && typ1 == TYPE ## RGT && (typ == TYPE ## RGT || typ == -1)) { \
+	struct LFT lft; struct RGT rgt; datx ## LFT ## z(&lft,0,dat0); datx ## RGT ## z(&rgt,0,dat1); \
+	OP; datx ## RGT(dat,&rgt); typ = TYPE ## RGT;} else
+#define TYPE_TYPE_TYPE(RES,LFT,RGT,OP)\
+	if (typ0 == TYPE ## LFT && typ1 == TYPE ## RGT && (typ == TYPE ## RES || typ == -1)) { \
+	struct LFT lft; struct RGT rgt; struct RES res; datx ## LFT ## z(&lft,0,dat0); datx ## RGT ## z(&rgt,0,dat1); \
+	OP; datx ## RES(dat,&res); typ = TYPE ## RES;} else
 #define BINARY_CMP(DAT,VAL) datxInt(DAT,datxComp(VAL,exp->cmp))
 // outer typ0 val is cast to inner typ1 by passing to datx
 #define CAST_BASIC_BASIC(NAME,NUM,TYP) break; case (TYPE ## NAME): datx ## NAME (dat,val); typ = TYPE ## NAME;
@@ -662,59 +686,41 @@ int datxEval(void **dat, struct Express *exp, int typ)
 {
 	/*{char *opr = 0; showOperate(exp->opr,&opr);
 	fprintf(stderr,"datxEval %s\n",opr); free(opr);}*/
-	// TODO cross, dot, and per: Vectorz = Vectorz * Vectorz, Old = Vectorz * Vectorz, Vectorz = Old */+- Vectorz, Vectorz = Vectorz */+- Old
 	switch (exp->opr) {
 	case (AddOp):
 		BINARY_BEGIN(opa)
 		BINARY_BLOCK(BINARY_ADD)
-		// per cell: Matrixz = Matrixz + Matrixz
-		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
-		plusvec(lft.mat,rgt.mat,16); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		LEFT_TYPE_TYPE(Matrix,Matrix,plusvec(lft.mat,rgt.mat,16)) // per cell: Matrix = Matrix + Matrix
+		LEFT_TYPE_TYPE(Vector,Vector,plusvec(lft.vec,rgt.vec,4)) // per cell: Vector = Vector + Vector
+		LEFT_TYPE_TYPE(Vector,Scalar,for (int i = 0; i < 4; i++) lft.vec[i] = lft.vec[i] + rgt.val[0]) // per cell: Vector = Vector + Scalar
+		RIGHT_TYPE_TYPE(Scalar,Vector,for (int i = 0; i < 4; i++) rgt.vec[i] = lft.val[0] + rgt.vec[i]) // per cell: Vector = Scalar + Vector
 		BINARY_DONE() break;
 	case (SubOp):
 		BINARY_BEGIN(opa)
 		BINARY_BLOCK(BINARY_SUB)
-		// per cell: Matrixz = Matrixz - Matrixz
-		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
-		plusvec(lft.mat,scalevec(rgt.mat,-1.0,16),16); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		LEFT_TYPE_TYPE(Matrix,Matrix,plusvec(lft.mat,scalevec(rgt.mat,-1.0,16),16)) // per cell: Matrix = Matrix - Matrix
+		LEFT_TYPE_TYPE(Vector,Vector,plusvec(lft.vec,scalevec(rgt.vec,-1.0,4),4)) // per cell: Vector = Vector - Vector
+		LEFT_TYPE_TYPE(Vector,Scalar,for (int i = 0; i < 4; i++) lft.vec[i] = lft.vec[i] - rgt.val[0]) // per cell: Vector = Vector - Scalar
+		RIGHT_TYPE_TYPE(Scalar,Vector,for (int i = 0; i < 4; i++) rgt.vec[i] = lft.val[0] - rgt.vec[i]) // per cell: Vector = Scalar - Vector
 		BINARY_DONE() break;
 	case (MulOp):
 		BINARY_BEGIN(opa)
 		BINARY_BLOCK(BINARY_MUL)
-		// scale by scalar: Matrixz = Matrixz * Old
-		if (typ0 == TYPEMatrix && typ1 == TYPEOld && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix tmp; datxMatrixz(&tmp,0,dat0); float val = *datxOldz(0,dat1);
-		scalevec(tmp.mat,val,16); datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
-		// scale by scalar: Matrixz = Old * Matrixz
-		if (typ0 == TYPEOld && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix tmp; datxMatrixz(&tmp,0,dat1); float val = *datxOldz(0,dat0);
-		scalevec(tmp.mat,val,16); datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
-		// row per column: Matrixz = Matrixz * Matrixz
-		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
-		timesmat(lft.mat,rgt.mat,4); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
-		// transform: Vectorz = Matrixz * Vectorz
-		if (typ0 == TYPEMatrix && typ1 == TYPEVector && (typ == TYPEVector || typ == -1)) {
-		struct Matrix lft; datxMatrixz(&lft,0,dat0); struct Vector rgt; datxVectorz(&rgt,0,dat1);
-		timesvec(rgt.vec,lft.mat,4); datxVector(dat,&rgt); typ = TYPEVector;} else
+		LEFT_TYPE_TYPE(Matrix,Scalar,scalevec(lft.mat,rgt.val[0],16)) // scale by scalar: Matrix = Matrix * Scalar
+		RIGHT_TYPE_TYPE(Scalar,Matrix,scalevec(rgt.mat,lft.val[0],16)) // scale by scalar: Matrix = Scalar * Matrix
+		LEFT_TYPE_TYPE(Matrix,Matrix,timesmat(lft.mat,rgt.mat,4)) // row per column: Matrix = Matrix * Matrix
+		RIGHT_TYPE_TYPE(Matrix,Vector,timesvec(rgt.vec,lft.mat,4)) // transform: Vector = Matrix * Vector
+		LEFT_TYPE_TYPE(Vector,Vector,crossvec(lft.vec,rgt.vec); lft.vec[3] = 1.0) // cross: Vector = Vector * Vector
+		TYPE_TYPE_TYPE(Scalar,Vector,Vector,res.val[0] = dotvec(lft.vec,rgt.vec,4)) // dot: Scalar = Vector * Vector
+		LEFT_TYPE_TYPE(Vector,Scalar,scalevec(lft.vec,rgt.val[0],4)) // per cell; Vector = Vector * Scalar
+		RIGHT_TYPE_TYPE(Scalar,Vector,scalevec(rgt.vec,lft.val[0],4)) // per cell; Vector = Scalar * Vector
 		BINARY_DONE() break;
 	case (DivOp):
 		BINARY_BEGIN(opa)
 		BINARY_BLOCK(BINARY_DIV)
-		// scale by scalar: Matrixz = Matrixz / Old
-		if (typ0 == TYPEMatrix && typ1 == TYPEOld && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix tmp; datxMatrixz(&tmp,0,dat0); float val = *datxOldz(0,dat1);
-		scalevec(tmp.mat,1.0/val,16); datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
-		// scale by scalar: Matrixz = Old / Matrixz
-		if (typ0 == TYPEOld && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix tmp; datxMatrixz(&tmp,0,dat1); float val = *datxOldz(0,dat0);
-		for (int i = 0; i < 16; i++) tmp.mat[i] = val/tmp.mat[i]; datxMatrix(dat,&tmp); typ = TYPEMatrix;} else
-		// row per column: Matrixz = Matrixz / Matrixz
-		if (typ0 == TYPEMatrix && typ1 == TYPEMatrix && (typ == TYPEMatrix || typ == -1)) {
-		struct Matrix lft,rgt; datxMatrixz(&lft,0,dat0); datxMatrixz(&rgt,0,dat1);
-		timesmat(lft.mat,invmat(rgt.mat,4),4); datxMatrix(dat,&lft); typ = TYPEMatrix;} else
+		LEFT_TYPE_TYPE(Matrix,Scalar,scalevec(lft.mat,1.0/rgt.val[0],16)) // scale by scalar: Matrix = Matrix / Scalar
+		RIGHT_TYPE_TYPE(Scalar,Matrix,for (int i = 0; i < 16; i++) rgt.mat[i] = lft.val[0]/rgt.mat[i]) // scale by scalar: Matrix = Scalar / Matrix
+		LEFT_TYPE_TYPE(Matrix,Matrix,timesmat(lft.mat,invmat(rgt.mat,4),4)) // row per column: Matrix = Matrix / Matrix
 		BINARY_DONE() break;
 	case (RemOp): BINARY_BEGIN(opa)
 		BINARY_TYPE(int,Int,*datxIntz,datxInt,BINARY_REM) else
@@ -856,7 +862,11 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		typ0 = datxEval(&dat0,&exp->opa[0],typ0);
 		typ1 = datxEval(&dat1,&exp->opa[1],typ1);
 		if (typ1 != TYPEInt) ERROR(); typ1 = *datxIntz(0,dat1);
-		switch (typ0) {default: ERROR();
+		if (typ0 == TYPEOld && typ1 == TYPEScalar){
+		struct Scalar val; val.val[0] = *datxOldz(0,dat0); datxScalar(dat,&val); typ = TYPEScalar;}
+		else if (typ0 == TYPEScalar && typ1 == TYPEOld) {
+		struct Scalar val; datxScalarz(&val,0,dat0); datxOld(dat,val.val[0]); typ = TYPEOld;}
+		else switch (typ0) {default: ERROR();
 		FOREACH_BASIC(CAST_BASIC)
 		FOREACH_ENUM(CAST_ENUM)}
 		free(dat0); free(dat1);} break;
