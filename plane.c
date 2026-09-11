@@ -329,22 +329,24 @@ struct Extend *centerPull(int idx, const char *log)
     centerSize(idx);
     if (funcSafe(copySem,centerFunc,center+idx) < 0) ERROR();
     struct Extend *ret = center[idx];
-    deleteSmart(ret->log); ret->log = otherSmart(planeInfo(RegisterLog,0,planeRcfg));
     center[idx] = 0;
-    printfSmart(ret->log,"Pull %d %s",idx,log);
-    if (ret->asr != PlaceAsr) ERROR(); else ret->asr = PullAsr;
     if (postSafe(copySem) != 1) ERROR();
+    if (ret->asr != PlaceAsr) ERROR(); else ret->asr = PullAsr;
+    int tmp = planeInfo(RegisterLog,0,planeRcfg);
+    if (tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
     return ret;
 }
+// TODO have centerFree and centerSize just set asr to Asserts, and use centerPull instead of centerPeek
 struct Extend *centerPeek(int idx, const char *log)
 {
     centerSize(idx);
     if (waitSafe(copySem) != 0) ERROR();
     struct Extend *ret = center[idx];
     center[idx] = 0;
-    // if (ret) printfSmart(ret->log,"Peek %d %s",idx,log);
-    if (ret != 0 && ret->asr != PlaceAsr) ERROR(); else if (ret != 0) ret->asr = PullAsr;
     if (postSafe(copySem) != 1) ERROR();
+    if (ret != 0 && ret->asr != PlaceAsr) ERROR(); else if (ret != 0) ret->asr = PullAsr;
+    int tmp = planeInfo(RegisterLog,0,planeRcfg);
+    if (ret && tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
     return ret;
 }
 void centerFree(int idx, const char *log)
@@ -353,14 +355,11 @@ void centerFree(int idx, const char *log)
     struct Extend *ptr = centerPeek(idx,log);
     if (ptr == 0) return;
     if (ptr->asr != PullAsr) ERROR(); else ptr->asr = Asserts;
-    deleteSmart(ptr->log);
-    freeExtend(ptr);
-    allocExtend(&ptr,0);
+    deleteSmart(ptr->log); freeExtend(ptr); allocExtend(&ptr,0);
 }
 void centerPlace(struct Extend *ptr)
 {
     if (ptr == 0) return;
-    // printfSmart(ptr->log,"Place %d",ptr->sub);
     centerSize(ptr->sub);
     centerFree(ptr->sub,"Place");
     if (waitSafe(copySem) != 0) ERROR();
@@ -369,15 +368,9 @@ void centerPlace(struct Extend *ptr)
     center[ptr->sub] = ptr;
     if (postSafe(copySem) != 1) ERROR();
 }
-void centerClear(int sub)
-{
-    centerSize(sub);
-    centerFree(sub,"Clear");
-}
 void centerDone(struct Extend *ptr)
 {
     if (ptr->asr != PullAsr) ERROR(); else ptr->asr = DoneAsr;
-    printfSmart(ptr->log,"Done %d",ptr->sub);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,replace);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -460,8 +453,8 @@ void moveDeref(int sub, struct Extend **ext)
     if (equal) return;
     if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
     switch (ptr->asr) {default: ERROR();
-    break; case (PullAsr): if (ptr) deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
-    break; case (PlaceAsr): moveSize(ptr->sub); if (center[ptr->sub]) deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
+    break; case (PullAsr): deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
+    break; case (PlaceAsr): moveSize(ptr->sub); deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
     break; case (PipeAsr): pushCenterq(ptr,internal); planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
     break; case (RespAsr): pushCenterq(ptr,response); planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
     break; case (DoneAsr): pushCenterq(ptr,replace); planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);}
@@ -698,7 +691,11 @@ struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStr
     resized = 1; oldsize = readInt(arg->lft); newsize = readInt(arg->rgt); writeInt(newsize,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
     break; case (TYPEExtend):
     if (fld == identField(num,"log") && fld == usr->num) {
-    writeInt(otherSmart(readInt(arg->rgt)),arg->idx); return (struct MergeEnum){IdxMrg,(1<<LftMrg)|(1<<IdxMrg)};}}
+    int sav = readInt(arg->rgt);
+    int tmp = otherSmart(sav);
+    writeInt(tmp,arg->idx);
+    deleteSmart(sav);
+    return (struct MergeEnum){IdxMrg,(1<<LftMrg)|(1<<IdxMrg)};}}
     if (fld == usr->num && sub == usr->sub) return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
     return (struct MergeEnum){LftMrg,(1<<LftMrg)};
 }
@@ -720,6 +717,17 @@ struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStr
     else if (sub == usr->dst+usr->siz) return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
     else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
     return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
+}
+void centerSmart(struct Extend *ext, const char *log)
+{
+    char *st0 = 0; showMemory(ext->ptr->mem,&st0);
+    if (ext->ptr->mem == Transferz) {char *st1 = 0;
+    showTransfer(ext->ptr->exe->xfr,&st1);
+    printfSmart(ext->log,"%s %s %s",log,st0,st1);
+    free(st1);} else if (ext->ptr->mem == Drawz) {char *st1 = 0;
+    showConst(&ext->ptr->drw->con,&st1);
+    printfSmart(ext->log,"%s %s %s %d/%d",log,st0,st1,ext->ptr->idx,ext->ptr->siz);} else {
+    printfSmart(ext->log,"%s %s %d/%d",log,st0,ext->ptr->idx,ext->ptr->siz);}
 }
 
 void machineEval(struct Express *exp, struct Center *ptr)
@@ -856,7 +864,7 @@ void machineSage(int sim, struct Extend **ptr, char **nam)
     void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
     if (val == 0) ERROR();
     if (strcmp(nam[i],"ptr") == 0 && *datxIntz(0,val) == 0) {
-    freeExtend(*ptr); allocExtend(ptr,0); break;}
+    deleteSmart((*ptr)->log); freeExtend(*ptr); allocExtend(ptr,0); break;}
     else if (strcmp(nam[i],"ptr") == 0) continue;
     else {int num, stp, ftp; int found = 0;
     int types[] = {TYPEExtend,TYPECenter,TYPEMetric};
@@ -895,6 +903,9 @@ void planeMachine(enum Thread tag, int idx);
 void planeFork(enum Thread thd, int idx, mftype fnc);
 void machineExec(int idx, struct Extend *ext)
 {
+    int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
+    if (debug) {deleteSmart(ext->log); ext->log = selfSmart("Exec");}
+    centerSmart(ext,"reboot");
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: ERROR();
     case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break;
@@ -904,7 +915,6 @@ void machineExec(int idx, struct Extend *ext)
     struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
     int *boot = (int *)malloc(sizeof(int)*ptr->siz);
     void *repush = 0; repush = allocCenterq();
-    printfSmart(ext->log,"Exec %d",ptr->siz);
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
     planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
@@ -916,7 +926,8 @@ void machineExec(int idx, struct Extend *ext)
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
     nxt->asr = PipeAsr; pushCenterq(nxt,repush); continue;}
-    printfSmart(ext->log,"Exec %d/%d:%d %05d:%s",i,ptr->siz,ptr->sub[i],numberSmart(nxt->log),nameSmart(nxt->log));
+    if (debug) {deleteSmart(nxt->log); nxt->log = otherSmart(ext->log);}
+    centerSmart(nxt,"exec");
     boot[i] = ptr->sub[i]; cent[i] = nxt;}
     if (sizeCenterq(repush) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -1096,7 +1107,7 @@ void machineSwitch(struct Machine *mptr)
         if (postSafe(pipeSem) != 1) ERROR();
         if (ptr != 0 && ptr->asr != PipeAsr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
         dst = machineIval(mptr->pop[0].sup);
-        if (ptr == 0) centerClear(dst);
+        if (ptr == 0) centerFree(dst,"Popy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
         centerPlace(ptr);}}
     break; case (Qopy): {struct Extend *ptr;
@@ -1112,7 +1123,7 @@ void machineSwitch(struct Machine *mptr)
         if (postSafe(pipeSem) != 1) ERROR();
         if (ptr != 0 && ptr->asr != DoneAsr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
         dst = machineIval(mptr->pop[0].sup);
-        if (ptr == 0) centerClear(dst);
+        if (ptr == 0) centerFree(dst,"Ropy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
         centerPlace(ptr);}}
     break; case (Exec): {struct Extend *exp;
@@ -1157,7 +1168,7 @@ void planeMachine(enum Thread tag, int idx)
     if (waitSafe(safeSafe(MachThd,idx)) < 0) next = -1;
     else next += 1;}}}}
     for (int i = 0; i < size; i++) if (boot[i] < 0) {
-    if (cent[i]) deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
+    deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
     free(boot); free(cent);
     waitSafe(safeSem);
     machine[idx] = -1;
@@ -1176,7 +1187,6 @@ void planeCenter(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     int sub = inverse[center->src];
     if (postSafe(pipeSem) != 1) ERROR();
-    {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"Write %s",st0); free(st0);}
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
     centerDone(center);}
@@ -1198,9 +1208,9 @@ void planeExternal(enum Thread tag, int idx)
     if (waitSafe(pipeSem) != 0) ERROR();
     center->src = (int*)*userIdent(sub) - inverse;
     if (postSafe(pipeSem) != 1) ERROR();
-    {int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
+    int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
     center->log = selfSmart(debug?"Pipe":0);
-    if (debug) {char *st0 = 0; showExtend(center,&st0); printfSmart(center->log,"%s",st0); free(st0);}}
+    if (debug) centerSmart(center,"Pipe");
     center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
@@ -1590,10 +1600,11 @@ void registerRoll(enum Configure cfg, int sav, int val, int act)
 void registerLog(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterLog) ERROR();
-    if (sav != 0 && act == 0) for (int i = 0; i < centers; i++)
-    {deleteSmart(center[i]->log); center[i]->log = 0;}
-    if (sav != act)
-    {deleteSmart(sav); planeGnfo(cfg,otherSmart(act),planeWcfg);}
+    if (sav != act) {
+        deleteSmart(sav);
+        int tmp = otherSmart(act);
+        planeGnfo(cfg,tmp,planeWcfg);
+    }
 }
 
 // expression callbacks

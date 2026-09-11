@@ -423,6 +423,7 @@ Mask = { -- signals between threads
 }
 Verbose = { -- logging enable mask
 	"PipeVrb", -- external pipe thread
+	"ExecVrb", -- reboot thread
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary
@@ -987,7 +988,8 @@ ResrcIns = {
 	 {"Resrc","PipeRes","Int","0","Int","0"}, -- IdxDerIns
 	 {"Resrc","PipeRes","Int","1","Default","BackDef"},
 	 {"Resrc","PipeRes","Int","1","Int","0"}, -- Micro
-	{"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
+	{"Resrc","ChainRes","Int","0","Instr","GetDerIns"},
+	 {"Resrc","ChainRes","Int","0","Resrc","ChainRes"},
 	 {"Resrc","ChainRes","Int","0","Format","TrueFrm"},
 	{"Resrc","WrapRes","Int","0","Instr","NowDerIns"},
 	 {"Resrc","WrapRes","Int","0","Resrc","WrapRes"},
@@ -1914,7 +1916,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(nia:7)"..
 		 "mch[%(return jdx())]:Popy(pop[0]:Supexpr(sup[0]:$(@memorys)))"..
 		 "mch[%(return jdx())]:Tage(ssz:6sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(ptr)ssa[1]:Str(mem)ssa[2]:Str(sav)ssa[3]:Str(slf)ssa[4]:Str(idx)ssa[5]:Str(log))"..
-		 "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(RegisterLog := @log)))"..
+		 "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Cnd #0 == EO @ptr #0 Cmp , RegisterLog := @log ; #0 == #1 , #0 Op)))"..
 		 "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd"..
 		  "#0 == EC @ptr #0 Cmp , #7"..
 		  "#0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Transferz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Rebootz\")) Cmp Bit , #6"..

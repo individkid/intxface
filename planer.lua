@@ -141,16 +141,35 @@ function writeCent(lst,mem,idx,slf,fld,arg)
 	writeCenter(centSugar(cent),tests[found]["idx"]);
 end
 function initTest()
+	config = {}
+	--
 	listResrc(list,"SwapRes",{})
 	atomSugar(list,tests[found]["idx"],"Swap")
-	config = {} readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
+	--
+	readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
 	print("frames:"..frames.." width:"..width.." height:"..height)
+	--
+	writeConfig(list,{(1<<castVerbose("ExecVrb"))},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
+	--
+	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
+	atomSugar(list,tests[found]["idx"],"Test")
+	--
+	writeConfig(list,{0},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
+	--
 	-- for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
-	--[[for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
+	--
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
+	atomSugar(list,tests[found]["idx"],"Test")
+	--
+	--[[
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
+	atomSugar(list,tests[found]["idx"],"Test")
 	listMemory(list,"Storagez","sto",{"Int32(456)"})
 	ident = "Matrix("
 	for i = 0, 15 do ident = ident.."mat["..i.."]:Old("
@@ -159,6 +178,7 @@ function initTest()
 	ident = ident..")"
 	mat = {} for i = 0, 4 do mat[i+1] = ident end
 	for i = 0, frames-1 do listMemory(list,"Matrixz","mat",mat) end
+	atomSugar(list,tests[found]["idx"],"Test")
 	--
 	ver={}
 	ver[1]="Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
@@ -170,29 +190,23 @@ function initTest()
 	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
-	--
-	-- writeConfig(list,{(1<<castVerbose("PipeVrb"))},{"RegisterVerb"})
-	-- readConfig(list,config,{"RegisterVerb"})
+	atomSugar(list,tests[found]["idx"],"Test")
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
 	-- writeCent(list,"Identz",0,0,"idt",idt) -- FetchPhs 1
-	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
-	-- listMemory(list,"Identz","idt",idt) -- FetchPhs 1
-	--
-	-- writeConfig(list,{0},{"RegisterVerb"})
-	-- readConfig(list,config,{"RegisterVerb"})
+	-- listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
+	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
+	atomSugar(list,tests[found]["idx"],"Test")
 	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
-	listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
-	--
-	config[1] = 0 while(config[1] ~= 1) do
-	list[#list+1] = machSugar("Machine(xfr:Stagesiz:1sav[0]:CenterPtridx[0]:$(@index))")
-	readConfig(list,config,{"CenterPtr"}) end
-	atomSugar(list,tests[found]["idx"],"Test")--]]
+	-- listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
+	listMemory(list,"Indexz","ind",ind) -- FetchPhs 1
+	atomSugar(list,tests[found]["idx"],"Test")
+	--]]
 end
 
 function runTest()
