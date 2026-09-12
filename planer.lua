@@ -36,6 +36,7 @@ index = 0
 list = {}
 function atomSugar(list,idx,str)
 	if #list > 0 then
+	-- io.stderr:write(str..":"..index.."\n")
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
 	index = index + 1
 	for i,v in ipairs(list) do
@@ -78,7 +79,7 @@ function flushTest()
 	atomSugar(list,tests[found]["idx"],"Done")
 	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
 	readConfig(list,config,{"ScratchDescrs"})
-	print("pass:"..config[1])
+	print("pass:"..config[1].." index:"..index)
 	-- above read forces all prior Rebootz to complete before following Exit
 	writeCenter(exprSugar("$(RegisterExit := #1)"),tests[found]["idx"])
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
@@ -112,7 +113,6 @@ function listResrc(lst,res,arg)
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Move or Sage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..(castMemory("Memorys")+2).."))bie[0]:Intexpr(val[0]:$(#0)))")
-	-- prevent overwrite of Memorys+2 by response from Bopy; wait for read of response before sending next Rebootz
 	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..(castMemory("Memorys")+2)..")))")
 	atomSugar(lst,tests[found]["idx"],"Resrc")
 	readCenter(tests[found]["idx"])
@@ -124,15 +124,20 @@ function listMemory(lst,mem,fld,arg)
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Move or Sage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bie[0]:Intexpr(val[0]:$(#0)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
+	atomSugar(lst,tests[found]["idx"],"Memory")
+	readCenter(tests[found]["idx"])
 end
 function listSpoof(lst,mem,fld,arg)
-	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:-1"
+	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO use move to internal instead of slf:-1; remove hack from planeCenter
+	-- TODO use Move or Sage to internal instead of Qopy to response
+	-- lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
 	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
-	atomSugar(list,tests[found]["idx"],"Spoof")
+	atomSugar(lst,tests[found]["idx"],"Spoof")
+	readCenter(tests[found]["idx"])
 end
 function writeCent(lst,mem,idx,slf,fld,arg)
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:"..idx.."slf:"..slf
@@ -144,32 +149,19 @@ function initTest()
 	config = {}
 	--
 	listResrc(list,"SwapRes",{})
-	atomSugar(list,tests[found]["idx"],"Swap")
 	--
 	readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
 	print("frames:"..frames.." width:"..width.." height:"..height)
 	--
-	writeConfig(list,{(1<<castVerbose("ExecVrb"))},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
-	--
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
-	atomSugar(list,tests[found]["idx"],"Test")
 	--
-	writeConfig(list,{0},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
-	--
-	-- for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
+	for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
 	--
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
-	atomSugar(list,tests[found]["idx"],"Test")
 	--
-	--[[
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
-	atomSugar(list,tests[found]["idx"],"Test")
 	listMemory(list,"Storagez","sto",{"Int32(456)"})
 	ident = "Matrix("
 	for i = 0, 15 do ident = ident.."mat["..i.."]:Old("
@@ -178,7 +170,6 @@ function initTest()
 	ident = ident..")"
 	mat = {} for i = 0, 4 do mat[i+1] = ident end
 	for i = 0, frames-1 do listMemory(list,"Matrixz","mat",mat) end
-	atomSugar(list,tests[found]["idx"],"Test")
 	--
 	ver={}
 	ver[1]="Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
@@ -190,23 +181,26 @@ function initTest()
 	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
-	atomSugar(list,tests[found]["idx"],"Test")
+	--
+	writeConfig(list,{((1<<castVerbose("ExecVrb"))|(1<<castVerbose("QueuVrb")))},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	-- writeCent(list,"Identz",0,0,"idt",idt) -- FetchPhs 1
 	-- listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
 	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
-	atomSugar(list,tests[found]["idx"],"Test")
+	--
+	writeConfig(list,{0},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
 	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
 	-- listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
-	listMemory(list,"Indexz","ind",ind) -- FetchPhs 1
-	atomSugar(list,tests[found]["idx"],"Test")
-	--]]
+	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
 end
 
 function runTest()

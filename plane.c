@@ -311,6 +311,17 @@ float *planeWindow(float *mat)
 }
 
 // resource access
+void centerSmart(struct Extend *ext, const char *log)
+{
+    char *st0 = 0; showMemory(ext->ptr->mem,&st0);
+    if (ext->ptr->mem == Transferz) {char *st1 = 0;
+    showTransfer(ext->ptr->exe->xfr,&st1);
+    printfSmart(ext->log,"%s %s %s",log,st0,st1);
+    free(st1);} else if (ext->ptr->mem == Drawz) {char *st1 = 0;
+    showConst(&ext->ptr->drw->con,&st1);
+    printfSmart(ext->log,"%s %s %s %d/%d",log,st0,st1,ext->ptr->idx,ext->ptr->siz);} else {
+    printfSmart(ext->log,"%s %s %d/%d",log,st0,ext->ptr->idx,ext->ptr->siz);}
+}
 void centerSize(int idx)
 {
     if (waitSafe(copySem) != 0) ERROR();
@@ -336,7 +347,6 @@ struct Extend *centerPull(int idx, const char *log)
     if (tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
     return ret;
 }
-// TODO have centerFree and centerSize just set asr to Asserts, and use centerPull instead of centerPeek
 struct Extend *centerPeek(int idx, const char *log)
 {
     centerSize(idx);
@@ -718,17 +728,6 @@ struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStr
     else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
     return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
 }
-void centerSmart(struct Extend *ext, const char *log)
-{
-    char *st0 = 0; showMemory(ext->ptr->mem,&st0);
-    if (ext->ptr->mem == Transferz) {char *st1 = 0;
-    showTransfer(ext->ptr->exe->xfr,&st1);
-    printfSmart(ext->log,"%s %s %s",log,st0,st1);
-    free(st1);} else if (ext->ptr->mem == Drawz) {char *st1 = 0;
-    showConst(&ext->ptr->drw->con,&st1);
-    printfSmart(ext->log,"%s %s %s %d/%d",log,st0,st1,ext->ptr->idx,ext->ptr->siz);} else {
-    printfSmart(ext->log,"%s %s %d/%d",log,st0,ext->ptr->idx,ext->ptr->siz);}
-}
 
 void machineEval(struct Express *exp, struct Center *ptr)
 {
@@ -1087,6 +1086,8 @@ void machineSwitch(struct Machine *mptr)
         centerPlace(ptr);}
     break; case (Bopy): {struct Extend *ext;
         ext = centerPull(machineIval(mptr->bop[0].sup),"Bopy");
+        int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
+        if (debug) centerSmart(ext,"push vulkan");
         callCont(ext,machineIval(mptr->bie[0].val),ext->log);}
     break; case (Copy): {struct Extend *cpy; struct Extend *ptr; int sub;
         cpy = 0; allocExtend(&cpy,1);
@@ -1109,10 +1110,14 @@ void machineSwitch(struct Machine *mptr)
         dst = machineIval(mptr->pop[0].sup);
         if (ptr == 0) centerFree(dst,"Popy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
+        int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
+        if (debug) centerSmart(ptr,"pop internal");
         centerPlace(ptr);}}
     break; case (Qopy): {struct Extend *ptr;
         ptr = centerPull(machineIval(mptr->pop[0].sup),"Qopy");
         if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
+        int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
+        if (debug) centerSmart(ptr,"push response");
         if (waitSafe(pipeSem) != 0) ERROR();
         pushCenterq(ptr,response);
         if (postSafe(pipeSem) != 1) ERROR();
@@ -1125,6 +1130,8 @@ void machineSwitch(struct Machine *mptr)
         dst = machineIval(mptr->pop[0].sup);
         if (ptr == 0) centerFree(dst,"Ropy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
+        int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
+        if (debug) centerSmart(ptr,"pop replace");
         centerPlace(ptr);}}
     break; case (Exec): {struct Extend *exp;
         exp = centerPull(machineIval(mptr->top[0].sup),"Exec");
