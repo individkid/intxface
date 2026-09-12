@@ -111,7 +111,7 @@ function listResrc(lst,res,arg)
 	for i,v in ipairs(arg) do cent = cent.."arg["..(i-1).."]:"..v end
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Move or Sage to set rsp to RptRsp
+	-- TODO Sage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..(castMemory("Memorys")+2).."))bie[0]:Intexpr(val[0]:$(#0)))")
 	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..(castMemory("Memorys")+2)..")))")
 	atomSugar(lst,tests[found]["idx"],"Resrc")
@@ -122,7 +122,7 @@ function listMemory(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Move or Sage to set rsp to RptRsp
+	-- TODO Sage to set rsp to RptRsp
 	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bie[0]:Intexpr(val[0]:$(#0)))")
 	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
 	atomSugar(lst,tests[found]["idx"],"Memory")
@@ -133,8 +133,7 @@ function listSpoof(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO use Move or Sage to internal instead of Qopy to response
-	-- lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
+	lst[#lst+1] = machSugar("Machine(xfr:Movemsz:1mop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))mpo[0]:Evalexp(fnc[0]:$(@_ .= asr#0 ImmStrPipeAsrOpOp)))")
 	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
 	atomSugar(lst,tests[found]["idx"],"Spoof")
 	readCenter(tests[found]["idx"])
@@ -189,8 +188,8 @@ function initTest()
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	-- listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
-	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
+	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
+	-- listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	--
 	writeConfig(list,{0},{"RegisterVerb"})
 	readConfig(list,config,{"RegisterVerb"})
