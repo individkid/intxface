@@ -425,6 +425,7 @@ Verbose = { -- logging enable mask
 	"PipeVrb", -- external pipe thread
 	"ExecVrb", -- reboot thread
 	"QueuVrb", -- queue transfers
+	"TestVrb", -- test thread
 }
 Emerg = { -- topology state
 	"Planes", -- Scalar -- [Plane] -- per boundary

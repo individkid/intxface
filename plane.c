@@ -1305,7 +1305,8 @@ void planeTest(enum Thread tag, int idx)
     planeMouseRotateCursor(mat->ptr->mat[1].mat,fix,0,org,cur);}
     else planeMatrix(mat->ptr->mat[0].mat);
     mat->sub = Matrixz; mat->rsp = RptRsp; mat->ret = NoneRet;
-    deleteSmart(mat->log); mat->log = (debug?otherSmart(mat->log):0);
+    if ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<TestVrb)) == (1<<TestVrb)) {
+    deleteSmart(mat->log); mat->log = selfSmart("Test0");}
     callCont(mat,1,mat->log);
     if (alt) alt = 0; else alt = 1;
 
@@ -1323,7 +1324,8 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->ptr->drw[0].arg,drw->ptr->drw[0].siz);
     for (int i = 0; i < drw->ptr->drw[0].siz; i++) drw->ptr->drw[0].arg[i] = giv[i];
     drw->sub = Drawz; drw->rsp = RetRsp; drw->ret = NoneRet;
-    deleteSmart(drw->log); drw->log = (debug?selfSmart("draw"):0);
+    if ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<TestVrb)) == (1<<TestVrb)) {
+    deleteSmart(drw->log); drw->log = selfSmart("Test1");}
     callCont(drw,1,drw->log);}
     tested = count;}}
 
@@ -1349,7 +1351,8 @@ void planeTest(enum Thread tag, int idx)
     eek->ptr->mem = Getoldz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocOld(&eek->ptr->old,eek->ptr->siz);
     eek->sub = Getoldz; eek->rsp = RptRsp; eek->ret = NoneRet;
-    deleteSmart(eek->log); eek->log = (debug?selfSmart("peek"):0);
+    if ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<TestVrb)) == (1<<TestVrb)) {
+    deleteSmart(eek->log); eek->log = selfSmart("Test2");}
     callCont(eek,0,eek->log);}
 
     else if (count%6 == 2 || count%6 == 5) {
@@ -1358,7 +1361,8 @@ void planeTest(enum Thread tag, int idx)
     eek->ptr->mem = Getintz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocInt(&eek->ptr->uns,eek->ptr->siz);
     eek->sub = Getintz; eek->rsp = RptRsp; eek->ret = NoneRet;
-    deleteSmart(eek->log); eek->log = (debug?selfSmart("eekrix"):0);
+    if ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<TestVrb)) == (1<<TestVrb)) {
+    deleteSmart(eek->log); eek->log = selfSmart("Test3");}
     callCont(eek,0,eek->log);}
 
     else if (count%6 == 3 || count%6 == 0) {
@@ -1369,7 +1373,8 @@ void planeTest(enum Thread tag, int idx)
     vec->ptr->vec[0].vec[0] = 1.0; vec->ptr->vec[0].vec[1] = 2.0;
     vec->ptr->vec[0].vec[2] = 3.0; vec->ptr->vec[0].vec[3] = 4.0;
     vec->sub = Vectorz; vec->rsp = RptRsp; vec->ret = NoneRet;
-    deleteSmart(vec->log); vec->log = (debug?selfSmart("getvec"):0);
+    if ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<TestVrb)) == (1<<TestVrb)) {
+    deleteSmart(vec->log); vec->log = selfSmart("Test4");}
     callCont(vec,0,vec->log);}
 
     tested = count;}}
