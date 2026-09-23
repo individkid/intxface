@@ -345,6 +345,7 @@ struct Extend *centerPull(int idx, const char *log)
     if (ret->asr != PlaceAsr) ERROR(); else ret->asr = PullAsr;
     int tmp = planeInfo(RegisterLog,0,planeRcfg);
     if (tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
+    else if (log) {deleteSmart(ret->log); ret->log = selfSmart(log);}
     return ret;
 }
 struct Extend *centerPeek(int idx, const char *log)
@@ -357,6 +358,7 @@ struct Extend *centerPeek(int idx, const char *log)
     if (ret != 0 && ret->asr != PlaceAsr) ERROR(); else if (ret != 0) ret->asr = PullAsr;
     int tmp = planeInfo(RegisterLog,0,planeRcfg);
     if (ret && tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
+    else if (ret && log) {deleteSmart(ret->log); ret->log = selfSmart(log);}
     return ret;
 }
 void centerFree(int idx, const char *log)
@@ -510,8 +512,8 @@ void demoMenu(struct Menu *menu)
 }
 void demoRead(struct Menu *menu) // pull/modify/place Kernelz, pull/read/place Matrixz
 {
-    struct Extend *src = centerPull(menu->src,"Demo");
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Extend *src = centerPull(menu->src,0);
+    struct Extend *ptr = centerPull(menu->ker,0);
     int slf = src->ptr->slf;
     if (src->ptr->mem != Matrixz) ERROR();
     struct Matrix *mat = src->ptr->mat;
@@ -524,7 +526,7 @@ void demoRead(struct Menu *menu) // pull/modify/place Kernelz, pull/read/place M
 void demoSend(struct Menu *menu) // pull/read/place Kernelz, alloc/send Matrixz
 {
     struct Extend *dst = 0; allocExtend(&dst,1);
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Extend *ptr = centerPull(menu->ker,0);
     dst->sub = menu->dst; dst->asr = PullAsr;
     freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
     dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
@@ -537,7 +539,7 @@ void demoSend(struct Menu *menu) // pull/read/place Kernelz, alloc/send Matrixz
 }
 void demoCont(struct Menu *menu) // pull/modify/place Kernelz
 {
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Extend *ptr = centerPull(menu->ker,0);
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
     timesmat(timesmat(ker->local.mat,ker->saved.mat,4),inv,4); // L = LTC'
@@ -546,7 +548,7 @@ void demoCont(struct Menu *menu) // pull/modify/place Kernelz
 }
 void demoNone(struct Menu *menu) // pull/modify/place Kernelz
 {
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Extend *ptr = centerPull(menu->ker,0);
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     timesmat(ker->local.mat,ker->saved.mat,4); // L = LT
     identmat(ker->saved.mat,4); // T = I
@@ -555,7 +557,7 @@ void demoNone(struct Menu *menu) // pull/modify/place Kernelz
 void demoPush(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrixz
 {
     struct Extend *dst = 0; allocExtend(&dst,1);
-    struct Extend *ptr = centerPull(menu->ker,"Demo");
+    struct Extend *ptr = centerPull(menu->ker,0);
     dst->sub = menu->dst; dst->asr = RespAsr;
     freeCenter(dst->ptr); dst->ptr->mem = Matrixz;
     dst->ptr->idx = demoJect(menu); dst->ptr->siz = 1;
@@ -577,7 +579,7 @@ void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
     int left = planeInfo(ClickLeft,0,planeRcfg);
     int base = planeInfo(ClickBase,0,planeRcfg);
     int width = planeInfo(UniformWid,0,planeRcfg);
-    struct Extend *src = centerPull(menu->src,"Demo");
+    struct Extend *src = centerPull(menu->src,0);
     switch (src->ptr->mem) {default: ERROR();
     break; case (Getoldz): {
         int full = planeInfo(FocalFull,0,planeRcfg);
@@ -633,7 +635,7 @@ void demoDone(struct Menu *menu) // maybe alloc/push Metricz
 }
 void demoDisp(struct Menu *menu) // pull/send Drawz
 {
-    struct Extend *drw = centerPull(menu->drw,"Draw");
+    struct Extend *drw = centerPull(menu->drw,0);
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
     int sub[] = {menu->dsp};
@@ -643,7 +645,7 @@ void demoDisp(struct Menu *menu) // pull/send Drawz
 }
 void demoPute(struct Menu *menu) // pull/send Drawz
 {
-    struct Extend *drw = centerPull(menu->drw,"Draw");
+    struct Extend *drw = centerPull(menu->drw,0);
     if (drw->ptr->mem != Drawz) ERROR();
     for (int i = 0; i < drw->ptr->siz; i++) drw->ptr->drw[i].siz = -abs(drw->ptr->drw[i].siz);
     int sub[] = {menu->pie,menu->nor,menu->sel};
@@ -1028,36 +1030,36 @@ void machineSwitch(struct Machine *mptr)
     if (!mptr) ERROR();
     switch (mptr->xfr) {default: ERROR();
     break; case (Eval): {struct Extend *arg; struct Express *fnc;
-        arg = centerPull(machineIval(mptr->eop[0].sup),"Eval");
+        arg = centerPull(machineIval(mptr->eop[0].sup),0);
         fnc = mptr->epo[0].fnc; // takes Center in @_, returns Center
         machineEval(fnc,arg->ptr);
         centerPlace(arg);}
     break; case (Kern): {struct Extend *arg; struct Express *fnc; int aub;
-        arg = centerPull(machineIval(mptr->kop[0].sup),"Kern");
+        arg = centerPull(machineIval(mptr->kop[0].sup),0);
         aub = machineIval(mptr->kop[0].sub);
         if (arg->ptr->mem != Kernelz || arg->ptr->siz <= aub) ERROR();
         fnc = mptr->kpo[0].fnc; // takes Kernel in @_, returns Kernel
         machineKern(fnc,&arg->ptr->ker[aub]);
         centerPlace(arg);}
     break; case (Matr): {struct Extend *arg; struct Express *fnc; int aub;
-        arg = centerPull(machineIval(mptr->kop[0].sup),"Matr");
+        arg = centerPull(machineIval(mptr->kop[0].sup),0);
         aub = machineIval(mptr->kop[0].sub);
         if (arg->ptr->mem != Matrixz || arg->ptr->siz <= aub) ERROR();
         fnc = mptr->kpo[0].fnc; // takes Matrix in @_, returns Matrix
         machineMatr(fnc,&arg->ptr->mat[aub]);
         centerPlace(arg);}
     break; case (Metr): {struct Extend *arg; struct Express *fnc; int aub;
-        arg = centerPull(machineIval(mptr->kop[0].sup),"Metr");
+        arg = centerPull(machineIval(mptr->kop[0].sup),0);
         aub = machineIval(mptr->kop[0].sub);
         if (arg->ptr->mem != Metricz || arg->ptr->siz <= aub) ERROR();
         fnc = mptr->kpo[0].fnc; // takes Metric in @_, returns Metric
         machineMetr(fnc,&arg->ptr->met[aub]);
         centerPlace(arg);}
     break; case (Line): {struct Extend *lft; struct Extend *rgt; struct Express *fnc; int lub, rub;
-        lft = centerPull(machineIval(mptr->lop[0].sup),"Line");
+        lft = centerPull(machineIval(mptr->lop[0].sup),0);
         lub = machineIval(mptr->lop[0].sub);
         if (lft->ptr->mem != Matrixz || lft->ptr->siz <= lub) ERROR();
-        rgt = centerPull(machineIval(mptr->lop[1].sup),"Line");
+        rgt = centerPull(machineIval(mptr->lop[1].sup),0);
         rub = machineIval(mptr->lop[1].sub);
         if (rgt->ptr->mem != Matrixz || rgt->ptr->siz <= rub) ERROR();
         fnc = mptr->lpo[0].fnc; // takes Matrix in @_, returns nothing
@@ -1077,21 +1079,21 @@ void machineSwitch(struct Machine *mptr)
         for (int i = 0; i < mptr->msz; i++) fnc[i] = mptr->mpo[i].fnc;
         machineMove(arg,fnc,mptr->msz);}
     break; case (Tage): {struct Extend *ptr;
-        ptr = centerPeek(machineIval(mptr->sop[0].sup),"Tage");
+        ptr = centerPeek(machineIval(mptr->sop[0].sup),0);
         machineTage(mptr->ssz,ptr,mptr->ssa);
         if (ptr) centerPlace(ptr);}
     break; case (Sage): {struct Extend *ptr;
-        ptr = centerPull(machineIval(mptr->sop[0].sup),"Sage");
+        ptr = centerPull(machineIval(mptr->sop[0].sup),0);
         machineSage(mptr->ssz,&ptr,mptr->ssa);
         centerPlace(ptr);}
     break; case (Bopy): {struct Extend *ext;
-        ext = centerPull(machineIval(mptr->bop[0].sup),"Bopy");
+        ext = centerPull(machineIval(mptr->bop[0].sup),0);
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
         if (debug) centerSmart(ext,"push vulkan");
         callCont(ext,machineIval(mptr->bie[0].val),ext->log);}
     break; case (Copy): {struct Extend *cpy; struct Extend *ptr; int sub;
         cpy = 0; allocExtend(&cpy,1);
-        ptr = centerPull(machineIval(mptr->cop[0].sup),"Copy");
+        ptr = centerPull(machineIval(mptr->cop[0].sup),0);
         sub = machineIval(mptr->cop[1].sup);
         copyExtend(cpy,ptr); cpy->sub = sub; cpy->log = otherSmart(ptr->log);
         centerPlace(ptr); centerPlace(cpy);}
@@ -1099,7 +1101,7 @@ void machineSwitch(struct Machine *mptr)
         src = machineIval(mptr->dop[0].sup); lub = machineIval(mptr->dop[0].sub);
         dst = machineIval(mptr->dop[1].sup); rub = machineIval(mptr->dop[1].sub);
         siz = machineIval(mptr->die[0].val);
-        lft = centerPull(src,"Dopy"); rgt = centerPull(dst,"Dopy"); 
+        lft = centerPull(src,"Dopy"); rgt = centerPull(dst,0); 
         machineDopy(lft->ptr,lub,rgt->ptr,rub,siz);
         centerPlace(lft); centerPlace(rgt);}
     break; case (Popy): {struct Extend *ptr; int dst;
@@ -1114,7 +1116,7 @@ void machineSwitch(struct Machine *mptr)
         if (debug) centerSmart(ptr,"pop internal");
         centerPlace(ptr);}}
     break; case (Qopy): {struct Extend *ptr;
-        ptr = centerPull(machineIval(mptr->pop[0].sup),"Qopy");
+        ptr = centerPull(machineIval(mptr->pop[0].sup),0);
         if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
         if (debug) centerSmart(ptr,"push response");
@@ -1134,11 +1136,11 @@ void machineSwitch(struct Machine *mptr)
         if (debug) {centerSmart(ptr,"pop replace"); clearSmart();}
         centerPlace(ptr);}}
     break; case (Exec): {struct Extend *exp;
-        exp = centerPull(machineIval(mptr->top[0].sup),"Exec");
+        exp = centerPull(machineIval(mptr->top[0].sup),0);
         machineExec(machineIval(mptr->tie[0].val),exp);
         centerPlace(exp);}
     break; case (Demo): {struct Extend *arg; int aub;
-        arg = centerPull(machineIval(mptr->nop[0].sup),"Demo");
+        arg = centerPull(machineIval(mptr->nop[0].sup),0);
         aub = machineIval(mptr->nop[0].sub);
         if (arg->ptr->mem != Menuz || arg->ptr->siz <= aub) ERROR();
         machineDemo(&arg->ptr->men[aub]);
@@ -1155,7 +1157,7 @@ void planeMachine(enum Thread tag, int idx)
     if (index < 0) ERROR(); if (size == 0) {size = 1;
     boot = malloc(sizeof(int)); boot[0] = -1;
     cent = malloc(sizeof(struct Extend *));
-    cent[0] = centerPull(index,"Mach");}
+    cent[0] = centerPull(index,0);}
     // if (idx > 0) {fprintf(stderr,"Mach"); for (int i = 0; i < size; i++) {char *st0 = 0; char *st1 = 0; int src = -1; char *st2 = 0; if (cent[i]->ptr->mem != Transferz) showMemory(cent[i]->ptr->mem,&st1);  else if (cent[i]->ptr->exe[0].xfr == Bopy || cent[i]->ptr->exe[0].xfr == Qopy) {src = machineIval(&cent[i]->ptr->exe[0].arg[0]); if (src <= Memorys+1) showTransfer(cent[i]->ptr->exe[0].xfr,&st1); else assignStr(&st1,"-");} else {showTransfer(cent[i]->ptr->exe[0].xfr,&st1);} fprintf(stderr," -- %d %s(%d)",boot[i],st1,src); free(st0); free(st1); free(st2);} fprintf(stderr,"\n");}
     for (int i = 0; i < size; i++) {
     if (boot[i] >= 0) {cent[i]->sub = boot[i]; centerPlace(cent[i]);}
