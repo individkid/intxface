@@ -40,7 +40,9 @@ function atomSugar(list,idx,str)
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
 	index = index + 1
 	for i,v in ipairs(list) do
-	if v["mem"] == "Transferz" then
+	if v["siz"] == 0 then
+	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+1)
+	elseif v["mem"] == "Transferz" then
 	cent = cent.."sub["..(i-1).."]:-1"
 	elseif v["mem"] == "Drawz" then
 	cent = cent.."sub["..(i-1).."]:"..(castMemory("Memorys")+2)
@@ -104,6 +106,13 @@ function writeConfig(list,val,cfg)
 	end
 	atomSugar(list,tests[found]["idx"],"Write")
 end
+function writeMaskbit(list,val,cfg)
+	if #list > 0 then atomSugar(list,tests[found]["idx"]) end
+	for i,v in ipairs(cfg) do
+	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(Wos "..v.." #"..val[i].." Op)))")
+	end
+	atomSugar(list,tests[found]["idx"],"Write")
+end
 -- TODO for listDraw, use rsp of RetRsp
 function listResrc(lst,res,arg)
 	cent = "Center(mem:Drawzsiz:1idx:0slf:0drw[0]:Draw(con:Const(tag:ResrcConres:"..res..")ptr:Dat()"
@@ -137,12 +146,6 @@ function listSpoof(lst,mem,fld,arg)
 	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
 	atomSugar(lst,tests[found]["idx"],"Spoof")
 	readCenter(tests[found]["idx"])
-end
-function writeCent(lst,mem,idx,slf,fld,arg)
-	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:"..idx.."slf:"..slf
-	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
-	cent = cent..")"
-	writeCenter(centSugar(cent),tests[found]["idx"]);
 end
 function initTest()
 	config = {}
@@ -200,6 +203,13 @@ function initTest()
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
 	-- listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
 	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
+	--
+	list[#list+1] = centSugar("Center(mem:Indexzsiz:0idx:0slf:0)")
+	atomSugar(list,tests[found]["idx"],"Memory")
+	-- writeMaskbit(list,{(1<<castThread("TestThd"))},{"RegisterOpen"})
+	-- io.stderr:write("sleep before\n")
+	-- os.execute("sleep 3")
+	-- io.stderr:write("sleep after\n")
 end
 
 function runTest()

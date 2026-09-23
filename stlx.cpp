@@ -29,7 +29,11 @@ void SmartState::done() {
     slog.smart[num]--; vld = false;
     bool zero = (slog.smart[num] == 0);
     slog.safe.post();
-    if (zero) slog.clr(num);
+    if (zero) slog.del(num);
+}
+void SmartState::cont() {
+    if (!vld) return;
+    slog.clr(num);
 }
 #define NUM(N) std::setw(slog.num) << std::setfill('0') << N << ":"
 #define STR(S) S << ":"

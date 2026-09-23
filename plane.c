@@ -320,7 +320,7 @@ void centerSmart(struct Extend *ext, const char *log)
     free(st1);} else if (ext->ptr->mem == Drawz) {char *st1 = 0;
     showConst(&ext->ptr->drw->con,&st1);
     printfSmart(ext->log,"%s %s %s %d/%d",log,st0,st1,ext->ptr->idx,ext->ptr->siz);} else {
-    printfSmart(ext->log,"%s %s %d/%d",log,st0,ext->ptr->idx,ext->ptr->siz);}
+    printfSmart(ext->log,"%s %s %d %d/%d",log,st0,ext->sub,ext->ptr->idx,ext->ptr->siz);}
 }
 void centerSize(int idx)
 {
@@ -1131,7 +1131,7 @@ void machineSwitch(struct Machine *mptr)
         if (ptr == 0) centerFree(dst,"Ropy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
-        if (debug) centerSmart(ptr,"pop replace");
+        if (debug) {centerSmart(ptr,"pop replace"); clearSmart();}
         centerPlace(ptr);}}
     break; case (Exec): {struct Extend *exp;
         exp = centerPull(machineIval(mptr->top[0].sup),"Exec");
@@ -1303,7 +1303,8 @@ void planeTest(enum Thread tag, int idx)
     planeMouseRotateCursor(mat->ptr->mat[1].mat,fix,0,org,cur);}
     else planeMatrix(mat->ptr->mat[0].mat);
     mat->sub = Matrixz; mat->rsp = RptRsp; mat->ret = NoneRet;
-    callCopy(mat,1,(debug?"matrix":0));
+    deleteSmart(mat->log); mat->log = (debug?otherSmart(mat->log):0);
+    callCont(mat,1,mat->log);
     if (alt) alt = 0; else alt = 1;
 
     if (count == tested) {
@@ -1320,7 +1321,8 @@ void planeTest(enum Thread tag, int idx)
     allocInt(&drw->ptr->drw[0].arg,drw->ptr->drw[0].siz);
     for (int i = 0; i < drw->ptr->drw[0].siz; i++) drw->ptr->drw[0].arg[i] = giv[i];
     drw->sub = Drawz; drw->rsp = RetRsp; drw->ret = NoneRet;
-    callCopy(drw,1,(debug?"test":0));}
+    deleteSmart(drw->log); drw->log = (debug?selfSmart("draw"):0);
+    callCont(drw,1,drw->log);}
     tested = count;}}
 
     break; case (1): {
@@ -1345,7 +1347,8 @@ void planeTest(enum Thread tag, int idx)
     eek->ptr->mem = Getoldz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocOld(&eek->ptr->old,eek->ptr->siz);
     eek->sub = Getoldz; eek->rsp = RptRsp; eek->ret = NoneRet;
-    callCopy(eek,0,(debug?"peek":0));}
+    deleteSmart(eek->log); eek->log = (debug?selfSmart("peek"):0);
+    callCont(eek,0,eek->log);}
 
     else if (count%6 == 2 || count%6 == 5) {
     struct Extend *eek = centerPeek(Getintz,(debug?"Test3":0)); if (!eek) {callWait(); continue;}
@@ -1353,7 +1356,8 @@ void planeTest(enum Thread tag, int idx)
     eek->ptr->mem = Getintz; eek->ptr->idx = (int)(0.3*width)+(int)(0.3*height)*width; eek->ptr->siz = 1;
     allocInt(&eek->ptr->uns,eek->ptr->siz);
     eek->sub = Getintz; eek->rsp = RptRsp; eek->ret = NoneRet;
-    callCopy(eek,0,(debug?"ident":0));}
+    deleteSmart(eek->log); eek->log = (debug?selfSmart("eekrix"):0);
+    callCont(eek,0,eek->log);}
 
     else if (count%6 == 3 || count%6 == 0) {
     struct Extend *vec = centerPeek(Vectorz,(debug?"Test4":0)); if (!vec) {callWait(); continue;}
@@ -1363,7 +1367,8 @@ void planeTest(enum Thread tag, int idx)
     vec->ptr->vec[0].vec[0] = 1.0; vec->ptr->vec[0].vec[1] = 2.0;
     vec->ptr->vec[0].vec[2] = 3.0; vec->ptr->vec[0].vec[3] = 4.0;
     vec->sub = Vectorz; vec->rsp = RptRsp; vec->ret = NoneRet;
-    callCopy(vec,0,(debug?"getvec":0));}
+    deleteSmart(vec->log); vec->log = (debug?selfSmart("getvec"):0);
+    callCont(vec,0,vec->log);}
 
     tested = count;}}
 

@@ -15,10 +15,11 @@ extern "C" {
 
 void vulkanExit();
 #define EXIT {slog.clr();fflush(stdout);/*vulkanExit();*/*(int*)0=0;exit(-1);}
-#define BASE(X)
+#define BASE(X) X
 #define BIND(X)
 #define COPY(X)
-#define RESRC(X) X
+#define RESRC(X)
+#define THREAD(X)
 
 // TODO declare glfw callbacks
 
@@ -602,7 +603,7 @@ struct BaseState {
     }
     bool check(SaveState *sav, SmartState log) {
         if (plock-sav->psav || rlock-sav->rsav || wlock-sav->wsav) {
-        BASE(log << debug << ":fail p:" << plock << "-" << sav->psav << "||r:" << rlock << "-" << sav->rsav << "||w:" << wlock << "-" << sav->wsav << '\n');
+        BASE(log << debug << " fail p:" << plock << "-" << sav->psav << "||r:" << rlock << "-" << sav->rsav << "||w:" << wlock << "-" << sav->wsav << '\n');
         return true;}
         return false;
     }
@@ -611,6 +612,7 @@ struct BaseState {
         safe.wait();
         if (check(unl.der,log)) {
         safe.post(); return false;}
+        BASE(log << debug << " lock " << plock << '\n');
         plock += 1;
         safe.post();
         if (lock != 0 && lock != ptr) EXIT
@@ -628,7 +630,7 @@ struct BaseState {
     void fail(SmartState log) {
         safe.wait();
         plock -= 1;
-        BASE(log << debug << ":done " << plock << '\n');
+        BASE(log << debug << " done " << plock << '\n');
         if (plock == 0) lock = 0;
         safe.post();
     }
@@ -853,6 +855,7 @@ struct ThreadState : public DoneState {
         Push push = before[0]; before.clear(1); safe.post();
         if (push.base) {
         Request tag = push.base->get(push.loc).req.tag;
+        THREAD({char *st0 = 0; showRequest(tag,&st0); push.log << "stage " << push.base->debug << " " << st0 << '\n'; free(st0);});
         switch (tag) {
         default: EXIT
         break; case(SizeReq): push.fence = VK_NULL_HANDLE; push.base->baseres(push.loc,push.log);
@@ -878,6 +881,7 @@ struct ThreadState : public DoneState {
         VkResult result = vkWaitForFences(device,1,&push.fence,VK_FALSE,NANOSECONDS);
         if (result != VK_SUCCESS) EXIT}
         if (push.base) {
+        THREAD(push.log << "call baseups " << push.base->debug << '\n');
         push.base->baseups(push.loc,push.log);}
         if (push.ptr) centerDone(push.ptr);
         change->wots(RegisterWake,1<<FnceMsk);}
@@ -1345,7 +1349,7 @@ struct CopyState {
         if (bind) bind->done(log);
         COPY(log << "notify fail" << '\n');
         switch (ptr->rsp) {default:
-        break; case (RptRsp): case (MptRsp): goon = true; vulkanWait();
+        break; case (RptRsp): case (MptRsp): COPY(log.cont()); goon = true; vulkanWait();
         break; case (MltRsp): ptr->ret = FailRet;
         break; case (RetRsp): ptr->ret = FailRet; thread->push(log,ptr);}}}
     }

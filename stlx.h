@@ -90,6 +90,7 @@ struct SmartState {
     void init(const SmartState &oth);
     void init(int log);
     void done();
+    void cont();
     void wait();
     void post();
     SmartState &operator<<(char val) {
@@ -145,7 +146,7 @@ struct SlogState : public std::ostream {
         if (sstr.find(num) == sstr.end())
         {std::cerr << "invalid find wait! " << num << std::endl; exit(-1);}
     }
-    void clr(int num) {
+    void del(int num) {
         wait(num);
         if (smart[num] != 0) {std::cerr << "invalid clr smart!" << std::endl; exit(-1);}
         if (check(num,min,lim)) {
@@ -154,6 +155,15 @@ struct SlogState : public std::ostream {
         delete sstr[num]; sstr.erase(num); name.erase(num); smart.erase(num);
         while (sstr.begin() != sstr.end() &&
         sstr.find(minnum) == sstr.end()) minnum++;
+        safe.post();
+    }
+    void clr(int num) {
+        wait(num);
+        auto i = sstr.find(num);
+        if (check((*i).first,min,lim)) {
+        if (fnc) fnc((*i).second->str().c_str());
+        else std::cout << (*i).second->str();}
+        (*i).second->str("");
         safe.post();
     }
     void clr() {
