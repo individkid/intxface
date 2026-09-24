@@ -1967,13 +1967,15 @@ void initTest()
     tri->ptr->mem = Trianglez; tri->ptr->siz = (sizeof(indices)/sizeof(uint16_t))/3; allocTriangle(&tri->ptr->tri,tri->ptr->siz);
     for (int i = 0; i < tri->ptr->siz; i++) for (int j = 0; j < 3; j++) {
     int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
-    tri->ptr->tri[i].vtx[j] = indices[ind]; tri->ptr->tri[i].tex = i/2; tri->ptr->tri[i].pol = (i/2?4:3);}
+    tri->ptr->tri[i].vtx[j] = indices[ind]; tri->ptr->tri[i].tex = i/2; tri->ptr->tri[i].num = tri->ptr->tri[i].pol = (i/2?4:3);}
     /*for (int i = 0; i < tri->ptr->siz; i++) {
     fprintf(stderr,"triangle number:%d texture:%d polytope:%d\n",i,tri->ptr->tri[i].tex,tri->ptr->tri[i].pol);
     for (int j = 0; j < 4; j++) {fprintf(stderr,"corner number:%d",tri->ptr->tri[i].vtx[j]);
     fprintf(stderr," %f",vtx->ptr->vtx[tri->ptr->tri[i].vtx[j]].vec[0]);
     for (int k = 1; k < 4; k++) fprintf(stderr,"/%f",vtx->ptr->vtx[tri->ptr->tri[i].vtx[j]].vec[k]);
     fprintf(stderr,"\n");}}*/
+    // for (int i = 0; i < tri->ptr->siz; i++)
+    // {char *st0 = 0; showTriangle(&tri->ptr->tri[i],&st0); fprintf(stderr,"Trianglez %s\n",st0); free(st0);}
     tri->sub = Trianglez; tri->rsp = RptRsp; tri->ret = NoneRet;
     callCopy(tri,0,(debug?"triangle":0));
 

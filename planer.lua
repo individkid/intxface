@@ -151,20 +151,21 @@ function initTest()
 	config = {}
 	--
 	listResrc(list,"SwapRes",{})
-	--
 	readConfig(list,config,{"ScratchFrames","UniformWid","UniformHei"})
 	frames = config[1] width = config[2] height = config[3]
 	print("frames:"..frames.." width:"..width.." height:"..height)
 	--
-	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
-	--
 	for i = 0, (castMicro("Micros")-1) do listResrc(list,"PipeRes",{i,i}--[[IDerIns Micro]]) end
+	--
+	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	--
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
 	--
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
+	--
 	listMemory(list,"Storagez","sto",{"Int32(456)"})
+	--
 	ident = "Matrix("
 	for i = 0, 15 do ident = ident.."mat["..i.."]:Old("
 	if (i//4) == (i-((i//4)*4)) then ident = ident.."1.0)"
@@ -205,15 +206,45 @@ function initTest()
 	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
 	--
 	list[#list+1] = centSugar("Center(mem:Indexzsiz:0idx:0slf:0)")
+	--
+	listMemory(list,"Vertexz","vtx",ver) -- FetchPhs 0
+	--
+    indices = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+    }
+	tri = {}
+	for i = 0, 3 do
+	vtx = ""
+	for j = 0, 3 do
+	if j == 3 then vtx = vtx.."vtx[3]:Int32(0)" else
+	ind = j+i*3; vtx = vtx.."vtx["..j.."]:Int32("..indices[ind+1]..")" end end
+	if (i/2) > 0.75 then num = 4; tex = 1 else num = 3; tex = 0 end
+	tri[i+1] = "Triangle("..vtx.."num:Int32("..num..")pol:Int32("..num..")tex:Int32("..tex..")rot:Int32(0))"
+	-- io.stderr:write("Trianglez "..tri[i+1].."\n")
+	end
+	listMemory(list,"Trianglez","tri",tri)
+    -- for (int i = 0; i < tri->ptr->siz; i++) for (int j = 0; j < 3; j++) {
+    -- int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
+    -- tri->ptr->tri[i].vtx[j] = indices[ind]; tri->ptr->tri[i].tex = i/2; tri->ptr->tri[i].pol = (i/2?4:3);}
+	--
 	atomSugar(list,tests[found]["idx"],"Memory")
+	-- io.stderr:write("start test\n")
 	-- writeMaskbit(list,{(1<<castThread("TestThd"))},{"RegisterOpen"})
-	-- io.stderr:write("sleep before\n")
 	-- os.execute("sleep 3")
-	-- io.stderr:write("sleep after\n")
+	-- io.stderr:write("stop test\n")
+	-- writeConfig(list,{0},{"RegisterOpen"})
+	-- os.execute("sleep 3")
+	-- io.stderr:write("exit process\n")
 end
 
 function runTest()
-	-- TODO draw and manipulate with Demo
+	--
+	-- TODO infrequently do MicroFetRel MicroVtxRel MicroFilRel Getoldz Getintz Vectorz
+	--
+	-- TODO usually do Matrixz, and MicroFetDrw or MicroVtxDrw
+	--
+	-- TODO often spoof roller changes that exercise Demo
 end
 
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
