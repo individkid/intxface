@@ -1158,7 +1158,6 @@ void planeMachine(enum Thread tag, int idx)
     boot = malloc(sizeof(int)); boot[0] = -1;
     cent = malloc(sizeof(struct Extend *));
     cent[0] = centerPull(index,0);}
-    // if (idx > 0) {fprintf(stderr,"Mach"); for (int i = 0; i < size; i++) {char *st0 = 0; char *st1 = 0; int src = -1; char *st2 = 0; if (cent[i]->ptr->mem != Transferz) showMemory(cent[i]->ptr->mem,&st1);  else if (cent[i]->ptr->exe[0].xfr == Bopy || cent[i]->ptr->exe[0].xfr == Qopy) {src = machineIval(&cent[i]->ptr->exe[0].arg[0]); if (src <= Memorys+1) showTransfer(cent[i]->ptr->exe[0].xfr,&st1); else assignStr(&st1,"-");} else {showTransfer(cent[i]->ptr->exe[0].xfr,&st1);} fprintf(stderr," -- %d %s(%d)",boot[i],st1,src); free(st0); free(st1); free(st2);} fprintf(stderr,"\n");}
     for (int i = 0; i < size; i++) {
     if (boot[i] >= 0) {cent[i]->sub = boot[i]; centerPlace(cent[i]);}
     else {struct Center *cptr = cent[i]->ptr;
@@ -1187,10 +1186,12 @@ void planeCenter(enum Thread tag, int idx)
 {
     while (1) {
     if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
+    while (1) {
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (center == 0) continue;
+    // TODO the woc to RegisterWake should depend upon RegisterAble; maybe add struct per thread accessed by Thread/idx
+    if (center == 0) {planeInfo(RegisterWake,1<<RespMsk,planeWotc); break;}
     if (center->asr != RespAsr) ERROR(); else center->asr = PullAsr;
     if (center->src < 0 || center->src >= Programs) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -1198,7 +1199,7 @@ void planeCenter(enum Thread tag, int idx)
     if (postSafe(pipeSem) != 1) ERROR();
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
-    centerDone(center);}
+    centerDone(center);}}
 }
 void planeExternal(enum Thread tag, int idx)
 {
@@ -1542,6 +1543,7 @@ void registerUniform(enum Configure cfg, int sav, int val, int act)
 void registerArgument(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != ArgumentInp && cfg != ArgumentOut && cfg != ArgumentSrc) ERROR();
+    if (cfg != ArgumentSrc) return; // TODO remove after preventing extra callbacks
     enum Configure arg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; int num[3] = {0,0,0};
     callGnfo(arg,num,3,planeRcfg);
     int rdfd = num[0];
@@ -1705,7 +1707,7 @@ void planeArgv(int argc, char **argv)
     struct Argument arg = {0}; struct Center cntr = {0}; struct Machine mchn = {0};
     struct Express expr = {0}; char *str = 0;
     if (hideArgument(&arg, argv[i], &asiz)) {
-    enum Configure cfg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc};
+    enum Configure cfg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; // TODO this should cause only one callback
     int val[3] = {arg.inp,arg.out,arg.oth};
     callJnfo(cfg,val,3,planeWcfg); freeArgument(&arg);}
     else if (hideCenter(&cntr, argv[i], &csiz)) {
@@ -1817,6 +1819,7 @@ void initBoot()
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk))<<8)|MachThd),planeWcfg);
+    // TODO most threads only work if RegisterAble is correct; maybe use RegisterAble only for MachThd, and set ableq directly when starting other threads
     planeJnfo(RegisterAble,(((1<<RespMsk)<<8)|PipeThd),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);

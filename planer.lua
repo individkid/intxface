@@ -83,7 +83,7 @@ function flushTest()
 	readConfig(list,config,{"ScratchDescrs"})
 	print("pass:"..config[1].." index:"..index)
 	-- above read forces all prior Rebootz to complete before following Exit
-	writeCenter(exprSugar("$(RegisterExit := #1)"),tests[found]["idx"])
+	writeConfig(list,{1},{"RegisterExit"})
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function readConfig(list,res,cfg)
@@ -224,18 +224,12 @@ function initTest()
 	-- io.stderr:write("Trianglez "..tri[i+1].."\n")
 	end
 	listMemory(list,"Trianglez","tri",tri)
-    -- for (int i = 0; i < tri->ptr->siz; i++) for (int j = 0; j < 3; j++) {
-    -- int ind = j+i*3; if ((ind/3)/2 != i/2) ERROR(); // three indices per triangle, two triangles per polytope
-    -- tri->ptr->tri[i].vtx[j] = indices[ind]; tri->ptr->tri[i].tex = i/2; tri->ptr->tri[i].pol = (i/2?4:3);}
 	--
 	atomSugar(list,tests[found]["idx"],"Memory")
 	-- io.stderr:write("start test\n")
-	-- writeMaskbit(list,{(1<<castThread("TestThd"))},{"RegisterOpen"})
-	-- os.execute("sleep 3")
-	-- io.stderr:write("stop test\n")
-	-- writeConfig(list,{0},{"RegisterOpen"})
-	-- os.execute("sleep 3")
-	-- io.stderr:write("exit process\n")
+	writeMaskbit(list,{(1<<castThread("TestThd"))},{"RegisterOpen"})
+	os.execute("sleep 3")
+	-- io.stderr:write("stop test "..index.."\n")
 end
 
 function runTest()
