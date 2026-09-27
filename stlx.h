@@ -63,6 +63,17 @@ struct SafeState {
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }
+    int qost() {
+        if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
+        if (count >= 1) {
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+        return count;}
+        if (count >= 0) count += 1;
+        int ret = count;
+        if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
+        if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
+        return ret;
+    }
     void done() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         count = -1;
@@ -721,6 +732,7 @@ void *allocSafe(int val);
 int waitSafe(void *ptr);
 int funcSafe(void *ptr, SafeFunc fnc, void *arg);
 int postSafe(void *ptr);
+int qostSafe(void *ptr);
 void doneSafe(void *ptr);
 void freeSafe(void *ptr);
 int timeSafe(void *ptr, double dif);

@@ -174,6 +174,11 @@ int postSafe(void *ptr)
     auto saf = (SafeState*)ptr;
     return saf->post();
 }
+int qostSafe(void *ptr)
+{
+    auto saf = (SafeState*)ptr;
+    return saf->qost();
+}
 void doneSafe(void *ptr)
 {
     auto saf = (SafeState*)ptr;

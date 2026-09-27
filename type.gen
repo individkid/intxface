@@ -272,6 +272,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterExit", -- sortof exit status
 	"RegisterWake", -- thread interrupts
 	"RegisterAble", -- interrupts enable
+	"RegisterProt", -- thread robust
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
 	"RegisterVerb", -- transaction logging
