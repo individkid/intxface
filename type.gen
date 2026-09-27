@@ -407,7 +407,8 @@ Thread = { -- separate threads
 Mask = { -- signals between threads
 	"FnceMsk", -- fence thread wakeup
 	"SlctMsk", -- pipe thread wakeup
-	"CnslMsk", -- stdio thread wakeup
+	"CnslMsk", -- write to stdin
+	"PutsMsk", -- stdout thread wakeup
 	"TimeMsk", -- time thread wakeup
 	"DoneMsk", -- write to pipe done
 	"RespMsk", -- write to response
@@ -1977,7 +1978,11 @@ Bootstrap = {
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrCnslMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return kdx(\"time\"))]:Nest(nia:-1)".. -- 4
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 4
+		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrCoutMskOp , EndOp Op)))"..
+		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
+
+		"mch[%(return kdx(\"time\"))]:Nest(nia:-1)".. -- 5
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op)))"..
 		-- Jump if Center at Memorys is null, empty, or not Transferz
@@ -2000,7 +2005,7 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return kdx(\"done\"))]:Nest(nia:-1)".. -- 5
+		"mch[%(return kdx(\"done\"))]:Nest(nia:-1)".. -- 6
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrDoneMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Nest(nia:2)"..
 		  "mch[%(return jdx())]:Ropy(pop[0]:Supexpr(sup[0]:$(@memorys)))"..
@@ -2032,15 +2037,15 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Nest(nia:-1)"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 6
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 7
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrRespMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 7
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 8
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrPollMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 8
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 9
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrPrssMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Nest(nia:2)"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == EO ?PressQueue #0 Cmp , #1 ; #0 == #1 , #2 Op)))"..
@@ -2051,7 +2056,7 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Nest(nia:-1)"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return kdx(\"proj\"))]:Nest(nia:-1)".. -- 9
+		"mch[%(return kdx(\"proj\"))]:Nest(nia:-1)".. -- 10
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrProjMskOp , EndOp Op)))"..
 		-- TODO change window matrix; do Proj and Draw
 		"mch[%(return jdx())]:Nest(nia:2)"..
@@ -2063,21 +2068,21 @@ Bootstrap = {
 		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(Non Put StrProjMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 10
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 11
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrEoodMskOp , EndOp Op)))"..
 		-- wait for window resize
 		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrEoodMskOpOp)))"..
 		"mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 11
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 12
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrMoveMskOp , EndOp Op)))"..
 		-- do Form if enabled and last manipulate was roller; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrMoveMskOpOp)))"..
 		"mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 12
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 13
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrClckMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Nest(nia:2)"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == EO ?ClickQueue #0 Cmp , #1 ; #0 == #1 , #2 Op)))"..
@@ -2088,23 +2093,23 @@ Bootstrap = {
 		 "mch[%(return jdx())]:Nest(nia:-1)"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 13
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 14
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrRollMskOp , EndOp Op)))"..
 		-- do Form if enabled and last manipulate was move; do Comp Bopy Draw if enabled
 		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrRollMskOpOp)))"..
 		"mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return kdx(\"unif\"))]:Nest(nia:-1)".. -- 14
+		"mch[%(return kdx(\"unif\"))]:Nest(nia:-1)".. -- 15
 		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@uniform))epo[0]:Evalexp(fnc[0]:$(Non Put StrUnifMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return kdx(\"test\"))]:Nest(nia:-1)".. -- 15
+		"mch[%(return kdx(\"test\"))]:Nest(nia:-1)".. -- 16
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrTestMsk Op , Imm TimOp Op , EndOp Op)))"..
 		-- "mch[%(return jdx())]:Qopy(sup[0]:Supexpr(sup[0]:$(@configure)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 16
+		"mch[%(return jdx())]:Nest(nia:-1)".. -- 17
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#0)))"..
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op)))"..

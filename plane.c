@@ -385,8 +385,8 @@ void centerDone(struct Extend *ptr)
     if (ptr->asr != PullAsr) ERROR(); else ptr->asr = DoneAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,replace);
-    if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
+    if (postSafe(pipeSem) != 1) ERROR();
 }
 int centerCheck(int idx)
 {
@@ -464,6 +464,7 @@ void moveDeref(int sub, struct Extend **ext)
     if (ptr->asr == LoopAsr) ptr->asr = asr;
     if (equal) return;
     if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
+    // write to RegisterWake protected by wait on pipeSem in caller
     switch (ptr->asr) {default: ERROR();
     break; case (PullAsr): deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
     break; case (PlaceAsr): moveSize(ptr->sub); deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
@@ -484,8 +485,7 @@ int demoJect(struct Menu *menu)
 void demoWake(struct Menu *menu)
 {
     enum Configure cfg = (menu->msk==PrssMsk?PressQueue:ClickQueue);
-    if (planeJnfo(cfg,-1,planeRmw)>1) {
-    planeJnfo(RegisterWake,(1<<menu->msk),planeWots);}
+    if (planeJnfo(cfg,-1,planeRmw) <= 0) ERROR();
 }
 void demoMenu(struct Menu *menu)
 {
@@ -569,8 +569,8 @@ void demoPush(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrix
     identmat(ker->local.mat,4); // L = I
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(dst,response);
-    if (postSafe(pipeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
+    if (postSafe(pipeSem) != 1) ERROR();
     centerPlace(ptr);
     demoWake(menu);
 }
@@ -630,8 +630,8 @@ void demoDone(struct Menu *menu) // maybe alloc/push Metricz
         met->act = planeJnfo(SelectIdent,0,planeRcfg);
         if (waitSafe(pipeSem) != 0) ERROR();
         pushCenterq(dst,response);
-        if (postSafe(pipeSem) != 1) ERROR();
         planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}}
+        if (postSafe(pipeSem) != 1) ERROR();
 }
 void demoDisp(struct Menu *menu) // pull/send Drawz
 {
@@ -936,8 +936,9 @@ void machineExec(int idx, struct Extend *ext)
     if (postSafe(pipeSem) != 1) ERROR();}
     if (waitSafe(pipeSem) != 0) ERROR();
     int size = sizeCenterq(internal);
-    if (postSafe(pipeSem) != 1) ERROR();
     if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    // TODO write for each of size; should still work, since MachThd is robust
+    if (postSafe(pipeSem) != 1) ERROR();
     freeCenterq(repush);
     safeInit(MachThd,idx+1,0);
     if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
@@ -1122,8 +1123,8 @@ void machineSwitch(struct Machine *mptr)
         if (debug) centerSmart(ptr,"push response");
         if (waitSafe(pipeSem) != 0) ERROR();
         pushCenterq(ptr,response);
-        if (postSafe(pipeSem) != 1) ERROR();
-        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}
+        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
+        if (postSafe(pipeSem) != 1) ERROR();}
     break; case (Ropy): {struct Extend *ptr; int dst;
         if (waitSafe(pipeSem) != 0) ERROR();
         ptr = maybeCenterq(0,replace);
@@ -1186,12 +1187,11 @@ void planeCenter(enum Thread tag, int idx)
 {
     while (1) {
     if (waitSafe(safeSafe(PipeThd,idx)) < 0) break;
-    while (1) {
+    // TODO use robust double loop for Release mode
     if (waitSafe(pipeSem) != 0) ERROR();
     struct Extend *center = maybeCenterq(0,response);
     if (postSafe(pipeSem) != 1) ERROR();
-    // TODO the woc to RegisterWake should depend upon RegisterAble; maybe add struct per thread accessed by Thread/idx
-    if (center == 0) {planeInfo(RegisterWake,1<<RespMsk,planeWotc); break;}
+    if (center == 0) ERROR();
     if (center->asr != RespAsr) ERROR(); else center->asr = PullAsr;
     if (center->src < 0 || center->src >= Programs) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -1199,7 +1199,7 @@ void planeCenter(enum Thread tag, int idx)
     if (postSafe(pipeSem) != 1) ERROR();
     writeCenter(center->ptr,sub);
     center->ret = DoneRet;
-    centerDone(center);}}
+    centerDone(center);}
 }
 void planeExternal(enum Thread tag, int idx)
 {
@@ -1224,20 +1224,20 @@ void planeExternal(enum Thread tag, int idx)
     center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
+    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    if (postSafe(pipeSem) != 1) ERROR();}
 }
 void planeString(enum Thread tag, int idx)
 {
     while (1) {
-    if (waitSafe(safeSafe(StdioThd,idx)) < 0) break;
-    while (1) {
+    int tmp = waitSafe(safeSafe(StdioThd,idx)); if (tmp < 0) break;
+    // TODO use robust double loop for Release mode
     if (waitSafe(stdioSem) != 0) ERROR();
     char *str = maybeStrq(0,strout);
     if (postSafe(stdioSem) != 1) ERROR();
-    if (str == 0) break;
+    if (str == 0) ERROR();
     writeStr(str,console);
-    free(str);}}
+    free(str);}
 }
 void planeConsole(enum Thread tag, int idx)
 {
@@ -1252,9 +1252,9 @@ void planeConsole(enum Thread tag, int idx)
     if (waitSafe(stdioSem) != 0) ERROR();
     pushStrq(str,strin);
     int size = sizeStrq(strin);
-    if (postSafe(stdioSem) != 1) ERROR();
     planeJnfo(RegisterStrq,size,planeWcfg);
-    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);}}
+    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);
+    if (postSafe(stdioSem) != 1) ERROR();}}
     else ERROR();}
 }
 void planeTime(enum Thread tag, int idx)
@@ -1273,9 +1273,8 @@ void planeTime(enum Thread tag, int idx)
     if ((float)processTime() >= time) {
     if (waitSafe(timeSem) != 0) ERROR();
     dropTimeq(timeq); dropIntq(wakeq);
-    if (postSafe(timeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<TimeMsk),planeWots);
-    postSafe(safeSafe(MachThd,wake));}}
+    if (postSafe(timeSem) != 1) ERROR();}}
 }
 void planeTest(enum Thread tag, int idx)
 {
@@ -1465,7 +1464,8 @@ void registerOpen(enum Configure cfg, int sav, int val, int act)
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterWake) ERROR();
-    int mask = act&~sav; // mask of events
+    int mask = val&act; // mask of events
+    // increment semafor for each write, so no need to clear RegisterWake
     int wake = 0; // mask of threads
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
     // i is an event
@@ -1652,10 +1652,13 @@ const char *planeGetstr()
 }
 void planePutstr(const char *src)
 {
+    char *str = malloc(strlen(src)+1); strcpy(str,src);
     if (waitSafe(stdioSem) != 0) ERROR();
-    char *str = malloc(strlen(src)+1);
-    strcpy(str,src); pushStrq(str,strout);
-    if (postSafe(safeSafe(StdioThd,0)) <= 0) ERROR();
+    pushStrq(str,strout);
+    // callHnfo and planeKnfo to allow planePutstr passed to slog
+    // logging might happen in Configure callback
+    if (callHnfo()) planeKnfo(RegisterWake,(1<<PutsMsk),planeWots);
+    else planeJnfo(RegisterWake,(1<<PutsMsk),planeWots);
     if (postSafe(stdioSem) != 1) ERROR();
 }
 void planeSetcfg(int val, int sub)
@@ -1810,6 +1813,7 @@ void initBoot()
     planeJnfo(RegisterPoll,1,planeWcfg);
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|MachThd),planeWcfg);
+    planeJnfo(RegisterAble,(((1<<PutsMsk)<<8)|StdioThd),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
@@ -1819,7 +1823,7 @@ void initBoot()
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk))<<8)|MachThd),planeWcfg);
-    // TODO most threads only work if RegisterAble is correct; maybe use RegisterAble only for MachThd, and set ableq directly when starting other threads
+    planeJnfo(RegisterAble,(((1<<PutsMsk)<<8)|StdioThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<RespMsk)<<8)|PipeThd),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);

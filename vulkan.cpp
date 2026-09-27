@@ -2635,6 +2635,7 @@ int main(int argc, const char **argv) {
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCont,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
     // TODO move glfw functions to WindowState
+    // TODO only setup callbacks in Release mode
     glfwSetCharCallback(main.windowState.window,glfwCharPress);
     glfwSetKeyCallback(main.windowState.window,glfwKeyPress);
     glfwSetCursorPosCallback(main.windowState.window,glfwMouseMove);
