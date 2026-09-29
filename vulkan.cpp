@@ -2588,8 +2588,8 @@ void vulkanWake() {
 
 // builtin callback
 void vulkanBack(Configure cfg, int sav, int val, int act) {
-    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act);
-    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act);
+    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act); // open() should be like wake() upon reopen
+    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act); // TODO misuse of RegisterWake
 }
 
 // c debug
@@ -2635,13 +2635,13 @@ int main(int argc, const char **argv) {
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCont,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
     // TODO move glfw functions to WindowState
-    // TODO only setup callbacks in Release mode
+    if (main.changeState.read(RegisterPlan) == Release) {
     glfwSetCharCallback(main.windowState.window,glfwCharPress);
     glfwSetKeyCallback(main.windowState.window,glfwKeyPress);
     glfwSetCursorPosCallback(main.windowState.window,glfwMouseMove);
     glfwSetScrollCallback(main.windowState.window,glfwRollerMove);
     glfwSetMouseButtonCallback(main.windowState.window,glfwButtonPress);
-    glfwSetWindowSizeCallback(main.windowState.window,glfwResize);
+    glfwSetWindowSizeCallback(main.windowState.window,glfwResize);}
     int count = 0;
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.changeState.read(RegisterPoll) == 0) glfwWaitEvents();

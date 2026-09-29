@@ -159,32 +159,41 @@ struct SlogState : public std::ostream {
     }
     void del(int num) {
         wait(num);
+        auto f = fnc;
+        std::string s;
         if (smart[num] != 0) {std::cerr << "invalid clr smart!" << std::endl; exit(-1);}
         if (check(num,min,lim)) {
-        if (fnc) fnc(sstr[num]->str().c_str());
+        if (f) s = sstr[num]->str().c_str();
         else std::cout << sstr[num]->str();}
         delete sstr[num]; sstr.erase(num); name.erase(num); smart.erase(num);
         while (sstr.begin() != sstr.end() &&
         sstr.find(minnum) == sstr.end()) minnum++;
         safe.post();
+        if (!s.empty()) f(s.c_str());
     }
     void clr(int num) {
         wait(num);
+        auto f = fnc;
+        std::string s;
         auto i = sstr.find(num);
         if (check((*i).first,min,lim)) {
-        if (fnc) fnc((*i).second->str().c_str());
+        if (f) s = (*i).second->str().c_str();
         else std::cout << (*i).second->str();}
         (*i).second->str("");
         safe.post();
+        if (!s.empty()) f(s.c_str());
     }
     void clr() {
         safe.wait();
+        auto f = fnc;
+        std::vector<std::string> s;
         for (auto i = sstr.begin(); i != sstr.end(); i++) {
         if (check((*i).first,min,lim)) {
-        if (fnc) fnc((*i).second->str().c_str());
+        if (f) s.push_back((*i).second->str().c_str());
         else std::cout << (*i).second->str();}
         (*i).second->str("");}
         safe.post();
+        for (auto i = s.begin(); i != s.end(); i++) f((*i).c_str());
     }
     template <class Type> std::ostream &operator<<(Type typ) {
         return *this;

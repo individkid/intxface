@@ -22,6 +22,8 @@ void *response = 0; // queue of center
 void *replace = 0; // queue of center
 void *pipeSem = 0; // protect internal response replace
 void *callSem = 0; // protect external inverse
+// Configure inside of pipeSem will deadlock if callback waits on pipeSem.
+// Nested semaphores are fine if they are nested in the same order in every thread.
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
 void *strin = 0; // queue of string
@@ -111,6 +113,10 @@ int planeKnfo(enum Configure cfg, int val, yftype fnc)
 {
     callKnfo(&cfg,&val,1,fnc); return val;
 }
+int planeHnfo(enum Configure cfg, int val, yftype fnc)
+{
+    return (callHnfo()?planeKnfo:planeJnfo)(cfg,val,fnc);
+}
 
 // thread sharing
 void safeInit(enum Thread thd, int siz, int val)
@@ -154,6 +160,14 @@ int safeGunc(void *arg)
 {
     int *idx = (int*)arg;
     return (machine[*idx] >= 0);
+}
+void safeMach(int idx, int indx, int *boot, struct Extend **cent, int siz)
+{
+    if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
+    free(reboot[idx]); reboot[idx] = (int *)malloc(sizeof(int)*siz); for (int i = 0; i < siz; i++) reboot[idx][i] = boot[i];
+    free(recent[idx]); recent[idx] = (struct Extend **)malloc(sizeof(struct Extend *)*siz); for (int i = 0; i < siz; i++) recent[idx][i] = cent[i];
+    resize[idx] = siz; machine[idx] = indx;
+    if (postSafe(safeSem) != 1) ERROR();
 }
 
 // Transform functions find 4 independent vectors to invert, and 4 to multiply;
@@ -580,6 +594,7 @@ void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
     int left = planeInfo(ClickLeft,0,planeRcfg);
     int base = planeInfo(ClickBase,0,planeRcfg);
     int width = planeInfo(UniformWid,0,planeRcfg);
+    int index = base*width+left;
     struct Extend *src = centerPull(menu->src,0);
     switch (src->ptr->mem) {default: ERROR();
     break; case (Getoldz): {
@@ -590,18 +605,18 @@ void demoMask(struct Menu *menu) // pull/read/place Getoldz\Getintz\Vectorz
         float a = b*depth/full;
         float x = 1.0*left/full;
         float y = 1.0*base/full;
-        float z = src->ptr->old[base*width+left];
+        float z = src->ptr->old[index];
         planeJnfo(FixedLeft,x*(a+b*z)*full,planeWcfg);
         planeJnfo(FixedBase,y*(a+b*z)*full,planeWcfg);
         planeJnfo(FixedDeep,z*full,planeWcfg);
         menu->met |= (1<<Getoldz);}
     break; case (Getintz):
-        planeJnfo(SelectIdent,src->ptr->uns[base*width+left],planeWcfg);
+        planeJnfo(SelectIdent,src->ptr->uns[index],planeWcfg);
         menu->met |= (1<<Getintz);
     break; case (Vectorz):
-        planeJnfo(NormalLeft,src->ptr->vec[base*width+left].vec[0],planeWcfg);
-        planeJnfo(NormalBase,src->ptr->vec[base*width+left].vec[1],planeWcfg);
-        planeJnfo(NormalDeep,src->ptr->vec[base*width+left].vec[2],planeWcfg);
+        planeJnfo(NormalLeft,src->ptr->vec[index].vec[0],planeWcfg);
+        planeJnfo(NormalBase,src->ptr->vec[index].vec[1],planeWcfg);
+        planeJnfo(NormalDeep,src->ptr->vec[index].vec[2],planeWcfg);
         menu->met |= (1<<Vectorz);}
     centerPlace(src);
 }
@@ -734,7 +749,7 @@ struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStr
 
 void machineEval(struct Express *exp, struct Center *ptr)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -743,11 +758,11 @@ void machineEval(struct Express *exp, struct Center *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPECenter);
     if (typ != TYPECenter) ERROR();
     freeCenter(ptr); readCenter(ptr,datxPut(0,dat)); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineKern(struct Express *exp, struct Kernel *ptr)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     writeKernel(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -756,11 +771,11 @@ void machineKern(struct Express *exp, struct Kernel *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEKernel);
     if (typ != TYPEKernel) ERROR();
     freeKernel(ptr); readKernel(ptr,datxPut(0,dat)); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineMatr(struct Express *exp, struct Matrix *ptr)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     writeMatrix(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -769,11 +784,11 @@ void machineMatr(struct Express *exp, struct Matrix *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEMatrix);
     if (typ != TYPEMatrix) ERROR();
     freeMatrix(ptr); readMatrix(ptr,datxPut(0,dat)); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineMetr(struct Express *exp, struct Metric *ptr)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     writeMetric(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -782,7 +797,7 @@ void machineMetr(struct Express *exp, struct Metric *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEMetric);
     if (typ != TYPEMetric) ERROR();
     freeMetric(ptr); readMetric(ptr,datxPut(0,dat)); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineLine(struct Express *exp, struct Matrix *lft, struct Matrix *rgt)
 {
@@ -799,9 +814,9 @@ void machineFunc(struct Express *exp, float *mat)
 }
 void machineVoid(struct Express *exp)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineMove(struct Express **sub, struct Express **exp, int siz)
 {
@@ -857,11 +872,11 @@ void machineTage(int sim, struct Extend *ptr, char **nam)
     void *dat0 = 0; datxStr(&dat0,nam[i]);
     void *dat1 = 0; datxGet(1,&dat1);
     datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);}
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineSage(int sim, struct Extend **ptr, char **nam)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     for (int i = 0; i < sim; i++) {
     void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
     if (val == 0) ERROR();
@@ -888,7 +903,7 @@ void machineSage(int sim, struct Extend **ptr, char **nam)
     break; case (TYPECenter): readCenter((*ptr)->ptr,wfd);
     break; case (TYPEMetric): readMetric((*ptr)->ptr->met,wfd);}}
     free(val);}
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineDopy(struct Center *src, int sfs, struct Center *dst, int dfs, int siz)
 {
@@ -914,8 +929,8 @@ void machineExec(int idx, struct Extend *ext)
     case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
     case (Machinez): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->mch[i]); break;
     case (Rebootz): {
-    struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
-    int *boot = (int *)malloc(sizeof(int)*ptr->siz);
+    struct Extend *cent[ptr->siz]; // struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
+    int boot[ptr->siz]; // int *boot = (int *)malloc(sizeof(int)*ptr->siz);
     void *repush = 0; repush = allocCenterq();
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
@@ -924,6 +939,7 @@ void machineExec(int idx, struct Extend *ext)
     struct Extend *nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
+    // machineExec called from RegisterMain so wait for planeWake of thread 0; idx is thread to fork
     if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
@@ -942,11 +958,8 @@ void machineExec(int idx, struct Extend *ext)
     if (postSafe(pipeSem) != 1) ERROR();
     freeCenterq(repush);
     safeInit(MachThd,idx+1,0);
-    if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
-    free(reboot[idx]); free(recent[idx]); resize[idx] = 0;
-    reboot[idx] = boot; recent[idx] = cent; resize[idx] = ptr->siz; machine[idx] = 0;
-    planeFork(MachThd,idx,planeMachine);
-    if (postSafe(safeSem) != 1) ERROR();}
+    safeMach(idx,0,boot,cent,ptr->siz);
+    planeFork(MachThd,idx,planeMachine);}
     break;}
 }
 // identity I
@@ -1019,12 +1032,12 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
 }
 int machineIval(struct Express *exp)
 {
-    if (/*callHnfo() <= 1 && */waitSafe(evalSem) != 0) ERROR();
+    if (waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
     if (typ != TYPEInt) ERROR();
     int val = readInt(datxPut(0,dat));
     free(dat);
-    if (/*callHnfo() <= 1 && */postSafe(evalSem) != 1) ERROR();
+    if (postSafe(evalSem) != 1) ERROR();
     return val;
 }
 void machineSwitch(struct Machine *mptr)
@@ -1212,9 +1225,6 @@ void planeExternal(enum Thread tag, int idx)
     int temp = external;
     if (postSafe(callSem) != 1) ERROR();
     int sub = waitRead(0.0,(temp|(1<<extdone)));
-    // NOTE semaphore inside of pipeSem will deadlock,
-    // because callbacks inside of Jnfo semaphore wait on pipeSem.
-    // Nested semaphores are fine if they are nested in the same order.
     if (sub == extdone) {if (readChr(extdone)) break; else continue;}
     if ((1<<sub)&temp != (1<<sub)) ERROR();
     struct Extend *center = 0; allocExtend(&center,1);
@@ -1250,7 +1260,7 @@ void planeConsole(enum Thread tag, int idx)
 {
     while (1) {
     int sub = waitRead(0.0,(1<<console)|(1<<condone));
-    if (sub == condone) break;
+    if (sub == condone) {if (readChr(condone)) break; else continue;}
     if (sub == console) {
     char chr = readChr(console);
     pushChrq(chr,tempq);
@@ -1395,81 +1405,82 @@ void planeTest(enum Thread tag, int idx)
 // phase callbacks
 void planeClose(enum Thread tag, int idx)
 {
-    planeJnfo(RegisterOpen,(1<<tag),planeWotc);
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): switch (idx) {default: ERROR();
+    break; case (0): doneSafe(safeSafe(PipeThd,0));
+    break; case (1): writeChr(1,extdone);}
+    break; case (StdioThd): switch (idx) {default: ERROR();
+    break; case (0): doneSafe(safeSafe(StdioThd,0));
+    break; case (1): writeChr(1,condone);}
+    break; case (MachThd): switch (idx) {default: ERROR();
+    break; case (0): doneSafe(safeSafe(MachThd,0));}
+    break; case (TimeThd): switch (idx) {default: ERROR();
+    break; case (0): doneSafe(safeSafe(TimeThd,0));}
+    break; case (TestThd): switch (idx) {default: ERROR();
+    break; case (0): doneSafe(safeSafe(TestThd,0));
+    break; case (1): doneSafe(safeSafe(TestThd,1));
+    break; case (2): doneSafe(safeSafe(TestThd,2));}}
 }
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i); closeIdent(extdone);}
+    break; case (PipeThd): if (idx) {closeIdent(extdone); for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i);}
     break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
     break; case (MachThd): case (TimeThd): case (TestThd):}
 }
 void planeWake(enum Thread tag, int idx)
 {
+    // FenceThd handled by vulkanBack
     switch (tag) {default: ERROR();
-    break; case (PipeThd): case (StdioThd): case (MachThd): case (TimeThd): case (TestThd):}
-    int prot = (0 != ((1<<tag) & (callHnfo()?
-    planeKnfo(RegisterProt,0,planeRcfg):
-    planeJnfo(RegisterProt,0,planeRcfg))));
+    break; case (PipeThd): case (StdioThd): if (idx < 0 || idx >= 2) ERROR();
+    break; case (MachThd): case (TimeThd): if (idx < 0 || idx >= 1) ERROR();
+    break; case (TestThd): if (idx < 0 || idx >= 3) ERROR();}
+    if (idx == 1) switch (tag) {default: ERROR();
+    break; case (PipeThd): writeChr(0,extdone); return;
+    break; case (StdioThd): writeChr(0,condone); return;
+    break; case (MachThd): case (TimeThd): case (TestThd):}
+    int prot = (0 != ((1<<tag) & planeHnfo(RegisterProt,0,planeRcfg)));
     (prot?qostSafe:postSafe)(safeSafe(tag,idx));
 }
-void planeFork(enum Thread thd, int idx, mftype fnc)
+void planeFork(enum Thread tag, int idx, mftype fnc)
 {
-    callFork(thd,idx,fnc,planeClose,planeJoin,planeWake);
+    callFork(tag,idx,fnc,planeClose,planeJoin,planeWake);
+}
+void planeOpen(enum Thread tag, int idx)
+{
+    switch (tag) {default: ERROR();
+    break; case (PipeThd): switch (idx) {default: ERROR();
+    break; case (0): safeInit(PipeThd,1,0); planeFork(PipeThd,0,planeCenter);
+    break; case (1): extdone = openPipe(); planeFork(PipeThd,1,planeExternal);}
+    break; case (StdioThd): switch (idx) {default: ERROR();
+    break; case (0): safeInit(StdioThd,1,0); planeFork(StdioThd,0,planeString);
+    break; case (1): condone = openPipe(); if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR(); planeFork(StdioThd,1,planeConsole);}
+    break; case (MachThd): switch (idx) {default: ERROR();
+    break; case (0): safeInit(MachThd,1,0); safeMach(0,planeGnfo(RegisterMain,0,planeRcfg),0,0,0); planeFork(MachThd,0,planeMachine);}
+    break; case (TimeThd): switch (idx) {default: ERROR();
+    break; case (0): safeInit(TimeThd,1,0); planeFork(TimeThd,0,planeTime);}
+    break; case (TestThd): switch (idx) {default: ERROR();
+    break; case (0): safeInit(TestThd,1,0); planeFork(TestThd,0,planeTest);
+    break; case (1): safeInit(TestThd,2,0); planeFork(TestThd,1,planeTest);
+    break; case (2): safeInit(TestThd,3,0); planeFork(TestThd,2,planeTest);}}
+}
+int planeThread(enum Thread tag)
+{
+    switch (tag) {default:
+    break; case (PipeThd): case (StdioThd): return 2;
+    break; case (MachThd): case (TimeThd): return 1;
+    break; case (TestThd): return 3;}
+    return 0;
 }
 
 // register callbacks
-void registerCall(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != RegisterCall) ERROR();
-    int wake = val & 0xff; // thread to wake
-    int indx = val >> 8; // machine center
-    safeInit(MachThd,wake+1,0);
-    if (indx >= 0) {
-    if (funcSafe(safeSem,safeFunc,&wake) != 0) ERROR(); // wait for machine[wake] < 0
-    machine[wake] = indx;
-    if (postSafe(safeSem) != 1) ERROR();
-    planeFork(MachThd,wake,planeMachine);}
-    else doneSafe(safeSafe(MachThd,wake));
-}
 void registerOpen(enum Configure cfg, int sav, int val, int act)
 {
     if (cfg != RegisterOpen) ERROR();
-    if ((act & (1<<PipeThd)) && !(sav & (1<<PipeThd))) {
-        extdone = openPipe();
-        safeInit(PipeThd,1,0);
-        planeFork(PipeThd,0,planeCenter);
-        planeFork(PipeThd,1,planeExternal);}
-    if (!(act & (1<<PipeThd)) && (sav & (1<<PipeThd))) {
-        doneSafe(safeSafe(PipeThd,0));
-        writeChr(1,extdone);}
-    if ((act & (1<<StdioThd)) && !(sav & (1<<StdioThd))) {
-        condone = openPipe();
-        if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR();
-        safeInit(StdioThd,1,0);
-        planeFork(StdioThd,0,planeString);
-        planeFork(StdioThd,1,planeConsole);}
-    if (!(act & (1<<StdioThd)) && (sav & (1<<StdioThd))) {
-        doneSafe(safeSafe(StdioThd,0));
-        writeChr(0,condone);}
-    if ((act & (1<<MachThd)) && !(sav & (1<<MachThd))) {
-        planeKnfo(RegisterCall,planeGnfo(RegisterMain,0,planeRcfg)<<8,planeWcfg);}
-    if (!(act & (1<<MachThd)) && (sav & (1<<MachThd))) {
-        planeKnfo(RegisterCall,(-1<<8),planeWcfg);}
-    if ((act & (1<<TimeThd)) && !(sav & (1<<TimeThd))) {
-        safeInit(TimeThd,1,0);
-        planeFork(TimeThd,0,planeTime);}
-    if (!(act & (1<<TimeThd)) && (sav & (1<<TimeThd))) {
-        doneSafe(safeSafe(TimeThd,0));}
-    if ((act & (1<<TestThd)) && !(sav & (1<<TestThd))) {
-        safeInit(TestThd,3,0);
-        planeFork(TestThd,0,planeTest);
-        planeFork(TestThd,1,planeTest);
-        planeFork(TestThd,2,planeTest);}
-    if (!(act & (1<<TestThd)) && (sav & (1<<TestThd))) {
-        doneSafe(safeSafe(TestThd,0));
-        doneSafe(safeSafe(TestThd,1));
-        doneSafe(safeSafe(TestThd,2));}
+    int opn = act&~sav; int cls = ~act&sav; int wak = act&sav&val;
+    for (int i = ffs(opn)-1; opn; i = ffs(opn&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeOpen(i,j);
+    for (int i = ffs(cls)-1; cls; i = ffs(cls&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeClose(i,j);
+    for (int i = ffs(wak)-1; wak; i = ffs(wak&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeWake(i,j);
 }
 void registerWake(enum Configure cfg, int sav, int val, int act)
 {
@@ -1667,8 +1678,7 @@ void planePutstr(const char *src)
     pushStrq(str,strout);
     // callHnfo and planeKnfo to allow planePutstr passed to slog
     // logging might happen in Configure callback
-    if (callHnfo()) planeKnfo(RegisterWake,(1<<PutsMsk),planeWots);
-    else planeJnfo(RegisterWake,(1<<PutsMsk),planeWots);
+    planeHnfo(RegisterWake,(1<<PutsMsk),planeWots);
     if (postSafe(stdioSem) != 1) ERROR();
 }
 void planeSetcfg(int val, int sub)
@@ -1753,7 +1763,6 @@ void initSafe()
     charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
     timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();
     ableq = allocIntq(); maskq = allocIntq(); 
-    callBack(RegisterCall,registerCall);
     callBack(RegisterOpen,registerOpen);
     callBack(RegisterWake,registerWake);
     callBack(RegisterAble,registerAble);

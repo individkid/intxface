@@ -263,7 +263,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ArgumentOut",
 	"ArgumentSrc",
 	"RegisterLog", -- transaction branching
-	"RegisterCall", -- start wake stop
 	"RegisterMain", -- main machine center
 	"RegisterOpen", -- thread mask
 	"RegisterShow", -- commandline mask
