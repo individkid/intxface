@@ -42,6 +42,7 @@ void *angleq = 0; // queue of mouse presses
 void *pressSem = 0; // protect press queues
 void **wakeSem[Threads] = {0}; // for event driven threads
 int sizeSem[Threads] = {0}; // number of thread instances
+int sizeMch = 0; // same as sizeSem[MachThd] after safeMach
 int *machine = 0; // Machinez for free running MachThd
 int **reboot = 0; // initializations done in a MachThd
 struct Extend ***recent = 0; // resources for initialization
@@ -127,17 +128,6 @@ void safeInit(enum Thread thd, int siz, int val)
     for (int i = 0; i < sizeSem[thd]; i++) temp[i] = wakeSem[thd][i];
     for (int i = sizeSem[thd]; i < siz; i++) temp[i] = allocSafe(val);
     free(wakeSem[thd]); wakeSem[thd] = temp;
-    if (thd == MachThd) {
-    int *temq = malloc(sizeof(int)*siz);
-    int **temr = malloc(sizeof(int*)*siz);
-    struct Extend ***tems = malloc(sizeof(struct Extend**)*siz);
-    int *temt = malloc(sizeof(int)*siz);
-    for (int i = 0; i < sizeSem[thd]; i++) {
-    temq[i] = machine[i]; temr[i] = reboot[i]; tems[i] = recent[i]; temt[i] = resize[i];}
-    for (int i = sizeSem[thd]; i < siz; i++) {
-    temq[i] = -1; temr[i] = 0; tems[i] = 0; temt[i] = 0;}
-    free(machine); free(reboot); free(recent); free(resize);
-    machine = temq; reboot = temr; recent = tems; resize = temt;}
     sizeSem[thd] = siz;
     postSafe(safeSem);
 }
@@ -163,6 +153,21 @@ int safeGunc(void *arg)
 }
 void safeMach(int idx, int indx, int *boot, struct Extend **cent, int siz)
 {
+    int mch = idx+1;
+    safeInit(MachThd,idx+1,0);
+    waitSafe(safeSem);
+    if (mch > sizeMch) {
+    int *temq = malloc(sizeof(int)*mch);
+    int **temr = malloc(sizeof(int*)*mch);
+    struct Extend ***tems = malloc(sizeof(struct Extend**)*mch);
+    int *temt = malloc(sizeof(int)*mch);
+    for (int i = 0; i < sizeMch; i++) {
+    temq[i] = machine[i]; temr[i] = reboot[i]; tems[i] = recent[i]; temt[i] = resize[i];}
+    for (int i = sizeMch; i < mch; i++) {
+    temq[i] = -1; temr[i] = 0; tems[i] = 0; temt[i] = 0;}
+    free(machine); free(reboot); free(recent); free(resize);
+    machine = temq; reboot = temr; recent = tems; resize = temt; sizeMch = mch;}
+    postSafe(safeSem);
     if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
     free(reboot[idx]); reboot[idx] = (int *)malloc(sizeof(int)*siz); for (int i = 0; i < siz; i++) reboot[idx][i] = boot[i];
     free(recent[idx]); recent[idx] = (struct Extend **)malloc(sizeof(struct Extend *)*siz); for (int i = 0; i < siz; i++) recent[idx][i] = cent[i];
@@ -957,7 +962,6 @@ void machineExec(int idx, struct Extend *ext)
     // TODO write for each of size if prot is zero
     if (postSafe(pipeSem) != 1) ERROR();
     freeCenterq(repush);
-    safeInit(MachThd,idx+1,0);
     safeMach(idx,0,boot,cent,ptr->siz);
     planeFork(MachThd,idx,planeMachine);}
     break;}
@@ -1456,7 +1460,7 @@ void planeOpen(enum Thread tag, int idx)
     break; case (0): safeInit(StdioThd,1,0); planeFork(StdioThd,0,planeString);
     break; case (1): condone = openPipe(); if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR(); planeFork(StdioThd,1,planeConsole);}
     break; case (MachThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(MachThd,1,0); safeMach(0,planeGnfo(RegisterMain,0,planeRcfg),0,0,0); planeFork(MachThd,0,planeMachine);}
+    break; case (0): safeMach(0,planeGnfo(RegisterMain,0,planeRcfg),0,0,0); planeFork(MachThd,0,planeMachine);}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(TimeThd,1,0); planeFork(TimeThd,0,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
