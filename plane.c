@@ -1847,7 +1847,7 @@ void initBoot()
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk))<<8)|MachThd),planeWcfg);
+    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk))<<8)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<PutsMsk)<<8)|StdioThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<RespMsk)<<8)|PipeThd),planeWcfg);
     planeJnfo(RegisterProt,((1<<MachThd)|0),planeWcfg);
