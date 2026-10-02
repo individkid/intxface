@@ -935,11 +935,9 @@ void machineExec(int idx, struct Extend *ext)
     switch (ptr->mem) {default: ERROR();
     case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break;
     case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
-    case (Machinez): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->mch[i]); break;
-    case (Rebootz): {
-    struct Extend *cent[ptr->siz]; // struct Extend **cent = (struct Extend **)malloc(sizeof(struct Extend *)*ptr->siz);
-    int boot[ptr->siz]; // int *boot = (int *)malloc(sizeof(int)*ptr->siz);
-    void *repush = 0; repush = allocCenterq();
+    case (Machinez): {struct Extend *cent[1]; int boot[1]; cent[0] = ext; boot[0] = -1;
+    safeMach(idx,0,boot,cent,1); planeFork(MachThd,idx,planeMachine);} break;
+    case (Rebootz): {struct Extend *cent[ptr->siz]; int boot[ptr->siz]; void *repush = 0; repush = allocCenterq();
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
     planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
