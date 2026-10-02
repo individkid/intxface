@@ -405,8 +405,8 @@ void centerDone(struct Extend *ptr)
     if (ptr->asr != PullAsr) ERROR(); else ptr->asr = DoneAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(ptr,replace);
-    planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
     if (postSafe(pipeSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
 }
 int centerCheck(int idx)
 {
@@ -461,7 +461,7 @@ struct Extend *moveRefer(int sub)
     break; case (DoneAsr): ptr = frontCenterq(replace);}
     return ptr;
 }
-void moveDeref(int sub, struct Extend **ext)
+void moveDeref(int sub, struct Extend **ext, int *smsk, int *rmsk, int *dmsk)
 {
     struct Extend *ptr = *ext;
     struct Extend *chk = moveRefer(sub);
@@ -484,13 +484,12 @@ void moveDeref(int sub, struct Extend **ext)
     if (ptr->asr == LoopAsr) ptr->asr = asr;
     if (equal) return;
     if (que) popCenterq(que); else if (asr == PlaceAsr) center[sub] = 0;
-    // write to RegisterWake protected by wait on pipeSem in caller; pipeSem not used in register callbacks, so this will not block
     switch (ptr->asr) {default: ERROR();
     break; case (PullAsr): deleteSmart(ptr->log); freeExtend(ptr); allocExtend(ext,0);
     break; case (PlaceAsr): moveSize(ptr->sub); deleteSmart(center[ptr->sub]->log); freeExtend(center[ptr->sub]); allocExtend(&center[ptr->sub],0); center[ptr->sub] = ptr;
-    break; case (PipeAsr): pushCenterq(ptr,internal); planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
-    break; case (RespAsr): pushCenterq(ptr,response); planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
-    break; case (DoneAsr): pushCenterq(ptr,replace); planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);}
+    break; case (PipeAsr): pushCenterq(ptr,internal); *smsk += 1;
+    break; case (RespAsr): pushCenterq(ptr,response); *rmsk += 1;
+    break; case (DoneAsr): pushCenterq(ptr,replace); *dmsk += 1;}
 }
 
 // expanded minimal experience
@@ -589,8 +588,8 @@ void demoPush(struct Menu *menu) // pull/modify/place Kernelz, alloc/push Matrix
     identmat(ker->local.mat,4); // L = I
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(dst,response);
-    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
     if (postSafe(pipeSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
     centerPlace(ptr);
     demoWake(menu);
 }
@@ -651,8 +650,8 @@ void demoDone(struct Menu *menu) // maybe alloc/push Metricz
         met->act = planeJnfo(SelectIdent,0,planeRcfg);
         if (waitSafe(pipeSem) != 0) ERROR();
         pushCenterq(dst,response);
-        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}}
         if (postSafe(pipeSem) != 1) ERROR();
+        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}}
 }
 void demoDisp(struct Menu *menu) // pull/send Drawz
 {
@@ -841,6 +840,7 @@ void machineMove(struct Express **sub, struct Express **exp, int siz)
     datxInsert(dat0,dat1,TYPEExtend);
     free(dat0); free(dat1);}
     // each expression does pull from num and place to exp.asr/sub
+    int smsk = 0; int rmsk = 0; int dmsk = 0;
     for (int i = 0; i < siz; i++) {
     struct Extend *ptr = moveRefer(num[i]);
     writeExtend(ptr,datxClr(0));
@@ -851,10 +851,13 @@ void machineMove(struct Express **sub, struct Express **exp, int siz)
     void *dat = 0; int typ = datxEval(&dat,exp[i],TYPEExtend);
     if (typ != TYPEExtend) ERROR();
     freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
-    moveDeref(num[i],&ptr);}
+    moveDeref(num[i],&ptr,&smsk,&rmsk,&dmsk);}
     if (postSafe(evalSem) != 1) ERROR();
     if (postSafe(pipeSem) != 1) ERROR();
     if (postSafe(copySem) != 1) ERROR();
+    for (int i = 0; i < smsk; i++) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    for (int i = 0; i < rmsk; i++) planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
+    for (int i = 0; i < dmsk; i++) planeJnfo(RegisterWake,(1<<DoneMsk),planeWots);
 }
 void machineTage(int sim, struct Extend *ptr, char **nam)
 {
@@ -926,7 +929,7 @@ void planeFork(enum Thread thd, int idx, mftype fnc);
 void machineExec(int idx, struct Extend *ext)
 {
     int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
-    if (debug) {deleteSmart(ext->log); ext->log = selfSmart("Exec");}
+    if (debug) {deleteSmart(ext->log); ext->log = selfSmart("exec");}
     centerSmart(ext,"reboot");
     struct Center *ptr = ext->ptr;
     switch (ptr->mem) {default: ERROR();
@@ -958,9 +961,8 @@ void machineExec(int idx, struct Extend *ext)
     if (postSafe(pipeSem) != 1) ERROR();}
     if (waitSafe(pipeSem) != 0) ERROR();
     int size = sizeCenterq(internal);
-    if (size) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
-    // TODO write for each of size if prot is zero
     if (postSafe(pipeSem) != 1) ERROR();
+    for (int i = 0; i < size; i++) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
     freeCenterq(repush);
     safeMach(idx,0,boot,cent,ptr->siz);
     planeFork(MachThd,idx,planeMachine);}
@@ -1108,7 +1110,7 @@ void machineSwitch(struct Machine *mptr)
     break; case (Bopy): {struct Extend *ext;
         ext = centerPull(machineIval(mptr->bop[0].sup),0);
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
-        if (debug) centerSmart(ext,"push vulkan");
+        if (debug) centerSmart(ext,"push");
         callCont(ext,machineIval(mptr->bie[0].val),ext->log);}
     break; case (Copy): {struct Extend *cpy; struct Extend *ptr; int sub;
         cpy = 0; allocExtend(&cpy,1);
@@ -1120,7 +1122,7 @@ void machineSwitch(struct Machine *mptr)
         src = machineIval(mptr->dop[0].sup); lub = machineIval(mptr->dop[0].sub);
         dst = machineIval(mptr->dop[1].sup); rub = machineIval(mptr->dop[1].sub);
         siz = machineIval(mptr->die[0].val);
-        lft = centerPull(src,"Dopy"); rgt = centerPull(dst,0); 
+        lft = centerPull(src,"dopy"); rgt = centerPull(dst,0); 
         machineDopy(lft->ptr,lub,rgt->ptr,rub,siz);
         centerPlace(lft); centerPlace(rgt);}
     break; case (Popy): {struct Extend *ptr; int dst;
@@ -1129,30 +1131,30 @@ void machineSwitch(struct Machine *mptr)
         if (postSafe(pipeSem) != 1) ERROR();
         if (ptr != 0 && ptr->asr != PipeAsr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
         dst = machineIval(mptr->pop[0].sup);
-        if (ptr == 0) centerFree(dst,"Popy");
+        if (ptr == 0) centerFree(dst,"popy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
-        if (debug) centerSmart(ptr,"pop internal");
+        if (debug) centerSmart(ptr,"internal");
         centerPlace(ptr);}}
     break; case (Qopy): {struct Extend *ptr;
         ptr = centerPull(machineIval(mptr->pop[0].sup),0);
         if (ptr->asr != PullAsr) ERROR(); else ptr->asr = RespAsr;
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
-        if (debug) centerSmart(ptr,"push response");
+        if (debug) centerSmart(ptr,"response");
         if (waitSafe(pipeSem) != 0) ERROR();
         pushCenterq(ptr,response);
-        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);
-        if (postSafe(pipeSem) != 1) ERROR();}
+        if (postSafe(pipeSem) != 1) ERROR();
+        planeJnfo(RegisterWake,(1<<RespMsk),planeWots);}
     break; case (Ropy): {struct Extend *ptr; int dst;
         if (waitSafe(pipeSem) != 0) ERROR();
         ptr = maybeCenterq(0,replace);
         if (postSafe(pipeSem) != 1) ERROR();
         if (ptr != 0 && ptr->asr != DoneAsr) ERROR(); else if (ptr != 0) ptr->asr = PullAsr;
         dst = machineIval(mptr->pop[0].sup);
-        if (ptr == 0) centerFree(dst,"Ropy");
+        if (ptr == 0) centerFree(dst,"ropy");
         else {ptr->sav = ptr->sub; ptr->sub = dst;
         int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<QueuVrb)) != 0);
-        if (debug) {centerSmart(ptr,"pop replace"); clearSmart();}
+        if (debug) {centerSmart(ptr,"replace"); clearSmart();}
         centerPlace(ptr);}}
     break; case (Exec): {struct Extend *exp;
         exp = centerPull(machineIval(mptr->top[0].sup),0);
@@ -1237,8 +1239,8 @@ void planeExternal(enum Thread tag, int idx)
     center->src = (int*)*userIdent(sub) - inverse;
     if (postSafe(callSem) != 1) ERROR();
     int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
-    center->log = selfSmart(debug?"Pipe":0);
-    if (debug) centerSmart(center,"Pipe");
+    center->log = selfSmart(debug?"pipe":0);
+    if (debug) centerSmart(center,"pipe");
     center->asr = PipeAsr;
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
@@ -1273,9 +1275,9 @@ void planeConsole(enum Thread tag, int idx)
     if (waitSafe(stdioSem) != 0) ERROR();
     pushStrq(str,strin);
     int size = sizeStrq(strin);
+    if (postSafe(stdioSem) != 1) ERROR();
     planeJnfo(RegisterStrq,size,planeWcfg);
-    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);
-    if (postSafe(stdioSem) != 1) ERROR();}}
+    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);}}
     else ERROR();}
 }
 void planeTime(enum Thread tag, int idx)
@@ -1294,8 +1296,8 @@ void planeTime(enum Thread tag, int idx)
     if ((float)processTime() >= time) {
     if (waitSafe(timeSem) != 0) ERROR();
     dropTimeq(timeq); dropIntq(wakeq);
-    planeJnfo(RegisterWake,(1<<TimeMsk),planeWots);
-    if (postSafe(timeSem) != 1) ERROR();}}
+    if (postSafe(timeSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
 }
 void planeTest(enum Thread tag, int idx)
 {
@@ -1478,17 +1480,15 @@ int planeThread(enum Thread tag)
 }
 
 // register callbacks
-void registerOpen(enum Configure cfg, int sav, int val, int act)
+void registerOpen(int sav, int val, int act)
 {
-    if (cfg != RegisterOpen) ERROR();
     int opn = act&~sav; int cls = ~act&sav; int wak = act&sav&val;
     for (int i = ffs(opn)-1; opn; i = ffs(opn&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeOpen(i,j);
     for (int i = ffs(cls)-1; cls; i = ffs(cls&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeClose(i,j);
     for (int i = ffs(wak)-1; wak; i = ffs(wak&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeWake(i,j);
 }
-void registerWake(enum Configure cfg, int sav, int val, int act)
+void registerWake(int val, int act)
 {
-    if (cfg != RegisterWake) ERROR();
     int mask = val&act; // mask of events
     // increment semafor for each write, so no need to clear RegisterWake
     int wake = 0; // mask of threads
@@ -1502,9 +1502,8 @@ void registerWake(enum Configure cfg, int sav, int val, int act)
     // wake is mask of running threads
     for (int i = ffs(wake)-1; wake; i = ffs(wake&=~(1<<i))-1) planeWake(i,0);
 }
-void registerAble(enum Configure cfg, int sav, int val, int act)
+void registerAble(int val)
 {
-    if (cfg != RegisterAble) ERROR();
     int thrd = val & 0xff; // thread
     int mask = val >> 8; // mask of events
     while (sizeIntq(maskq) <= thrd) pushIntq(0,maskq);
@@ -1514,9 +1513,8 @@ void registerAble(enum Configure cfg, int sav, int val, int act)
     while (sizeIntq(ableq) <= i) pushIntq(0,ableq);
     *ptrIntq(i,ableq) |= 1<<thrd;}
 }
-void registerTime(enum Configure cfg, int sav, int val, int act)
+void registerTime(int val)
 {
-    if (cfg != RegisterTime) ERROR();
     int lwr = val & 0xff; // machine thread to wake
     int upr = val >> 8; // amount to advance
     if (lwr < 0 || lwr >= Threads) ERROR();
@@ -1537,38 +1535,8 @@ void registerTime(enum Configure cfg, int sav, int val, int act)
     if (postSafe(timeSem) != 1) ERROR();
     postSafe(safeSafe(TimeThd,0));
 }
-void registerExit(enum Configure cfg, int sav, int val, int act)
+void registerArgument(int act[3])
 {
-    if (cfg != RegisterExit) ERROR();
-    callWake();
-}
-void registerVerb(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != RegisterVerb) ERROR();
-    clearSmart();
-}
-void registerUniform(enum Configure cfg, int sav, int val, int act)
-{
-    switch (cfg) {default: ERROR();
-    case (UniformWid):
-    case (UniformHei):
-    planeKnfo(RegisterWake,(1<<ProjMsk),planeWots);
-    case (UniformAll):
-    case (UniformOne):
-    case (UniformIdx):
-    case (UniformUse):
-    case (UniformTri):
-    case (UniformNum):
-    case (UniformVtx):
-    case (UniformMat):
-    case (UniformBas):
-    case (UniformMod):
-    planeKnfo(RegisterWake,(1<<UnifMsk),planeWots);}
-}
-void registerArgument(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != ArgumentInp && cfg != ArgumentOut && cfg != ArgumentSrc) ERROR();
-    if (cfg != ArgumentSrc) return; // TODO remove after preventing extra callbacks
     enum Configure arg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; int num[3] = {0,0,0};
     callGnfo(arg,num,3,planeRcfg);
     int rdfd = num[0];
@@ -1582,75 +1550,67 @@ void registerArgument(enum Configure cfg, int sav, int val, int act)
     if (postSafe(callSem) != 1) ERROR();
     writeChr(0,extdone);
 }
-void registerQue(enum Configure cfg, int val, enum Configure ary[], void *ptr[], int siz, int msk)
+void registerQue(enum Configure cfg, int val, void *que, int msk)
 {
-    void *que = 0;
-    for (int i = 0; i < siz; i++)
-    if (cfg == ary[i]) que = ptr[i];
-    if (que == 0) ERROR();
     if (waitSafe(pressSem) != 0) ERROR();
     pushIntq(val,que);
     planeGnfo(cfg,frontIntq(que),planeWcfg);
-    planeKnfo(RegisterWake,(1<<msk),planeWots);
     if (postSafe(pressSem) != 1) ERROR();
+    planeKnfo(RegisterWake,(1<<msk),planeWots);
 }
-void registerQues(int act, enum Configure ary[], void *ptr[], int siz, int msk)
+void registerQues(enum Configure cfg, int act, void *que)
 {
     if (act < 0) ERROR();
     if (waitSafe(pressSem) != 0) ERROR();
-    for (int i = 0; i < siz; i++) {
-    while (act < sizeIntq(ptr[i])) popIntq(ptr[i]);
-    while (act > sizeIntq(ptr[i])) pushIntq(0,ptr[i]);
-    if (act > 0) planeGnfo(ary[i],frontIntq(ptr[i]),planeWcfg);}
-    int num = 0; for (int i = 0; i < siz; i++)
-    if (sizeIntq(ptr[i]) > 0) num += 1;
-    if (num > 0) planeKnfo(RegisterWake,(1<<msk),planeWots);
+    while (act < sizeIntq(que)) popIntq(que);
+    while (act > sizeIntq(que)) pushIntq(0,que);
+    if (act > 0) planeGnfo(cfg,frontIntq(que),planeWcfg);
     if (postSafe(pressSem) != 1) ERROR();
 }
-void registerChar(enum Configure cfg, int sav, int val, int act)
+void registerLog(int sav, int act)
 {
-    enum Configure ary[1] = {PressKey};
-    void *ptr[1] = {charq};
-    registerQue(cfg,val,ary,ptr,1,PrssMsk);
-}
-void registerChars(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != PressQueue) ERROR();
-    enum Configure ary[1] = {PressKey};
-    void *ptr[1] = {charq};
-    registerQues(act,ary,ptr,1,PrssMsk);
-}
-void registerClick(enum Configure cfg, int sav, int val, int act)
-{
-    enum Configure ary[3] = {ClickLeft,ClickBase,ClickAngle};
-    void *ptr[3] = {leftq,baseq,angleq};
-    registerQue(cfg,val,ary,ptr,3,ClckMsk);
-}
-void registerClicks(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != ClickQueue) ERROR();
-    enum Configure ary[3] = {ClickLeft,ClickBase,ClickAngle};
-    void *ptr[3] = {leftq,baseq,angleq};
-    registerQues(act,ary,ptr,3,ClckMsk);
-}
-void registerMove(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != ManipLeft && cfg != ManipBase) ERROR();
-    planeKnfo(RegisterWake,(1<<MoveMsk),planeWots);
-}
-void registerRoll(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != ManipAngle) ERROR();
-    planeKnfo(RegisterWake,(1<<RollMsk),planeWots);
-}
-void registerLog(enum Configure cfg, int sav, int val, int act)
-{
-    if (cfg != RegisterLog) ERROR();
     if (sav != act) {
         deleteSmart(sav);
         int tmp = otherSmart(act);
-        planeGnfo(cfg,tmp,planeWcfg);
+        planeGnfo(RegisterLog,tmp,planeWcfg);
     }
+}
+void registerCall(const enum Configure *cfg, const int *sav, const int *val, const int *act, int siz)
+{
+    for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
+    break; case (RegisterOpen): registerOpen(sav[i],val[i],act[i]);
+    break; case (RegisterWake): registerWake(val[i],act[i]);
+    break; case (RegisterAble): registerAble(val[i]);
+    break; case (RegisterTime): registerTime(val[i]);
+    break; case (RegisterExit): callWake();
+    break; case (RegisterVerb): clearSmart();
+    break; case (UniformAll): case (UniformOne): case (UniformIdx): case (UniformUse):
+    break; case (UniformTri): case (UniformNum): case (UniformVtx): case (UniformMat): case (UniformBas):
+    break; case (UniformMod): case (UniformWid): case (UniformHei):
+    break; case (ArgumentInp): case (ArgumentOut): case (ArgumentSrc):
+    break; case (PressKey): registerQue(PressKey,val[i],charq,PrssMsk);
+    break; case (PressQueue): registerQues(PressKey,act[i],charq);
+    break; case (ClickLeft): registerQue(ClickLeft,val[i],leftq,ClckMsk);
+    break; case (ClickBase): registerQue(ClickBase,val[i],baseq,ClckMsk);
+    break; case (ClickAngle): registerQue(ClickAngle,val[i],angleq,ClckMsk);
+    break; case (ClickQueue): {
+    registerQues(ClickLeft,act[i],leftq);
+    registerQues(ClickBase,act[i],baseq);
+    registerQues(ClickAngle,act[i],angleq);}
+    break; case (ManipLeft): case (ManipBase):
+    break; case (ManipAngle):
+    break; case (RegisterLog): registerLog(sav[i],act[i]);}
+    int idx[Configures]; // TODO instead use argument/uniform/manip/roll counts, arg[3] values, more efficient
+    for (int i = 0; i < Configures; i++) idx[i] = -1;
+    for (int i = 0; i < siz; i++) idx[cfg[i]] = i;
+    if (idx[ArgumentInp] >= 0 && idx[ArgumentOut] >= 0 && idx[ArgumentSrc] >= 0) {
+    int arg[3] = {act[idx[ArgumentInp]],act[idx[ArgumentOut]],act[idx[ArgumentSrc]]}; registerArgument(arg);}
+    if (idx[UniformWid] >= 0 || idx[UniformHei] >= 0) planeKnfo(RegisterWake,(1<<ProjMsk),planeWots);
+    if (idx[UniformAll] >= 0 || idx[UniformOne] >= 0 || idx[UniformIdx] >= 0 || idx[UniformUse] >= 0 ||
+    idx[UniformTri] >= 0 || idx[UniformNum] >= 0 || idx[UniformVtx] >= 0 || idx[UniformMat] >= 0 || idx[UniformBas] >= 0 ||
+    idx[UniformMod] >= 0 || idx[UniformWid] >= 0 || idx[UniformHei] >= 0) planeKnfo(RegisterWake,(1<<UnifMsk),planeWots);
+    if (idx[ManipLeft] >= 0 || idx[ManipBase] >= 0) planeKnfo(RegisterWake,(1<<MoveMsk),planeWots);
+    if (idx[ManipAngle] >= 0) planeKnfo(RegisterWake,(1<<RollMsk),planeWots);
 }
 
 // expression callbacks
@@ -1766,38 +1726,16 @@ void initSafe()
     strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
     charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
     timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();
-    ableq = allocIntq(); maskq = allocIntq(); 
-    callBack(RegisterOpen,registerOpen);
-    callBack(RegisterWake,registerWake);
-    callBack(RegisterAble,registerAble);
-    callBack(RegisterTime,registerTime);
-    callBack(RegisterExit,registerExit);
-    callBack(RegisterVerb,registerVerb);
-    callBack(UniformAll,registerUniform);
-    callBack(UniformOne,registerUniform);
-    callBack(UniformIdx,registerUniform);
-    callBack(UniformUse,registerUniform);
-    callBack(UniformTri,registerUniform);
-    callBack(UniformNum,registerUniform);
-    callBack(UniformVtx,registerUniform);
-    callBack(UniformMat,registerUniform);
-    callBack(UniformBas,registerUniform);
-    callBack(UniformMod,registerUniform);
-    callBack(UniformWid,registerUniform);
-    callBack(UniformHei,registerUniform);
-    callBack(ArgumentInp,registerArgument);
-    callBack(ArgumentOut,registerArgument);
-    callBack(ArgumentSrc,registerArgument);
-    callBack(PressKey,registerChar);
-    callBack(PressQueue,registerChars);
-    callBack(ClickLeft,registerClick);
-    callBack(ClickBase,registerClick);
-    callBack(ClickAngle,registerClick);
-    callBack(ClickQueue,registerClicks);
-    callBack(ManipLeft,registerMove);
-    callBack(ManipBase,registerMove);
-    callBack(ManipAngle,registerRoll);
-    callBack(RegisterLog,registerLog);
+    ableq = allocIntq(); maskq = allocIntq();
+    enum Configure cfg[] = {
+    RegisterOpen,RegisterWake,RegisterAble,RegisterTime,RegisterExit,RegisterVerb,
+    UniformAll,UniformOne,UniformIdx,UniformUse,UniformTri,UniformNum,UniformVtx,UniformMat,UniformBas,UniformMod,UniformWid,UniformHei,
+    ArgumentInp,ArgumentOut,ArgumentSrc,
+    PressKey,PressQueue,
+    ClickLeft,ClickBase,ClickAngle,ClickQueue,
+    ManipLeft,ManipBase,ManipAngle,
+    RegisterLog,};
+    callBack(cfg,sizeof(cfg)/sizeof(enum Configure),registerCall);
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr,planeField);
     start = processTime();
 }
@@ -1924,7 +1862,7 @@ void initTest()
     for (int j = 0; j < ptr->ptr->drw[i].siz; j++) {
     ptr->ptr->drw[i].arg[j] = arg[j];}}
     ptr->sub = Drawz; ptr->rsp = MptRsp; ptr->ret = NoneRet;
-    callCopy(ptr,0,(debug?"pipe":0));
+    callCopy(ptr,0,(debug?"line":0));
     while (!centerCheck(Drawz)) usleep(1000);
 
     for (int i = 0; i < frames; i++) {

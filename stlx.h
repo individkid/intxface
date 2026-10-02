@@ -247,7 +247,7 @@ struct SlogState : public std::ostream {
 extern SlogState slog; // TODO qualify with NDEBUG
 
 template <class Conf, int Size> struct ChangeState {
-    typedef void (*xftype)(Conf cfg, int sav, int val, int act);
+    typedef void (*xftype)(const Conf *cfg, const int *sav, const int *val, const int *act, int siz);
     typedef int (*yftype)(int *ref, int val);
     int config[Size];
     std::map<Conf,std::set<xftype>> back;
@@ -259,11 +259,11 @@ template <class Conf, int Size> struct ChangeState {
     ~ChangeState() {
         // std::cout << "~ChangeState" << std::endl;
     }
-    void call(Conf cfg, xftype ptr) {
+    void call(const Conf *cfg, int siz, xftype ptr) {
         safe.wait();
-        if (ptr) back[cfg].insert(ptr);
-        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end() && back[cfg].size() == 1) back.erase(cfg);
-        else if (back.find(cfg) != back.end() && back[cfg].find(ptr) != back[cfg].end()) back[cfg].erase(ptr);
+        for (int i = 0; i < siz; i++) {Conf c = cfg[i]; if (ptr) back[c].insert(ptr);
+        else if (back.find(c) != back.end() && back[c].find(ptr) != back[c].end() && back[c].size() == 1) back.erase(c);
+        else if (back.find(c) != back.end() && back[c].find(ptr) != back[c].end()) back[c].erase(ptr);}
         safe.post();
     }
     void gnfo(Conf *cfg, int *val, int siz, yftype fnc) { // called from callback
@@ -280,12 +280,13 @@ template <class Conf, int Size> struct ChangeState {
         val[i] = fnc(&config[cfg[i]],val[i]);}
         safe.post();
     }
-    struct Save {xftype fnc; Conf cfg; int sav; int giv;
-    bool operator<(const Save &rhs) const {
+    struct Save {xftype fnc;
+        std::vector<Conf> cfg;
+        std::vector<int> sav;
+        std::vector<int> val;
+        std::vector<int> act;
+        bool operator<(const Save &rhs) const {
     if (this->fnc < rhs.fnc) return true; if (this->fnc > rhs.fnc) return false;
-    if (this->cfg < rhs.cfg) return true; if (this->cfg > rhs.cfg) return false;
-    if (this->sav < rhs.sav) return true; if (this->sav > rhs.sav) return false;
-    if (this->giv < rhs.giv) return true; if (this->giv > rhs.giv) return false;
     return false;}};
     void jnfo(Conf *cfg, int *val, int siz, yftype fnc) { // call callbacks
         safe.wait(); std::set<Save> save; for (int i = 0; i < siz; i++) {
@@ -294,10 +295,13 @@ template <class Conf, int Size> struct ChangeState {
         val[i] = fnc(&config[cfg[i]],giv);
         if (back.find(cfg[i]) != back.end()) todo = back[cfg[i]];
         for (auto j = todo.begin(); j != todo.end(); j++) {
-        struct Save tmp = {*j,cfg[i],sav,giv}; save.insert(tmp);}}
+        struct Save tmp; tmp.fnc = *j; auto ref = save.find(tmp);
+        if (ref != save.end()) {tmp = *ref; save.erase(ref);}
+        tmp.cfg.push_back(cfg[i]); tmp.sav.push_back(sav); tmp.val.push_back(giv); tmp.act.push_back(config[cfg[i]]);
+        save.insert(tmp);}}
         nest.wait(); self = pthread_self(); depth++; nest.post();
         for (auto i = save.begin(); i != save.end(); i++)
-        (*i).fnc((*i).cfg,(*i).sav,(*i).giv,config[(*i).cfg]);
+        (*i).fnc((*i).cfg.data(),(*i).sav.data(),(*i).val.data(),(*i).act.data(),(*i).cfg.size());
         // would block forever if calls info or jnfo
         nest.wait(); depth--; nest.post();
         safe.post();
@@ -312,10 +316,13 @@ template <class Conf, int Size> struct ChangeState {
         val[i] = fnc(&config[cfg[i]],giv);
         if (back.find(cfg[i]) != back.end()) todo = back[cfg[i]];
         for (auto j = todo.begin(); j != todo.end(); j++) {
-        struct Save tmp = {*j,cfg[i],sav,giv}; save.insert(tmp);}}
+        struct Save tmp; tmp.fnc = *j; auto ref = save.find(tmp);
+        if (ref != save.end()) {tmp = *ref; save.erase(ref);}
+        tmp.cfg.push_back(cfg[i]); tmp.sav.push_back(sav); tmp.val.push_back(giv); tmp.act.push_back(config[cfg[i]]);
+        save.insert(tmp);}}
         nest.wait(); depth++; nest.post();
         for (auto i = save.begin(); i != save.end(); i++)
-        (*i).fnc((*i).cfg,(*i).sav,(*i).giv,config[(*i).cfg]);
+        (*i).fnc((*i).cfg.data(),(*i).sav.data(),(*i).val.data(),(*i).act.data(),(*i).cfg.size());
         nest.wait(); depth--; nest.post();
     }
     int hnfo() { // whether in callback

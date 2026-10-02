@@ -138,14 +138,11 @@ function listMemory(lst,mem,fld,arg)
 	readCenter(tests[found]["idx"])
 end
 function listSpoof(lst,mem,fld,arg)
+	atomSugar(lst,tests[found]["idx"],"Spoof")
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
-	lst[#lst+1] = centSugar(cent)
-	lst[#lst+1] = machSugar("Machine(xfr:Movemsz:1mop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))mpo[0]:Evalexp(fnc[0]:$(@_ .= asr#0 ImmStrPipeAsrOpOp)))")
-	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
-	atomSugar(lst,tests[found]["idx"],"Spoof")
-	readCenter(tests[found]["idx"])
+	writeCenter(centSugar(cent),tests[found]["idx"])
 end
 function initTest()
 	config = {}
@@ -195,15 +192,15 @@ function initTest()
 	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
 	-- listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	--
-	writeConfig(list,{0},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
-	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
 	-- listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
 	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
+	--
+	writeConfig(list,{0},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
 	--
 	list[#list+1] = centSugar("Center(mem:Indexzsiz:0idx:0slf:0)")
 	--
@@ -226,6 +223,9 @@ function initTest()
 	listMemory(list,"Trianglez","tri",tri)
 	--
 	atomSugar(list,tests[found]["idx"],"Memory")
+end
+
+function openTest()
 	-- io.stderr:write("start test\n")
 	writeMaskbit(list,{(1<<castThread("TestThd"))},{"RegisterOpen"})
 	os.execute("sleep 3")
@@ -243,7 +243,11 @@ end
 
 if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	pipeTest()
-	if more then
+	if more == "0" then
+	initTest()
+	openTest()
+	flushTest()
+	elseif more == "1" then
 	initTest()
 	runTest()
 	flushTest()

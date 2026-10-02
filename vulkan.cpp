@@ -2552,8 +2552,8 @@ void vulkanCont(Extend *ptr, int ary, int log) { // log copy
     if (log) mptr->copyState.push(ptr,ary,SmartState(log));
     else mptr->copyState.push(ptr,ary,SmartState());
 }
-void vulkanCall(Configure cfg, xftype back) { // add callback
-    mptr->changeState.call(cfg,back);
+void vulkanCall(const Configure *cfg, int siz, xftype back) { // add callback
+    mptr->changeState.call(cfg,siz,back);
 }
 void vulkanFork(Thread thd, int idx, mftype fnc, mftype done, mftype join, mftype wake) { // add thread
     mptr->callState.push(new ForkState(thd,idx,fnc,done,join,wake));
@@ -2587,9 +2587,10 @@ void vulkanWake() {
 }
 
 // builtin callback
-void vulkanBack(Configure cfg, int sav, int val, int act) {
-    if (cfg == RegisterOpen) mptr->callState.open(sav,val,act); // open() should be like wake() upon reopen
-    if (cfg == RegisterWake) mptr->callState.wake(sav,val,act); // TODO misuse of RegisterWake
+void vulkanBack(const Configure *cfg, const int *sav, const int *val, const int *act, int siz) {
+    for (int i = 0; i < siz; i++) {
+    if (cfg[i] == RegisterOpen) mptr->callState.open(sav[i],val[i],act[i]); // open() should be like wake() upon reopen
+    if (cfg[i] == RegisterWake) mptr->callState.wake(sav[i],val[i],act[i]);} // TODO misuse of RegisterWake
 }
 
 // c debug
@@ -2630,8 +2631,8 @@ int main(int argc, const char **argv) {
     main.changeState.write(ScratchInstrs,StackState::instrs);
     main.changeState.write(ScratchResrcs,StackState::resrcs);
     main.changeState.write(ScratchHandls,StackState::handls);
-    main.changeState.call(RegisterOpen,vulkanBack);
-    main.changeState.call(RegisterWake,vulkanBack);
+    Configure cfg[] = {RegisterOpen,RegisterWake};
+    main.changeState.call(cfg,2,vulkanBack);
     main.callState.back(&main.threadState,FenceThd);
     planeInit(vulkanCopy,vulkanCont,vulkanCall,vulkanFork,vulkanGnfo,vulkanInfo,vulkanJnfo,vulkanKnfo,vulkanHnfo,vulkanCmnd,vulkanWait,vulkanWake);
     // TODO move glfw functions to WindowState
