@@ -3,7 +3,7 @@
 .DELETE_ON_ERROR:
 
 UNAME = $(shell uname)
-all: facer.log typra.log typer.log filer.log vulkan.log planra.log planer.log spacra.log spacer.log hole line space share
+all: facer.log typra.log typer.log filer.log vulkan.log vulkanAsanCpp planra.log planer.log spacra.log spacer.log hole line space share
 
 ifeq ($(UNAME),Linux)
 LIBRARIES = -llua -lportaudio -lglfw -lvulkan
@@ -68,9 +68,11 @@ sharer.log:
 	ln -f $< $@
 
 %C: %C.o
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -fmax-errors=5 -g -o $@ $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 %Cpp: %Cpp.o
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -fmax-errors=5 -g -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
+%AsanCpp: %AsanCpp.o
+	$(CXX) -fmax-errors=5 -lasan -g -o $@ $(filter %C.o %Cpp.o,$^) -std=c++17 -O2 ${LIBRARIES} ${LIBRARYPATH}
 %Hs: %.hs
 	$(GHC) -o $@ $(filter %.hs %C.o %Cpp.o,$^) -v0 ${LIBRARIES} ${LIBRARYPATH}
 	touch $@
@@ -83,24 +85,26 @@ sharer.log:
 
 ifeq ($(UNAME),Linux)
 %.so: %C.o
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -shared $(filter %C.o %Cpp.o,$^)
+	$(CXX) -fmax-errors=5 -g -o $@ -shared $(filter %C.o %Cpp.o,$^)
 endif
 ifeq ($(UNAME),Darwin)
 %.so: %C.o
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
+	$(CXX) -fmax-errors=5 -g -o $@ -shared $(filter %C.o %Cpp.o,$^) ${LIBRARIES} ${LIBRARYPATH}
 endif
 
 %C.o: %.c
-	$(CC) -fmax-errors=5 -g -rdynamic -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
+	$(CC) -fmax-errors=5 -g -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
+%AsanC.o: %.c
+	$(CC) -fmax-errors=5 -g -fsanitize=address -fno-omit-frame-pointer -o $@ -fPIC -D_GNU_SOURCE -c $< ${INCLUDEPATH}
 ifeq ($(UNAME),Linux)
 %Cpp.o: %.cpp
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC $< ${INCLUDEPATH}
-%Cpp.o: %Cpp.mk
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC `cat $<` ${INCLUDEPATH}
+	$(CXX) -fmax-errors=5 -g -o $@ -c -fPIC $< ${INCLUDEPATH}
+%AsanCpp.o: %.cpp
+	$(CXX) -fmax-errors=5 -g -fsanitize=address -fno-omit-frame-pointer -o $@ -c -fPIC $< ${INCLUDEPATH}
 endif
 ifeq ($(UNAME),Darwin)
 %Cpp.o: %.cpp
-	$(CXX) -fmax-errors=5 -g -rdynamic -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
+	$(CXX) -fmax-errors=5 -g -o $@ -c -fPIC $< -std=c++11 ${INCLUDEPATH}
 %Sw.o: %.sw
 	cat $(filter-out $<, $(filter %.sw,$^)) $< | $(SWC) -o $@ -I . -c -
 endif

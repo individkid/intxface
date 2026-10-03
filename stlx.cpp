@@ -207,6 +207,9 @@ int otherSmart(int oth) {
     if (oth == 0) return 0;
     return slog.con(oth);
 }
+int noneSmart() {
+    return 0;
+}
 void deleteSmart(int slf) {
     if (slf == 0) return;
     slog.dis(slf);

@@ -755,6 +755,7 @@ int timeSafe(void *ptr, double dif);
 int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg);
 int selfSmart(const char *str);
 int otherSmart(int oth);
+int noneSmart();
 void deleteSmart(int slf);
 void printfSmart(int slf, const char *fmt, ...);
 int numberSmart(int slf);

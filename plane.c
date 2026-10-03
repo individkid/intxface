@@ -367,6 +367,7 @@ struct Extend *centerPull(int idx, const char *log)
     int vrb = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PullVrb)) != 0);
     if (tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
     else if (vrb) {deleteSmart(ret->log); ret->log = selfSmart(log);}
+    else {deleteSmart(ret->log); ret->log = noneSmart();}
     return ret;
 }
 struct Extend *centerPeek(int idx, const char *log)
@@ -381,6 +382,7 @@ struct Extend *centerPeek(int idx, const char *log)
     int vrb = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PullVrb)) != 0);
     if (ret && tmp) {deleteSmart(ret->log); ret->log = otherSmart(tmp);}
     else if (ret && vrb) {deleteSmart(ret->log); ret->log = selfSmart(log);}
+    else if (ret) {deleteSmart(ret->log); ret->log = noneSmart();}
     return ret;
 }
 void centerFree(int idx, const char *log)
@@ -1632,8 +1634,8 @@ void planePutstr(const char *src)
     pushStrq(str,strout);
     // callHnfo and planeKnfo to allow planePutstr passed to slog
     // logging might happen in Configure callback
-    planeHnfo(RegisterWake,(1<<PutsMsk),planeWots);
     if (postSafe(stdioSem) != 1) ERROR();
+    planeHnfo(RegisterWake,(1<<PutsMsk),planeWots);
 }
 void planeSetcfg(int val, int sub)
 {
