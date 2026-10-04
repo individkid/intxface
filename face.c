@@ -1241,7 +1241,6 @@ int hideDat(void **val, const char *str, int *siz)
 	for (int i = base; str[i] && str[i] != ')'; i++)
 	if (str[i] >= 'a' && str[i] <= 'f' || str[i] >= '0' && str[i] <= '9') len += 1;
 	if (len%2) return 0;
-	char *tmp = malloc(len);
 	limit = base; while (str[limit] && str[limit] != ')') limit += 1; limit += 1;
 	*val = realloc(*val,len/2+sizeof(int));
 	*(int*)*val = len/2;

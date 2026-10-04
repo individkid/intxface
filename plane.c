@@ -1178,9 +1178,9 @@ void planeMachine(enum Thread tag, int idx)
     struct Extend **cent = recent[idx]; recent[idx] = 0;
     int size = resize[idx]; resize[idx] = 0;
     if (index < 0) ERROR(); if (size == 0) {size = 1;
-    boot = malloc(sizeof(int)); boot[0] = -1;
-    cent = malloc(sizeof(struct Extend *));
-    cent[0] = centerPull(index,"main");}
+    free(boot); boot = malloc(sizeof(int));
+    free(cent); cent = malloc(sizeof(struct Extend *));
+    boot[0] = -1; cent[0] = centerPull(index,"main");}
     for (int i = 0; i < size; i++) {
     if (boot[i] >= 0) {cent[i]->sub = boot[i]; centerPlace(cent[i]);}
     else {struct Center *cptr = cent[i]->ptr;
@@ -1728,6 +1728,7 @@ void initSafe()
     ManipLeft,ManipBase,ManipAngle,
     RegisterLog,};
     callBack(cfg,sizeof(cfg)/sizeof(enum Configure),registerCall);
+    datxSingle();
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr,planeField);
     start = processTime();
 }
@@ -1744,6 +1745,7 @@ void initBoot()
     int len = strlen(temp[i]);
     boot[i] = malloc(len+1);
     strncpy(boot[i],temp[i],len); boot[i][len] = 0;}
+    free(temp); temp = 0;
     // change strings according to sugar
     for (int i = 0; i < size; i++) {
     sugarRepl(&boot[i],'$'); // replace $() by Express
@@ -1787,6 +1789,8 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);}
     // callCmnd strings after so threads are started
     planeArgv(cmnd,boot);
+    for (int i = 0; i < size; i++) free(boot[i]);
+    free(boot);
 }
 void initTest()
 {
@@ -1993,8 +1997,11 @@ int planeLoop()
 }
 void planeDone()
 {
+    free(machine);
+    for (int i = 0; i < sizeMch; i++) free(reboot[i]); free(reboot);
+    for (int i = 0; i < sizeMch; i++) free(recent[i]); free(recent);
+    free(resize);
     clearSmart();
-    doneSmart(); // destructor for SlogState happens after destructor for ThreadState
-    // TODO stop all the threads
-    // TODO free heap allocations
+    doneSmart();
+    datxNon();
 }

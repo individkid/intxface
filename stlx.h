@@ -198,6 +198,16 @@ struct SlogState : public std::ostream {
     template <class Type> std::ostream &operator<<(Type typ) {
         return *this;
     }
+    int con(SmartState &oth) {
+        SmartState *ptr = new SmartState(oth);
+        safe.wait();
+        if (seqnum == 0) seqnum += 1;
+        if (factory.find(seqnum) != factory.end()) exit(-1);
+        factory[seqnum] = ptr;
+        int ret = seqnum++;
+        safe.post();
+        return ret;
+    }
     int con(const char *str) {
         SmartState *ptr = new SmartState(str);
         safe.wait();

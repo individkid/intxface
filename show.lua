@@ -465,7 +465,6 @@ function showFreeC(name,struct)
 		local arg = ""..#limits
 		local lval = "ptr->"..vl[1]
 		local alloc = "alloc"..vl[2].."("
-		if (vl[2] == "Dat") then alloc = "allocStr((char* **)" end
 		for key,val in ipairs(limits) do
 			lval = lval.."[sub"..key.."]"
 			arg = arg..",sub"..key
@@ -1021,6 +1020,7 @@ function showRtypeC(list)
 			result = result..showIndent(2)..showTypeCF(v).." tmp = {0};\n"
 			result = result..showIndent(2).."read"..v.."(&tmp,idx);\n"
 			result = result..showIndent(2).."show"..v.."(&tmp,str);\n"
+			result = result..showIndent(2).."free"..v.."(&tmp);\n"
 		elseif (not (Enumz[v] == nil)) then
 			result = result..showIndent(2)..showTypeCF(v).." tmp = readInt(idx);\n"
 			result = result..showIndent(2).."show"..v.."(tmp,str);\n"
@@ -1482,6 +1482,7 @@ function showWfieldC(list,map)
 		result = result..showIndent(2).."struct "..v.." tmp = {0};\n"
 		result = result..showIndent(2).."read"..v.."(&tmp,ifd);\n"
 		result = result..showIndent(2).."fwrite"..v.."(&tmp,fld,sub,ofd);\n"
+		result = result..showIndent(2).."free"..v.."(&tmp);\n"
 		result = result..showIndent(2).."break;}\n"
 	end end
 	result = result..showIndent(1).."default: ERROR();}\n"

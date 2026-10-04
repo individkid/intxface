@@ -53,7 +53,11 @@ int irrsiz = 0;
 
 void datxNon()
 {
-	// TODO free memory created by datxSingle
+	freeIdent(datxIdx0); freeIdent(datxIdx1); freeIdent(datxIdx2); freeIdent(datxIdx3);
+	if (!datxDat0 || !datxDat1 || !datxDat2 || !datxDat3) ERROR();
+	free(*datxDat0); free(*datxDat1); free(*datxDat2); free(*datxDat3);
+	free(datxDat0); free(datxDat1); free(datxDat2); free(datxDat3);
+	datxDat0 = datxDat1 = datxDat2 = datxDat3 = 0;
 }
 void datxSingle()
 {
@@ -850,7 +854,7 @@ int datxEval(void **dat, struct Express *exp, int typ)
 		if (typ == -1) typ = typ1; if (typ != typ1) ERROR();
 		if (typ2 != TYPEInt) ERROR();
 		datxExtract(dat,dat0,num,*datxIntz(0,dat2),typ0,typ1);
-		free(dat0);} break;
+		free(dat0); free(dat2);} break;
 	case (TimOp): {
 		struct timespec ts;
 		if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
@@ -924,7 +928,6 @@ void datxFnptr(retfp ret, setfp set, setfp wos, setfp woc, rawfp raw, getfp get,
 	getptr = get;
 	putptr = put;
 	fldptr = fld;
-	datxSingle();
 	struct timespec  ts;
 	if (clock_gettime(CLOCK_MONOTONIC,&ts) == -1) ERROR();
 	fntime = (float)ts.tv_sec+(float)ts.tv_nsec/(float)NANOSECONDS;

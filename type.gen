@@ -2062,10 +2062,11 @@ Bootstrap = {
 		"mch[%(return jdx())]:Nest(nia:2)"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == Or EC ?RegisterPlan #%(return castPlan(\"Regress\")) Cmp EC ?RegisterPlan #%(return castPlan(\"Release\")) Cmp Bit , #1 ; #0 == #1 , #2 Op)))"..
 		  "mch[%(return jdx())]:Nest(nia:-1)"..
-		 "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#0 ?UniformWid)))"..
-		 "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#1 ?UniformHei)))"..
+		 -- TODO centerPull from @draw deadlocks if the Drawz is in the replace queue
+		 -- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#0 ?UniformWid)))"..
+		 -- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#1 ?UniformHei)))"..
 		 "mch[%(return jdx())]:Nest(nia:-1)"..
-		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(Non Put StrProjMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op)))"..
+		-- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(Non Put StrProjMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 11

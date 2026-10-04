@@ -755,8 +755,10 @@ struct BaseState {
         if (lnk) {lnk->ptr = this; lnk->loc = loc;}
         ref.lst.ptr = ptr; ref.lst.loc = lst;
         ref.nxt.ptr = 0; ref.nxt.loc = Relocs;
-        {BASE(char *st0 = 0; char *st1 = 0; showReloc(lst,&st0); showReloc(loc,&st1);
-        log << (ptr?ptr->debug:"nil") << " " << st0 << " -> " << debug << " " << st1 << '\n';)}
+        {BASE(char *st0 = 0; char *st1 = 0;
+        showReloc(lst,&st0); showReloc(loc,&st1);
+        log << (ptr?ptr->debug:"nil") << " " << st0 << " -> " << debug << " " << st1 << '\n';
+        free(st0); free(st1);)}
         return &ref.nxt;
     }
     Loc &get(Reloc loc) {
@@ -2361,7 +2363,13 @@ struct DrawState : public BaseState {
     static void drawFrame(VkCommandBuffer commandBuffer, VkQueue graphics, VkSemaphore acquire, VkSemaphore release, VkFence fence, VkSemaphore before, VkSemaphore after);
 };
 
+struct AfterState {
+    ~AfterState() {
+        planeDone();
+    }
+};
 struct MainState {
+    AfterState afterState;
     EnumState enumState[Resrcs+1];
     ConstState constState[2];
     WindowState windowState;
@@ -2647,7 +2655,6 @@ int main(int argc, const char **argv) {
     while (!glfwWindowShouldClose(main.windowState.window) && planeLoop()) {
     if (main.changeState.read(RegisterPoll) == 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(main.changeState.read(RegisterPoll)*0.001);}
-    planeDone();
     int ret = main.changeState.read(RegisterExit);
     // TODO this incompatible with vulkan // exit(ret > 0 ? ret-1 : ret); // WHY is this needed to wakeup waitpid
     return (ret > 0 ? ret-1 : ret);
