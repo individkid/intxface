@@ -42,9 +42,9 @@ void *angleq = 0; // queue of mouse presses
 void *pressSem = 0; // protect press queues
 void **wakeSem[Threads] = {0}; // for event driven threads
 int sizeSem[Threads] = {0}; // number of thread instances
-int sizeMch = 0; // same as sizeSem[MachThd] after safeMach
-int *machine = 0; // Machinez for free running MachThd
-int **reboot = 0; // initializations done in a MachThd
+int sizeMch = 0; // same as sizeSem[EventThd] after safeMach
+int *machine = 0; // Machinez for free running EventThd
+int **reboot = 0; // initializations done in a EventThd
 struct Extend ***recent = 0; // resources for initialization
 int *resize = 0; // number of initializations
 void *safeSem = 0; // protect reboot recent resize and wakeSem
@@ -154,7 +154,7 @@ int safeGunc(void *arg)
 void safeMach(int idx, int indx, int *boot, struct Extend **cent, int siz)
 {
     int mch = idx+1;
-    safeInit(MachThd,idx+1,0);
+    safeInit(EventThd,idx+1,0);
     waitSafe(safeSem);
     if (mch > sizeMch) {
     int *temq = malloc(sizeof(int)*mch);
@@ -940,7 +940,7 @@ void machineExec(int idx, struct Extend *ext)
     case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break;
     case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
     case (Machinez): {struct Extend *cent[1]; int boot[1]; cent[0] = ext; boot[0] = -1;
-    safeMach(idx,0,boot,cent,1); planeFork(MachThd,idx,planeMachine);} break;
+    safeMach(idx,0,boot,cent,1); planeFork(EventThd,idx,planeMachine);} break;
     case (Rebootz): {struct Extend *cent[ptr->siz]; int boot[ptr->siz]; void *repush = 0; repush = allocCenterq();
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
@@ -950,7 +950,7 @@ void machineExec(int idx, struct Extend *ext)
     if (postSafe(pipeSem) != 1) ERROR();
     if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
     // machineExec called from RegisterMain so wait for planeWake of thread 0; idx is thread to fork
-    if (nxt == 0 && waitSafe(safeSafe(MachThd,0)) < 0) break;
+    if (nxt == 0 && waitSafe(safeSafe(EventThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
     nxt->asr = PipeAsr; pushCenterq(nxt,repush); continue;}
@@ -967,7 +967,7 @@ void machineExec(int idx, struct Extend *ext)
     for (int i = 0; i < size; i++) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
     freeCenterq(repush);
     safeMach(idx,0,boot,cent,ptr->siz);
-    planeFork(MachThd,idx,planeMachine);}
+    planeFork(EventThd,idx,planeMachine);}
     break;}
 }
 // identity I
@@ -1196,7 +1196,7 @@ void planeMachine(enum Thread tag, int idx)
     case (Jump): next = machineEscape(mach,cptr->siz,machineIval(mptr->jie[0].val),next); break;
     case (Nest): next += 1; break;}
     if (next == save) {
-    if (waitSafe(safeSafe(MachThd,idx)) < 0) next = -1;
+    if (waitSafe(safeSafe(EventThd,idx)) < 0) next = -1;
     else next += 1;}}}}
     for (int i = 0; i < size; i++) if (boot[i] < 0) {
     deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
@@ -1410,8 +1410,8 @@ void planeClose(enum Thread tag, int idx)
     break; case (StdioThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(StdioThd,0));
     break; case (1): writeChr(1,condone);}
-    break; case (MachThd): switch (idx) {default: ERROR();
-    break; case (0): doneSafe(safeSafe(MachThd,0));}
+    break; case (EventThd): switch (idx) {default: ERROR();
+    break; case (0): doneSafe(safeSafe(EventThd,0));}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(TimeThd,0));}
     break; case (TestThd): switch (idx) {default: ERROR();
@@ -1424,19 +1424,19 @@ void planeJoin(enum Thread tag, int idx)
     switch (tag) {default: ERROR();
     break; case (PipeThd): if (idx) {closeIdent(extdone); for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i);}
     break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
-    break; case (MachThd): case (TimeThd): case (TestThd):}
+    break; case (EventThd): case (TimeThd): case (TestThd):}
 }
 void planeWake(enum Thread tag, int idx)
 {
     // FenceThd handled by vulkanBack
     switch (tag) {default: ERROR();
     break; case (PipeThd): case (StdioThd): if (idx < 0 || idx >= 2) ERROR();
-    break; case (MachThd): case (TimeThd): if (idx < 0 || idx >= 1) ERROR();
+    break; case (EventThd): case (TimeThd): if (idx < 0 || idx >= 1) ERROR();
     break; case (TestThd): if (idx < 0 || idx >= 3) ERROR();}
     if (idx == 1) switch (tag) {default: ERROR();
     break; case (PipeThd): writeChr(0,extdone); return;
     break; case (StdioThd): writeChr(0,condone); return;
-    break; case (MachThd): case (TimeThd): case (TestThd):}
+    break; case (EventThd): case (TimeThd): case (TestThd):}
     int prot = (0 != ((1<<tag) & planeHnfo(RegisterProt,0,planeRcfg)));
     (prot?qostSafe:postSafe)(safeSafe(tag,idx));
 }
@@ -1453,8 +1453,8 @@ void planeOpen(enum Thread tag, int idx)
     break; case (StdioThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(StdioThd,1,0); planeFork(StdioThd,0,planeString);
     break; case (1): condone = openPipe(); if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR(); planeFork(StdioThd,1,planeConsole);}
-    break; case (MachThd): switch (idx) {default: ERROR();
-    break; case (0): safeMach(0,planeGnfo(RegisterMain,0,planeRcfg),0,0,0); planeFork(MachThd,0,planeMachine);}
+    break; case (EventThd): switch (idx) {default: ERROR();
+    break; case (0): safeMach(0,planeGnfo(RegisterMain,0,planeRcfg),0,0,0); planeFork(EventThd,0,planeMachine);}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(TimeThd,1,0); planeFork(TimeThd,0,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
@@ -1466,7 +1466,7 @@ int planeThread(enum Thread tag)
 {
     switch (tag) {default:
     break; case (PipeThd): case (StdioThd): return 2;
-    break; case (MachThd): case (TimeThd): return 1;
+    break; case (EventThd): case (TimeThd): return 1;
     break; case (TestThd): return 3;}
     return 0;
 }
@@ -1569,6 +1569,8 @@ void registerLog(int sav, int act)
 }
 void registerCall(const enum Configure *cfg, const int *sav, const int *val, const int *act, int siz)
 {
+    int argn = 0; int argv[3] = {-1,-1,-1};
+    int ufmn = 0; int prjn = 0; int mnpn = 0; int angn = 0; int mntn = 0;
     for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
     break; case (RegisterOpen): registerOpen(sav[i],val[i],act[i]);
     break; case (RegisterWake): registerWake(val[i],act[i]);
@@ -1576,33 +1578,32 @@ void registerCall(const enum Configure *cfg, const int *sav, const int *val, con
     break; case (RegisterTime): registerTime(val[i]);
     break; case (RegisterExit): callWake();
     break; case (RegisterVerb): clearSmart();
-    break; case (UniformAll): case (UniformOne): case (UniformIdx): case (UniformUse):
-    break; case (UniformTri): case (UniformNum): case (UniformVtx): case (UniformMat): case (UniformBas):
-    break; case (UniformMod): case (UniformWid): case (UniformHei):
-    break; case (ArgumentInp): case (ArgumentOut): case (ArgumentSrc):
+    break; case (RegisterMent): mntn = 1;
+    break; case (UniformAll): case (UniformOne): case (UniformIdx): case (UniformUse): ufmn = 1;
+    break; case (UniformTri): case (UniformNum): case (UniformVtx): ufmn = 1;
+    break; case (UniformMat): case (UniformBas): ufmn = 1;
+    break; case (UniformMod): case (UniformWid): case (UniformHei): ufmn = 1; prjn = 1;
+    break; case (ArgumentInp): if (argv[0] == -1) argn += 1; argv[0] = act[i];
+    break; case (ArgumentOut): if (argv[1] == -1) argn += 1; argv[1] = act[i];
+    break; case (ArgumentSrc): if (argv[2] == -1) argn += 1; argv[2] = act[i];
     break; case (PressKey): registerQue(PressKey,val[i],charq,PrssMsk);
     break; case (PressQueue): registerQues(PressKey,act[i],charq);
     break; case (ClickLeft): registerQue(ClickLeft,val[i],leftq,ClckMsk);
     break; case (ClickBase): registerQue(ClickBase,val[i],baseq,ClckMsk);
     break; case (ClickAngle): registerQue(ClickAngle,val[i],angleq,ClckMsk);
-    break; case (ClickQueue): {
+    break; case (ClickQueue):
     registerQues(ClickLeft,act[i],leftq);
     registerQues(ClickBase,act[i],baseq);
-    registerQues(ClickAngle,act[i],angleq);}
-    break; case (ManipLeft): case (ManipBase):
-    break; case (ManipAngle):
+    registerQues(ClickAngle,act[i],angleq);
+    break; case (ManipLeft): case (ManipBase): mnpn = 1;
+    break; case (ManipAngle): angn = 1;
     break; case (RegisterLog): registerLog(sav[i],act[i]);}
-    int idx[Configures]; // TODO instead use argument/uniform/manip/roll counts, arg[3] values, more efficient
-    for (int i = 0; i < Configures; i++) idx[i] = -1;
-    for (int i = 0; i < siz; i++) idx[cfg[i]] = i;
-    if (idx[ArgumentInp] >= 0 && idx[ArgumentOut] >= 0 && idx[ArgumentSrc] >= 0) {
-    int arg[3] = {act[idx[ArgumentInp]],act[idx[ArgumentOut]],act[idx[ArgumentSrc]]}; registerArgument(arg);}
-    if (idx[UniformWid] >= 0 || idx[UniformHei] >= 0) planeKnfo(RegisterWake,(1<<ProjMsk),planeWots);
-    if (idx[UniformAll] >= 0 || idx[UniformOne] >= 0 || idx[UniformIdx] >= 0 || idx[UniformUse] >= 0 ||
-    idx[UniformTri] >= 0 || idx[UniformNum] >= 0 || idx[UniformVtx] >= 0 || idx[UniformMat] >= 0 || idx[UniformBas] >= 0 ||
-    idx[UniformMod] >= 0 || idx[UniformWid] >= 0 || idx[UniformHei] >= 0) planeKnfo(RegisterWake,(1<<UnifMsk),planeWots);
-    if (idx[ManipLeft] >= 0 || idx[ManipBase] >= 0) planeKnfo(RegisterWake,(1<<MoveMsk),planeWots);
-    if (idx[ManipAngle] >= 0) planeKnfo(RegisterWake,(1<<RollMsk),planeWots);
+    if (argn == 3) registerArgument(argv);
+    if (mntn) planeKnfo(RegisterWake,(1<<MentMsk),planeWots);
+    if (ufmn) planeKnfo(RegisterWake,(1<<UnifMsk),planeWots);
+    if (prjn) planeKnfo(RegisterWake,(1<<ProjMsk),planeWots);
+    if (mnpn) planeKnfo(RegisterWake,(1<<MoveMsk),planeWots);
+    if (angn) planeKnfo(RegisterWake,(1<<RollMsk),planeWots);
 }
 
 // expression callbacks
@@ -1768,23 +1769,23 @@ void initBoot()
     break; case (Bringup): case (Builtin):
     planeJnfo(RegisterPoll,1,planeWcfg);
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|MachThd),planeWcfg);
+    planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|EventThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<PutsMsk)<<8)|StdioThd),planeWcfg);
-    planeJnfo(RegisterProt,((1<<MachThd)|0),planeWcfg);
+    planeJnfo(RegisterProt,((1<<EventThd)|0),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<EventThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     planeJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk))<<8)|MachThd),planeWcfg);
+    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk))<<8)|EventThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<PutsMsk)<<8)|StdioThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<RespMsk)<<8)|PipeThd),planeWcfg);
-    planeJnfo(RegisterProt,((1<<MachThd)|0),planeWcfg);
+    planeJnfo(RegisterProt,((1<<EventThd)|0),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
-    planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
+    planeJnfo(RegisterOpen,(1<<EventThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);}
     // callCmnd strings after so threads are started
