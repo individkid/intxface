@@ -43,7 +43,6 @@ void *pressSem = 0; // protect press queues
 void **wakeSem[Threads] = {0}; // for event driven threads
 int sizeSem[Threads] = {0}; // number of thread instances
 int sizeMch = 0; // same as sizeSem[EventThd] after safeMach
-int *machine = 0; // Machinez for free running EventThd
 int **reboot = 0; // initializations done in a EventThd
 struct Extend ***recent = 0; // resources for initialization
 int *resize = 0; // number of initializations
@@ -144,34 +143,33 @@ void *safeSafe(enum Thread thd, int idx)
 int safeFunc(void *arg)
 {
     int *idx = (int*)arg;
-    return (machine[*idx] < 0);
+    return (!resize[*idx]);
 }
 int safeGunc(void *arg)
 {
     int *idx = (int*)arg;
-    return (machine[*idx] >= 0);
+    return (resize[*idx]);
 }
-void safeMach(int idx, int indx, int *boot, struct Extend **cent, int siz)
+void safeMach(int idx, int *boot, struct Extend **cent, int siz)
 {
     int mch = idx+1;
     safeInit(EventThd,idx+1,0);
     waitSafe(safeSem);
     if (mch > sizeMch) {
-    int *temq = malloc(sizeof(int)*mch);
     int **temr = malloc(sizeof(int*)*mch);
     struct Extend ***tems = malloc(sizeof(struct Extend**)*mch);
     int *temt = malloc(sizeof(int)*mch);
     for (int i = 0; i < sizeMch; i++) {
-    temq[i] = machine[i]; temr[i] = reboot[i]; tems[i] = recent[i]; temt[i] = resize[i];}
+    temr[i] = reboot[i]; tems[i] = recent[i]; temt[i] = resize[i];}
     for (int i = sizeMch; i < mch; i++) {
-    temq[i] = -1; temr[i] = 0; tems[i] = 0; temt[i] = 0;}
-    free(machine); free(reboot); free(recent); free(resize);
-    machine = temq; reboot = temr; recent = tems; resize = temt; sizeMch = mch;}
+    temr[i] = 0; tems[i] = 0; temt[i] = 0;}
+    free(reboot); free(recent); free(resize);
+    reboot = temr; recent = tems; resize = temt; sizeMch = mch;}
     postSafe(safeSem);
-    if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR(); // wait for machine[idx] < 0
+    if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR();
     free(reboot[idx]); reboot[idx] = (int *)malloc(sizeof(int)*siz); for (int i = 0; i < siz; i++) reboot[idx][i] = boot[i];
     free(recent[idx]); recent[idx] = (struct Extend **)malloc(sizeof(struct Extend *)*siz); for (int i = 0; i < siz; i++) recent[idx][i] = cent[i];
-    resize[idx] = siz; machine[idx] = indx;
+    resize[idx] = siz;
     if (postSafe(safeSem) != 1) ERROR();
 }
 
@@ -354,6 +352,17 @@ int centerFunc(void *arg)
 {
     struct Extend **center = (struct Extend **)arg;
     return (*center != 0);
+}
+struct Extend *centerZero(int idx, const char *log)
+{
+    centerSize(idx);
+    if (funcSafe(copySem,centerFunc,center+idx) < 0) ERROR();
+    struct Extend *ret = center[idx];
+    center[idx] = 0;
+    if (postSafe(copySem) != 1) ERROR();
+    if (ret->asr != PlaceAsr) ERROR(); else ret->asr = PullAsr;
+    deleteSmart(ret->log); ret->log = selfSmart(log);
+    return ret;
 }
 struct Extend *centerPull(int idx, const char *log)
 {
@@ -940,7 +949,7 @@ void machineExec(int idx, struct Extend *ext)
     case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break;
     case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i]); break;
     case (Machinez): {struct Extend *cent[1]; int boot[1]; cent[0] = ext; boot[0] = -1;
-    safeMach(idx,0,boot,cent,1); planeFork(EventThd,idx,planeMachine);} break;
+    safeMach(idx,boot,cent,1); planeFork(EventThd,idx,planeMachine);} break;
     case (Rebootz): {struct Extend *cent[ptr->siz]; int boot[ptr->siz]; void *repush = 0; repush = allocCenterq();
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
@@ -966,7 +975,7 @@ void machineExec(int idx, struct Extend *ext)
     if (postSafe(pipeSem) != 1) ERROR();
     for (int i = 0; i < size; i++) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
     freeCenterq(repush);
-    safeMach(idx,0,boot,cent,ptr->siz);
+    safeMach(idx,boot,cent,ptr->siz);
     planeFork(EventThd,idx,planeMachine);}
     break;}
 }
@@ -1173,14 +1182,9 @@ void machineSwitch(struct Machine *mptr)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
-    int index = machine[idx];
     int *boot = reboot[idx]; reboot[idx] = 0;
     struct Extend **cent = recent[idx]; recent[idx] = 0;
-    int size = resize[idx]; resize[idx] = 0;
-    if (index < 0) ERROR(); if (size == 0) {size = 1;
-    free(boot); boot = malloc(sizeof(int));
-    free(cent); cent = malloc(sizeof(struct Extend *));
-    boot[0] = -1; cent[0] = centerPull(index,"main");}
+    int size = resize[idx]; if (!size) ERROR();
     for (int i = 0; i < size; i++) {
     if (boot[i] >= 0) {cent[i]->sub = boot[i]; centerPlace(cent[i]);}
     else {struct Center *cptr = cent[i]->ptr;
@@ -1202,7 +1206,7 @@ void planeMachine(enum Thread tag, int idx)
     deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
     free(boot); free(cent);
     waitSafe(safeSem);
-    machine[idx] = -1;
+    resize[idx] = 0;
     postSafe(safeSem);
 }
 void planeCenter(enum Thread tag, int idx)
@@ -1444,6 +1448,13 @@ void planeFork(enum Thread tag, int idx, mftype fnc)
 {
     callFork(tag,idx,fnc,planeClose,planeJoin,planeWake);
 }
+void planeMain()
+{
+    // TODO what would logging on the main Machinez mean
+    struct Extend *ext = centerZero(planeGnfo(RegisterMain,0,planeRcfg),0);
+    struct Extend *cent[1]; int boot[1]; cent[0] = ext; boot[0] = -1;
+    safeMach(0,boot,cent,1); planeFork(EventThd,0,planeMachine);
+}
 void planeOpen(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
@@ -1454,7 +1465,7 @@ void planeOpen(enum Thread tag, int idx)
     break; case (0): safeInit(StdioThd,1,0); planeFork(StdioThd,0,planeString);
     break; case (1): condone = openPipe(); if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR(); planeFork(StdioThd,1,planeConsole);}
     break; case (EventThd): switch (idx) {default: ERROR();
-    break; case (0): safeMach(0,planeGnfo(RegisterMain,0,planeRcfg),0,0,0); planeFork(EventThd,0,planeMachine);}
+    break; case (0): planeMain();}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(TimeThd,1,0); planeFork(TimeThd,0,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
@@ -1998,7 +2009,6 @@ int planeLoop()
 }
 void planeDone()
 {
-    free(machine);
     for (int i = 0; i < sizeMch; i++) free(reboot[i]); free(reboot);
     for (int i = 0; i < sizeMch; i++) free(recent[i]); free(recent);
     free(resize);
