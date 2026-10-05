@@ -958,7 +958,6 @@ void machineExec(int idx, struct Extend *ext)
     struct Extend *nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
     if (nxt != 0 && nxt->asr != PipeAsr) ERROR(); else if (nxt != 0) nxt->asr = PullAsr;
-    // machineExec called from RegisterMain so wait for planeWake of thread 0; idx is thread to fork
     if (nxt == 0 && waitSafe(safeSafe(EventThd,0)) < 0) break;
     if (nxt == 0) {i--; continue;}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
@@ -1169,8 +1168,7 @@ void machineSwitch(struct Machine *mptr)
         centerPlace(ptr);}}
     break; case (Exec): {struct Extend *exp;
         exp = centerPull(machineIval(mptr->top[0].sup),"exec");
-        machineExec(machineIval(mptr->tie[0].val),exp);
-        centerPlace(exp);}
+        machineExec(machineIval(mptr->tie[0].val),exp);}
     break; case (Demo): {struct Extend *arg; int aub;
         arg = centerPull(machineIval(mptr->nop[0].sup),"demo");
         aub = machineIval(mptr->nop[0].sub);
