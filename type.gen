@@ -400,8 +400,7 @@ Fixed = { -- how motion interpreted
 Thread = { -- separate threads
 	"PipeThd", -- read write other processes
 	"StdioThd", -- read write console text
-	"EventThd", -- event state machine
-	"QueueThd", -- (re)place state machine
+	"MachThd", -- event state machine
 	"FenceThd", -- gpu queue synchronization
 	"TimeThd", -- trigger periodic events
 	"TestThd", -- behave like a user
