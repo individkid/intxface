@@ -264,6 +264,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ArgumentSrc",
 	"RegisterLog", -- transaction branching
 	"RegisterMain", -- main machine center
+	"RegisterSide", -- side machine center
 	"RegisterOpen", -- thread mask
 	"RegisterShow", -- commandline mask
 	"RegisterPlan", -- testing plan
@@ -1904,8 +1905,12 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(instr = #%(return count))Instrz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(menu = #%(return count))Menuz(siz:1idx:0slf:0men[0]:Menu(msk:Masksact:Indicatejec:Subjectdev:Coordcoo:0ang:0met:0ker:%(return castMemory(\"Kernelz\"))inj:1obj:3suj:0pro:2drw:%(return castMemory(\"Drawz\"))dsp:0pie:1nor:2sel:3src:%(return castMemory(\"Memorys\"))dst:%(return castMemory(\"Memorys\")+1)))"},
 	{"Int","%(return idx())","Str","!(metric = #%(return count))Metricz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(machine = #%(return count) bootstr = #0)"..
-		"Machinez(siz:^(return dount+1)idx:0slf:0"..
+	{"Int","%(return idx())","Str","!(machine = #%(return count))Machinez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(express = #%(return count))Expressz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(reboot = #%(return count))Rebootz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(main = #%(return count) memorys = @main pass = #0 fail = #0 bootstr = #0)Machinez(siz:^(return dount+1)idx:0slf:0"..
 		"mch[%(return dount)]:Void(fpo[0]:Evalexp(fnc[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 ; done = #0 Op)))"..
 		"mch[%(return jdx())]:Nest(nia:1)"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non mask = ?RegisterWake ; Woc RegisterWake @mask Op ; tmp = #0 Op)))"..
@@ -2122,11 +2127,6 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 	")"},
-	{"Int","%(return idx())","Str","!(express = #%(return count))Expressz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(reboot = #%(return count))Rebootz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(main = #%(return count) memorys = @main pass = #0 fail = #0)Machinez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(side = #%(return count) pass = #0 fail = #0)Machinez(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(append = #%(return count) after = #%(return count + 1) pass = #0 fail = #0)"..
 		"Void(fpo[0]:Evalexp(fnc[0]:NonOp(num:1non[0]:SetOp(cgs:RegisterPlanset[0]:CndOp(siz:5"..

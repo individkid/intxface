@@ -1449,12 +1449,12 @@ void planeFork(enum Thread tag, int idx, mftype fnc)
 {
     callFork(tag,idx,fnc,planeClose,planeJoin,planeWake);
 }
-void planeMain()
+void planeMain(int sub, int idx)
 {
     // TODO what would logging on the main Machinez mean
-    struct Extend *ext = centerZero(planeGnfo(RegisterMain,0,planeRcfg),0);
+    struct Extend *ext = centerZero(sub,0);
     struct Extend *cent[1]; int boot[1]; cent[0] = ext; boot[0] = -1;
-    safeMach(0,boot,cent,1); planeFork(MachThd,0,planeMachine);
+    safeMach(idx,boot,cent,1); planeFork(MachThd,idx,planeMachine);
 }
 void planeOpen(enum Thread tag, int idx)
 {
@@ -1466,7 +1466,8 @@ void planeOpen(enum Thread tag, int idx)
     break; case (0): safeInit(StdioThd,1,0); planeFork(StdioThd,0,planeString);
     break; case (1): condone = openPipe(); if ((console = rdwrInit(STDIN_FILENO,STDOUT_FILENO)) < 0) ERROR(); planeFork(StdioThd,1,planeConsole);}
     break; case (MachThd): switch (idx) {default: ERROR();
-    break; case (0): planeMain();}
+    break; case (0): planeMain(planeGnfo(RegisterMain,0,planeRcfg),0);
+    break; case (1): planeMain(planeGnfo(RegisterSide,0,planeRcfg),1);}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(TimeThd,1,0); planeFork(TimeThd,0,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
@@ -1477,8 +1478,8 @@ void planeOpen(enum Thread tag, int idx)
 int planeThread(enum Thread tag)
 {
     switch (tag) {default:
-    break; case (PipeThd): case (StdioThd): return 2;
-    break; case (MachThd): case (TimeThd): return 1;
+    break; case (TimeThd): return 1;
+    break; case (PipeThd): case (StdioThd): case (MachThd): return 2;
     break; case (TestThd): return 3;}
     return 0;
 }
@@ -1792,7 +1793,8 @@ void initBoot()
     switch (planeInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): case (Builtin):
     planeJnfo(RegisterPoll,1,planeWcfg);
-    planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
+    planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
+    planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
     planeJnfo(RegisterAble,(((1<<DoneMsk)<<8)|(0<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,(((1<<PutsMsk)<<8)|(0<<4)|StdioThd),planeWcfg);
     planeJnfo(RegisterProt,((1<<MachThd)|0),planeWcfg);
@@ -1803,7 +1805,8 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
     break; case (Regress): case (Release):
-    planeJnfo(RegisterMain,planeSugval("@machine"),planeWcfg);
+    planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
+    planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<DoneMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk))<<8)|(0<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<RespMsk)|0)<<8)|(0<<4)|PipeThd),planeWcfg);
