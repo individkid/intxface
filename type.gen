@@ -2126,7 +2126,9 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(reboot = #%(return count))Rebootz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(memorys = #%(return count) pass = #0 fail = #0)"..
+	{"Int","%(return idx())","Str","!(main = #%(return count) memorys = @main pass = #0 fail = #0)Machinez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(side = #%(return count) pass = #0 fail = #0)Machinez(siz:0idx:0slf:0)"},
+	{"Int","%(return idx())","Str","!(append = #%(return count) after = #%(return count + 1) pass = #0 fail = #0)"..
 		"Void(fpo[0]:Evalexp(fnc[0]:NonOp(num:1non[0]:SetOp(cgs:RegisterPlanset[0]:CndOp(siz:5"..
 		-- vulkanCpp: refactor tutorial: Bringup: no commandline args: RegisterShow == 0
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)

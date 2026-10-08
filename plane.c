@@ -1305,6 +1305,7 @@ void planeTime(enum Thread tag, int idx)
     if (postSafe(timeSem) != 1) ERROR();
     planeJnfo(RegisterWake,(1<<TimeMsk),planeWots);}}
 }
+int planeSugval(const char *str);
 void planeTest(enum Thread tag, int idx)
 {
     switch (idx) {default: ERROR();
@@ -1313,7 +1314,7 @@ void planeTest(enum Thread tag, int idx)
     int debug = 0; int count = 0; float time = 0.0; int tested = 0; int alt = 0;
     int mode = (planeInfo(RegisterPlan,0,planeRcfg)==Bringup);
 
-    struct Extend *blk = centerPull(Memorys+1,"Test");
+    struct Extend *blk = centerPull(planeSugval("@after"),"Test");
     centerPlace(blk);
 
     while (timeSafe(safeSafe(TestThd,idx),0.001) >= 0) {
@@ -1361,7 +1362,7 @@ void planeTest(enum Thread tag, int idx)
     int hiv[] = {width,height,0,12}; // width,height,idx,siz
     int fiv[] = {width,height}; // width,height
 
-    struct Extend *blk = centerPull(Memorys+1,"Test");
+    struct Extend *blk = centerPull(planeSugval("@after"),"Test");
     centerPlace(blk);
 
     while (timeSafe(safeSafe(TestThd,idx),0.001) >= 0) {
@@ -1984,7 +1985,7 @@ void initTest()
     if (debug) callCopy(fil,0,"relate"); else callCont(fil,0,fil->log);
     while (!centerCheck(Drawz)) callWait();}
 
-    struct Extend *start = 0; allocExtend(&start,1); start->sub = Memorys+1;
+    struct Extend *start = 0; allocExtend(&start,1); start->sub = planeSugval("@after");
     centerPlace(start);}
 
     break; case(Regress): case(Release): break;}
