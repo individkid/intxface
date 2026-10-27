@@ -34,18 +34,22 @@ function exprSugar(expr)
 end
 index = 0
 list = {}
-after = castMemory("Memorys")+2 -- TODO get @after from commandline
-freemem = after+1
+after = castMemory("Memorys")+4 -- TODO get @scratch2 from commandline
+freesub = "-1"
+freemem = "Reboot(sub:"..freesub.."asr:Assert(PlaceAsr))"
+pullmem = "Reboot(sub:0asr:Assert(PullAsr))"
 function atomSugar(list,idx,str)
 	if #list > 0 then
 	-- io.stderr:write(str..":"..index.."\n")
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
+	-- TODO add Reboot:asr Assert, where PlaceAsr indicates place at sub, PullAsr indicates execute, and other Asserts indicate push to queue
+	-- TODO interpret negative Regoot:sub as negative Center:sub as thread local
 	index = index + 1
 	for i,v in ipairs(list) do
 	if v["siz"] == 0 then
 	cent = cent.."sub["..(i-1).."]:"..freemem
 	elseif v["mem"] == "Transferz" then
-	cent = cent.."sub["..(i-1).."]:-1"
+	cent = cent.."sub["..(i-1).."]:"..pullmem
 	elseif v["mem"] == "Drawz" then
 	cent = cent.."sub["..(i-1).."]:"..freemem
 	elseif v["mem"] == "Getcfgz" then
@@ -59,10 +63,10 @@ function atomSugar(list,idx,str)
 	for i in pairs(list) do list[i] = nil end end
 end
 function pipeTest()
-	list[#list+1] = centSugar("Center(mem:Getcfgzsiz:0idx:0slf:0)") -- this prevents Pull blocking
+	list[#list+1] = centSugar("Center(mem:Getcfgzsiz:0idx:0slf:0)") -- for starting planeTest
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["typ"].."OpOp)))")
 	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))")
-	list[#list+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(@getcfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(@getcfg))psh[1]:Supexpr(sup[0]:$(@getcfg)))")
 	atomSugar(list,tests[found]["idx"],"Pipe")
 	center = readCenter(tests[found]["idx"])
 	print(tests[found]["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
@@ -70,7 +74,7 @@ end
 function doneTest()
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp)))")
 	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))")
-	list[#list+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(@getcfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(@getcfg))psh[1]:Supexpr(sup[0]:$(@getcfg)))")
 	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))") -- wait for replace
 	list[#list+1] = exprSugar("$(RegisterExit := #1)")
 	atomSugar(list,tests[found]["idx"],"Done")
@@ -79,7 +83,7 @@ end
 function flushTest()
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp)))")
 	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))")
-	list[#list+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(@getcfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(@getcfg))psh[1]:Supexpr(sup[0]:$(@getcfg)))")
 	atomSugar(list,tests[found]["idx"],"Done")
 	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
 	readConfig(list,config,{"ScratchDescrs"})
@@ -89,12 +93,12 @@ function flushTest()
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function readConfig(list,res,cfg)
-	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freemem.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(ImmStrGetcfgzOpOp)fld[2]:$(#0)fid:Str(mem))))") 
-	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freemem.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz))))") 
+	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freesub.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(ImmStrGetcfgzOpOp)fld[2]:$(#0)fid:Str(mem))))") 
+	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freesub.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz))))") 
 	for i,v in ipairs(cfg) do
-	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freemem.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg))))")
+	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freesub.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg))))")
 	end
-	list[#list+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..freemem..")))")
+	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(#"..freesub.."))psh[1]:Supexpr(sup[0]:$(#"..freesub..")))")
 	str = "Read"
 	for i,v in ipairs(cfg) do str = str..":"..v end
 	atomSugar(list,tests[found]["idx"],str)
@@ -123,8 +127,8 @@ function listResrc(lst,res,arg)
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Sage to set rsp to RptRsp
-	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..freemem.."))bie[0]:Intexpr(val[0]:$(#0)))")
-	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..freemem..")))")
+	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..freesub.."))bop[1]:Supexpr(sup[0]:$(#"..freesub.."))bie[0]:Intexpr(val[0]:$(#0)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(#"..freesub.."))psh[1]:Supexpr(sup[0]:$(#"..freesub..")))")
 	atomSugar(lst,tests[found]["idx"],"Resrc")
 	readCenter(tests[found]["idx"])
 end
@@ -134,8 +138,8 @@ function listMemory(lst,mem,fld,arg)
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Sage to set rsp to RptRsp
-	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bie[0]:Intexpr(val[0]:$(#0)))")
-	lst[#lst+1] = machSugar("Machine(xfr:Qopypop[0]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
+	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bop[1]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bie[0]:Intexpr(val[0]:$(#0)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))psh[1]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
 	atomSugar(lst,tests[found]["idx"],"Memory")
 	readCenter(tests[found]["idx"])
 end

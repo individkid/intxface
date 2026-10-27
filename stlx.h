@@ -66,8 +66,9 @@ struct SafeState {
     int qost() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         if (count >= 1) {
+        int ret = count;
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
-        return count;}
+        return ret;}
         if (count >= 0) count += 1;
         int ret = count;
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
@@ -339,7 +340,6 @@ template <class Conf, int Size> struct ChangeState {
         nest.wait(); int ret = (pthread_equal(self,pthread_self())?depth:0); nest.post();
         return ret;
     }
-    // TODO change to take array of cfg and val, and return array of int
     static int readFn(int *ref, int val) {return *ref;}
     int read(Conf cfg) {Conf cfgs[1] = {cfg}; int vals[1] = {0}; info(cfgs,vals,1,readFn); return vals[0];}
     static int writeFn(int *ref, int val) {*ref = val; return 0;}

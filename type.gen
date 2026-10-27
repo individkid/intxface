@@ -71,11 +71,12 @@ Retval = {
 Assert = { -- only one place at a time
 	"PullAsr", -- just after pull
 	"PlaceAsr", -- in center array
+	"LocalAsr", -- TODO in unshared array
 	"PipeAsr", -- in internal queue
 	"RespAsr", -- in response queue
 	"DoneAsr", -- in replace queue
+	"MachAsr", -- in permach queue
 	"LoopAsr", -- pull and repush
-	"BootAsr", -- in reboot thread
 }
 Resrc = { -- variation of BaseState
 	"SwapRes",
@@ -272,7 +273,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterExit", -- sortof exit status
 	"RegisterWake", -- thread interrupts
 	"RegisterAble", -- interrupts enable
-	"RegisterMent", -- placement mask
 	"RegisterProt", -- thread robust
 	"RegisterTime", -- wake time delay
 	"RegisterStrq", -- num strings in queue
@@ -329,15 +329,20 @@ Transfer = { -- what user machine does
 	"Proj", -- evaluate with projection matrix
 	"Form", -- evaluate with manipulate matrix
 	"Void", -- evaluate without any given
+	"This", -- evaluate with machine index
 	"Move", -- read modify write multiple
 	"Tage", -- assign named fields to names
 	"Sage", -- assign names to named fields
 	"Bopy", -- send center to gpu
 	"Copy", -- copy one center to another
 	"Dopy", -- merge one center to another
+	-- TODO add Assert to src and dst for Copy instead of following queue copies
+	"Oopy", -- pop from permach queue
 	"Popy", -- pop from internal queue
 	"Qopy", -- push to response queue
 	"Ropy", -- pop from replace queue
+	"Sopy", -- push to internal queue
+	"Topy", -- push to permach queue
 	"Exec", -- execute in separate thread
 	"Demo", -- process menu as demo
 	"Jump", -- skip out of nesting
@@ -405,6 +410,7 @@ Thread = { -- separate threads
 	"FenceThd", -- gpu queue synchronization
 	"TimeThd", -- trigger periodic events
 	"TestThd", -- behave like a user
+	"MainThd", -- to initialize center
 }
 Mask = { -- signals between threads
 	"FnceMsk", -- fence thread wakeup
@@ -414,7 +420,7 @@ Mask = { -- signals between threads
 	"TimeMsk", -- time thread wakeup
 	"DoneMsk", -- write to pipe done
 	"RespMsk", -- write to response
-	"MentMsk", -- placement happened
+	"MachMsk", -- write to permach
 	"PollMsk", -- every glfw wakeup
 	"PrssMsk", -- glfw key pressed
 	"ProjMsk", -- glfw window resized
@@ -424,6 +430,21 @@ Mask = { -- signals between threads
 	"RollMsk",
 	"UnifMsk",
 	"TestMsk",
+}
+Protocol = { -- only LoopPro on threads other than MachThd;
+	-- no LoopPro on MachThd; only PullPro on TestThd and MainThd
+	"LoopPro", -- flush upon wake
+	-- no WaitPro allows Popy to return zero
+	"WaitPro", -- blocking queue
+	-- zero is noop or error without Copy/Call/Demo/PullPro
+	"CopyPro", -- blocking copy
+	"CallPro", -- blocking bopy
+	-- Tage can return zeros without TagePro  
+	"TagePro", -- blocking stage
+	"DemoPro", -- blocking demo
+	"PullPro", -- blocking others
+	"NoopPro", -- ignore zeroes
+	"ZeroPro", -- prevent default
 }
 Verbose = { -- logging enable mask
 	"PipeVrb", -- external pipe thread
@@ -1911,7 +1932,7 @@ Bootstrap = {
 	{"Int","%(return idx())","Str","!(transfer = #%(return count))Transferz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(kernel = #%(return count))Kernelz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(main = #%(return count) memorys = @main pass = #0 fail = #0 bootstr = #0)Machinez(siz:^(return dount+1)idx:0slf:0"..
-		"mch[%(return dount)]:Void(fpo[0]:Evalexp(fnc[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 ; done = #0 Op)))"..
+		"mch[%(dount = 0 return dount)]:Void(fpo[0]:Evalexp(fnc[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 ; done = #0 Op)))"..
 		"mch[%(return jdx())]:Nest(nia:1)"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non mask = ?RegisterWake ; Woc RegisterWake @mask Op ; tmp = #0 Op)))"..
 		"mch[%(return jdx())]:Nest(nia:%(return castMask(\"Masks\")+1))"..
@@ -1924,8 +1945,8 @@ Bootstrap = {
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Nest(nia:7)"..
-		 "mch[%(return jdx())]:Popy(pop[0]:Supexpr(sup[0]:$(@memorys)))"..
-		 "mch[%(return jdx())]:Tage(ssz:6sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(ptr)ssa[1]:Str(mem)ssa[2]:Str(sav)ssa[3]:Str(slf)ssa[4]:Str(idx)ssa[5]:Str(log))"..
+		 "mch[%(return jdx())]:Popy(pop[0]:Supexpr(sup[0]:$(#-1)))"..
+		 "mch[%(return jdx())]:Tage(ssz:6sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(ptr)ssa[1]:Str(mem)ssa[2]:Str(sav)ssa[3]:Str(slf)ssa[4]:Str(idx)ssa[5]:Str(log))"..
 		 "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Cnd #0 == EO @ptr #0 Cmp , RegisterLog := @log ; #0 == #1 , #0 Op)))"..
 		 "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd"..
 		  "#0 == EC @ptr #0 Cmp , #7"..
@@ -1938,43 +1959,43 @@ Bootstrap = {
 		 "mch[%(return kdx(\"normal\"))]:Nest(nia:-1)"..
 		  -- Bopy normal memory to gpu
 		  "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op ; rsp = ImmStrRptRspOpOp Op)))"..
-		  "mch[%(return jdx())]:Sage(ssz:2sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub)ssa[1]:Str(rsp))"..
+		  "mch[%(return jdx())]:Sage(ssz:2sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub)ssa[1]:Str(rsp))"..
 		  -- csr cie
-		  "mch[%(return jdx())]:Bopy(bop[0]:Supexpr(sup[0]:$(@sub))bie[0]:Intexpr(val[0]:$(#0)))"..
+		  "mch[%(return jdx())]:Bopy(bop[0]:Supexpr(sup[0]:$(@sub))bop[1]:Supexpr(sup[0]:$(@sub))bie[0]:Intexpr(val[0]:$(#0)))"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 		 "mch[%(return kdx(\"matrix\"))]:Nest(nia:-1)"..
 		  -- Demo Matrixz to process Self or Glob matrix
 		  "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp)))"..
 		  "mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
 		  "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op Op)))"..
-		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub))"..
+		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 		 "mch[%(return kdx(\"draw\"))]:Nest(nia:-1)"..
 		  -- update Drawz according to Trianglez @siz
 		  "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op Op)))"..
-		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Bopy(bop[0]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))bie[0]:Intexpr(val[0]:$(#0)))"..
+		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub))"..
+		  "mch[%(return jdx())]:Bopy(bop[0]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))bop[1]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))bie[0]:Intexpr(val[0]:$(#0)))"..
 		  "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non@siz*#3Op)))"..
 		  "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op)))"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 		 "mch[%(return kdx(\"index\"))]:Nest(nia:-1)"..
 		  -- update Drawz according to Indexz @siz
 		  "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op Op)))"..
-		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Bopy(bop[0]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))bie[0]:Intexpr(val[0]:$(#0)))"..
+		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub))"..
+		  "mch[%(return jdx())]:Bopy(bop[0]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))bop[1]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))bie[0]:Intexpr(val[0]:$(#0)))"..
 		  "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(@_ .= drw#0Non@_.drw#0Op .= arg#3 Non@sizOp)))"..
 		  "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@draw))epo[0]:Evalexp(fnc[0]:$(Non Put StrSlctMsk Op , Imm TimOp Op , Str Op , Imm @_ Op , EndOp Op ; @_ Op)))"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 		 "mch[%(return kdx(\"non-gpu\"))]:Nest(nia:-1)"..
 		  -- Sage only for non-gpu memory
 		  "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op Op)))"..
-		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub))"..
+		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub))"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
-		 "mch[%(return kdx(\"atomic\"))]:Nest(nia:-1)"..
+		 "mch[%(return kdx(\"atomic\"))]:Nest(nia:-1)".. -- 43
 		  -- Exec immediate and atomic memory
 		  "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op Op)))"..
-		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub))"..
-		  "mch[%(return jdx())]:Exec(top[0]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))tie[0]:Intexpr(val[0]:$(#1)))"..
+		  "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub))"..
+		  "mch[%(return jdx())]:Exec(top[0]:Supexpr(sup[0]:$(Cst @mem Typ#0Op Op))tie[0]:Intexpr(val[0]:$(#2)))"..
 		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 		 "mch[%(return jdx())]:Nest(nia:-1)"..
 		  -- do nothing if internal queue empty
@@ -1989,7 +2010,7 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrCoutMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return kdx(\"time\"))]:Nest(nia:-1)".. -- 5
+		"mch[%(return kdx(\"time\"))]:Nest(nia:-1)".. -- 5 -- 56
 		-- TODO switch on RegisterPlan
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non RegisterTime := #500 << #8 ; Put StrTimeMsk Op , Imm TimOp Op , EndOp Op Op)))"..
 		-- Jump if Center at Memorys is null, empty, or not Transferz
@@ -1998,14 +2019,15 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd @siz <= @bootstr , #1 ; #0 , #2 Op)))"..
 		"mch[%(return jdx())]:Nest(nia:-1)"..
 		-- Eval a Copy of Center at Transferz to get Center number @bootstr and Void to increment @bootstr
-		"mch[%(return jdx())]:Copy(cop[0]:Supexpr(sup[0]:$(@transfer))cop[1]:Supexpr(sup[0]:$(@memorys)))"..
-		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@memorys))epo[0]:Evalexp(fnc[0]:$(@_ .= exe#0 @_ . exe@bootstr)))"..
+		"mch[%(return jdx())]:Copy(cop[0]:Supexpr(sup[0]:$(@transfer))cop[1]:Supexpr(sup[0]:$(#-1)))"..
+		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(#-1))epo[0]:Evalexp(fnc[0]:$(@_ .= exe#0 @_ . exe@bootstr)))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(siz = #1)))"..
-		"mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(siz))"..
+		"mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(siz))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(bootstr = @bootstr + #1)))"..
-		-- Move to push Center to response queue
-		-- "mch[%(return jdx())]:Qopy(pop[0]:Supexpr(sup[0]:$(@memorys)))"..
-		"mch[%(return jdx())]:Move(msz:1mop[0]:Supexpr(sup[0]:$(@memorys))mpo[0]:Evalexp(fnc[0]:$(@_ .= asr#0 ImmStrPipeAsrOpOp)))"..
+		-- Move to spoof Center to internal queue
+		"mch[%(return jdx())]:Sopy(psh[0]:Supexpr(sup[0]:$(#-1))psh[1]:Supexpr(sup[0]:$(#-1)))"..
+		-- TODO Move not ready yet; negative center subscript aliased with queue indication
+		-- "mch[%(return jdx())]:Move(msz:1mop[0]:Supexpr(sup[0]:$(#-1))mpo[0]:Evalexp(fnc[0]:$(@_ .= asr#0 ImmStrPipeAsrOpOp)))"..
 		"mch[%(return jdx())]:Nest(nia:-1)"..
 		-- TODO do following for Regress and Release
 		-- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp)))"..
@@ -2014,34 +2036,6 @@ Bootstrap = {
 
 		"mch[%(return kdx(\"done\"))]:Nest(nia:-1)".. -- 6
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrDoneMskOp , EndOp Op)))"..
-		"mch[%(return jdx())]:Nest(nia:2)"..
-		  "mch[%(return jdx())]:Ropy(pop[0]:Supexpr(sup[0]:$(@memorys)))"..
-		  "mch[%(return jdx())]:Tage(ssz:4sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(ptr)ssa[1]:Str(ret)ssa[2]:Str(mem)ssa[3]:Str(sav))"..
-		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == Non @ptr == #0 Op , #2 ; #0 == #1 , #1 Op)))"..
-		  "mch[%(return jdx())]:Nest(nia:-1)"..
-		 "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@memorys))epo[0]:Evalexp(fnc[0]:$(Cnd "..
-		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"PassRet\")) Cmp : Non pass = @pass + #1 ; @_ Op "..
-		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"FailRet\")) Cmp : Non fail = @fail + #1 ; @_ Op "..
-		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"DoneRet\")) Cmp : Non done = @done + #1 ; @_ Op "..
-		  "#0 : @_ Op)))"..
-		 "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@memorys))epo[0]:Evalexp(fnc[0]:$(Cnd "..
-		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
-		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str old:Op , Imm @_ . old #0 Op , EndOp Op ; @_ Op "..
-		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
-		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str uns:Op , Imm @_ . uns #0 Op , EndOp Op ; @_ Op "..
-		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
-		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
-		  "#0 : @_ Op)))"..
-		 "mch[%(return jdx())]:Nest(nia:2)"..
-		   "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Getoldz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Getintz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Vectorz\")) Cmp Bit , #1 ; #0 == #1 , #2 Op)))"..
-		   "mch[%(return jdx())]:Nest(nia:-1)"..
-		  -- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp)))"..
-		  -- "mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
-		  "mch[%(return jdx())]:Nest(nia:-1)"..
-		 "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(sub = @sav)))"..		 
-		 "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(@memorys))ssa[0]:Str(sub))"..
-		 "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
-		 "mch[%(return jdx())]:Nest(nia:-1)"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 7
@@ -2049,7 +2043,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 8
-		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrMentMskOp , EndOp Op)))"..
+		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrMachMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 9
@@ -2118,7 +2112,6 @@ Bootstrap = {
 
 		"mch[%(return kdx(\"test\"))]:Nest(nia:-1)".. -- 17
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrTestMsk Op , Imm TimOp Op , EndOp Op)))"..
-		-- "mch[%(return jdx())]:Qopy(sup[0]:Supexpr(sup[0]:$(@configure)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 18
@@ -2127,8 +2120,42 @@ Bootstrap = {
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 	")"},
-	{"Int","%(return idx())","Str","!(side = #%(return count) pass = #0 fail = #0)Machinez(siz:0idx:0slf:0)"},
-	{"Int","%(return idx())","Str","!(append = #%(return count) after = #%(return count + 1) pass = #0 fail = #0)"..
+	{"Int","%(return idx())","Str","!(side = #%(return count) pass = #0 fail = #0)Machinez(siz:^(return dount+1)idx:0slf:0"..
+		"mch[%(dount = 0 return dount)]:Void(fpo[0]:Evalexp(fnc[0]:$(Non mask = #0 ; pass = #0 ; fail = #0 ; done = #0 Op)))"..
+		"mch[%(return jdx())]:Nest(nia:3)"..
+		  "mch[%(return jdx())]:Ropy(pop[0]:Supexpr(sup[0]:$(#-1)))"..
+		  "mch[%(return jdx())]:Tage(ssz:4sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(ptr)ssa[1]:Str(ret)ssa[2]:Str(mem)ssa[3]:Str(sav))"..
+		  "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == Non @ptr == #0 Op , #2 ; #0 == #1 , #1 Op)))"..
+		  "mch[%(return jdx())]:Nest(nia:-1)"..
+		 "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(#-1))epo[0]:Evalexp(fnc[0]:$(Cnd "..
+		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"PassRet\")) Cmp : Non pass = @pass + #1 ; @_ Op "..
+		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"FailRet\")) Cmp : Non fail = @fail + #1 ; @_ Op "..
+		  "EO Cst @ret Typ#0Op Op #%(return castRetval(\"DoneRet\")) Cmp : Non done = @done + #1 ; @_ Op "..
+		  "#0 : @_ Op)))"..
+		 "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(#-1))epo[0]:Evalexp(fnc[0]:$(Cnd "..
+		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Getoldz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str old:Op , Imm @_ . old #0 Op , EndOp Op ; @_ Op "..
+		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Getintz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str uns:Op , Imm @_ . uns #0 Op , EndOp Op ; @_ Op "..
+		  "EO Cst @_ . mem #0 Typ#0Op Op #%(return castMemory(\"Vectorz\")) Cmp | EO @_ . siz #0 #1 Cmp : "..
+		   "Non Put StrDoneMsk Op , Imm TimOp Op , Str pass:Op , Imm @pass Op , Str fail:Op , Imm @fail Op , Str done:Op , Imm @done Op , Str mem:Op , Imm @_ . mem #0 Op , Str vec:Op , Imm @_ . vec #0 Op , EndOp Op ; @_ Op "..
+		  "#0 : @_ Op)))"..
+		 "mch[%(return jdx())]:Nest(nia:2)"..
+		   "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd #0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Getoldz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Getintz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Vectorz\")) Cmp Bit , #1 ; #0 == #1 , #2 Op)))"..
+		   "mch[%(return jdx())]:Nest(nia:-1)"..
+		  -- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp)))"..
+		  -- "mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
+		  "mch[%(return jdx())]:Nest(nia:-1)"..
+		 "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(sub = @sav)))"..		 
+		 "mch[%(return jdx())]:Sage(ssz:1sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(sub))".. -- TODO use Topy instead; treat sub as thread number
+		 "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
+		 "mch[%(return jdx())]:Nest(nia:-1)"..
+		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrGoodby Op , Imm TimOp Op , EndOp Op)))"..
+		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#0)))"..
+		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrHello Op , Imm TimOp Op , EndOp Op)))"..
+		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
+	")"},
+	{"Int","%(return idx())","Str","!(scratch0 = #%(return count) scratch1 = #%(return count + 1) scratch2 = #%(return count + 2) pass = #0 fail = #0)"..
 		"Void(fpo[0]:Evalexp(fnc[0]:NonOp(num:1non[0]:SetOp(cgs:RegisterPlanset[0]:CndOp(siz:5"..
 		-- vulkanCpp: refactor tutorial: Bringup: no commandline args: RegisterShow == 0
 		"cnd[0]:CmpOp(cmp:EOCmpopc[0]:RetOp(RegisterShow)opc[1]:IntOp(0))".. -- (RegisterShow != 0 ? 1 : 0)
@@ -2304,12 +2331,15 @@ Machine = { -- info for user defined action
     {"ssz","Int",{["xfr"]={["Tage"]=true,["Sage"]=true}},{}},
     {"sop","Supexpr",{["xfr"]={["Tage"]=true,["Sage"]=true}},1},
     {"ssa","Str",{["xfr"]={["Tage"]=true,["Sage"]=true}},"ssz"},
-    {"bop","Supexpr",{["xfr"]={["Bopy"]=true}},1},
+    {"bop","Supexpr",{["xfr"]={["Bopy"]=true}},2},
     {"bie","Intexpr",{["xfr"]={["Bopy"]=true}},1},
     {"cop","Supexpr",{["xfr"]={["Copy"]=true}},2},
     {"dop","Subexpr",{["xfr"]={["Dopy"]=true}},2},
     {"die","Intexpr",{["xfr"]={["Dopy"]=true}},1},
-    {"pop","Supexpr",{["xfr"]={["Popy"]=true,["Qopy"]=true,["Ropy"]=true}},1},
+    {"pop","Supexpr",{["xfr"]={["Popy"]=true,["Ropy"]=true}},1},
+    {"psh","Supexpr",{["xfr"]={["Qopy"]=true,["Sopy"]=true}},2},
+    {"pep","Supexpr",{["xfr"]={["Oopy"]=true}},2},
+    {"per","Supexpr",{["xfr"]={["Topy"]=true}},3},
     {"top","Supexpr",{["xfr"]={["Exec"]=true}},1},
     {"tie","Intexpr",{["xfr"]={["Exec"]=true}},1},
     {"nop","Subexpr",{["xfr"]={["Demo"]=true}},1},
@@ -2453,6 +2483,10 @@ Inst = { -- setup for vulkan action TODO pack fields
 	{"key","Qual",{},{}}, -- used by DerIns DeeIns TagIns
 	{"inc","Incl",{},{}}, -- used by IncIns
 }
+Reboot = {
+	{"sub","Int",{},{}},
+	{"asr","Assert",{},{}},
+}
 Center = { -- setup for graphics
 	{"mem","Memory",{},""},
 	{"siz","Int",{},{}},
@@ -2479,7 +2513,7 @@ Center = { -- setup for graphics
 	{"met","Metric",{["mem"]={["Metricz"]=true}},"siz"},
 	{"mch","Machine",{["mem"]={["Machinez"]=true}},"siz"},
 	{"exp","Express",{["mem"]={["Expressz"]=true}},"siz"},
-	{"sub","Int",{["mem"]={["Rebootz"]=true}},"siz"},
+	{"sub","Reboot",{["mem"]={["Rebootz"]=true}},"siz"},
 	{"exe","Machine",{["mem"]={["Transferz"]=true}},"siz"},
 	{"ker","Kernel",{["mem"]={["Kernelz"]=true}},"siz"},
 }

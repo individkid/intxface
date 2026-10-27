@@ -2396,9 +2396,9 @@ struct MainState {
     ArrayState<ChainState,ChainRes,StackState::frames> chainState;
     ArrayState<DrawState,DrawRes,StackState::micros> drawState;
     ArrayState<BindState,BindRes,StackState::frames> bindState;
+    ChangeState<Configure,Configures> changeState;
     ThreadState threadState;
     CopyState copyState;
-    ChangeState<Configure,Configures> changeState;
     CallState callState;
     void livelockDebug() {
         for (int i = 0; i < StackState::micros; i++) {
