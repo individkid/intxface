@@ -184,6 +184,11 @@ void doneSafe(void *ptr)
     auto saf = (SafeState*)ptr;
     saf->done();
 }
+int testSafe(void *ptr)
+{
+    auto saf = (SafeState*)ptr;
+    return saf->test();
+}
 void freeSafe(void *ptr)
 {
     auto saf = (SafeState*)ptr;
@@ -194,7 +199,7 @@ int timeSafe(void *ptr, double dif)
     auto saf = (SafeState*)ptr;
     return saf->wait(dif);
 }
-int testSafe(void *ptr, double dif, SafeFunc fnc, void *arg)
+int bothSafe(void *ptr, double dif, SafeFunc fnc, void *arg)
 {
     auto saf = (SafeState*)ptr;
     return saf->wait(dif,fnc,arg);

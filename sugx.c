@@ -481,6 +481,13 @@ void sugarRecurse(void *lst, int lim, const char *str, int *idx)
 		skipSugar("Bit",str,idx);
 		sav = *idx;
 		continue;}
+	if (strncmp(str+*idx,"Clr",2)==0) {
+		if (lim >= 0 && sizeExpr(lst)-siz >= lim) break;
+		*idx += 2;
+		sugarBitwise(lst,BitOp,ClrBit,str,idx);
+		skipSugar("Bit",str,idx);
+		sav = *idx;
+		continue;}
 	if (strncmp(str+*idx,"|",1)==0) {
 		*idx += 1;
 		sugarBitfix(lst,BitOp,OrBit,str,idx);

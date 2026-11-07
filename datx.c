@@ -441,6 +441,7 @@ int datxBitwise(int lft, int rgt, enum Bitwise bit)
 	switch (bit) {
 	case (AndBit): return (lft&rgt);
 	case (OrBit): return (lft|rgt);
+	case (ClrBit): return (lft&~rgt);
 	case (XorBit): return (lft^rgt);
 	case (NandBit): return ~(lft&rgt);
 	case (NorBit): return ~(lft|rgt);
