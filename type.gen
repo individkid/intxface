@@ -1898,8 +1898,8 @@ MicroAlt = {
 Bootstrap = {
 	{"Int","%(count = 0; function idx() count = count + 1; return count end;"..
 		"dount = 0; function jdx() dount = dount + 1; return dount end;"..
-		"function kdx(str) dount = dount + 1; io.stdout:write(str..\"=\"..dount..\"\\n\"); return dount end;"..
-		-- "function kdx(str) dount = dount + 1; return dount end;"..
+		-- "function kdx(str) dount = dount + 1; io.stdout:write(str..\"=\"..dount..\"\\n\"); return dount end;"..
+		"function kdx(str) dount = dount + 1; return dount end;"..
 		"return count)","Str","!(index = #%(return count))Indexz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(bringup = #%(return count))Bringupz(siz:0idx:0slf:0)"},
 	{"Int","%(return idx())","Str","!(ident = #%(return count))Identz(siz:0idx:0slf:0)"},
@@ -1940,16 +1940,19 @@ Bootstrap = {
 		"mch[%(return jdx())]:Able(asa[0]:Str(able))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(mask = And ?RegisterWake @able Bit)))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(RegisterWane := @mask)))"..
-		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Fns @mask #0 Bit)))"..
+		-- jump plus 6 if @mask > SlctMsk
+		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(jump = Fns @mask #0 Bit)))"..
+		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(jump = Cnd #0 == MO @jump #%(return castMask(\"SlctMsk\")+1) Cmp , Add @jump #6 Op ; #0 == #1 , @jump Op)))"..
+		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(@jump)))"..
 
 		"mch[%(return jdx())]:Nest(nia:-1)".. -- 1 FnceMsk
 		-- "mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrFnceMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 2 SlctMsk
+		"mch[%(return kdx(\"slct\"))]:Nest(nia:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Move(pop[0]:Extexpr(sup[0]:$(#0)asr:Assert(PipeAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr)))".. -- internal to Local
 		"mch[%(return jdx())]:Tage(ssz:3sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(mem)ssa[1]:Str(siz)ssa[2]:Str(log))"..
-		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem #0 Op ; asr = ImmStrPlaceAsrOpOp Op)))"..
+		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op ; asr = ImmStrPlaceAsrOpOp Op)))"..
 		"mch[%(return jdx())]:Sage(gsz:2gop[0]:Supexpr(sup[0]:$(#-1))gsa[0]:Str(sub)gsa[1]:Str(asr))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(RegisterLog := @log)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd"..
@@ -1992,7 +1995,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Exec(top[0]:Supexpr(sup[0]:$(#-1))tie[0]:Intexpr(val[0]:$(#2)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
-		"mch[%(return jdx())]:Nest(nia:-1)".. -- 3 CnslMsk
+		"mch[%(return kdx(\"cnsl\"))]:Nest(nia:-1)".. -- 3 CnslMsk
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Put StrCnslMskOp , EndOp Op)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
@@ -2015,8 +2018,7 @@ Bootstrap = {
 		"mch[%(return jdx())]:Sage(gsz:1gop[0]:Supexpr(sup[0]:$(#-1))gsa[0]:Str(siz))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(bootstr = @bootstr + #1)))"..
 		-- Move to spoof Center to internal queue
-		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = #0 ; asr = ImmStrPipeAsrOpOp Op)))"..
-		"mch[%(return jdx())]:Sage(gsz:2gop[0]:Supexpr(sup[0]:$(#-1))gsa[0]:Str(sub)gsa[1]:Str(asr))".. -- Local to internal
+		"mch[%(return jdx())]:Move(pop[0]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(PipeAsr)))".. -- Local to internal
 		"mch[%(return jdx())]:Nest(nia:-1)"..
 		-- TODO do following for Regress and Release
 		-- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrTimeMskOpOp)))"..

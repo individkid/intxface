@@ -363,83 +363,24 @@ void centerSmart(struct Extend *ext, const char *log)
     printfSmart(ext->log,"%s %s %s %d/%d",log,st0,st1,ext->ptr->idx,ext->ptr->siz);} else {
     printfSmart(ext->log,"%s %s %d %d/%d",log,st0,ext->loc.sub,ext->ptr->idx,ext->ptr->siz);}
 }
-void centerQues(enum Thread tag, int idx)
-{
-    if (idx < 0 || idx >= 3) ERROR(); // TODO also make machque monotonically dynamic
-    if (waitSafe(copySem) != 0) ERROR();
-    if (machque[tag][idx] == 0) machque[tag][idx] = allocCenterq();
-    if (postSafe(copySem) != 1) ERROR();
-}
-void centerSize(struct Reboot sub, enum Thread tag, int idx)
+void centerSize(struct Reboot loc, enum Thread tag, int idx)
 {
     if (waitSafe(copySem) != 0) ERROR();
     if (tag < 0 || tag >= Threads) ERROR();
-    if (sub.asr == LocalAsr) {
+    if (loc.asr == LocalAsr) {
     if (idx < 0 || idx >= 3) ERROR(); // TODO make local infinite
     /*TODO allocate local[tag], locals[tag], threads[tag]*/}
-    if (sub.sub >= centers) {int size = sub.sub+1;
+    if (loc.sub >= centers) {int size = loc.sub+1;
     center = realloc(center,size*sizeof(struct Extend *));
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     if (postSafe(copySem) != 1) ERROR();
 }
-int centerFunc(void *arg)
+void centerQues(enum Thread tag, int idx)
 {
-    if (copyEot) return -1;
-    struct Extend **center = (struct Extend **)arg;
-    return (*center != 0);
-}
-int centerGunc(void *arg)
-{
-    if (pipeEot) return -1;
-    return (sizeCenterq(arg) > 0);
-}
-struct Extend *centerGet(struct Reboot sub, enum Thread tag, int idx)
-{
-    // TODO internalize copySem protection to here,
-    // TODO by adding possibley null function pointer parameter,
-    // TODO and by adding centerRmw for atomic get/set
-    // TODO then can internalize centerSize to here
-    if (sub.asr == LocalAsr) {
-    if (tag < 0 || tag >= Threads) ERROR();
-    if (idx < 0 || idx >= 3 || sub.sub < 0 || sub.sub >= 3) ERROR();
-    return local[tag][idx][sub.sub];}
-    else if (sub.asr == PlaceAsr) {
-    if (centers <= sub.sub) ERROR();
-    return center[sub.sub];}
-    ERROR(); return 0;
-}
-void centerSet(struct Extend *ptr, struct Reboot sub, enum Thread tag, int idx)
-{
-    // TODO internalize copySem protection to here
-    if (sub.asr == LocalAsr) {
-    if (tag < 0 || tag >= Threads) ERROR();
-    if (idx < 0 || idx >= 3 || sub.sub < 0 || sub.sub >= 3) ERROR();
-    local[tag][idx][sub.sub] = ptr; return;}
-    else if (sub.asr == PlaceAsr) {
-    if (centers <= sub.sub) ERROR();
-    center[sub.sub] = ptr; return;}
-    ERROR(); return;
-}
-void *centerPtr(struct Reboot sub, enum Thread tag, int idx)
-{
-    // TODO internalize copySem protection to here
-    if (sub.asr == LocalAsr) {
-    if (tag < 0 || tag >= Threads) ERROR();
-    if (idx < 0 || idx >= 3 || sub.sub < 0 || sub.sub >= 3) ERROR();
-    return local[tag][idx]+sub.sub;}
-    else if (sub.asr == PlaceAsr) {
-    if (centers <= sub.sub) ERROR();
-    return center+sub.sub;}
-    ERROR(); return 0;
-}
-void *centerQueue(enum Thread tag, int idx)
-{
-    if (tag != MachThd) ERROR(); // TODO use machque instead of internal external replace etc or better yet remove tag arg
-    centerQues(tag,idx);
-    if (waitSafe(copySem) != 0) ERROR();
-    void *ret = machque[tag][idx];
-    if (postSafe(copySem) != 1) ERROR();
-    return ret;
+    if (idx < 0 || idx >= 3) ERROR(); // TODO also make machque monotonically dynamic
+    if (waitSafe(pipeSem) != 0) ERROR();
+    if (machque[tag][idx] == 0) machque[tag][idx] = allocCenterq();
+    if (postSafe(pipeSem) != 1) ERROR();
 }
 void planeProt(enum Thread tag, int idx);
 int centerPro(enum Thread thd, int idx, enum Protocol pro)
@@ -489,23 +430,38 @@ int centerRemod(enum Transfer mod)
     break; case (Tend): ret = 1;
     } return ret;
 }
+int centerFunc(void *arg)
+{
+    if (copyEot) return -1;
+    struct Extend **center = (struct Extend **)arg;
+    return (*center != 0);
+}
 struct Return centerPull(int sub, enum Transfer mod, enum Thread tag, int idx, const char *log)
 {
-    struct Reboot src = {sub<0?-1-sub:sub,sub<0?LocalAsr:PlaceAsr};
+    struct Reboot loc = {sub<0?-1-sub:sub,sub<0?LocalAsr:PlaceAsr};
     int pro = centerPro(tag,idx,centerRepro(mod));
-    centerSize(src,tag,idx);
-    if (pro) {if (tag == MachThd) postSafe(machSem);
-    void *ptr = centerPtr(src,tag,idx);
-    if (funcSafe(copySem,centerFunc,ptr) < 0) {
+    centerSize(loc,tag,idx);
+    struct Extend **arg = 0;
+    if (loc.asr == LocalAsr) {
+    if (tag < 0 || tag >= Threads) ERROR();
+    if (idx < 0 || idx >= 3 || loc.sub < 0 || loc.sub >= 3) ERROR();
+    arg = local[tag][idx]+loc.sub;}
+    else if (loc.asr == PlaceAsr) {
+    if (centers <= loc.sub) ERROR();
+    arg = center+loc.sub;}
+    else ERROR();
+    if (pro && tag == MachThd) postSafe(machSem);
+    if (pro) {if (funcSafe(copySem,centerFunc,(void*)arg) < 0) {
     if (tag == MachThd) waitSafe(machSem);
-    struct Return ret = {0,0,-1}; return ret;}
-    if (tag == MachThd) waitSafe(machSem);}
+    struct Return ret = {0,0,-1}; return ret;}}
     else {if (waitSafe(copySem) != 0) ERROR();}
-    struct Extend *ptr = centerGet(src,tag,idx);
-    if (centerRemod(mod)) centerSet(0,src,tag,idx);
+    struct Extend *ptr = *arg;
+    if (centerRemod(mod)) *arg = 0;
     if (postSafe(copySem) != 1) ERROR();
+    if (pro && tag == MachThd) waitSafe(machSem);
     if (ptr == 0 && pro) ERROR();
-    if (ptr == 0) {struct Return ret = {0,0,0}; return ret;}
+    if (ptr == 0) {
+    struct Return ret = {0,0,0}; return ret;}
     if (sub >= 0 && ptr->loc.asr != PlaceAsr) ERROR();
     else if (sub < 0 && ptr->loc.asr != LocalAsr) ERROR();
     int tmp = planeFnfo(RegisterLog,0,planeRcfg);
@@ -515,19 +471,33 @@ struct Return centerPull(int sub, enum Transfer mod, enum Thread tag, int idx, c
     else {deleteSmart(ptr->log); ptr->log = noneSmart();}
     struct Return ret = {ptr,1,0}; return ret;
 }
+int centerGunc(void *arg)
+{
+    if (pipeEot) return -1;
+    return (sizeCenterq(arg) > 0);
+}
 struct Return centerDeque(void *que, enum Transfer mod, enum Thread tag, int idx, const char *log)
 {
     int pro = centerPro(tag,idx,centerReque(mod));
-    if (pro) {if (tag == MachThd) postSafe(machSem);
-    if (funcSafe(pipeSem,centerGunc,que) < 0) {
+    if (pro && tag == MachThd) postSafe(machSem);
+    if (pro) {if (funcSafe(pipeSem,centerGunc,que) < 0) {
     if (tag == MachThd) waitSafe(machSem);
-    struct Return ret = {0,0,-1}; return ret;}
-    if (tag == MachThd) waitSafe(machSem);}
+    struct Return ret = {0,0,-1}; return ret;}}
     else {if (waitSafe(pipeSem) != 0) ERROR();}
     struct Extend *ptr = (centerRemod(mod) ? maybeCenterq(0,que) : frontCenterq(que));
     int siz = sizeCenterq(que);
     if (postSafe(pipeSem) != 1) ERROR();
+    if (pro && tag == MachThd) waitSafe(machSem);
     struct Return ret = {ptr,siz,0}; return ret;
+}
+void *centerQueue(enum Thread tag, int idx)
+{
+    if (tag != MachThd) ERROR(); // TODO use machque instead of internal external replace etc or better yet remove tag arg
+    centerQues(tag,idx);
+    if (waitSafe(pipeSem) != 0) ERROR();
+    void *ret = machque[tag][idx];
+    if (postSafe(pipeSem) != 1) ERROR();
+    return ret;
 }
 struct Return centerRepull(struct Reboot src, enum Transfer mod, enum Thread tag, int idx, const char *log)
 {
@@ -548,12 +518,23 @@ struct Return centerRepull(struct Reboot src, enum Transfer mod, enum Thread tag
 void centerPlace(struct Extend *ptr, enum Thread tag, int idx)
 {
     if (ptr == 0) return;
-    centerSize(ptr->loc,tag,idx);
+    struct Reboot loc = ptr->loc;
+    if (loc.asr != LocalAsr && loc.asr != PlaceAsr) ERROR();
+    centerSize(loc,tag,idx);
     if (waitSafe(copySem) != 0) ERROR();
-    struct Extend *tmp = centerGet(ptr->loc,tag,idx);
-    if (tmp) {deleteSmart(tmp->log); freeExtend(tmp); allocExtend(&tmp,0);}
-    centerSet(ptr,ptr->loc,tag,idx);
+    struct Extend **arg = 0;
+    if (loc.asr == LocalAsr) {
+    if (tag < 0 || tag >= Threads) ERROR();
+    if (idx < 0 || idx >= 3 || loc.sub < 0 || loc.sub >= 3) ERROR();
+    arg = local[tag][idx]+loc.sub;}
+    else if (loc.asr == PlaceAsr) {
+    if (centers <= loc.sub) ERROR();
+    arg = center+loc.sub;}
+    else ERROR();
+    struct Extend *tmp = *arg;
+    *arg = ptr;
     if (postSafe(copySem) != 1) ERROR();
+    if (tmp) {deleteSmart(tmp->log); freeExtend(tmp); allocExtend(&tmp,0);}
 }
 void centerEnque(void *que, struct Extend *ptr, enum Mask msk, const char *log)
 {
@@ -1183,7 +1164,8 @@ int machineSwitch(struct Machine *mptr, enum Thread tag, int idx)
         machineIarg(str,idx);}
     break; case (Able): {const char *str;
         str = mptr->asa[0];
-        machineIarg(str,registerEvent(registerVirtual(((1<<MachThd)<<8)|idx)));}
+        int val = registerEvent(registerVirtual(MachThd|(idx<<4)));
+        machineIarg(str,val);}
     break; case (Tage): {struct Extend *ptr;
         int src = machineIval(mptr->sop[0].sup);
         PULL(ptr,src,"tage");
@@ -1643,7 +1625,7 @@ void registerOpen(int sav, int val, int act)
     for (int i = ffs(cls)-1; cls; i = ffs(cls&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeClose(i,j);
     for (int i = ffs(wak)-1; wak; i = ffs(wak&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeWake(i,j);
 }
-void registerWake(int sav, int val, int act)
+void registerWake(int val, int act)
 {
     int mask = val&act; // mask of events
     // increment semafor for each write, so no need to clear RegisterWake
@@ -1653,19 +1635,17 @@ void registerWake(int sav, int val, int act)
     int able = (sizeIntq(ableq) > i ? *ptrIntq(i,ableq) : 0);
     // able is mask of threads for the event
     int levl = planeGnfo(RegisterMask,0,planeRcfg);
+    // levl is whether events are level sensitive
     for (int j = ffs(able)-1; able; j = ffs(able&=~(1<<j))-1) {
+    // j is an abstract thread
     int back = *ptrIntq(j,backq);
+    // back is the physical thread
     enum Thread thrd = back & 0xf; // thread
     int indx = (back >> 4) & 0xf; // subthread
-    if (testSafe(safeSafe(thrd,indx))) {
-    // increment event i per thread j that depends on it
-    if ((levl&(1<<i)) != 0) level[i] += 1; else level[i] = 1;
+    if (testSafe(safeSafe(thrd,indx))) { // thread is running
+    // increment or set event i per thread j that depends on it
+    if ((levl&(1<<i)) != 0) level[i] += 1;
     planeWake(thrd,indx);}}}
-    int done = sav&~act;
-    // clear level counts for event clear
-    for (int i = ffs(done)-1; done; i = ffs(done&=~(1<<i))-1) {
-    // i is an event
-    if (i < Masks) level[i] = 0;}
 }
 void registerWane(int val, int act)
 {
@@ -1673,8 +1653,8 @@ void registerWane(int val, int act)
     // decrement count for each mask bit
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
     // i is an event
-    if (level[i] == 1) {level[i] = 0; planeKnfo(RegisterWake,(1<<i),planeWotc);}
-    if (level[i] > 1) level[i] -= 1;}
+    if (level[i] > 0) level[i] -= 1;
+    if (level[i] == 0) planeKnfo(RegisterWake,(1<<i),planeWotc);}
 }
 int registerVirtual(int thrd)
 {
@@ -1784,7 +1764,7 @@ void registerCall(const enum Configure *cfg, const int *sav, const int *val, con
     int ufmn = 0; int prjn = 0; int mnpn = 0; int angn = 0;
     for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
     break; case (RegisterOpen): registerOpen(sav[i],val[i],act[i]);
-    break; case (RegisterWake): registerWake(sav[i],val[i],act[i]);
+    break; case (RegisterWake): registerWake(val[i],act[i]);
     break; case (RegisterWane): registerWane(val[i],act[i]);
     break; case (RegisterAble): registerAble(val[i]);
     break; case (RegisterProt): registerProt(act[i]);
@@ -1933,7 +1913,7 @@ void initSafe()
     timeq = allocTimeq(); wakeq = allocIntq(); timep = allocTimep();
     ableq = allocIntq(); evntq = allocIntq(); virtq = allocIntq(); backq = allocIntq();
     enum Configure cfg[] = {
-    RegisterOpen,RegisterWake,RegisterAble,RegisterProt,RegisterTime,RegisterExit,RegisterVerb,
+    RegisterOpen,RegisterWake,RegisterWane,RegisterAble,RegisterProt,RegisterTime,RegisterExit,RegisterVerb,
     UniformAll,UniformOne,UniformIdx,UniformUse,UniformTri,UniformNum,UniformVtx,UniformMat,UniformBas,UniformMod,UniformWid,UniformHei,
     ArgumentInp,ArgumentOut,ArgumentSrc,
     PressKey,PressQueue,
@@ -1980,7 +1960,7 @@ void initBoot()
     planeJnfo(RegisterPoll,1,planeWcfg);
     planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
+    planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
