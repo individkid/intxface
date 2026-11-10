@@ -1325,7 +1325,7 @@ void planeExternal(enum Thread tag, int idx)
     center->log = selfSmart(debug?"pipe":0);
     if (debug) centerSmart(center,"pipe");
     if (center->ptr->mem == Rebootz) {
-    int ret = machineExec(mod,2/*TODO use register for Reboot thread index*/,center);
+    int ret = machineExec(mod,planeInfo(RegisterExec,0,planeRcfg),center);
     freeExtend(center); allocExtend(&center,0);
     if (ret < 0) break; else continue;}
     center->loc.sub = 0;center->loc.asr = PipeAsr;
@@ -1976,11 +1976,12 @@ void initBoot()
     planeJnfo(RegisterPoll,1,planeWcfg);
     planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
+    planeJnfo(RegisterExec,planeThread(MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
-    planeJnfo(RegisterMask,((1<<TimeMsk)|0),planeWcfg);
+    planeJnfo(RegisterMask,((1<<SlctMsk)|(1<<TimeMsk)|0),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
@@ -1990,6 +1991,7 @@ void initBoot()
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
+    planeJnfo(RegisterExec,planeThread(MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);

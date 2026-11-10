@@ -265,6 +265,7 @@ Configure = { -- integer variables for user expressions to query and control the
 	"RegisterLog", -- transaction branching
 	"RegisterMain", -- main machine center
 	"RegisterSide", -- side machine center
+	"RegisterExec", -- external reboot thread
 	"RegisterOpen", -- thread mask
 	"RegisterShow", -- commandline mask
 	"RegisterPlan", -- testing plan
