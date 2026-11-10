@@ -378,6 +378,7 @@ Action = { -- what input does
 	"Divisive", -- add boundaries
 	"Additive", -- add regions
 	"Subtractive", -- remove regions
+	"Dispersive", -- color divided facet
 	"Operative", -- send pierce points
 }
 Scope = { -- which primitives to transform

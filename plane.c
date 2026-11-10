@@ -14,7 +14,7 @@
 struct Extend **center = 0; // mostly for planeMachine
 int centers = 0; // mostly for planeMachine
 struct Extend *local[Threads][3][3] = {0};
-void *machque[Threads][3] = {0};
+void *machque[Threads][3] = {0}; // queue to thread
 // struct Extend ***local[Threads] = 0; // per thread per instance centers
 // int *locals[Threads] = 0; // centers per thread per instance
 // int threads[Threads] = 0; // number of center threads
@@ -29,6 +29,7 @@ void *pipeSem = 0; // protect internal response replace
 void *callSem = 0; // protect external inverse
 // Configure inside of pipeSem will deadlock if callback waits on pipeSem.
 // Nested semaphores are fine if they are nested in the same order in every thread.
+// TODO perhaps make Express variables local to thread by default
 void *machSem = 0; // protect threaded expressions
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
@@ -59,6 +60,8 @@ int *resize = 0; // number of initializations
 void *safeSem = 0; // protect reboot recent resize and wakeSem
 // following initialized before threads so safe
 void *tempq = 0; // temporary queue to convert chars to str
+// TODO perhaps make datxSingle per thread so following not needed
+// TODO would need to make stlx containers used by datx per thread too
 void *evalSem = 0; // protect state in expressions
 int safeEot = 0;
 int pipeEot = 0;
@@ -460,8 +463,7 @@ struct Return centerPull(int sub, enum Transfer mod, enum Thread tag, int idx, c
     if (postSafe(copySem) != 1) ERROR();
     if (pro && tag == MachThd) waitSafe(machSem);
     if (ptr == 0 && pro) ERROR();
-    if (ptr == 0) {
-    struct Return ret = {0,0,0}; return ret;}
+    if (ptr == 0) {struct Return ret = {0,0,0}; return ret;}
     if (sub >= 0 && ptr->loc.asr != PlaceAsr) ERROR();
     else if (sub < 0 && ptr->loc.asr != LocalAsr) ERROR();
     int tmp = planeFnfo(RegisterLog,0,planeRcfg);
@@ -492,7 +494,6 @@ struct Return centerDeque(void *que, enum Transfer mod, enum Thread tag, int idx
 }
 void *centerQueue(enum Thread tag, int idx)
 {
-    if (tag != MachThd) ERROR(); // TODO use machque instead of internal external replace etc or better yet remove tag arg
     centerQues(tag,idx);
     if (waitSafe(pipeSem) != 0) ERROR();
     void *ret = machque[tag][idx];
@@ -636,8 +637,10 @@ void demoMenu(struct Menu *menu)
     break; case ('A'): menu->act = Additive; // Additive
     break; case ('B'): menu->act = Subtractive; // suBtractive
     break; case ('V'): menu->act = Divisive; // diVisive
+    break; case ('E'): menu->act = Dispersive; // dispErsive
     break; case ('Q'): menu->act = Operative; // Query
-    break; case ('W'): /*TODO Warp to last metric sent*/}
+    break; case ('W'): // TODO Warp to last metric sent
+    }
 }
 void demoRead(struct Menu *menu, enum Thread tag, int idx) // pull/modify/place Kernelz, pull/read/place Matrixz
 {
@@ -1011,7 +1014,8 @@ void machineIarg(const char *str, int idx)
 int machineSwitch(struct Machine *mptr, enum Thread tag, int idx);
 void planeMachine(enum Thread tag, int idx);
 void planeFork(enum Thread thd, int idx, mftype fnc);
-void machineExec(enum Thread tag, int idx, struct Extend *ext)
+struct Return centerExtern();
+int machineExec(enum Thread tag, int idx, struct Extend *ext)
 {
     int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
     if (debug) {deleteSmart(ext->log); ext->log = selfSmart("exec");}
@@ -1026,14 +1030,23 @@ void machineExec(enum Thread tag, int idx, struct Extend *ext)
     case (Rebootz): {struct Extend *cent[ptr->siz]; struct Reboot boot[ptr->siz]; void *repush = 0; repush = allocCenterq();
     for (int i = 0; i < ptr->siz; i++) {
     // clear event before clearing the condition that the event indicates
-    planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
+    struct Extend *nxt = 0;
+    if (tag == MachThd) {planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
     if (waitSafe(pipeSem) != 0) ERROR();
-    struct Extend *nxt = maybeCenterq(0,internal);
+    nxt = maybeCenterq(0,internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    if (nxt == 0 && waitSafe(safeSafe(tag,idx)) < 0) break;
-    if (nxt == 0) {i--; continue;}
+    if (nxt == 0) {postSafe(machSem);
+    int ret = waitSafe(safeSafe(tag,idx));
+    waitSafe(machSem); if (ret < 0) return -1;
+    i--; continue;}}
+    else if (tag == PipeThd && idx == 1) {
+    struct Return ret = centerExtern();
+    if (ret.ptr == 0) {
+    if (ret.vld < 0) return -1; else continue;}
+    nxt = ret.ptr;}
+    else ERROR();
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
-    nxt->loc.asr = PipeAsr; pushCenterq(nxt,repush); continue;}
+    pushCenterq(nxt,repush); continue;}
     if (debug) {deleteSmart(nxt->log); nxt->log = otherSmart(ext->log);}
     centerSmart(nxt,"exec");
     // if (nxt->ptr->mem == Transferz) {char *st0 = 0; showTransfer(nxt->ptr->exe[0].xfr,&st0); fprintf(stderr,"machineExec %d %s\n",nxt->loc,st0); free(st0);}
@@ -1239,7 +1252,8 @@ int machineSwitch(struct Machine *mptr, enum Thread tag, int idx)
     break; case (Exec): {struct Extend *ptr;
         int src = machineIval(mptr->top[0].sup);
         PULL(ptr,src,"exec");
-        machineExec(tag,machineIval(mptr->tie[0].val),ptr);}
+        int ret = machineExec(tag,machineIval(mptr->tie[0].val),ptr);
+        if (ret < 0) return -1;}
     break; case (Demo): {struct Extend *ptr;
         int src = machineIval(mptr->nop[0].sup);
         PULL(ptr,src,"demo");
@@ -1258,15 +1272,12 @@ void planeMachine(enum Thread tag, int idx)
     int size = resize[idx];
     if (!size) ERROR();
     for (int i = 0; i < size; i++) {
-    // {char *st0 = 0; char *st1 = 0; showReboot(&boot[i],&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %s %s\n",idx,st0,st1); free(st0); free(st1);}
-    if (boot[i].asr == PlaceAsr) {cent[i]->loc = boot[i]; centerPlace(cent[i],tag,idx);}
-    // TODO push to queue if boot[i].asr is not BootAsr
-    else if (boot[i].asr == BootAsr) {
+    if (boot[i].asr < 0 || boot[i].asr >= Asserts) ERROR();
+    if (boot[i].asr != BootAsr) {cent[i]->loc = boot[i];
+    centerReplace(cent[i],tag,idx); continue;}
     struct Center *cptr = cent[i]->ptr;
-    int next = 0; struct Machine *mach = 0;
-    switch (cptr->mem) {default: next = -1;
-    break; case (Machinez): mach = cptr->mch;
-    break; case (Transferz): mach = cptr->exe;}
+    if (cptr->mem != Machinez) ERROR();
+    int next = 0; struct Machine *mach = cptr->mch;
     waitSafe(machSem);
     while (next >= 0 && next < cptr->siz) {
     struct Machine *mptr = &mach[next];
@@ -1278,12 +1289,9 @@ void planeMachine(enum Thread tag, int idx)
     case (Nest): next += 1; break;}
     if (next == save) {
     postSafe(machSem);
-    if (waitSafe(safeSafe(tag,idx)) < 0) next = -1;
-    else next += 1;
+    if (waitSafe(safeSafe(tag,idx)) < 0) next = -1; else next += 1;
     waitSafe(machSem);}}
-    postSafe(machSem);}
-    else ERROR();}
-    for (int i = 0; i < size; i++) if (boot[i].asr == BootAsr) {
+    postSafe(machSem);
     deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
     free(boot); free(cent);
     waitSafe(safeSem);
@@ -1312,24 +1320,38 @@ void planeCenter(enum Thread tag, int idx)
     centerDone(center);
     if (!loop) break;}}
 }
-void planeExternal(enum Thread tag, int idx)
+struct Return centerExtern()
 {
-    while (1) {
     if (waitSafe(callSem) != 0) ERROR();
     int temp = external;
     if (postSafe(callSem) != 1) ERROR();
     int sub = waitRead(0.0,(temp|(1<<extdone)));
-    if (sub == extdone) {if (readChr(extdone)) break; else continue;}
+    if (sub == extdone) {
+    int vld = (readChr(extdone)?-1:0);
+    struct Return ret = {0,0,vld}; return ret;}
     if ((1<<sub)&temp != (1<<sub)) ERROR();
     struct Extend *center = 0; allocExtend(&center,1);
     readCenter(center->ptr,sub);
     if (waitSafe(callSem) != 0) ERROR();
     center->src = (int*)*userIdent(sub) - inverse;
     if (postSafe(callSem) != 1) ERROR();
+    struct Return ret = {center,0,0}; return ret;
+}
+void planeExternal(enum Thread tag, int idx)
+{
+    while (1) {
+    struct Return ret = centerExtern();
+    if (ret.ptr == 0) {
+    if (ret.vld < 0) break; else continue;}
+    struct Extend *center = ret.ptr; 
     int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
     center->log = selfSmart(debug?"pipe":0);
     if (debug) centerSmart(center,"pipe");
-    center->loc.asr = PipeAsr;
+    if (center->ptr->mem == Rebootz) {
+    int ret = machineExec(tag,idx,center);
+    freeExtend(center); allocExtend(&center,0);
+    if (ret < 0) break; else continue;}
+    center->loc.sub = 0;center->loc.asr = PipeAsr;
     // {char *st0 = 0; showExtend(center,&st0); fprintf(stderr,"planeExternal %s\n",st0); free(st0);}
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
