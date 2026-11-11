@@ -6,7 +6,9 @@ tests = {}
 more = nil
 for i,v in ipairs(arg) do
 	tag,res = hideArgument(v,0)
-	if tag then tests[#tests+1] = tag
+	if tag then
+		-- io.stderr:write("arg "..v.."\n")
+		tests[#tests+1] = tag
 	else more = v end
 end
 found = 0
@@ -37,24 +39,24 @@ list = {}
 after = castMemory("Memorys")+4 -- TODO get @scratch2 from commandline
 freesub = "-1"
 freemem = "Reboot(sub:"..freesub.."asr:Assert(PlaceAsr))"
-pullmem = "Reboot(sub:0asr:Assert(PullAsr))"
+pullmem = "Reboot(sub:0asr:Assert(BootAsr))"
 function atomSugar(list,idx,str)
 	if #list > 0 then
 	-- io.stderr:write(str..":"..index.."\n")
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
-	-- TODO add Reboot:asr Assert, where PlaceAsr indicates place at sub, PullAsr indicates execute, and other Asserts indicate push to queue
+	-- TODO add Reboot:asr Assert, where PlaceAsr indicates place at sub, BootAsr indicates execute, and other Asserts indicate push to queue
 	-- TODO interpret negative Regoot:sub as negative Center:sub as thread local
 	index = index + 1
 	for i,v in ipairs(list) do
 	if v["siz"] == 0 then
-	cent = cent.."sub["..(i-1).."]:"..freemem
+	cent = cent.."loc["..(i-1).."]:"..freemem
 	elseif v["mem"] == "Transferz" then
-	cent = cent.."sub["..(i-1).."]:"..pullmem
+	cent = cent.."loc["..(i-1).."]:"..pullmem
 	elseif v["mem"] == "Drawz" then
-	cent = cent.."sub["..(i-1).."]:"..freemem
+	cent = cent.."loc["..(i-1).."]:"..freemem
 	elseif v["mem"] == "Getcfgz" then
-	cent = cent.."sub["..(i-1).."]:"..freemem
-	else cent = cent.."sub["..(i-1).."]:"..castMemory(v["mem"]) end end
+	cent = cent.."loc["..(i-1).."]:"..freemem
+	else cent = cent.."loc["..(i-1).."]:"..castMemory(v["mem"]) end end
 	cent = cent..")"
 	center = centSugar(cent)
 	writeCenter(center,idx)
@@ -65,25 +67,25 @@ end
 function pipeTest()
 	list[#list+1] = centSugar("Center(mem:Getcfgzsiz:0idx:0slf:0)") -- for starting planeTest
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["typ"].."OpOp)))")
-	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))")
-	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(@getcfg))psh[1]:Supexpr(sup[0]:$(@getcfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Sagegsz:1gop[0]:Supexpr(sup[0]:$(@getcfg))gsa[0]:Str(src))")
+	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(RespAsr)))")
 	atomSugar(list,tests[found]["idx"],"Pipe")
 	center = readCenter(tests[found]["idx"])
 	print(tests[found]["typ"].." mem:"..center["mem"].." siz:"..center["siz"])
 end
 function doneTest()
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp)))")
-	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))")
-	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(@getcfg))psh[1]:Supexpr(sup[0]:$(@getcfg)))")
-	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))") -- wait for replace
+	list[#list+1] = machSugar("Machine(xfr:Sagegsz:1gop[0]:Supexpr(sup[0]:$(@getcfg))gsa[0]:Str(src))")
+	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(RespAsr)))")
+	list[#list+1] = machSugar("Machine(xfr:Sagegsz:1gop[0]:Supexpr(sup[0]:$(@getcfg))gsa[0]:Str(src))") -- wait for replace
 	list[#list+1] = exprSugar("$(RegisterExit := #1)")
 	atomSugar(list,tests[found]["idx"],"Done")
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function flushTest()
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp)))")
-	list[#list+1] = machSugar("Machine(xfr:Sagessz:1sop[0]:Supexpr(sup[0]:$(@getcfg))ssa[0]:Str(src))")
-	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(@getcfg))psh[1]:Supexpr(sup[0]:$(@getcfg)))")
+	list[#list+1] = machSugar("Machine(xfr:Sagegsz:1gop[0]:Supexpr(sup[0]:$(@getcfg))gsa[0]:Str(src))")
+	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(RespAsr)))")
 	atomSugar(list,tests[found]["idx"],"Done")
 	list[#list+1] = exprSugar("$(ScratchDescrs := @pass)")
 	readConfig(list,config,{"ScratchDescrs"})
