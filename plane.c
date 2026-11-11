@@ -1639,8 +1639,11 @@ void registerOpen(int sav, int val, int act)
     for (int i = ffs(cls)-1; cls; i = ffs(cls&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeClose(i,j);
     for (int i = ffs(wak)-1; wak; i = ffs(wak&=~(1<<i))-1) for (int j = 0; j < planeThread(i); j++) planeWake(i,j);
 }
-void registerWake(int val, int act)
+void registerWake(int sav, int val, int act)
 {
+    int zero = sav&~act;
+    for (int i = ffs(zero)-1; zero; i = ffs(zero&=~(1<<i))-1) {
+    if (i >= Masks) ERROR(); level[i] = 0;}
     int mask = val&act; // mask of events
     // increment semafor for each write, so no need to clear RegisterWake
     for (int i = ffs(mask)-1; mask; i = ffs(mask&=~(1<<i))-1) {
@@ -1778,7 +1781,7 @@ void registerCall(const enum Configure *cfg, const int *sav, const int *val, con
     int ufmn = 0; int prjn = 0; int mnpn = 0; int angn = 0;
     for (int i = 0; i < siz; i++) switch (cfg[i]) {default: ERROR();
     break; case (RegisterOpen): registerOpen(sav[i],val[i],act[i]);
-    break; case (RegisterWake): registerWake(val[i],act[i]);
+    break; case (RegisterWake): registerWake(sav[i],val[i],act[i]);
     break; case (RegisterWane): registerWane(val[i],act[i]);
     break; case (RegisterAble): registerAble(val[i]);
     break; case (RegisterProt): registerProt(act[i]);
