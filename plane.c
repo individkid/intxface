@@ -166,15 +166,9 @@ void *safeSafe(enum Thread thd, int idx)
 }
 int safeFunc(void *arg)
 {
-    if (safeEot) return -1;
+    if (safeEot) return 1;
     int *idx = (int*)arg;
     return (!resize[*idx]);
-}
-int safeGunc(void *arg)
-{
-    if (safeEot) return -1;
-    int *idx = (int*)arg;
-    return (resize[*idx]);
 }
 void safeMach(int idx, struct Reboot *boot, struct Extend **cent, int siz)
 {
@@ -193,9 +187,10 @@ void safeMach(int idx, struct Reboot *boot, struct Extend **cent, int siz)
     reboot = temr; recent = tems; resize = temt; sizeMch = mch;}
     postSafe(safeSem);
     if (funcSafe(safeSem,safeFunc,&idx) != 0) ERROR();
+    if (!resize[idx]) {
     free(reboot[idx]); reboot[idx] = (struct Reboot *)malloc(sizeof(struct Reboot*)*siz); for (int i = 0; i < siz; i++) reboot[idx][i] = boot[i];
     free(recent[idx]); recent[idx] = (struct Extend **)malloc(sizeof(struct Extend *)*siz); for (int i = 0; i < siz; i++) recent[idx][i] = cent[i];
-    resize[idx] = siz;
+    resize[idx] = siz;}
     if (postSafe(safeSem) != 1) ERROR();
 }
 
@@ -365,6 +360,64 @@ struct Return {
     int siz;
     int vld;
 };
+int centerZero(void *arg)
+{
+    writeChr(extdone,0);
+    return 1;
+}
+// callSem and extdone opened at top level and never closed, so never returns -1
+// callSem opened with -1, so waitSafe and postSafe use head/tail instead of count
+void centerExtopen(int rdfd, int wrfd, int asrc)
+{
+    // waitSafe calls centerZero until at head of queue.
+    if (funcSafe(callSem,centerZero,0) < 0) ERROR();
+    int sub = rdwrInit(rdfd,wrfd);
+    external |= 1<<sub;
+    inverse[asrc] = sub;
+    *userIdent(sub) = inverse + asrc;
+    // postSafe advances to next call to tailSafe
+    if (postSafe(callSem) < 0) ERROR();
+}
+void centerExtwake()
+{
+    // waitSafe calls centerZero until at head of queue.
+    if (funcSafe(callSem,centerZero,0) < 0) ERROR();
+    if (postSafe(callSem) < 0) ERROR();
+}
+int centerOne(void *arg)
+{
+    writeChr(extdone,1);
+    return 1;
+}
+void centerExtdone()
+{
+    // waitSafe calls centerOne until at head of queue.
+    if (funcSafe(callSem,centerOne,0) < 0) ERROR();
+    for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i);
+    external = 0;
+    // postSafe advances to next call to tailSafe
+    if (postSafe(callSem) < 0) ERROR();
+}
+// callSem and extdone stay valid even after centerExtclose
+struct Return centerExtern()
+{
+    // waitSafe waits to become head
+    if (waitSafe(callSem) < 0) ERROR();
+    if (external == 0) { // in case some other thread consumes extdone
+    struct Return ret = {0,0,-1}; return ret;}
+    int sub = waitRead(0.0,(external|(1<<extdone)));
+    if (sub == extdone) {
+    int vld = (readChr(extdone)?-1:0);
+    if (postSafe(callSem) < 0) ERROR();
+    struct Return ret = {0,0,vld}; return ret;}
+    if ((1<<sub)&external != (1<<sub)) ERROR();
+    struct Extend *center = 0; allocExtend(&center,1);
+    readCenter(center->ptr,sub);
+    center->src = (int*)*userIdent(sub) - inverse;
+    // postSafe advances to next call to tailSafe
+    if (postSafe(callSem) < 0) ERROR();
+    struct Return ret = {center,0,0}; return ret;
+}
 enum Protocol centerRepro(struct Given mod)
 {
     enum Protocol pro;
@@ -424,7 +477,7 @@ int centerProt(struct Given mod, enum Protocol pro)
 }
 int centerFunc(void *arg)
 {
-    if (copyEot) return -1;
+    if (copyEot) return 1;
     struct Extend **center = (struct Extend **)arg;
     return (*center != 0);
 }
@@ -444,11 +497,13 @@ struct Return centerSwap(struct Reboot loc, struct Extend *ptr, struct Given mod
     arg = local[mod.idx]+loc.sub;}
     else if (loc.asr == PlaceAsr) {
     if (centers <= loc.sub) ERROR();
-    arg = center+loc.sub;}
+    arg = center+loc.sub;} // TODO must protect arg with copySem because center might get realloc
     else ERROR();
     int pro = centerProt(mod,centerRepro(mod));
     if (pro && mod.tag == MachThd) postSafe(machSem);
-    if (pro) {if (funcSafe(copySem,centerFunc,(void*)arg) < 0) {
+    if (pro) {if (funcSafe(copySem,centerFunc,(void*)arg) != 0) ERROR();
+    if (*arg == 0) {
+    if (postSafe(copySem) != 1) ERROR();
     if (mod.tag == MachThd) waitSafe(machSem);
     struct Return ret = {0,0,-1}; return ret;}}
     else {if (waitSafe(copySem) != 0) ERROR();}
@@ -475,14 +530,16 @@ struct Return centerPull(int sub, struct Given mod, const char *log)
 }
 int centerGunc(void *arg)
 {
-    if (pipeEot) return -1;
+    if (pipeEot) return 1;
     return (sizeCenterq(arg) > 0);
 }
 struct Return centerDeque(void *que, struct Given mod, const char *log)
 {
     int pro = centerProt(mod,centerReque(mod));
     if (pro && mod.tag == MachThd) postSafe(machSem);
-    if (pro) {if (funcSafe(pipeSem,centerGunc,que) < 0) {
+    if (pro) {if (funcSafe(pipeSem,centerGunc,que) != 0) ERROR();
+    if (sizeCenterq(que) == 0) {
+    if (postSafe(pipeSem) != 1) ERROR();
     if (mod.tag == MachThd) waitSafe(machSem);
     struct Return ret = {0,0,-1}; return ret;}}
     else {if (waitSafe(pipeSem) != 0) ERROR();}
@@ -988,7 +1045,7 @@ void machineIarg(const char *str, int idx)
 int machineSwitch(struct Machine *mptr, struct Given mod);
 void planeMachine(enum Thread tag, int idx);
 void planeFork(enum Thread thd, int idx, mftype fnc);
-struct Return centerExtern();
+struct Return centerExternTODO();
 int machineExec(struct Given mod, int idx, struct Extend *ext)
 {
     int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
@@ -1014,7 +1071,7 @@ int machineExec(struct Given mod, int idx, struct Extend *ext)
     waitSafe(machSem); if (ret < 0) return -1;
     i--; continue;}}
     else if (mod.tag == PipeThd && mod.idx == 1) {
-    struct Return ret = centerExtern();
+    struct Return ret = centerExternTODO();
     if (ret.ptr == 0) {
     if (ret.vld < 0) return -1; else continue;}
     nxt = ret.ptr;}
@@ -1296,7 +1353,7 @@ void planeCenter(enum Thread tag, int idx)
     centerDone(center);
     if (!loop) break;}}
 }
-struct Return centerExtern()
+struct Return centerExternTODO()
 {
     if (waitSafe(callSem) != 0) ERROR();
     int temp = external;
@@ -1317,7 +1374,7 @@ void planeExternal(enum Thread tag, int idx)
 {
     struct Given mod = {Transfers,tag,idx};
     while (1) {
-    struct Return ret = centerExtern();
+    struct Return ret = centerExternTODO();
     if (ret.ptr == 0) {
     if (ret.vld < 0) break; else continue;}
     struct Extend *center = ret.ptr; 
@@ -1525,7 +1582,7 @@ void planeClose(enum Thread tag, int idx)
     switch (tag) {default: ERROR();
     break; case (PipeThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(tag,idx));
-    break; case (1): writeChr(1,extdone);}
+    break; case (1): /*TODOfollowing*/writeChr(1,extdone);/*TODOcenterExtdone();*/} // TODO end thread without closing external
     break; case (StdioThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(tag,idx));
     break; case (1): writeChr(1,condone);}
@@ -1542,7 +1599,7 @@ void planeClose(enum Thread tag, int idx)
 void planeJoin(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
-    break; case (PipeThd): if (idx) {closeIdent(extdone); for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i);}
+    break; case (PipeThd): if (idx) {for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i);}
     break; case (StdioThd): if (idx) {freeIdent(console); closeIdent(condone);}
     break; case (MachThd): case (TimeThd): case (TestThd):}
 }
@@ -1554,7 +1611,7 @@ void planeWake(enum Thread tag, int idx)
     break; case (TimeThd): if (idx < 0 || idx >= 1) ERROR();
     break; case (TestThd): if (idx < 0 || idx >= 3) ERROR();}
     if (idx == 1) switch (tag) {default: ERROR();
-    break; case (PipeThd): writeChr(0,extdone); return;
+    break; case (PipeThd): /*TODOfollowing*/writeChr(0,extdone);/*TODOcenterExtwake();*/ return;
     break; case (StdioThd): writeChr(0,condone); return;
     break; case (MachThd): case (TimeThd): case (TestThd):}
     struct Given mod = {Transfers,tag,idx};
@@ -1608,7 +1665,7 @@ void planeOpen(enum Thread tag, int idx)
     switch (tag) {default: ERROR();
     break; case (PipeThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(PipeThd,1); planeFork(tag,idx,planeCenter);
-    break; case (1): extdone = openPipe(); planeFork(tag,idx,planeExternal);}
+    break; case (1): planeFork(tag,idx,planeExternal);}
     break; case (StdioThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(StdioThd,1); planeFork(tag,idx,planeString);
     break; case (1): planeCons(); planeFork(tag,idx,planeConsole);}
@@ -1736,8 +1793,10 @@ void registerTime(int val)
 }
 void registerArgument(int act[3])
 {
+    // TODO way to close external
     enum Configure arg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; int num[3] = {0,0,0};
     callGnfo(arg,num,3,planeRcfg);
+    // TODO following
     int rdfd = num[0];
     int wrfd = num[1];
     int asrc = num[2];
@@ -1748,6 +1807,7 @@ void registerArgument(int act[3])
     *userIdent(sub) = inverse + asrc;
     if (postSafe(callSem) != 1) ERROR();
     writeChr(0,extdone);
+    // TODO centerExtopen(num[0],num[1],num[2]);
 }
 void registerQue(enum Configure cfg, int val, void *que, int msk)
 {
@@ -1919,7 +1979,7 @@ void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
-    if (!(callSem = allocSafe(1))) ERROR(); // no Configure nested within
+    if (!(callSem = allocSafe(/*TODO*/1/*TODO-1*/))) ERROR(); extdone = openPipe(); // protect external
     if (!(machSem = allocSafe(1))) ERROR(); // variables shared by threads
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(pressSem = allocSafe(1))) ERROR(); // protect glfw queues

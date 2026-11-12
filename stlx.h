@@ -19,11 +19,14 @@ typedef int (*SafeFunc)(void *arg);
 struct SafeState {
     pthread_mutex_t mutex;
     pthread_cond_t condit;
-    int count;
+    int count, head, tail, mode;
     SafeState(int val) {
         if (pthread_mutex_init(&mutex, 0) != 0) {std::cerr << "failed to create mutex!" << std::endl; exit(-1);}
         if (pthread_cond_init(&condit, 0) != 0) {std::cerr << "failed to create cond!" << std::endl; exit(-1);}
-        count = val;
+        count = head = tail = mode = 0;
+        if (val > 0) count = val;
+        if (val < 0) mode = 1;
+        // mode -1:done; 0:count; 1:head/tail
     }
     ~SafeState() {
         if (pthread_cond_destroy(&condit) != 0) {std::cerr << "cannot destroy cond!" << std::endl; exit(-1);}
@@ -31,26 +34,31 @@ struct SafeState {
     }
     int wait(SafeFunc fnc, void *arg) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        int tmp = 0; while (count == 0 || (fnc && (tmp = fnc(arg)) == 0)) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
-        if (tmp < 0) {if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);} return -1;}
-        if (count > 0) count -= 1;
-        int ret = count;
+        int save = tail; if (mode > 0) tail += 1;
+        int tmp = 0; while ((mode == 0 && count == 0) || (fnc && (tmp = fnc(arg)) == 0) || (mode > 0 && head != save)) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
+        if (tmp < 0) mode = -1;
+        if (mode == 0 && count > 0) count -= 1;
+        int ret = (mode == 0 ? count : (mode > 0 ? save : -1));
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
+    }
+    void debug() {
+        fprintf(stderr,"mode %d count %d\n",mode,count);
     }
     int wait() {
         return wait(0,0);
     }
     int wait(double dif, SafeFunc fnc, void *arg) {
+        if (mode > 0) {std::cerr << "cannot use mode!" << std::endl; exit(-1);} // would need way to skip save when head gets to it
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         struct timespec ts;
         if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {std::cerr << "cannot get time!" << std::endl; exit(-1);}
         dif += ts.tv_sec + (double)ts.tv_nsec/NANOSECONDS;
         double tsi, tsf; tsf = modf(dif, &tsi); ts.tv_sec = tsi; ts.tv_nsec = tsf*NANOSECONDS;
         int tmp = 0; int val = 0; while ((count == 0 || (fnc && (tmp = fnc(arg)) == 0)) && val == 0) if ((val = pthread_cond_timedwait(&condit,&mutex,&ts)) != 0 && val != ETIMEDOUT) {std::cerr << "cannot timed wait!" << std::endl; exit(-1);}
-        if (tmp < 0) {if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);} return -1;}
-        if (val != ETIMEDOUT && count > 0) count -= 1;
-        int ret = count;
+        if (tmp < 0) mode = -1;
+        if (mode == 0 && val != ETIMEDOUT && count > 0) count -= 1;
+        int ret = (mode == 0 ? count : -1);
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }
@@ -59,8 +67,9 @@ struct SafeState {
     }
     int post() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        if (count >= 0) count += 1;
-        int ret = count;
+        if (mode == 0 && count >= 0) count += 1;
+        if (mode == 1) head += 1;
+        int ret = (mode == 0 ? count : (mode == 1 ? head : -1));
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
