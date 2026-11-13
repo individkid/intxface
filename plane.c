@@ -375,7 +375,7 @@ void centerExtopen(int rdfd, int wrfd, int asrc)
     external |= 1<<sub;
     inverse[asrc] = sub;
     *userIdent(sub) = inverse + asrc;
-    // postSafe advances to next call to tailSafe
+    // postSafe advances to next call to waitSafe
     if (postSafe(callSem) < 0) ERROR();
 }
 void centerExtwake()
@@ -395,7 +395,7 @@ void centerExtdone()
     if (funcSafe(callSem,centerOne,0) < 0) ERROR();
     for (int i = ffs(external)-1; external; external &= ~(1<<i), i = ffs(external)-1) freeIdent(i);
     external = 0;
-    // postSafe advances to next call to tailSafe
+    // postSafe advances to next call to waitSafe
     if (postSafe(callSem) < 0) ERROR();
 }
 // callSem and extdone stay valid even after centerExtclose
@@ -414,7 +414,7 @@ struct Return centerExtern()
     struct Extend *center = 0; allocExtend(&center,1);
     readCenter(center->ptr,sub);
     center->src = (int*)*userIdent(sub) - inverse;
-    // postSafe advances to next call to tailSafe
+    // postSafe advances to next call to waitSafe
     if (postSafe(callSem) < 0) ERROR();
     struct Return ret = {center,0,0}; return ret;
 }
@@ -1564,7 +1564,7 @@ void planeClose(enum Thread tag, int idx)
     switch (tag) {default: ERROR();
     break; case (PipeThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(tag,idx));
-    break; case (1): /*TODOwriteChr(1,extdone);*/centerExtdone();}
+    break; case (1): centerExtdone();}
     break; case (StdioThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(tag,idx));
     break; case (1): writeChr(1,condone);}
@@ -1593,7 +1593,7 @@ void planeWake(enum Thread tag, int idx)
     break; case (TimeThd): if (idx < 0 || idx >= 1) ERROR();
     break; case (TestThd): if (idx < 0 || idx >= 3) ERROR();}
     if (idx == 1) switch (tag) {default: ERROR();
-    break; case (PipeThd): /*TODOwriteChr(0,extdone);*/centerExtwake(); return;
+    break; case (PipeThd): centerExtwake(); return;
     break; case (StdioThd): writeChr(0,condone); return;
     break; case (MachThd): case (TimeThd): case (TestThd):}
     struct Given mod = {Transfers,tag,idx};
@@ -1778,17 +1778,6 @@ void registerArgument(int act[3])
     // TODO way to close external
     enum Configure arg[3] = {ArgumentInp,ArgumentOut,ArgumentSrc}; int num[3] = {0,0,0};
     callGnfo(arg,num,3,planeRcfg);
-    /*TODO
-    int rdfd = num[0];
-    int wrfd = num[1];
-    int asrc = num[2];
-    if (waitSafe(callSem) != 0) ERROR();
-    int sub = rdwrInit(rdfd,wrfd);
-    external |= 1<<sub;
-    inverse[asrc] = sub;
-    *userIdent(sub) = inverse + asrc;
-    if (postSafe(callSem) != 1) ERROR();
-    writeChr(0,extdone);*/
     centerExtopen(num[0],num[1],num[2]);
 }
 void registerQue(enum Configure cfg, int val, void *que, int msk)
@@ -1961,7 +1950,7 @@ void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
-    if (!(callSem = allocSafe(/*TODO1*/-1))) ERROR(); extdone = openPipe();  // protect external
+    if (!(callSem = allocSafe(-1))) ERROR(); extdone = openPipe();  // protect external
     if (!(machSem = allocSafe(1))) ERROR(); // variables shared by threads
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(pressSem = allocSafe(1))) ERROR(); // protect glfw queues
