@@ -204,6 +204,11 @@ int bothSafe(void *ptr, double dif, SafeFunc fnc, void *arg)
     auto saf = (SafeState*)ptr;
     return saf->wait(dif,fnc,arg);
 }
+void debugSafe(void *ptr)
+{
+    auto saf = (SafeState*)ptr;
+    return saf->debug();
+}
 int selfSmart(const char *str) {
     if (str == 0) return 0;
     return slog.con(str);

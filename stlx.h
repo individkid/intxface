@@ -43,7 +43,7 @@ struct SafeState {
         return ret;
     }
     void debug() {
-        fprintf(stderr,"mode %d count %d\n",mode,count);
+        fprintf(stderr,"mode %d count %d head %d tail %d\n",mode,count,head,tail);
     }
     int wait() {
         return wait(0,0);
@@ -68,7 +68,7 @@ struct SafeState {
     int post() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         if (mode == 0 && count >= 0) count += 1;
-        if (mode == 1) head += 1;
+        if (mode > 0) head += 1;
         int ret = (mode == 0 ? count : (mode == 1 ? head : -1));
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
@@ -781,6 +781,7 @@ int testSafe(void *ptr);
 void freeSafe(void *ptr);
 int timeSafe(void *ptr, double dif);
 int bothSafe(void *ptr, double dif, SafeFunc fnc, void *arg);
+void debugSafe(void *ptr);
 int selfSmart(const char *str);
 int otherSmart(int oth);
 int noneSmart();
