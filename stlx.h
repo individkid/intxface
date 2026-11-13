@@ -94,7 +94,9 @@ struct SafeState {
     }
     int test() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        int ret = (count >= 0);        
+        int ret = 0;
+        if (mode > 0) ret = (head == tail);
+        if (mode == 0) ret = (count >= 0);        
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }

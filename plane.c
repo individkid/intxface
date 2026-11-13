@@ -19,7 +19,6 @@ void *machque[3] = {0}; // queue to thread
 // int *locals = 0; // centers per thread
 // int threads = 0; // number of center threads
 void *copySem = 0; // protect centers
-void *allocSem = 0; // protect center array
 int extdone = 0; // done for planeExternal
 int external = 0; // pipes to planeExternal
 int inverse[Programs] = {0}; // inverse to userIdent
@@ -476,11 +475,37 @@ int centerProt(struct Given mod, enum Protocol pro)
     if (postSafe(safeSem) != 1) ERROR();
     return ret;
 }
-struct Extend **centerPointer(struct Reboot loc, struct Given mod)
+struct Argpair {
+    struct Reboot loc;
+    struct Given mod;
+};
+int centerFunc(void *arg)
 {
+    if (copyEot) return 1;
+    struct Argpair *ptr = (struct Argpair *)arg;
+    struct Reboot loc = {ptr->loc.sub,ptr->loc.asr};
+    struct Given mod = {ptr->mod.mod,ptr->mod.tag,ptr->mod.idx}; 
+    if (loc.asr == LocalAsr) {
+    if (mod.idx < 0 || mod.idx >= 3 || loc.sub < 0 || loc.sub >= 3) return 0;
+    if (local[mod.idx][loc.sub] == 0) return 0;}
+    else if (loc.asr == PlaceAsr) {
+    if (loc.sub >= centers) return 0;
+    if (center[loc.sub] == 0) return 0;}
+    else ERROR();
+    return 1;
+}
+struct Return centerSwap(struct Reboot loc, struct Extend *ptr, struct Given mod)
+{
+    int pro = centerProt(mod,centerRepro(mod));
+    if (pro && mod.tag == MachThd) postSafe(machSem);
+    if (pro) {struct Argpair arg = {{loc.sub,loc.asr},{mod.mod,mod.tag,mod.idx}};
+    if (funcSafe(copySem,centerFunc,(void*)(&arg)) != 0) ERROR();
+    if (copyEot || !centerFunc((void*)(&arg))) {
+    if (postSafe(copySem) != 1) ERROR();
+    if (mod.tag == MachThd) waitSafe(machSem);
+    struct Return ret = {0,0,-1}; return ret;}}
+    else {if (waitSafe(copySem) != 0) ERROR();}
     struct Extend **arg = 0;
-    if (waitSafe(allocSem) != 0) ERROR();
-    // allocSem protects the array; copySem protects the array contents
     if (loc.asr == LocalAsr) { // TODO make local infinite
     if (mod.idx < 0 || mod.idx >= 3 || loc.sub < 0 || loc.sub >= 3) ERROR();
     // TODO allocate local, locals, threads
@@ -491,31 +516,8 @@ struct Extend **centerPointer(struct Reboot loc, struct Given mod)
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
     arg = center+loc.sub;}
     else ERROR();
-    if (postSafe(allocSem) != 1) ERROR();
-    return arg;
-}
-struct Argpair {
-    struct Reboot loc;
-    struct Given mod;
-};
-int centerFunc(void *arg)
-{
-    if (copyEot) return 1;
-    struct Argpair *ptr = (struct Argpair *)arg;
-    return (*centerPointer(ptr->loc,ptr->mod) != 0);
-}
-struct Return centerSwap(struct Reboot loc, struct Extend *ptr, struct Given mod)
-{
-    int pro = centerProt(mod,centerRepro(mod));
-    if (pro && mod.tag == MachThd) postSafe(machSem);
-    if (pro) {struct Argpair arg = {{loc.sub,loc.asr},{mod.mod,mod.tag,mod.idx}};
-    if (funcSafe(copySem,centerFunc,(void*)(&arg)) != 0) ERROR();
-    if (*centerPointer(loc,mod) == 0) {if (postSafe(copySem) != 1) ERROR();
-    if (mod.tag == MachThd) waitSafe(machSem);
-    struct Return ret = {0,0,-1}; return ret;}}
-    else {if (waitSafe(copySem) != 0) ERROR();}
-    struct Extend *tmp = *centerPointer(loc,mod);
-    if (centerRemod(mod)) *centerPointer(loc,mod) = ptr;
+    struct Extend *tmp = *arg;
+    if (centerRemod(mod)) *arg = ptr;
     if (postSafe(copySem) != 1) ERROR();
     if (pro && mod.tag == MachThd) waitSafe(machSem);
     if (tmp == 0 && pro) ERROR();
@@ -1956,7 +1958,6 @@ void planeArgv(int argc, char **argv)
 void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
-    if (!(allocSem = allocSafe(1))) ERROR(); // protect size of array
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
     if (!(callSem = allocSafe(-1))) ERROR(); extdone = openPipe();  // protect external
     if (!(machSem = allocSafe(1))) ERROR(); // variables shared by threads
