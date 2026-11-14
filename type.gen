@@ -321,6 +321,8 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ScratchInstrs",
 	"ScratchResrcs",
 	"ScratchHandls",
+	"ScratchMthrds",
+	"ScratchLocals",
 }
 Transfer = { -- what user machine does
 	"This", -- assign machine to name

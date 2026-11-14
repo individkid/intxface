@@ -29,7 +29,7 @@ function centSugar(cent)
 	return center
 end
 function machSugar(mach)
-	return centSugar("Center(mem:Transferzsiz:1idx:0slf:0exe[0]:"..mach..")")
+	return centSugar("Center(mem:Machinezsiz:1idx:0slf:0mch[0]:"..mach..")")
 end
 function exprSugar(expr)
 	return machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:"..expr.."))")
@@ -37,8 +37,8 @@ end
 index = 0
 list = {}
 after = castMemory("Memorys")+4 -- TODO get @scratch2 from commandline
-freesub = "-1"
-freemem = "Reboot(sub:"..freesub.."asr:Assert(PlaceAsr))"
+freesub = "-1"; bootsub = "0"; bootasr = "LocalAsr"
+freemem = "Reboot(sub:"..bootsub.."asr:Assert("..bootasr.."))"
 pullmem = "Reboot(sub:0asr:Assert(BootAsr))"
 function atomSugar(list,idx,str)
 	if #list > 0 then
@@ -50,7 +50,7 @@ function atomSugar(list,idx,str)
 	for i,v in ipairs(list) do
 	if v["siz"] == 0 then
 	cent = cent.."loc["..(i-1).."]:"..freemem
-	elseif v["mem"] == "Transferz" then
+	elseif v["mem"] == "Machinez" then
 	cent = cent.."loc["..(i-1).."]:"..pullmem
 	elseif v["mem"] == "Drawz" then
 	cent = cent.."loc["..(i-1).."]:"..freemem
@@ -77,7 +77,7 @@ function doneTest()
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(src = ImmStr"..tests[found]["oth"].."OpOp)))")
 	list[#list+1] = machSugar("Machine(xfr:Sagegsz:1gop[0]:Supexpr(sup[0]:$(@getcfg))gsa[0]:Str(src))")
 	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(RespAsr)))")
-	list[#list+1] = machSugar("Machine(xfr:Sagegsz:1gop[0]:Supexpr(sup[0]:$(@getcfg))gsa[0]:Str(src))") -- wait for replace
+	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))pop[1]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr)))") -- wait for replace
 	list[#list+1] = exprSugar("$(RegisterExit := #1)")
 	atomSugar(list,tests[found]["idx"],"Done")
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error

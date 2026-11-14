@@ -35,7 +35,7 @@ struct SafeState {
     int wait(SafeFunc fnc, void *arg) {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         int save = tail; if (mode > 0) tail += 1;
-        int tmp = 0; while ((mode == 0 && count == 0) || (fnc && (tmp = fnc(arg)) == 0) || (mode > 0 && head != save)) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
+        int tmp = 0; while ((mode == 0 && count == 0) || (mode >= 0 && fnc && (tmp = fnc(arg)) == 0) || (mode > 0 && head != save)) if (pthread_cond_wait(&condit,&mutex) != 0) {std::cerr << "cannot wait cond!" << std::endl; exit(-1);}
         if (tmp < 0) mode = -1;
         if (mode == 0 && count > 0) count -= 1;
         int ret = (mode == 0 ? count : (mode > 0 ? save : -1));
@@ -55,7 +55,7 @@ struct SafeState {
         if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {std::cerr << "cannot get time!" << std::endl; exit(-1);}
         dif += ts.tv_sec + (double)ts.tv_nsec/NANOSECONDS;
         double tsi, tsf; tsf = modf(dif, &tsi); ts.tv_sec = tsi; ts.tv_nsec = tsf*NANOSECONDS;
-        int tmp = 0; int val = 0; while ((count == 0 || (fnc && (tmp = fnc(arg)) == 0)) && val == 0) if ((val = pthread_cond_timedwait(&condit,&mutex,&ts)) != 0 && val != ETIMEDOUT) {std::cerr << "cannot timed wait!" << std::endl; exit(-1);}
+        int tmp = 0; int val = 0; while (mode == 0 && (count == 0 || (fnc && (tmp = fnc(arg)) == 0)) && val == 0) if ((val = pthread_cond_timedwait(&condit,&mutex,&ts)) != 0 && val != ETIMEDOUT) {std::cerr << "cannot timed wait!" << std::endl; exit(-1);}
         if (tmp < 0) mode = -1;
         if (mode == 0 && val != ETIMEDOUT && count > 0) count -= 1;
         int ret = (mode == 0 ? count : -1);
@@ -69,34 +69,33 @@ struct SafeState {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         if (mode == 0 && count >= 0) count += 1;
         if (mode > 0) head += 1;
-        int ret = (mode == 0 ? count : (mode == 1 ? head : -1));
+        int ret = (mode == 0 ? count : (mode > 0 ? head : -1));
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }
     int qost() {
+        if (mode > 0) {std::cerr << "cannot use mode!" << std::endl; exit(-1);}
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
         if (count >= 1) {
         int ret = count;
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;}
-        if (count >= 0) count += 1;
-        int ret = count;
+        if (mode == 0) count += 1;
+        int ret = (mode == 0 ? count : -1);
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }
     void done() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        count = -1;
+        mode = -1;
         if (pthread_cond_broadcast(&condit) != 0) {std::cerr << "cannot broadcast cond!" << std::endl; exit(-1);}
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
     }
     int test() {
         if (pthread_mutex_lock(&mutex) != 0) {std::cerr << "cannot lock mutex!" << std::endl; exit(-1);}
-        int ret = 0;
-        if (mode > 0) ret = (head == tail);
-        if (mode == 0) ret = (count >= 0);        
+        int ret = (mode >= 0);
         if (pthread_mutex_unlock(&mutex) != 0) {std::cerr << "cannot unlock mutex!" << std::endl; exit(-1);}
         return ret;
     }

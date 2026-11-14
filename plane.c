@@ -13,11 +13,10 @@
 
 struct Extend **center = 0; // mostly for planeMachine
 int centers = 0; // mostly for planeMachine
-struct Extend *local[3][3] = {0}; // several per thread
-void *machque[3] = {0}; // queue to thread
-// struct Extend ***local = 0; // per thread centers
-// int *locals = 0; // centers per thread
-// int threads = 0; // number of center threads
+#define threads 3
+#define locals 3
+struct Extend *local[threads][locals] = {0}; // several per thread
+void *machque[threads] = {0}; // queue to thread
 void *copySem = 0; // protect centers
 int extdone = 0; // done for planeExternal
 int external = 0; // pipes to planeExternal
@@ -30,6 +29,8 @@ void *callSem = 0; // protect external inverse
 // Configure inside of pipeSem will deadlock if callback waits on pipeSem.
 // Nested semaphores are fine if they are nested in the same order in every thread.
 // TODO perhaps make Express variables local to thread by default
+// TODO perhaps make datxSingle per thread so following not needed
+// TODO would need to make stlx containers used by datx per thread too
 void *machSem = 0; // protect threaded expressions
 int console = 0; // pipe to planeConsole
 int condone = 0; // done for planeConsole
@@ -60,9 +61,6 @@ int *resize = 0; // number of initializations
 void *safeSem = 0; // protect reboot recent resize and wakeSem
 // following initialized before threads so safe
 void *tempq = 0; // temporary queue to convert chars to str
-// TODO perhaps make datxSingle per thread so following not needed
-// TODO would need to make stlx containers used by datx per thread too
-void *evalSem = 0; // protect state in expressions
 int safeEot = 0;
 int pipeEot = 0;
 int copyEot = 0;
@@ -362,6 +360,7 @@ struct Return {
 };
 int centerZero(void *arg)
 {
+    // fprintf(stderr,"centerZero\n");
     writeChr(0,extdone);
     return 1;
 }
@@ -386,6 +385,7 @@ void centerExtwake()
 }
 int centerOne(void *arg)
 {
+    // fprintf(stderr,"centerOne\n");
     writeChr(1,extdone);
     return 1;
 }
@@ -404,6 +404,7 @@ struct Return centerExtern()
     // waitSafe waits to become head
     if (waitSafe(callSem) < 0) ERROR();
     if (external == 0) { // in case some other thread consumes extdone
+    if (postSafe(callSem) < 0) ERROR();
     struct Return ret = {0,0,-1}; return ret;}
     int sub = waitRead(0.0,(external|(1<<extdone)));
     if (sub == extdone) {
@@ -483,8 +484,8 @@ int centerFunc(void *arg)
 {
     if (copyEot) return 1;
     struct Argpair *ptr = (struct Argpair *)arg;
-    struct Reboot loc = {ptr->loc.sub,ptr->loc.asr};
-    struct Given mod = {ptr->mod.mod,ptr->mod.tag,ptr->mod.idx}; 
+    struct Reboot loc = ptr->loc;
+    struct Given mod = ptr->mod;
     if (loc.asr == LocalAsr) {
     if (mod.idx < 0 || mod.idx >= 3 || loc.sub < 0 || loc.sub >= 3) return 0;
     if (local[mod.idx][loc.sub] == 0) return 0;}
@@ -497,27 +498,26 @@ int centerFunc(void *arg)
 struct Return centerSwap(struct Reboot loc, struct Extend *ptr, struct Given mod)
 {
     int pro = centerProt(mod,centerRepro(mod));
-    if (pro && mod.tag == MachThd) postSafe(machSem);
-    if (pro) {struct Argpair arg = {{loc.sub,loc.asr},{mod.mod,mod.tag,mod.idx}};
+    if (pro) {struct Argpair arg = {loc,mod};
+    if (mod.tag == MachThd) postSafe(machSem); // TODO make handoff from machSem to copySem atomic
     if (funcSafe(copySem,centerFunc,(void*)(&arg)) != 0) ERROR();
     if (copyEot || !centerFunc((void*)(&arg))) {
     if (postSafe(copySem) != 1) ERROR();
     if (mod.tag == MachThd) waitSafe(machSem);
     struct Return ret = {0,0,-1}; return ret;}}
     else {if (waitSafe(copySem) != 0) ERROR();}
-    struct Extend **arg = 0;
-    if (loc.asr == LocalAsr) { // TODO make local infinite
-    if (mod.idx < 0 || mod.idx >= 3 || loc.sub < 0 || loc.sub >= 3) ERROR();
-    // TODO allocate local, locals, threads
-    arg = local[mod.idx]+loc.sub;}
+    struct Extend **ref = 0;
+    if (loc.asr == LocalAsr) {
+    if (mod.idx < 0 || mod.idx >= threads || loc.sub < 0 || loc.sub >= locals) ERROR();
+    ref = local[mod.idx]+loc.sub;}
     else if (loc.asr == PlaceAsr) {
     if (loc.sub >= centers) {int size = loc.sub+1;
     center = realloc(center,size*sizeof(struct Extend *));
     for (int i = centers; i < size; i++) center[i] = 0; centers = size;}
-    arg = center+loc.sub;}
+    ref = center+loc.sub;}
     else ERROR();
-    struct Extend *tmp = *arg;
-    if (centerRemod(mod)) *arg = ptr;
+    struct Extend *tmp = *ref;
+    if (centerRemod(mod)) *ref = ptr;
     if (postSafe(copySem) != 1) ERROR();
     if (pro && mod.tag == MachThd) waitSafe(machSem);
     if (tmp == 0 && pro) ERROR();
@@ -560,7 +560,7 @@ struct Return centerDeque(void *que, struct Given mod, const char *log)
 }
 void *centerQueue(int idx)
 {
-    if (idx < 0 || idx >= 3) ERROR(); // TODO also make machque monotonically dynamic
+    if (idx < 0 || idx >= threads) ERROR();
     if (waitSafe(pipeSem) != 0) ERROR();
     if (machque[idx] == 0) machque[idx] = allocCenterq();
     void *ret = machque[idx];
@@ -584,6 +584,11 @@ struct Return centerRepull(struct Reboot src, struct Given mod, const char *log)
     cpy->log = otherSmart(ptr->log);
     ret.ptr = cpy; return ret;
 }
+struct Given {
+    enum Transfer mod;
+    enum Thread tag;
+    int idx;
+};
 void centerPlace(struct Extend *ptr, struct Given mod)
 {
     if (ptr == 0) return;
@@ -839,7 +844,7 @@ void demoSize(struct Menu *menu) // alloc/send Matrixz
 }
 
 // generic callbacks
-// following globals protected by evalSem, could move to PlaneField
+// following globals protected by machSem, could move to PlaneField
 // currently powerful enough only for structs with only one size and only after the tag
 struct PlaneField {
     int num, sub;
@@ -907,7 +912,6 @@ struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStr
 
 void machineTage(int sim, struct Extend *ptr, char **nam)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     for (int i = 0; i < sim; i++) {
     int wfd = datxClr(1); int ftp;
     int num, stp; int found = 0;
@@ -924,11 +928,9 @@ void machineTage(int sim, struct Extend *ptr, char **nam)
     void *dat0 = 0; datxStr(&dat0,nam[i]);
     void *dat1 = 0; datxGet(1,&dat1);
     datxInsert(dat0,dat1,ftp); free(dat0); free(dat1);}
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineSage(int sim, struct Extend *ptr, char **nam)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     for (int i = 0; i < sim; i++) {
     void *dat = 0; datxStr(&dat,nam[i]); void *val = 0; datxFind(&val,dat); free(dat);
     if (val == 0) ERROR();
@@ -955,11 +957,9 @@ void machineSage(int sim, struct Extend *ptr, char **nam)
     break; case (TYPEMetric): readMetric(ptr->ptr->met,wfd);
     break; case (TYPEReboot): readReboot(&ptr->sav,wfd);}
     free(val);}
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineTend(struct Express *exp, struct Extend *ptr)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     writeExtend(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -968,11 +968,9 @@ void machineTend(struct Express *exp, struct Extend *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEExtend);
     if (typ != TYPEExtend) ERROR();
     freeExtend(ptr); readExtend(ptr,datxPut(0,dat)); free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineEval(struct Express *exp, struct Center *ptr)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     writeCenter(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -981,11 +979,9 @@ void machineEval(struct Express *exp, struct Center *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPECenter);
     if (typ != TYPECenter) ERROR();
     freeCenter(ptr); readCenter(ptr,datxPut(0,dat)); free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineKern(struct Express *exp, struct Kernel *ptr)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     writeKernel(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -994,11 +990,9 @@ void machineKern(struct Express *exp, struct Kernel *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEKernel);
     if (typ != TYPEKernel) ERROR();
     freeKernel(ptr); readKernel(ptr,datxPut(0,dat)); free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineMatr(struct Express *exp, struct Matrix *ptr)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     writeMatrix(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -1007,11 +1001,9 @@ void machineMatr(struct Express *exp, struct Matrix *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEMatrix);
     if (typ != TYPEMatrix) ERROR();
     freeMatrix(ptr); readMatrix(ptr,datxPut(0,dat)); free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineMetr(struct Express *exp, struct Metric *ptr)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     writeMetric(ptr,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,"_");
     void *dat1 = 0; datxGet(0,&dat1);
@@ -1020,7 +1012,6 @@ void machineMetr(struct Express *exp, struct Metric *ptr)
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEMetric);
     if (typ != TYPEMetric) ERROR();
     freeMetric(ptr); readMetric(ptr,datxPut(0,dat)); free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineLine(struct Express *exp, struct Matrix *lft, struct Matrix *rgt)
 {
@@ -1037,19 +1028,15 @@ void machineFunc(struct Express *exp, float *mat)
 }
 void machineVoid(struct Express *exp)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,-1); free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 void machineIarg(const char *str, int idx)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     writeInt(idx,datxClr(0));
     void *dat0 = 0; datxStr(&dat0,str);
     void *dat1 = 0; datxGet(0,&dat1);
     datxInsert(dat0,dat1,TYPEInt);
     free(dat0); free(dat1);
-    if (postSafe(evalSem) != 1) ERROR();
 }
 int machineSwitch(struct Machine *mptr, struct Given mod);
 void planeMachine(enum Thread tag, int idx);
@@ -1174,12 +1161,10 @@ int machineEscape(struct Machine *mch, int siz, int level, int next)
 }
 int machineIval(struct Express *exp)
 {
-    if (waitSafe(evalSem) != 0) ERROR();
     void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
     if (typ != TYPEInt) ERROR();
     int val = readInt(datxPut(0,dat));
     free(dat);
-    if (postSafe(evalSem) != 1) ERROR();
     return val;
 }
 #define PULL(PTR,SRC,LOG) {struct Return ret = centerPull(SRC,mod,LOG);\
@@ -1227,7 +1212,7 @@ int machineSwitch(struct Machine *mptr, struct Given mod)
         int src = machineIval(mptr->gop[0].sup);
         PULL(ptr,src,"sage");
         machineSage(mptr->gsz,ptr,mptr->gsa);
-        centerReplace(ptr,mod);}
+        centerPlace(ptr,mod);}
     break; case (Chck): {int siz; struct Reboot src;
         src.sub = machineIval(mptr->cop[0].sup); src.asr = mptr->cop[0].asr;
         RECHCK(siz,src,"chck");
@@ -1314,6 +1299,7 @@ void planeMachine(enum Thread tag, int idx)
     for (int i = 0; i < size; i++) {
     if (boot[i].asr < 0 || boot[i].asr >= Asserts) ERROR();
     if (boot[i].asr != BootAsr) {cent[i]->loc = boot[i];
+    // {char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %s\n",idx,i,size,boot[i].sub,st0,st1); free(st0); free(st1);}
     centerReplace(cent[i],mod); continue;}
     struct Center *cptr = cent[i]->ptr;
     if (cptr->mem != Machinez) ERROR();
@@ -1321,7 +1307,7 @@ void planeMachine(enum Thread tag, int idx)
     waitSafe(machSem);
     while (next >= 0 && next < cptr->siz) {
     struct Machine *mptr = &mach[next];
-    // {char *st0 = 0; showTransfer(mptr->xfr,&st0); fprintf(stderr,"planeMachine%d %d %s\n",idx,next,st0); free(st0);}
+    //{char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showTransfer(mptr->xfr,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %d/%s\n",idx,i,size,boot[i].sub,st0,next,st1); free(st0); free(st1);}
     int save = next;
     switch (mptr->xfr) {default: if (machineSwitch(mptr,mod) < 0) next = -1; else next += 1; break;
     case (Goto): next += machineIval(mptr->jie[0].val); break;
@@ -1372,12 +1358,12 @@ void planeExternal(enum Thread tag, int idx)
     int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<PipeVrb)) != 0);
     center->log = selfSmart(debug?"pipe":0);
     if (debug) centerSmart(center,"pipe");
+    // {char *st0 = 0; showExtend(center,&st0); fprintf(stderr,"planeExternal %s\n",st0); free(st0);}
     if (center->ptr->mem == Rebootz) {
     int ret = machineExec(mod,planeInfo(RegisterExec,0,planeRcfg),center);
     freeExtend(center); allocExtend(&center,0);
     if (ret < 0) break; else continue;}
     center->loc.sub = 0;center->loc.asr = PipeAsr;
-    // {char *st0 = 0; showExtend(center,&st0); fprintf(stderr,"planeExternal %s\n",st0); free(st0);}
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(center,internal);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -1637,7 +1623,7 @@ void planeProt(enum Thread tag, int idx)
     break; case (0): planeMask(tag,idx,((1<<PrnwPro)));
     // don't rely on event repetition; block on Move/Copy from queues
     break; case (1): planeMask(tag,idx,((1<<LoopPro)|(1<<QrnwPro)));
-    break; case (2): planeMask(tag,idx,((1<<LoopPro)|(1<<QrnwPro)));}
+    break; case (2): planeMask(tag,idx,((1<<LoopPro)|(1<<QrnwPro)|(1<<PrnwPro)));}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0):}
     break; case (TestThd): switch (idx) {default: ERROR();
@@ -1921,7 +1907,9 @@ int planeSugval(const char *str)
 {
     struct Express **exp = 0;
     if (sugarHide(&exp,str) != 1) ERROR();
+    waitSafe(machSem);
     int ret = machineIval(exp[0]);
+    postSafe(machSem);
     freeExpress(exp[0]);
     allocExpress(&exp[0],0); exp[0] = 0;
     free(exp);
@@ -1964,7 +1952,6 @@ void initSafe()
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(pressSem = allocSafe(1))) ERROR(); // protect glfw queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
-    if (!(evalSem = allocSafe(1))) ERROR(); // protect data evaluation
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
     internal = allocCenterq(); response = allocCenterq(); replace = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
@@ -2031,6 +2018,8 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     planeJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
+    planeJnfo(ScratchMthrds,threads,planeWcfg);
+    planeJnfo(ScratchLocals,locals,planeWcfg);
     break; case (Regress): case (Release):
     planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
@@ -2044,7 +2033,9 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
-    planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);}
+    planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
+    planeJnfo(ScratchMthrds,threads,planeWcfg);
+    planeJnfo(ScratchLocals,locals,planeWcfg);}
     for (int i = 0; i < size; i++) free(boot[i]);
     free(boot);
 }
