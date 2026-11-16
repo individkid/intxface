@@ -7,4 +7,4 @@ echo '===' planerC planerLua planerLua
 echo '===' planerC planerLua vulkanCpp
 ./planerC '-Filez' planerLua '-Planez' vulkanCpp '$(PutStrHello Ok AgainOpEndOpOp)'
 echo '===' planerC planerLua 0 vulkanCpp
-# ./planerC '-Filez' planerLua '0' '-Planez' vulkanCpp '$(PutStrHello Ok AgainOpEndOpOp)'
+./planerC '-Filez' planerLua '0' '-Planez' vulkanCpp '$(PutStrHello Ok AgainOpEndOpOp)'

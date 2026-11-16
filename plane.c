@@ -1075,18 +1075,22 @@ int machineExec(struct Given mod, int idx, struct Extend *ext)
     pushCenterq(nxt,repush); continue;}
     if (debug) {deleteSmart(nxt->log); nxt->log = otherSmart(ext->log);}
     centerSmart(nxt,"exec");
-    // if (nxt->ptr->mem == Transferz) {char *st0 = 0; showTransfer(nxt->ptr->exe[0].xfr,&st0); fprintf(stderr,"machineExec %d %s\n",nxt->loc,st0); free(st0);}
-    // else {char *st0 = 0; showMemory(nxt->ptr->mem,&st0); fprintf(stderr,"machineExec %d %s\n",nxt->loc,st0); free(st0);}
+    /*if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Transferz) {char *st0 = 0; showTransfer(nxt->ptr->exe[0].xfr,&st0); fprintf(stderr,"machineExec Transferz %s\n",st0); free(st0);}
+    else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez && nxt->ptr->mch[0].xfr == Move) {char *st0 = 0; char *st1 = 0; showAssert(nxt->ptr->mch[0].pop[0].asr,&st0); showAssert(nxt->ptr->mch[0].pop[1].asr,&st1); fprintf(stderr,"machineExec %s -> %s\n",st0,st1); free(st0); free(st1);}
+    else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez && nxt->ptr->mch[0].xfr == Sage) {fprintf(stderr,"machineExec"); for (int t = 0; t < nxt->ptr->mch[0].gsz; t++) fprintf(stderr," %s",nxt->ptr->mch[0].gsa[t]); fprintf(stderr,"\n");}
+    else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez) {char *st0 = 0; showTransfer(nxt->ptr->mch[0].xfr,&st0); fprintf(stderr,"machineExec %s\n",st0); free(st0);}
+    else {char *st0 = 0; showMemory(nxt->ptr->mem,&st0); char *st1 = 0; showAssert(ptr->loc[i].asr,&st1); fprintf(stderr,"machineExec %d/%s %s\n",ptr->loc[i].sub,st1,st0); free(st0); free(st1);}*/
     boot[i] = ptr->loc[i]; cent[i] = nxt;}
     if (sizeCenterq(repush) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
-    joinCenterq(repush,internal);
+    joinCenterq(repush,internal); freeCenterq(repush);
     if (postSafe(pipeSem) != 1) ERROR();}
+    if (mod.tag == MachThd) {
     if (waitSafe(pipeSem) != 0) ERROR();
     int size = sizeCenterq(internal);
     if (postSafe(pipeSem) != 1) ERROR();
-    for (int i = 0; i < size; i++) planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);
-    freeCenterq(repush);
+    for (int i = 0; i < size; i++)
+    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
     safeMach(idx,boot,cent,ptr->siz);
     planeFork(MachThd,idx,planeMachine);}
     break;}
@@ -1278,7 +1282,7 @@ int machineSwitch(struct Machine *mptr, struct Given mod)
         PULL(ptr,src,"exec");
         int ret = machineExec(mod,machineIval(mptr->tie[0].val),ptr);
         if (ret < 0) return -1;}
-    break; case (Demo): {struct Extend *ptr;
+    break; case (Demo): break; {struct Extend *ptr; // TODO
         int src = machineIval(mptr->nop[0].sup);
         PULL(ptr,src,"demo");
         int sub = machineIval(mptr->nop[0].sub);
@@ -1302,7 +1306,7 @@ void planeMachine(enum Thread tag, int idx)
     // {char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %s\n",idx,i,size,boot[i].sub,st0,st1); free(st0); free(st1);}
     centerReplace(cent[i],mod); continue;}
     struct Center *cptr = cent[i]->ptr;
-    if (cptr->mem != Machinez) ERROR();
+    if (cptr->mem != Machinez) ERROR(); // TODO resurrect Transferz, don't know why
     int next = 0; struct Machine *mach = cptr->mch;
     waitSafe(machSem);
     while (next >= 0 && next < cptr->siz) {
@@ -1584,7 +1588,8 @@ void planeWake(enum Thread tag, int idx)
 {
     // FenceThd handled by vulkanBack
     switch (tag) {default: ERROR();
-    break; case (PipeThd): case (StdioThd): case (MachThd): if (idx < 0 || idx >= 2) ERROR();
+    break; case (MachThd): if (idx < 0 || idx >= threads) ERROR();
+    break; case (PipeThd): case (StdioThd):  if (idx < 0 || idx >= 2) ERROR();
     break; case (TimeThd): if (idx < 0 || idx >= 1) ERROR();
     break; case (TestThd): if (idx < 0 || idx >= 3) ERROR();}
     if (idx == 1) switch (tag) {default: ERROR();
@@ -2008,8 +2013,9 @@ void initBoot()
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
     planeJnfo(RegisterExec,planeThread(MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
+    // no wake enable on LoopPro
+    // planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
+    // planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
     planeJnfo(RegisterMask,((1<<SlctMsk)|(1<<TimeMsk)|0),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
@@ -2025,8 +2031,9 @@ void initBoot()
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
     planeJnfo(RegisterExec,planeThread(MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
-    planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
+    // no wake enable on LoopPro
+    // planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
+    // planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<RespMsk)|0)<<8)|(0<<4)|PipeThd),planeWcfg);
     planeJnfo(RegisterMask,((1<<SlctMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk)|0),planeWcfg);

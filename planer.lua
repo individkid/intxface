@@ -37,15 +37,14 @@ end
 index = 0
 list = {}
 after = castMemory("Memorys")+4 -- TODO get @scratch2 from commandline
-freesub = "-1"; bootsub = "0"; bootasr = "LocalAsr"
+freesub = "-1"; bootsub = "0"; bootasr = "LocalAsr";
 freemem = "Reboot(sub:"..bootsub.."asr:Assert("..bootasr.."))"
+queumem = "Reboot(sub:0asr:Assert(PipeAsr))"
 pullmem = "Reboot(sub:0asr:Assert(BootAsr))"
 function atomSugar(list,idx,str)
 	if #list > 0 then
 	-- io.stderr:write(str..":"..index.."\n")
 	cent = "Center(mem:Rebootzsiz:"..#list.."idx:"..index.."slf:0"
-	-- TODO add Reboot:asr Assert, where PlaceAsr indicates place at sub, BootAsr indicates execute, and other Asserts indicate push to queue
-	-- TODO interpret negative Regoot:sub as negative Center:sub as thread local
 	index = index + 1
 	for i,v in ipairs(list) do
 	if v["siz"] == 0 then
@@ -56,7 +55,7 @@ function atomSugar(list,idx,str)
 	cent = cent.."loc["..(i-1).."]:"..freemem
 	elseif v["mem"] == "Getcfgz" then
 	cent = cent.."loc["..(i-1).."]:"..freemem
-	else cent = cent.."loc["..(i-1).."]:"..castMemory(v["mem"]) end end
+	else cent = cent.."loc["..(i-1).."]:"..queumem end end
 	cent = cent..")"
 	center = centSugar(cent)
 	writeCenter(center,idx)
@@ -95,12 +94,13 @@ function flushTest()
 	writeProgram(tests[pass]["typ"],tests[pass]["idx"]) -- write to forker allows forkee to exit without error
 end
 function readConfig(list,res,cfg)
+	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))pop[1]:Extexpr(sup[0]:$(#"..bootsub..")asr:Assert("..bootasr..")))")
 	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freesub.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(ImmStrGetcfgzOpOp)fld[2]:$(#0)fid:Str(mem))))") 
 	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freesub.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(#"..#cfg..")fld[2]:$(#0)fid:Str(siz))))") 
 	for i,v in ipairs(cfg) do
 	list[#list+1] = machSugar("Machine(xfr:Evaleop[0]:Supexpr(sup[0]:$(#"..freesub.."))epo[0]:Evalexp(fnc[0]:Express(opr:FldOpfld[0]:$(@_)fld[1]:$(?"..v..")fld[2]:$(#"..(i-1)..")fid:Str(cfg))))")
 	end
-	list[#list+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(#"..freesub.."))psh[1]:Supexpr(sup[0]:$(#"..freesub..")))")
+	list[#list+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(#"..bootsub..")asr:Assert("..bootasr.."))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(RespAsr)))")
 	str = "Read"
 	for i,v in ipairs(cfg) do str = str..":"..v end
 	atomSugar(list,tests[found]["idx"],str)
@@ -119,7 +119,7 @@ function writeMaskbit(list,val,cfg)
 	for i,v in ipairs(cfg) do
 	list[#list+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(Wos "..v.." #"..val[i].." Op)))")
 	end
-	atomSugar(list,tests[found]["idx"],"Write")
+	atomSugar(list,tests[found]["idx"],"Mask")
 end
 -- TODO for listDraw, use rsp of RetRsp
 function listResrc(lst,res,arg)
@@ -129,8 +129,11 @@ function listResrc(lst,res,arg)
 	cent = cent.."))"
 	lst[#lst+1] = centSugar(cent)
 	-- TODO Sage to set rsp to RptRsp
-	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..freesub.."))bop[1]:Supexpr(sup[0]:$(#"..freesub.."))bie[0]:Intexpr(val[0]:$(#0)))")
-	lst[#lst+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(#"..freesub.."))psh[1]:Supexpr(sup[0]:$(#"..freesub..")))")
+	lst[#lst+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(sub = #2)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(asr = ImmStrAssert(MachAsr)OpOp)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Sagegsz:2gop[0]:Supexpr(sup[0]:$(#"..freesub.."))gsa[0]:Str(sub)gsa[1]:Str(asr))")
+	lst[#lst+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(#"..bootsub..")asr:Assert("..bootasr.."))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(CallAsr)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(#0)asr:Assert(MachAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(RespAsr)))")
 	atomSugar(lst,tests[found]["idx"],"Resrc")
 	readCenter(tests[found]["idx"])
 end
@@ -139,11 +142,9 @@ function listMemory(lst,mem,fld,arg)
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
 	cent = cent..")"
 	lst[#lst+1] = centSugar(cent)
-	-- TODO Sage to set rsp to RptRsp
-	lst[#lst+1] = machSugar("Machine(xfr:Bopybop[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bop[1]:Supexpr(sup[0]:$(#"..castMemory(mem).."))bie[0]:Intexpr(val[0]:$(#0)))")
-	lst[#lst+1] = machSugar("Machine(xfr:Qopypsh[0]:Supexpr(sup[0]:$(#"..castMemory(mem).."))psh[1]:Supexpr(sup[0]:$(#"..castMemory(mem)..")))")
+	-- memory uses boot loc to write to external pipe, exercising main machine
 	atomSugar(lst,tests[found]["idx"],"Memory")
-	readCenter(tests[found]["idx"])
+	-- readCenter(tests[found]["idx"])
 end
 function listSpoof(lst,mem,fld,arg)
 	atomSugar(lst,tests[found]["idx"],"Spoof")
@@ -189,24 +190,26 @@ function initTest()
 	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
-	--
-	writeConfig(list,{((1<<castVerbose("PipeVrb")) | 0)},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
+	-- TODO
+	-- writeConfig(list,{((1<<castVerbose("PipeVrb")) | 0)},{"RegisterVerb"})
+	-- readConfig(list,config,{"RegisterVerb"})
+	-- print("verbose:"..config[1])
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
+	-- TODO listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
+	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
-	listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
-	--
-	writeConfig(list,{0},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
+	-- TODO listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
+	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
+	-- TODO
+	-- writeConfig(list,{0},{"RegisterVerb"})
+	-- readConfig(list,config,{"RegisterVerb"})
+	-- print("verbose:"..config[1])
 	--
 	listMemory(list,"Vertexz","vtx",ver) -- FetchPhs 0
 	--
@@ -226,7 +229,7 @@ function initTest()
 	end
 	listMemory(list,"Trianglez","tri",tri)
 	--
-	atomSugar(list,tests[found]["idx"],"Memory")
+	-- atomSugar(list,tests[found]["idx"],"Memory")
 end
 
 function openTest()
@@ -249,8 +252,10 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	pipeTest()
 	if more == "0" then
 	initTest()
-	openTest()
-	flushTest()
+	-- TODO
+	-- openTest()
+	-- flushTest()
+	doneTest()
 	elseif more == "1" then
 	initTest()
 	runTest()

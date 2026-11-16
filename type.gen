@@ -1976,7 +1976,7 @@ Bootstrap = {
 		-- Demo Matrixz to process Self or Glob matrix
 		"mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrSlctMskOpOp)))"..
 		"mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))".. -- demo on Menu
-		"mch[%(return jdx())]:Move(pop[0]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr))pop[1]:Extexpr(sup[0]:$(Cst @mem #0 Op)asr:Assert(PlaceAsr)))".. -- Local to Place
+		"mch[%(return jdx())]:Move(pop[0]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr))pop[1]:Extexpr(sup[0]:$(Cst @mem Typ#0Op Op)asr:Assert(PlaceAsr)))".. -- Local to Place
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 
 		"mch[%(return kdx(\"draw\"))]:Nest(nia:-1)".. -- 3 Trianglez/Regress
