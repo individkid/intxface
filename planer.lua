@@ -36,7 +36,6 @@ function exprSugar(expr)
 end
 index = 0
 list = {}
-after = castMemory("Memorys")+4 -- TODO get @scratch2 from commandline
 freesub = "-1"; bootsub = "0"; bootasr = "LocalAsr";
 freemem = "Reboot(sub:"..bootsub.."asr:Assert("..bootasr.."))"
 queumem = "Reboot(sub:0asr:Assert(PipeAsr))"
@@ -144,7 +143,6 @@ function listMemory(lst,mem,fld,arg)
 	lst[#lst+1] = centSugar(cent)
 	-- memory uses boot loc to write to external pipe, exercising main machine
 	atomSugar(lst,tests[found]["idx"],"Memory")
-	-- readCenter(tests[found]["idx"])
 end
 function listSpoof(lst,mem,fld,arg)
 	atomSugar(lst,tests[found]["idx"],"Spoof")
@@ -165,7 +163,15 @@ function initTest()
 	--
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	--
+	writeConfig(list,{((1<<castVerbose("ExecVrb")) | 0)},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
+	--
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
+	--
+	writeConfig(list,{0},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
 	--
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
@@ -190,10 +196,6 @@ function initTest()
 	ver[7]="Vertex(vec[0]: 0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:0.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	ver[8]="Vertex(vec[0]:-0.5vec[1]: 0.5vec[2]:0.5vec[3]:1.0ord[0]:1.0ord[1]:1.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
 	listMemory(list,"Bringupz","ver",ver) -- FetchPhs 0
-	-- TODO
-	-- writeConfig(list,{((1<<castVerbose("PipeVrb")) | 0)},{"RegisterVerb"})
-	-- readConfig(list,config,{"RegisterVerb"})
-	-- print("verbose:"..config[1])
 	--
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
@@ -206,10 +208,6 @@ function initTest()
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
 	-- TODO listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
 	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
-	-- TODO
-	-- writeConfig(list,{0},{"RegisterVerb"})
-	-- readConfig(list,config,{"RegisterVerb"})
-	-- print("verbose:"..config[1])
 	--
 	listMemory(list,"Vertexz","vtx",ver) -- FetchPhs 0
 	--
@@ -235,6 +233,8 @@ end
 function openTest()
 	-- io.stderr:write("start test\n")
 	writeMaskbit(list,{(1<<castThread("TestThd"))},{"RegisterOpen"})
+	list[#list+1] = machSugar("Machine(xfr:Copyqop[0]:Extexpr(sup[0]:$(@getcfg)asr:Assert(PlaceAsr))qop[1]:Extexpr(sup[0]:$(@scratch2)asr:Assert(PlaceAsr)))")
+	atomSugar(list,tests[found]["idx"],"Open")
 	os.execute("sleep 3")
 	-- io.stderr:write("stop test "..index.."\n")
 end

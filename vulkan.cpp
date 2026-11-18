@@ -2365,6 +2365,7 @@ struct DrawState : public BaseState {
 
 struct AfterState {
     ~AfterState() {
+        slog.onof(0,0,0,0,0);
         planeDone();
     }
 };

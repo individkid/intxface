@@ -455,6 +455,14 @@ int centerRemod(struct Given mod)
     break; case(Transfers): ret = 1;
     } return ret;
 }
+void centerSmarter(struct Reboot loc, struct Extend *ext, const char *log)
+{
+    if (loc.asr == BootAsr && ext->ptr->mem == Transferz) {char *st0 = 0; showTransfer(ext->ptr->exe[0].xfr,&st0); printfSmart(ext->log,"machineExec Transferz %s",st0); free(st0);}
+    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez && ext->ptr->mch[0].xfr == Move) {char *st0 = 0; char *st1 = 0; showAssert(ext->ptr->mch[0].pop[0].asr,&st0); showAssert(ext->ptr->mch[0].pop[1].asr,&st1); printfSmart(ext->log,"machineExec Move %s -> %s",st0,st1); free(st0); free(st1);}
+    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez && ext->ptr->mch[0].xfr == Sage) {printfSmart(ext->log,"machineExec Sage"); for (int t = 0; t < ext->ptr->mch[0].gsz; t++) printfSmart(ext->log," %s",ext->ptr->mch[0].gsa[t]);}
+    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez) {char *st0 = 0; showTransfer(ext->ptr->mch[0].xfr,&st0); printfSmart(ext->log,"machineExec Machinez %s",st0); free(st0);}
+    else {char *st0 = 0; showMemory(ext->ptr->mem,&st0); char *st1 = 0; showAssert(loc.asr,&st1); printfSmart(ext->log,"machineExec %d/%s %s",loc.sub,st1,st0); free(st0); free(st1);}
+}
 void centerSmart(struct Extend *ext, const char *log)
 {
     char *st0 = 0; showMemory(ext->ptr->mem,&st0);
@@ -530,11 +538,8 @@ struct Return centerPull(int sub, struct Given mod, const char *log)
     struct Reboot loc = {sub<0?-1-sub:sub,sub<0?LocalAsr:PlaceAsr};
     struct Return ret = centerSwap(loc,0,mod);
     if (ret.ptr == 0) return ret;
-    int tmp = planeFnfo(RegisterLog,0,planeRcfg);
     int vrb = ((planeFnfo(RegisterVerb,0,planeRcfg)&(1<<PullVrb)) != 0);
-    if (tmp) {deleteSmart(ret.ptr->log); ret.ptr->log = otherSmart(tmp);}
-    else if (vrb) {deleteSmart(ret.ptr->log); ret.ptr->log = selfSmart(log);}
-    else {deleteSmart(ret.ptr->log); ret.ptr->log = noneSmart();}
+    if (vrb) {deleteSmart(ret.ptr->log); ret.ptr->log = selfSmart(log);}
     return ret;
 }
 int centerGunc(void *arg)
@@ -1074,7 +1079,7 @@ int machineExec(struct Given mod, int idx, struct Extend *ext)
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
     pushCenterq(nxt,repush); continue;}
     if (debug) {deleteSmart(nxt->log); nxt->log = otherSmart(ext->log);}
-    centerSmart(nxt,"exec");
+    centerSmarter(ptr->loc[i],nxt,"exec");
     /*if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Transferz) {char *st0 = 0; showTransfer(nxt->ptr->exe[0].xfr,&st0); fprintf(stderr,"machineExec Transferz %s\n",st0); free(st0);}
     else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez && nxt->ptr->mch[0].xfr == Move) {char *st0 = 0; char *st1 = 0; showAssert(nxt->ptr->mch[0].pop[0].asr,&st0); showAssert(nxt->ptr->mch[0].pop[1].asr,&st1); fprintf(stderr,"machineExec %s -> %s\n",st0,st1); free(st0); free(st1);}
     else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez && nxt->ptr->mch[0].xfr == Sage) {fprintf(stderr,"machineExec"); for (int t = 0; t < nxt->ptr->mch[0].gsz; t++) fprintf(stderr," %s",nxt->ptr->mch[0].gsa[t]); fprintf(stderr,"\n");}
@@ -1481,7 +1486,9 @@ void planeTest(enum Thread tag, int idx)
     drw->loc.sub = 0; drw->loc.asr = CallAsr;
     drw->sav.sub = Drawz; drw->sav.asr = PlaceAsr;
     drw->rsp = RetRsp; drw->ret = NoneRet;
-    if (debug) callCopy(drw,1,"draw"); else callCont(drw,1,drw->log);}
+    if (debug) callCopy(drw,1,"draw"); else callCont(drw,1,drw->log);
+    }
+
     tested = count;}}
 
     break; case (1): {
@@ -1797,14 +1804,6 @@ void registerQues(enum Configure cfg, int act, void *que)
     if (act > 0) planeGnfo(cfg,frontIntq(que),planeWcfg);
     if (postSafe(pressSem) != 1) ERROR();
 }
-void registerLog(int sav, int act)
-{
-    if (sav != act) {
-        deleteSmart(sav);
-        int tmp = otherSmart(act);
-        planeGnfo(RegisterLog,tmp,planeWcfg);
-    }
-}
 void registerCall(const enum Configure *cfg, const int *sav, const int *val, const int *act, int siz)
 {
     // multi-callback called once per multi-write, so registerAgument for example not called redundantly
@@ -1837,7 +1836,7 @@ void registerCall(const enum Configure *cfg, const int *sav, const int *val, con
     registerQues(ClickAngle,act[i],angleq);
     break; case (ManipLeft): case (ManipBase): mnpn = 1;
     break; case (ManipAngle): angn = 1;
-    break; case (RegisterLog): registerLog(sav[i],act[i]);}
+    }
     if (argn == 3) registerArgument(argv);
     if (ufmn) planeKnfo(RegisterWake,(1<<UnifMsk),planeWots);
     if (prjn) planeKnfo(RegisterWake,(1<<ProjMsk),planeWots);
@@ -1970,7 +1969,7 @@ void initSafe()
     PressKey,PressQueue,
     ClickLeft,ClickBase,ClickAngle,ClickQueue,
     ManipLeft,ManipBase,ManipAngle,
-    RegisterLog};
+    };
     callBack(cfg,sizeof(cfg)/sizeof(enum Configure),registerCall);
     datxSingle();
     datxFnptr(planeRetcfg,planeSetcfg,planeWoscfg,planeWoccfg,planeRawcfg,planeGetstr,planePutstr,planeField);

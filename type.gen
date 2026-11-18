@@ -262,7 +262,6 @@ Configure = { -- integer variables for user expressions to query and control the
 	"ArgumentInp", -- inter process
 	"ArgumentOut",
 	"ArgumentSrc",
-	"RegisterLog", -- transaction branching
 	"RegisterMain", -- main machine center
 	"RegisterSide", -- side machine center
 	"RegisterExec", -- external reboot thread
@@ -1955,10 +1954,9 @@ Bootstrap = {
 
 		"mch[%(return kdx(\"slct\"))]:Nest(nia:-1)".. -- 2 SlctMsk
 		"mch[%(return jdx())]:Move(pop[0]:Extexpr(sup[0]:$(#0)asr:Assert(PipeAsr))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr)))".. -- internal to Local
-		"mch[%(return jdx())]:Tage(ssz:3sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(mem)ssa[1]:Str(siz)ssa[2]:Str(log))"..
+		"mch[%(return jdx())]:Tage(ssz:2sop[0]:Supexpr(sup[0]:$(#-1))ssa[0]:Str(mem)ssa[1]:Str(siz))"..
 		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(Non sub = Cst @mem Typ#0Op Op ; asr = ImmStrPlaceAsrOpOp Op)))"..
 		"mch[%(return jdx())]:Sage(gsz:2gop[0]:Supexpr(sup[0]:$(#-1))gsa[0]:Str(sub)gsa[1]:Str(asr))"..
-		"mch[%(return jdx())]:Void(fpo[0]:Evalexp(fnc[0]:$(RegisterLog := @log)))"..
 		"mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(Cnd"..
 		 "#0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Transferz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Rebootz\")) Cmp Bit , #6"..
 		 "#0 == Or EC Cst @mem Typ#0Op Op #%(return castMemory(\"Kernelz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Expressz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Machinez\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Metricz\")) Cmp EC Cst @mem Typ#0Op Op #%(return castMemory(\"Menuz\")) Cmp Bit , #5"..
@@ -2135,6 +2133,7 @@ Bootstrap = {
 		  -- "mch[%(return jdx())]:Eval(eop[0]:Supexpr(sup[0]:$(@menu))epo[0]:Evalexp(fnc[0]:$(@_ .= men#0Non@_.men#0Op .= msk#0 ImmStrDoneMskOpOp)))"..
 		  -- "mch[%(return jdx())]:Demo(nop[0]:Subexpr(sup[0]:$(@menu)sub[0]:$(#0)))"..
 		  "mch[%(return jdx())]:Nest(nia:-1)"..
+		 "mch[%(return jdx())]:Tend(mop[0]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr))mpo[0]:Evalexp(fnc[0]:$(@_ .= log#0 #0)))".. -- log to zero
 		 "mch[%(return jdx())]:Tend(mop[0]:Extexpr(sup[0]:$(#0)asr:Assert(LocalAsr))mpo[0]:Evalexp(fnc[0]:$(@_ .= loc#0 @_ . sav#0)))".. -- sav to loc
 		 "mch[%(return jdx())]:Jump(jie[0]:Intexpr(val[0]:$(#-1)))"..
 		 "mch[%(return jdx())]:Nest(nia:-1)"..

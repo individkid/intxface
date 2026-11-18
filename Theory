@@ -116,3 +116,5 @@ Some cospace sequences repeat, so unless the space of hyperplane collections is 
 The blob of hyperplane collections of a repeating cospace sequence is open. I suspect non-repeating cospaces sequences are at best isolated.
 
 If I can find all the tetrahedron overlap migrations, isn't the space migration problem solved? Each vertex is a corner of several simplices. Each boundary is a side of several simplices. The migration of the vertex across the boundary is equivalent to the migration of the corner across the side in every simplex overlap simultaneously. Causing one of the simplex migrations also causes all of the other simplex migrations. Is it always possible to cause a simplex migration through a segment of the side? The cospace determines whether the segments of the simplex migrations overlap.
+
+In two dimensions, the simplex overlaps can migrate if the sides of the simplices are nearly parallel in the needed way. In three dimensions there are more than two ways boundaries can be nearly parallel.
