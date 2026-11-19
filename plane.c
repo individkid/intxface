@@ -457,11 +457,11 @@ int centerRemod(struct Given mod)
 }
 void centerSmarter(struct Reboot loc, struct Extend *ext, const char *log)
 {
-    if (loc.asr == BootAsr && ext->ptr->mem == Transferz) {char *st0 = 0; showTransfer(ext->ptr->exe[0].xfr,&st0); printfSmart(ext->log,"machineExec Transferz %s",st0); free(st0);}
-    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez && ext->ptr->mch[0].xfr == Move) {char *st0 = 0; char *st1 = 0; showAssert(ext->ptr->mch[0].pop[0].asr,&st0); showAssert(ext->ptr->mch[0].pop[1].asr,&st1); printfSmart(ext->log,"machineExec Move %s -> %s",st0,st1); free(st0); free(st1);}
-    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez && ext->ptr->mch[0].xfr == Sage) {printfSmart(ext->log,"machineExec Sage"); for (int t = 0; t < ext->ptr->mch[0].gsz; t++) printfSmart(ext->log," %s",ext->ptr->mch[0].gsa[t]);}
-    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez) {char *st0 = 0; showTransfer(ext->ptr->mch[0].xfr,&st0); printfSmart(ext->log,"machineExec Machinez %s",st0); free(st0);}
-    else {char *st0 = 0; showMemory(ext->ptr->mem,&st0); char *st1 = 0; showAssert(loc.asr,&st1); printfSmart(ext->log,"machineExec %d/%s %s",loc.sub,st1,st0); free(st0); free(st1);}
+    if (loc.asr == BootAsr && ext->ptr->mem == Transferz) {char *st0 = 0; showTransfer(ext->ptr->exe[0].xfr,&st0); printfSmart(ext->log,"%s Transferz %s",log,st0); free(st0);}
+    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez && ext->ptr->mch[0].xfr == Move) {char *st0 = 0; char *st1 = 0; showAssert(ext->ptr->mch[0].pop[0].asr,&st0); showAssert(ext->ptr->mch[0].pop[1].asr,&st1); printfSmart(ext->log,"%s Move %s -> %s",log,st0,st1); free(st0); free(st1);}
+    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez && ext->ptr->mch[0].xfr == Sage) {printfSmart(ext->log,"%s Sage"); for (int t = 0; t < ext->ptr->mch[0].gsz; t++) printfSmart(ext->log," %s %s",log,ext->ptr->mch[0].gsa[t]);}
+    else if (loc.asr == BootAsr && ext->ptr->mem == Machinez) {char *st0 = 0; showTransfer(ext->ptr->mch[0].xfr,&st0); printfSmart(ext->log,"%s Machinez %s",log,st0); free(st0);}
+    else {char *st0 = 0; showMemory(ext->ptr->mem,&st0); char *st1 = 0; showAssert(loc.asr,&st1); printfSmart(ext->log,"%s %d/%s %s",log,loc.sub,st1,st0); free(st0); free(st1);}
 }
 void centerSmart(struct Extend *ext, const char *log)
 {
@@ -1080,11 +1080,6 @@ int machineExec(struct Given mod, int idx, struct Extend *ext)
     pushCenterq(nxt,repush); continue;}
     if (debug) {deleteSmart(nxt->log); nxt->log = otherSmart(ext->log);}
     centerSmarter(ptr->loc[i],nxt,"exec");
-    /*if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Transferz) {char *st0 = 0; showTransfer(nxt->ptr->exe[0].xfr,&st0); fprintf(stderr,"machineExec Transferz %s\n",st0); free(st0);}
-    else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez && nxt->ptr->mch[0].xfr == Move) {char *st0 = 0; char *st1 = 0; showAssert(nxt->ptr->mch[0].pop[0].asr,&st0); showAssert(nxt->ptr->mch[0].pop[1].asr,&st1); fprintf(stderr,"machineExec %s -> %s\n",st0,st1); free(st0); free(st1);}
-    else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez && nxt->ptr->mch[0].xfr == Sage) {fprintf(stderr,"machineExec"); for (int t = 0; t < nxt->ptr->mch[0].gsz; t++) fprintf(stderr," %s",nxt->ptr->mch[0].gsa[t]); fprintf(stderr,"\n");}
-    else if (ptr->loc[i].asr == BootAsr && nxt->ptr->mem == Machinez) {char *st0 = 0; showTransfer(nxt->ptr->mch[0].xfr,&st0); fprintf(stderr,"machineExec %s\n",st0); free(st0);}
-    else {char *st0 = 0; showMemory(nxt->ptr->mem,&st0); char *st1 = 0; showAssert(ptr->loc[i].asr,&st1); fprintf(stderr,"machineExec %d/%s %s\n",ptr->loc[i].sub,st1,st0); free(st0); free(st1);}*/
     boot[i] = ptr->loc[i]; cent[i] = nxt;}
     if (sizeCenterq(repush) > 0) {
     if (waitSafe(pipeSem) != 0) ERROR();
@@ -1306,6 +1301,7 @@ void planeMachine(enum Thread tag, int idx)
     int size = resize[idx];
     if (!size) ERROR();
     for (int i = 0; i < size; i++) {
+    centerSmarter(boot[i],cent[i],"mach");
     if (boot[i].asr < 0 || boot[i].asr >= Asserts) ERROR();
     if (boot[i].asr != BootAsr) {cent[i]->loc = boot[i];
     // {char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %s\n",idx,i,size,boot[i].sub,st0,st1); free(st0); free(st1);}

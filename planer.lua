@@ -173,6 +173,7 @@ function initTest()
 	readConfig(list,config,{"RegisterVerb"})
 	print("verbose:"..config[1])
 	--
+	--[[
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
 	--
@@ -226,6 +227,7 @@ function initTest()
 	-- io.stderr:write("Trianglez "..tri[i+1].."\n")
 	end
 	listMemory(list,"Trianglez","tri",tri)
+	--]]
 	--
 	-- atomSugar(list,tests[found]["idx"],"Memory")
 end
@@ -252,7 +254,6 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	pipeTest()
 	if more == "0" then
 	initTest()
-	-- TODO
 	-- openTest()
 	-- flushTest()
 	doneTest()
