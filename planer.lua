@@ -54,6 +54,10 @@ function atomSugar(list,idx,str)
 	cent = cent.."loc["..(i-1).."]:"..freemem
 	elseif v["mem"] == "Getcfgz" then
 	cent = cent.."loc["..(i-1).."]:"..freemem
+	elseif v["mem"] == "Matrixz" then
+	cent = cent.."loc["..(i-1).."]:"..freemem
+	elseif v["mem"] == "Trianglez" then
+	cent = cent.."loc["..(i-1).."]:"..freemem
 	else cent = cent.."loc["..(i-1).."]:"..queumem end end
 	cent = cent..")"
 	center = centSugar(cent)
@@ -136,6 +140,18 @@ function listResrc(lst,res,arg)
 	atomSugar(lst,tests[found]["idx"],"Resrc")
 	readCenter(tests[found]["idx"])
 end
+function listMatrix(lst,mem,fld,arg)
+	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
+	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
+	cent = cent..")"
+	lst[#lst+1] = centSugar(cent)
+	-- bypass Bootstrap handling of Matrixz
+	lst[#lst+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(sub = Cst ImmStrMemory("..mem..")OpOp Typ#0Op Op)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Voidfpo[0]:Evalexp(fnc[0]:$(asr = ImmStrAssert(PlaceAsr)OpOp)))")
+	lst[#lst+1] = machSugar("Machine(xfr:Sagegsz:2gop[0]:Supexpr(sup[0]:$(#"..freesub.."))gsa[0]:Str(sub)gsa[1]:Str(asr))")
+	lst[#lst+1] = machSugar("Machine(xfr:Movepop[0]:Extexpr(sup[0]:$(#"..bootsub..")asr:Assert("..bootasr.."))pop[1]:Extexpr(sup[0]:$(#0)asr:Assert(CallAsr)))")
+	atomSugar(lst,tests[found]["idx"],"Matrix")
+end
 function listMemory(lst,mem,fld,arg)
 	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
 	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
@@ -143,13 +159,6 @@ function listMemory(lst,mem,fld,arg)
 	lst[#lst+1] = centSugar(cent)
 	-- memory uses boot loc to write to external pipe, exercising main machine
 	atomSugar(lst,tests[found]["idx"],"Memory")
-end
-function listSpoof(lst,mem,fld,arg)
-	atomSugar(lst,tests[found]["idx"],"Spoof")
-	cent = "Center(mem:"..mem.."siz:"..#arg.."idx:0slf:0"
-	for i,v in ipairs(arg) do cent = cent..fld.."["..(i-1).."]:"..v end
-	cent = cent..")"
-	writeCenter(centSugar(cent),tests[found]["idx"])
 end
 function initTest()
 	config = {}
@@ -163,15 +172,7 @@ function initTest()
 	--
 	for i = 0, frames-1 do listResrc(list,"ChainRes",{}) end
 	--
-	writeConfig(list,{((1<<castVerbose("ExecVrb")) | 0)},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
-	--
 	listMemory(list,"Uniformz","uni",{"Uniform(all:0one:1idx:0use:0tri:0num:0vtx:0mat:0bas:0pro:1wid:"..width.."hei:"..height..")"})
-	--
-	writeConfig(list,{0},{"RegisterVerb"})
-	readConfig(list,config,{"RegisterVerb"})
-	print("verbose:"..config[1])
 	--
 	dat,wid,hei,cha = fmtxStbi("texture.jpg")
 	listMemory(list,"Imagez","img",{"Image(dat:"..showDat(dat,"").."wid:"..wid.."hei:"..hei.."cha:"..cha..")"})
@@ -184,7 +185,8 @@ function initTest()
 	else ident = ident.."0.0)" end end
 	ident = ident..")"
 	mat = {} for i = 0, 4 do mat[i+1] = ident end
-	for i = 0, frames-1 do listMemory(list,"Matrixz","mat",mat) end
+	-- TODO how to get it to initialize both Matrix resources
+	for i = 0, frames-1 do listMatrix(list,"Matrixz","mat",mat) end
 	--
 	ver={}
 	ver[1]="Vertex(vec[0]:-0.5vec[1]:-0.5vec[2]:0.4vec[3]:1.0ord[0]:1.0ord[1]:0.0ord[2]:0.0ord[3]:0.0ref[0]:0ref[1]:1ref[2]:0ref[3]:0)"
@@ -200,16 +202,18 @@ function initTest()
 	idt={}
 	idt[1]="Int32(3)";idt[2]="Int32(3)";idt[3]="Int32(3)";idt[4]="Int32(3)"
 	idt[5]="Int32(4)";idt[6]="Int32(4)";idt[7]="Int32(4)";idt[8]="Int32(4)"
-	-- TODO listSpoof(list,"Identz","idt",idt) -- FetchPhs 1
 	listMemory(list,"Identz","idt",idt) -- FetchPhs 1
 	--
 	ind={}
 	ind[1]="Int32(0)";ind[2]="Int32(1)";ind[3]="Int32(2)";ind[4]="Int32(2)";ind[5]="Int32(3)";ind[6]="Int32(0)";
 	ind[7]="Int32(4)";ind[8]="Int32(5)";ind[9]="Int32(6)";ind[10]="Int32(6)";ind[11]="Int32(7)";ind[12]="Int32(4)";
-	-- TODO listSpoof(list,"Indexz","ind",ind) -- IndexPhs 0
 	listMemory(list,"Indexz","ind",ind) -- IndexPhs 0
 	--
 	listMemory(list,"Vertexz","vtx",ver) -- FetchPhs 0
+	--
+	writeConfig(list,{((1<<castVerbose("ExecVrb")) | 0)},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
 	--
     indices = {
         0, 1, 2, 2, 3, 0,
@@ -225,9 +229,12 @@ function initTest()
 	tri[i+1] = "Triangle("..vtx.."num:Int32("..num..")pol:Int32("..num..")tex:Int32("..tex..")rot:Int32(0))"
 	-- io.stderr:write("Trianglez "..tri[i+1].."\n")
 	end
-	listMemory(list,"Trianglez","tri",tri)
+	listMatrix(list,"Trianglez","tri",tri)
 	--
-	-- atomSugar(list,tests[found]["idx"],"Memory")
+	writeConfig(list,{0},{"RegisterVerb"})
+	readConfig(list,config,{"RegisterVerb"})
+	print("verbose:"..config[1])
+	--
 end
 
 function openTest()
@@ -252,7 +259,7 @@ if #tests == 2 and found > 0 and tests[pass]["typ"] == "Filez" then
 	pipeTest()
 	if more == "0" then
 	initTest()
-	-- openTest()
+	openTest()
 	-- flushTest()
 	doneTest()
 	elseif more == "1" then
