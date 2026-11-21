@@ -540,7 +540,7 @@ struct Return centerSwap(struct Reboot loc, struct Extend *ptr, struct Given mod
 {
     int pro = centerProt(mod,centerRepro(mod));
     if (pro) {struct Argpair arg = {loc,mod};
-    if (mod.tag == MachThd) postSafe(machSem); // TODO make handoff from machSem to copySem atomic
+    if (mod.tag == MachThd) postSafe(machSem);
     if (funcSafe(copySem,centerFunc,(void*)(&arg)) != 0) ERROR();
     if (copyEot || !centerFunc((void*)(&arg))) {
     if (postSafe(copySem) != 1) ERROR();
@@ -1363,8 +1363,10 @@ void planeMachine(enum Thread tag, int idx)
     // {char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %s\n",idx,i,size,boot[i].sub,st0,st1); free(st0); free(st1);}
     centerReplace(cent[i],mod); continue;}
     struct Center *cptr = cent[i]->ptr;
-    if (cptr->mem != Machinez) ERROR(); // TODO resurrect Transferz, don't know why
-    int next = 0; struct Machine *mach = cptr->mch;
+    struct Machine *mach = 0;
+    if (cptr->mem == Machinez) mach = cptr->mch;
+    else if (cptr->mem == Transferz) mach = cptr->exe;
+    else ERROR(); int next = 0;
     waitSafe(machSem);
     while (next >= 0 && next < cptr->siz) {
     struct Machine *mptr = &mach[next];
