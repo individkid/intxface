@@ -1305,31 +1305,31 @@ function showMergeC(name,struct)
 			result = result..showIndent(depth).."if (repl.msk&(1<<LftMrg)) {if (repl.use==LftMrg) temp = readInt(arg->lft); else {int dscd = 0; dscd = readInt(arg->lft); /*freeInt(&dscd);*/}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<RgtMrg)) {if (repl.use==RgtMrg) temp = readInt(arg->rgt); else {int dscd = 0; dscd = readInt(arg->rgt); /*freeInt(&dscd);*/}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<IdxMrg)) {if (repl.use==IdxMrg) temp = readInt(arg->idx); else {int dscd = 0; dscd = readInt(arg->idx); /*freeInt(&dscd);*/}}\n"
-			result = result..showIndent(depth).."if (repl.use==NonMrg) {/*freeInt(&temp);*/} else {"..lval.." = temp; /*freeInt(&temp);*/ break;}}\n"
+			result = result..showIndent(depth).."if (repl.use==ZerMrg) {/*freeInt(&temp);*/} else {"..lval.." = temp; /*freeInt(&temp);*/ break;}}\n"
 		elseif (Structz[vl[2]]~=nil) then
 			result = result..showIndent(depth).."while (1) {struct MergeEnum repl = ("..func.."); struct "..vl[2].." temp = {0};\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<LftMrg)) {if (repl.use==LftMrg) read"..vl[2].."(&temp,arg->lft); else {struct "..vl[2].." dscd = {0}; read"..vl[2].."(&dscd,arg->lft); free"..vl[2].."(&dscd);}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<RgtMrg)) {if (repl.use==RgtMrg) read"..vl[2].."(&temp,arg->rgt); else {struct "..vl[2].." dscd = {0}; read"..vl[2].."(&dscd,arg->rgt); free"..vl[2].."(&dscd);}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<IdxMrg)) {if (repl.use==IdxMrg) read"..vl[2].."(&temp,arg->idx); else {struct "..vl[2].." dscd = {0}; read"..vl[2].."(&dscd,arg->idx); free"..vl[2].."(&dscd);}}\n"
-			result = result..showIndent(depth).."if (repl.use==NonMrg) {free"..vl[2].."(&temp);} else {copy"..vl[2].."(&"..lval..",&temp); free"..vl[2].."(&temp); break;}}\n"
+			result = result..showIndent(depth).."if (repl.use==ZerMrg) {free"..vl[2].."(&temp);} else {copy"..vl[2].."(&"..lval..",&temp); free"..vl[2].."(&temp); break;}}\n"
 		elseif (vl[2] == "Str") then
 			result = result..showIndent(depth).."while (1) {struct MergeEnum repl = ("..func.."); char *temp = 0;\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<LftMrg)) {if (repl.use==LftMrg) readStr(&temp,arg->lft); else {char *dscd = 0; readStr(&dscd,arg->lft); free(dscd);}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<RgtMrg)) {if (repl.use==RgtMrg) readStr(&temp,arg->rgt); else {char *dscd = 0; readStr(&dscd,arg->rgt); free(dscd);}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<IdxMrg)) {if (repl.use==IdxMrg) readStr(&temp,arg->idx); else {char *dscd = 0; readStr(&dscd,arg->idx); free(dscd);}}\n"
-			result = result..showIndent(depth).."if (repl.use==NonMrg) {free(temp);} else {assignStr(&"..lval..",temp); free(temp); break;}}\n"
+			result = result..showIndent(depth).."if (repl.use==ZerMrg) {free(temp);} else {assignStr(&"..lval..",temp); free(temp); break;}}\n"
 		elseif (vl[2] == "Dat") then
 			result = result..showIndent(depth).."while (1) {struct MergeEnum repl = ("..func.."); void *temp = 0;\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<LftMrg)) {if (repl.use==LftMrg) readDat(&temp,arg->lft); else {void *dscd = 0; readDat(&dscd,arg->lft); free(dscd);}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<RgtMrg)) {if (repl.use==RgtMrg) readDat(&temp,arg->rgt); else {void *dscd = 0; readDat(&dscd,arg->rgt); free(dscd);}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<IdxMrg)) {if (repl.use==IdxMrg) readDat(&temp,arg->idx); else {void *dscd = 0; readDat(&dscd,arg->idx); free(dscd);}}\n"
-			result = result..showIndent(depth).."if (repl.use==NonMrg) {free(temp);} else {assignDat(&"..lval..",temp); free(temp); break;}}\n"
+			result = result..showIndent(depth).."if (repl.use==ZerMrg) {free(temp);} else {assignDat(&"..lval..",temp); free(temp); break;}}\n"
 		else
 			result = result..showIndent(depth).."while (1) {struct MergeEnum repl = ("..func.."); "..showTypeCF(vl[2]).." temp = {0};\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<LftMrg)) {if (repl.use==LftMrg) temp = read"..vl[2].."(arg->lft); else {"..showTypeCF(vl[2]).." dscd = {0}; dscd = read"..vl[2].."(arg->lft); /*free"..vl[2].."(&dscd);*/}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<RgtMrg)) {if (repl.use==RgtMrg) temp = read"..vl[2].."(arg->rgt); else {"..showTypeCF(vl[2]).." dscd = {0}; dscd = read"..vl[2].."(arg->rgt); /*free"..vl[2].."(&dscd);*/}}\n"
 			result = result..showIndent(depth).."if (repl.msk&(1<<IdxMrg)) {if (repl.use==IdxMrg) temp = read"..vl[2].."(arg->idx); else {"..showTypeCF(vl[2]).." dscd = {0}; dscd = read"..vl[2].."(arg->idx); /*free"..vl[2].."(&dscd);*/}}\n"
-			result = result..showIndent(depth).."if (repl.use==NonMrg) {/*free"..vl[2].."(&temp);*/} else {"..lval.." = temp; /*free"..vl[2].."(&temp);*/ break;}}\n"
+			result = result..showIndent(depth).."if (repl.use==ZerMrg) {/*free"..vl[2].."(&temp);*/} else {"..lval.." = temp; /*free"..vl[2].."(&temp);*/ break;}}\n"
 		end	
 		for key,val in ipairs(limits) do
 			depth = depth - 1

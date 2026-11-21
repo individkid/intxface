@@ -341,7 +341,19 @@ Transfer = { -- what user machine does
 	"Line", -- evaluate with fix move matrix
 	"Proj", -- evaluate with projection matrix
 	"Form", -- evaluate with manipulate matrix
-    -- TODO resurrect operations upon Kernel
+	-- identity I
+	-- current manipulation C
+	-- Kernel.saved T
+	-- Kernel.local L
+	-- Kernel.sent S
+	-- Kernel.global G
+	-- Matrix M
+	"Glob", -- G = GM for read from self and others
+	"Self", -- S = M'S for read from self
+	"Send", -- M = L, S = SL, L = I for write to others
+	"Conj", -- L = LTC', T = C for after change manipulation
+	"None", -- L = LT, T = I for stop manipulating
+	"Comp", -- M = GSLC, T = C for send to gpu
 	"Void", -- evaluate without any given
 	"Exec", -- execute in separate thread
 	"Demo", -- process menu as demo
@@ -2327,6 +2339,7 @@ Machine = { -- info for user defined action
     {"lop","Subexpr",{["xfr"]={["Line"]=true}},2},
     {"lpo","Evalexp",{["xfr"]={["Line"]=true}},1},
     {"fpo","Evalexp",{["xfr"]={["Proj"]=true,["Form"]=true,["Void"]=true}},1},
+    {"dop","Subexpr",{["xfr"]={["Glob"]=true,["Self"]=true,["Send"]=true,["Conj"]=true,["None"]=true,["Comp"]=true}},2},
     {"top","Supexpr",{["xfr"]={["Exec"]=true}},1},
     {"tie","Intexpr",{["xfr"]={["Exec"]=true}},1},
     {"nop","Subexpr",{["xfr"]={["Demo"]=true}},1},

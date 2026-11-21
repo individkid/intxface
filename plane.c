@@ -347,6 +347,39 @@ float *planeWindow(float *mat)
     return mat;
 }
 
+// manipulation protocol
+void kernelGlob(struct Kernel *ker, struct Matrix *mat)
+{
+    timesmat(ker->global.mat,mat->mat,4); // G = GM
+}
+void kernelSelf(struct Kernel *ker, struct Matrix *mat)
+{
+    float inv[16]; jumpmat(ker->sent.mat,invmat(copymat(inv,mat->mat,4),4),4); // S = M'S
+}
+void kernelSend(struct Kernel *ker, struct Matrix *mat)
+{
+    copymat(mat->mat,ker->local.mat,4); // M = L
+    timesmat(ker->sent.mat,ker->local.mat,4); // S = SL
+    identmat(ker->local.mat,4); // L = I
+}
+void kernelConj(struct Kernel *ker, struct Matrix *ign)
+{
+    float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
+    timesmat(timesmat(ker->local.mat,ker->saved.mat,4),inv,4); // L = LTC'
+    copymat(ker->saved.mat,mat,4); // T = C
+}
+void kernelNone(struct Kernel *ker, struct Matrix *ign)
+{
+    timesmat(ker->local.mat,ker->saved.mat,4); // L = LT
+    identmat(ker->saved.mat,4); // T = I
+}
+void kernelComp(struct Kernel *ker, struct Matrix *res)
+{
+    float mat[16]; planeMatrix(mat);
+    timesmat(timesmat(timesmat(copymat(res->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),mat,4); // M = GSLC
+    copymat(ker->saved.mat,mat,4); // T = C
+}
+
 // resource access
 struct Given {
     enum Transfer mod;
@@ -697,11 +730,11 @@ void demoRead(struct Menu *menu, struct Given mod) // pull/modify/place Kernelz,
     struct Extend *src = centerPull(menu->src,mod,"source").ptr;
     struct Extend *ptr = centerPull(menu->ker,mod,"read").ptr;
     int slf = src->ptr->slf;
-    if (src->ptr->mem != Matrixz) ERROR();
+    if (src->ptr->mem != Matrixz || src->ptr->siz < 1) ERROR();
     struct Matrix *mat = src->ptr->mat;
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    timesmat(ker->global.mat,mat->mat,4); // G = GM
-    if (slf < 0) {float inv[16]; jumpmat(ker->sent.mat,invmat(copymat(inv,mat->mat,4),4),4);} // S = M'S
+    kernelGlob(ker,mat);
+    if (slf < 0) kernelSelf(ker,mat);
     centerPlace(src,mod);
     centerPlace(ptr,mod);
 }
@@ -715,7 +748,7 @@ void demoSend(struct Menu *menu, struct Given mod) // pull/read/place Kernelz, a
     allocMatrix(&dst->ptr->mat,dst->ptr->siz);
     struct Matrix *mat = dst->ptr->mat;
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    timesmat(timesmat(timesmat(copymat(mat->mat,ker->global.mat,4),ker->sent.mat,4),ker->local.mat,4),ker->saved.mat,4); // M = GSLT
+    kernelComp(ker,mat);
     callCont(dst,1,dst->log);
     centerPlace(ptr,mod);
 }
@@ -723,17 +756,14 @@ void demoCont(struct Menu *menu, struct Given mod) // pull/modify/place Kernelz
 {
     struct Extend *ptr = centerPull(menu->ker,mod,"cont").ptr;
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    float mat[16]; float inv[16]; invmat(copymat(inv,planeMatrix(mat),4),4);
-    timesmat(timesmat(ker->local.mat,ker->saved.mat,4),inv,4); // L = LTC'
-    copymat(ker->saved.mat,mat,4); // T = C
+    kernelConj(ker,0);
     centerPlace(ptr,mod);
 }
 void demoNone(struct Menu *menu, struct Given mod) // pull/modify/place Kernelz
 {
     struct Extend *ptr = centerPull(menu->ker,mod,"none").ptr;
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
-    timesmat(ker->local.mat,ker->saved.mat,4); // L = LT
-    identmat(ker->saved.mat,4); // T = I
+    kernelNone(ker,0);
     centerPlace(ptr,mod);
 }
 void demoPush(struct Menu *menu, struct Given mod) // pull/modify/place Kernelz, alloc/push Matrixz
@@ -746,9 +776,7 @@ void demoPush(struct Menu *menu, struct Given mod) // pull/modify/place Kernelz,
     allocMatrix(&dst->ptr->mat,dst->ptr->siz);
     struct Kernel *ker = &ptr->ptr->ker[demoJect(menu)];
     struct Matrix *mat = dst->ptr->mat;
-    copymat(mat->mat,ker->local.mat,4); // M = L
-    timesmat(ker->sent.mat,ker->local.mat,4); // S = SL
-    identmat(ker->local.mat,4); // L = I
+    kernelSend(ker,mat);
     if (waitSafe(pipeSem) != 0) ERROR();
     pushCenterq(dst,response);
     if (postSafe(pipeSem) != 1) ERROR();
@@ -852,10 +880,15 @@ void demoSize(struct Menu *menu) // alloc/send Matrixz
 // following globals protected by machSem, could move to PlaneField
 // currently powerful enough only for structs with only one size and only after the tag
 struct PlaneField {
-    int num, sub;
-};
+    int num, sub; // which field to change
+}; // to use as MergeStruct:usr
 int changed = 0; enum Memory newmem = Memorys;
 int resized = 0; int oldsize = 0; int newsize = 0;
+// MergeEnum:tag indicates which source to use for given destination field
+// MergeEnum:msk indicates which sources to advance by reading from
+// MergeEnum:tag must be in MergeEnum:msk if it is not ZerMrg or NonMrg
+// LftMrg use/skip arg->lft; RgtMrg use/skip arg->rgt; IdxMrg use/skip arg->idx
+// ZerMrg to change destination to zero; NonMrg to leave destination alone
 struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStruct *arg)
 {
     struct PlaneField *usr = (struct PlaneField*)arg->usr;
@@ -864,7 +897,7 @@ struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStr
     switch (num) {default:
     break; case (TYPECenter):
     if (resized && sub >= oldsize) switch (typ) {
-    default: return (struct MergeEnum){ZerMrg,0};
+    default: return (struct MergeEnum){NonMrg,0};
     break; case (TYPEMatrix): {
     struct Matrix init;
     identmat(init.mat,4);
@@ -878,9 +911,9 @@ struct MergeEnum centerField(int num, int fld, int sub, int typ, struct MergeStr
     identmat(init.global.mat,4);
     writeKernel(&init,arg->idx);
     return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}}
-    if (resized && sub == newsize-1 && oldsize > newsize) {oldsize -= 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    if (resized && sub == newsize-1 && oldsize > newsize) {oldsize -= 1; return (struct MergeEnum){ZerMrg,(1<<LftMrg)};}
     // if changed, then size must be zero, so none of the above apply
-    if (changed) return (struct MergeEnum){ZerMrg,0};
+    if (changed) return (struct MergeEnum){NonMrg,0};
     if (fld == identField(num,"mem") && fld == usr->num) {
     changed = 1; newmem = readInt(arg->lft); return (struct MergeEnum){RgtMrg,(1<<RgtMrg)};}
     if (fld == identField(num,"siz") && fld == usr->num) {
@@ -908,10 +941,10 @@ struct MergeEnum centerRange(int num, int fld, int sub, int typ, struct MergeStr
     break; case (TYPECenter):
     if (fld == identField(num,"siz")) {int siz = readInt(arg->rgt); toread = readInt(arg->lft); writeInt(siz+usr->siz,arg->idx); return (struct MergeEnum){IdxMrg,(1<<IdxMrg)};}
     if (fld >= identField(num,"ind")) if (toread > 0) {toread -= 1;
-    if (sub == 0 && skipped < usr->src) {skipped += 1; return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
+    if (sub == 0 && skipped < usr->src) {skipped += 1; return (struct MergeEnum){ZerMrg,(1<<LftMrg)};}
     else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){LftMrg,(1<<LftMrg)|(1<<RgtMrg)};
-    else if (sub == usr->dst+usr->siz) return (struct MergeEnum){NonMrg,(1<<LftMrg)};}
-    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
+    else if (sub == usr->dst+usr->siz) return (struct MergeEnum){ZerMrg,(1<<LftMrg)};}
+    else if (sub >= usr->dst && sub < usr->dst+usr->siz) return (struct MergeEnum){NonMrg,0}; else return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};}
     return (struct MergeEnum){RgtMrg,(1<<LftMrg)|(1<<RgtMrg)};
 }
 
@@ -1112,15 +1145,15 @@ void machineDemo(struct Menu *menu, struct Given mod)
 {
     switch (menu->msk) {default: ERROR();
     break; case (SlctMsk): // M from external in src
-    demoRead(menu,mod); // G = GM, maybe S = M'S
-    demoSend(menu,mod); // M = GSLT, Call dst
+    demoRead(menu,mod); // G = GM, maybe S = M'S // Glob, maybe Self
+    demoSend(menu,mod); // M = GSLT, Call dst // Comp
     demoDisp(menu,mod); // Draw dsp
     break; case (DoneMsk): // pierce from replace in src
     demoMask(menu,mod); // Jnfo geo
     demoDone(menu); // Push dst
     break; case (PrssMsk): // Press* in queue
     menu->act = Indicate; menu->dev = Devices;
-    demoPush(menu,mod); // M = L, S = SL, L = I, Push dst
+    demoPush(menu,mod); // M = L, S = SL, L = I, Push dst // Send
     demoMenu(menu); // Jnfo cfg
     break; case (ProjMsk): // change in Focal* UniformWid/Hei
     demoSize(menu); // Proj, Call dst
@@ -1130,27 +1163,27 @@ void machineDemo(struct Menu *menu, struct Given mod)
     break; case (MoveMsk): // change in ManipLeft/Base
     if (menu->act == Manipulate) {
     if (menu->dev != Coord) {menu->dev = Coord;
-    demoCont(menu,mod); // L = LTC', T = C
+    demoCont(menu,mod); // L = LTC', T = C // Conj
     planeJnfo(ManipFixed,menu->coo,planeWcfg);}
-    demoSend(menu,mod); // M = GSLT, Call dst
+    demoSend(menu,mod); // M = GSLT, Call dst // Comp
     demoDisp(menu,mod); /* Draw dsp*/}
     break; case (ClckMsk): // Click* in queue
     if (menu->act == Manipulate) {
     menu->act = Indicate;
-    demoPush(menu,mod); /* M = L, S = SL, L = I, Push dst*/} else {
+    demoPush(menu,mod); /* M = L, S = SL, L = I, Push dst // Send*/} else {
     demoPute(menu,mod); /* Draw pie/nor/sel*/}
     break; case (RollMsk): // change in ManipAngle
     if (menu->act == Manipulate) {
     if (menu->dev != Angle) {menu->dev = Angle;
-    demoCont(menu,mod); // L = LTC', T = C
+    demoCont(menu,mod); // L = LTC', T = C // Conj
     planeJnfo(ManipFixed,menu->ang,planeWcfg);}
-    demoSend(menu,mod); // M = GSLT, Call dst
+    demoSend(menu,mod); // M = GSLT, Call dst // Comp
     demoDisp(menu,mod); /* Draw dsp*/}
     break; case (TimeMsk): // timer expired
     if (menu->act == Manipulate) {
     menu->act = Indicate;
-    demoNone(menu,mod); // L = LT, T = I
-    demoPush(menu,mod); /* M = L, S = SL, L = I, Push dst*/}}
+    demoNone(menu,mod); // L = LT, T = I // None
+    demoPush(menu,mod); /* M = L, S = SL, L = I, Push dst // Send*/}}
 }
 int machineEscape(struct Machine *mch, int siz, int level, int next)
 {
@@ -1194,6 +1227,21 @@ int machineIval(struct Express *exp)
     if (ret1.ptr == 0) {if (centerProt(mod,NoopPro)) return 0; else ERROR();}\
     if (ret1.ptr->loc.sub != SRC1 || (ret1.ptr->loc.asr != PlaceAsr && ret1.ptr->loc.asr != LocalAsr)) ERROR();\
     PTR0 = ret0.ptr; PTR1 = ret1.ptr;}
+typedef void (*kernfnc)(struct Kernel *ker, struct Matrix *mat);
+int machineKernel(struct Subexpr *sub, kernfnc fnc, struct Given mod)
+{
+    struct Extend *lft; struct Extend *rgt;
+    int lrc = machineIval(sub[0].sup);
+    int rrc = machineIval(sub[1].sup);
+    PULL2(lft,rgt,lrc,rrc,"line");
+    int lub = machineIval(sub[0].sub);
+    int rub = machineIval(sub[1].sub);
+    if (lft->ptr->mem != Kernelz || lft->ptr->siz <= lub) ERROR();
+    if (rgt->ptr->mem != Matrixz || rgt->ptr->siz <= rub) ERROR();
+    fnc(&lft->ptr->ker[lub],&rgt->ptr->mat[rub]);
+    centerPlace(lft,mod); centerPlace(rgt,mod);
+    return 0;
+}
 int registerVirtual(int thrd);
 int registerEvent(int virt);
 int machineSwitch(struct Machine *mptr, struct Given mod)
@@ -1244,23 +1292,20 @@ int machineSwitch(struct Machine *mptr, struct Given mod)
     break; case (Kern): {struct Extend *ptr;
         int src = machineIval(mptr->kop[0].sup);
         PULL(ptr,src,"kern");
-        int sub = machineIval(mptr->kop[0].sub);
-        if (ptr->ptr->mem != Kernelz || ptr->ptr->siz <= sub) ERROR();
-        machineKern(mptr->kpo[0].fnc,&ptr->ptr->ker[sub]);
+        if (ptr->ptr->mem != Kernelz || ptr->ptr->siz <= src) ERROR();
+        machineKern(mptr->kpo[0].fnc,&ptr->ptr->ker[src]);
         centerPlace(ptr,mod);}
     break; case (Matr): {struct Extend *ptr;
         int src = machineIval(mptr->kop[0].sup);
         PULL(ptr,src,"matr");
-        int sub = machineIval(mptr->kop[0].sub);
-        if (ptr->ptr->mem != Matrixz || ptr->ptr->siz <= sub) ERROR();
-        machineMatr(mptr->kpo[0].fnc,&ptr->ptr->mat[sub]);
+        if (ptr->ptr->mem != Matrixz || ptr->ptr->siz <= src) ERROR();
+        machineMatr(mptr->kpo[0].fnc,&ptr->ptr->mat[src]);
         centerPlace(ptr,mod);}
     break; case (Metr): {struct Extend *ptr;
         int src = machineIval(mptr->kop[0].sup);
         PULL(ptr,src,"metr");
-        int sub = machineIval(mptr->kop[0].sub);
-        if (ptr->ptr->mem != Metricz || ptr->ptr->siz <= sub) ERROR();
-        machineMetr(mptr->kpo[0].fnc,&ptr->ptr->met[sub]);
+        if (ptr->ptr->mem != Metricz || ptr->ptr->siz <= src) ERROR();
+        machineMetr(mptr->kpo[0].fnc,&ptr->ptr->met[src]);
         centerPlace(ptr,mod);}
     break; case (Line): {struct Extend *lft; struct Extend *rgt;
         int lrc = machineIval(mptr->lop[0].sup);
@@ -1274,7 +1319,18 @@ int machineSwitch(struct Machine *mptr, struct Given mod)
         machineFunc(mptr->fpo[0].fnc,planeWindow(mat));}
     break; case (Form): {float mat[16];
         machineFunc(mptr->fpo[0].fnc,planeMatrix(mat));}
-    // TODO resurrect operations upon Kernel
+    break; case (Glob): // G = GM for read from others
+        if (machineKernel(mptr->dop,kernelGlob,mod) < 0) return -1;
+    break; case (Self): // S = M'S for read from self
+        if (machineKernel(mptr->dop,kernelSelf,mod) < 0) return -1;
+    break; case (Send): // M = L, S = SL, L = I for write to others
+        if (machineKernel(mptr->dop,kernelSend,mod) < 0) return -1;
+    break; case (Conj): // L = LTC', T = C for after change manipulation
+        if (machineKernel(mptr->dop,kernelConj,mod) < 0) return -1;
+    break; case (None): // L = LT, T = I for stop manipulating
+        if (machineKernel(mptr->dop,kernelNone,mod) < 0) return -1;
+    break; case (Comp): // M = GSLC, T = C for send to gpu
+        if (machineKernel(mptr->dop,kernelComp,mod) < 0) return -1;
     break; case (Void): {
         machineVoid(mptr->fpo[0].fnc);}
     break; case (Exec): {struct Extend *ptr;
