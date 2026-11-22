@@ -137,8 +137,9 @@ int planeFnfo(enum Configure cfg, int val, yftype fnc)
 }
 
 // thread sharing
-void safeInit(enum Thread thd, int siz)
+void safeInit(enum Thread thd, int idx)
 {
+    int siz = idx+1;
     waitSafe(safeSem);
     if (siz <= sizeSem[thd]) {postSafe(safeSem); return;}
     void **temp = malloc(sizeof(void*)*siz);
@@ -171,7 +172,7 @@ int safeFunc(void *arg)
 void safeMach(int idx, struct Reboot *boot, struct Extend **cent, int siz)
 {
     int mch = idx+1;
-    safeInit(MachThd,mch);
+    safeInit(MachThd,idx);
     waitSafe(safeSem);
     if (mch > sizeMch) {
     struct Reboot **temr = malloc(sizeof(struct Reboot*)*mch);
@@ -524,7 +525,7 @@ void centerSmart(struct Extend *ext, const char *log)
 void planeProt(enum Thread tag, int idx);
 int centerProt(struct Given mod, enum Protocol pro)
 {
-    safeInit(mod.tag,mod.idx+1);
+    safeInit(mod.tag,mod.idx);
     planeProt(mod.tag,mod.idx);
     if (waitSafe(safeSem) != 0) ERROR();
     int ret = (0 != (protocol[mod.tag][mod.idx] & (1<<pro)));
@@ -1652,7 +1653,7 @@ void planeClose(enum Thread tag, int idx)
     switch (tag) {default: ERROR();
     break; case (PipeThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(tag,idx));
-    break; case (1): centerExtdone();}
+    break; case (1): doneSafe(safeSafe(tag,idx)); centerExtdone();}
     break; case (StdioThd): switch (idx) {default: ERROR();
     break; case (0): doneSafe(safeSafe(tag,idx));
     break; case (1): writeChr(1,condone);}
@@ -1692,14 +1693,14 @@ void planeWake(enum Thread tag, int idx)
 }
 void planeMask(enum Thread thd, int idx, int mask)
 {
-    safeInit(thd,idx+1);
+    safeInit(thd,idx);
     if (waitSafe(safeSem) != 0) ERROR();
     protocol[thd][idx] = mask;
     if (postSafe(safeSem) != 1) ERROR();
 }
 void planeProt(enum Thread tag, int idx)
 {
-    safeInit(tag,idx+1);
+    safeInit(tag,idx);
     if (waitSafe(safeSem) != 0) ERROR();
     int mask = protocol[tag][idx];
     if (postSafe(safeSem) != 1) ERROR();
@@ -1735,20 +1736,20 @@ void planeOpen(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
     break; case (PipeThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(PipeThd,1); planeFork(tag,idx,planeCenter);
-    break; case (1): planeFork(tag,idx,planeExternal);}
+    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeCenter);
+    break; case (1): safeInit(tag,idx); planeFork(tag,idx,planeExternal);}
     break; case (StdioThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(StdioThd,1); planeFork(tag,idx,planeString);
+    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeString);
     break; case (1): planeCons(); planeFork(tag,idx,planeConsole);}
     break; case (MachThd): switch (idx) {default: ERROR();
     break; case (0): planeMain(RegisterMain,idx);
     break; case (1): planeMain(RegisterSide,idx);}
     break; case (TimeThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(TimeThd,1); planeFork(tag,idx,planeTime);}
+    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(TestThd,1); planeFork(tag,idx,planeTest);
-    break; case (1): safeInit(TestThd,2); planeFork(tag,idx,planeTest);
-    break; case (2): safeInit(TestThd,3); planeFork(tag,idx,planeTest);}}
+    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeTest);
+    break; case (1): safeInit(tag,idx); planeFork(tag,idx,planeTest);
+    break; case (2): safeInit(tag,idx); planeFork(tag,idx,planeTest);}}
 }
 int planeThread(enum Thread tag)
 {
