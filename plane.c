@@ -1114,6 +1114,7 @@ void planeMachine(enum Thread tag, int idx);
 void planeFork(enum Thread thd, int idx, mftype fnc);
 int machineExec(struct Given mod, int idx, struct Extend *ext)
 {
+    // mod is calling thread; idx is for forking new MachThd thread
     // called from machineSwitch planeMachine planeExternal planeMain
     // given Rebootz read memories and fork to planeMachine
     // given Machinez run the transfers as a machine
@@ -1407,7 +1408,7 @@ void planeMachine(enum Thread tag, int idx)
     if (boot[i].asr != BootAsr) {cent[i]->loc = boot[i];
     // {char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %s\n",idx,i,size,boot[i].sub,st0,st1); free(st0); free(st1);}
     centerReplace(cent[i],mod); continue;}
-    machineExec(mod,boot[i].sub,cent[i]);
+    machineExec(mod,planeInfo(RegisterExec,0,planeRcfg),cent[i]);
     deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
     free(boot); free(cent);
     waitSafe(safeSem);
@@ -2123,7 +2124,6 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     break; case (Minimal):
-    planeJnfo(RegisterAble,((((1<<RespMsk)|0)<<8)|(0<<4)|PipeThd),planeWcfg);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
     for (int i = 0; i < size; i++) free(boot[i]);
     free(boot);
