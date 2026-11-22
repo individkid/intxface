@@ -385,6 +385,8 @@ Plan = { -- which test to run
 	-- similar to Release, except timer events cause Demo
 	"Replay",
 	-- similar to Release, except timer events cause what Record Demo sent
+	"Minimal",
+	-- open PipeThd only
 }
 Action = { -- what input does
 	"Indicate", -- move to new pierce point

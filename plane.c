@@ -171,7 +171,7 @@ int safeFunc(void *arg)
 void safeMach(int idx, struct Reboot *boot, struct Extend **cent, int siz)
 {
     int mch = idx+1;
-    safeInit(MachThd,idx+1);
+    safeInit(MachThd,mch);
     waitSafe(safeSem);
     if (mch > sizeMch) {
     struct Reboot **temr = malloc(sizeof(struct Reboot*)*mch);
@@ -487,6 +487,20 @@ int centerRemod(struct Given mod)
     break; case (Tend): ret = 1;
     break; case(Transfers): ret = 1;
     } return ret;
+}
+enum Bootsrc {
+    QueSrc, // reboot from internal
+    ExtSrc, // reboot from external
+    CfgSrc, // reboot from element
+    Bootsrcs
+} centerReboot(struct Given mod)
+{
+    enum Bootsrc src;
+    if (mod.tag == MachThd) src = QueSrc;
+    else if (mod.tag == PipeThd && mod.idx == 1) src = ExtSrc;
+    else if (mod.tag == MainThd) src = CfgSrc;
+    else src = Bootsrcs;
+    return src;
 }
 void centerSmarter(struct Reboot loc, struct Extend *ext, const char *log)
 {
@@ -1076,57 +1090,104 @@ void machineIarg(const char *str, int idx)
     datxInsert(dat0,dat1,TYPEInt);
     free(dat0); free(dat1);
 }
+int machineEscape(struct Machine *mch, int siz, int level, int next)
+{
+    int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
+    while (1) {
+    next += inc;
+    if (next < 0 || next >= siz) break;
+    struct Machine *mptr = &mch[next];
+    if (mptr->xfr == Nest) level += mptr->nia*inc;
+    if (level <= 0) break;}
+    return next;
+}
+int machineIval(struct Express *exp)
+{
+    void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
+    if (typ != TYPEInt) ERROR();
+    int val = readInt(datxPut(0,dat));
+    free(dat);
+    return val;
+}
 int machineSwitch(struct Machine *mptr, struct Given mod);
 void planeMachine(enum Thread tag, int idx);
 void planeFork(enum Thread thd, int idx, mftype fnc);
 int machineExec(struct Given mod, int idx, struct Extend *ext)
 {
-    int debug = ((planeInfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
+    // called from machineSwitch planeMachine planeExternal planeMain
+    // given Rebootz read memories and fork to planeMachine
+    // given Machinez run the transfers as a machine
+    // given Transferz execute the transfers individually
+    // given Expressz evaluate the expressions
+    int debug = ((planeFnfo(RegisterVerb,0,planeRcfg)&(1<<ExecVrb)) != 0);
     if (debug) {deleteSmart(ext->log); ext->log = selfSmart("exec");}
     centerSmart(ext,"reboot");
     struct Center *ptr = ext->ptr;
     // {char *st0 = 0; showMemory(ptr->mem,&st0); fprintf(stderr,"machineExec %d %s %d/%d\n",idx,st0,ptr->idx,ptr->siz); free(st0);}
     switch (ptr->mem) {default: ERROR();
-    case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break;
-    case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i],mod); break;
-    case (Machinez): {struct Extend *cent[1]; struct Reboot boot[1]; cent[0] = ext; struct Reboot init = {0,BootAsr}; boot[0] = init;
-    safeMach(idx,boot,cent,1); planeFork(MachThd,idx,planeMachine);} break;
+    case (Expressz): for (int i = 0; i < ptr->siz; i++) machineVoid(&ptr->exp[i]); break; // evaluate expressions immediately
+    case (Transferz): for (int i = 0; i < ptr->siz; i++) machineSwitch(&ptr->exe[i],mod); break; // execute transfers immediately
+    case (Machinez): {waitSafe(machSem);
+    int next = 0; while (next >= 0 && next < ptr->siz) {
+    struct Machine *mptr = &ptr->mch[next];
+    //{char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showTransfer(mptr->xfr,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %d/%s\n",idx,i,size,boot[i].sub,st0,next,st1); free(st0); free(st1);}
+    int save = next;
+    switch (mptr->xfr) {default: if (machineSwitch(mptr,mod) < 0) next = -1; else next += 1; break;
+    case (Goto): next += machineIval(mptr->jie[0].val); break;
+    case (Jump): next = machineEscape(ptr->mch,ptr->siz,machineIval(mptr->jie[0].val),next); break;
+    case (Nest): next += 1; break;}
+    if (next == save) {
+    postSafe(machSem);
+    if (waitSafe(safeSafe(mod.tag,mod.idx)) < 0) next = -1; else next += 1;
+    waitSafe(machSem);}}
+    postSafe(machSem);} break; // run transfers as machine
     case (Rebootz): {struct Extend *cent[ptr->siz]; struct Reboot boot[ptr->siz]; void *repush = 0; repush = allocCenterq();
+    // get from internal queue or external pipe for each given location
     for (int i = 0; i < ptr->siz; i++) {
-    // clear event before clearing the condition that the event indicates
     struct Extend *nxt = 0;
-    if (mod.tag == MachThd) {planeInfo(RegisterWake,1<<SlctMsk,planeWotc);
-    if (waitSafe(pipeSem) != 0) ERROR();
+    switch (centerReboot(mod)) {default: ERROR();
+    break; case (QueSrc): {
+    if (funcSafe(pipeSem,centerGunc,internal) < 0) return -1;
     nxt = maybeCenterq(0,internal);
-    if (postSafe(pipeSem) != 1) ERROR();
-    if (nxt == 0) {postSafe(machSem);
-    int ret = waitSafe(safeSafe(mod.tag,mod.idx));
-    waitSafe(machSem); if (ret < 0) return -1;
-    i--; continue;}}
-    else if (mod.tag == PipeThd && mod.idx == 1) {
+    if (postSafe(pipeSem) != 1) ERROR();}
+    break; case (ExtSrc): {
     struct Return ret = centerExtern();
-    if (ret.ptr == 0) {
-    if (ret.vld < 0) return -1; else continue;}
+    if (ret.ptr == 0) {if (ret.vld < 0) return -1; else continue;}
     nxt = ret.ptr;}
-    else ERROR();
+    break; case (CfgSrc): {
+    nxt = centerPull(ptr->loc[i].sub,mod,0).ptr;
+    nxt->src = ext->src; nxt->ptr->slf = ptr->slf;}}
     if (nxt->src != ext->src || nxt->ptr->slf != ptr->slf) {
     pushCenterq(nxt,repush); continue;}
     if (debug) {deleteSmart(nxt->log); nxt->log = otherSmart(ext->log);}
     centerSmarter(ptr->loc[i],nxt,"exec");
     boot[i] = ptr->loc[i]; cent[i] = nxt;}
-    if (sizeCenterq(repush) > 0) {
+    // replace any skipped because not from same source
+    if (sizeCenterq(repush) > 0)
+    switch (centerReboot(mod)) {default: ERROR();
+    break; case (QueSrc): {
     if (waitSafe(pipeSem) != 0) ERROR();
-    joinCenterq(repush,internal); freeCenterq(repush);
-    if (postSafe(pipeSem) != 1) ERROR();}
-    if (mod.tag == MachThd) {
-    if (waitSafe(pipeSem) != 0) ERROR();
+    planeFnfo(RegisterWake,(1<<SlctMsk),planeWotc);
+    joinCenterq(repush,internal);
     int size = sizeCenterq(internal);
-    if (postSafe(pipeSem) != 1) ERROR();
     for (int i = 0; i < size; i++)
-    planeJnfo(RegisterWake,(1<<SlctMsk),planeWots);}
+    planeHnfo(RegisterWake,(1<<SlctMsk),planeWots);
+    if (postSafe(pipeSem) != 1) ERROR();}
+    break; case (ExtSrc): {
+    if (waitSafe(pipeSem) != 0) ERROR();
+    while (1) {struct Extend *nxt;
+    nxt = maybeCenterq(0,internal);
+    if (nxt == 0) break;
+    nxt->loc.sub = 0; nxt->loc.asr = PipeAsr;
+    pushCenterq(nxt,internal);
+    planeHnfo(RegisterWake,(1<<SlctMsk),planeWots);}
+    if (postSafe(pipeSem) != 1) ERROR();}}
+    freeCenterq(repush);
+    // fork thread to replace or execute each given
     safeMach(idx,boot,cent,ptr->siz);
     planeFork(MachThd,idx,planeMachine);}
     break;}
+    return 0;
 }
 // identity I
 // current manipulation C
@@ -1184,25 +1245,6 @@ void machineDemo(struct Menu *menu, struct Given mod)
     menu->act = Indicate;
     demoNone(menu,mod); // L = LT, T = I // None
     demoPush(menu,mod); /* M = L, S = SL, L = I, Push dst // Send*/}}
-}
-int machineEscape(struct Machine *mch, int siz, int level, int next)
-{
-    int inc = (level > 0 ? 1 : (level == 0 ? 0 : -1)); level *= inc;
-    while (1) {
-    next += inc;
-    if (next < 0 || next >= siz) break;
-    struct Machine *mptr = &mch[next];
-    if (mptr->xfr == Nest) level += mptr->nia*inc;
-    if (level <= 0) break;}
-    return next;
-}
-int machineIval(struct Express *exp)
-{
-    void *dat = 0; int typ = datxEval(&dat,exp,TYPEInt);
-    if (typ != TYPEInt) ERROR();
-    int val = readInt(datxPut(0,dat));
-    free(dat);
-    return val;
 }
 #define PULL(PTR,SRC,LOG) {struct Return ret = centerPull(SRC,mod,LOG);\
     if (ret.vld < 0) return -1;\
@@ -1333,12 +1375,12 @@ int machineSwitch(struct Machine *mptr, struct Given mod)
         if (machineKernel(mptr->dop,kernelComp,mod) < 0) return -1;
     break; case (Void): {
         machineVoid(mptr->fpo[0].fnc);}
-    break; case (Exec): {struct Extend *ptr;
+    break; case (Exec): {struct Extend *ptr; // TODO test
         int src = machineIval(mptr->top[0].sup);
         PULL(ptr,src,"exec");
         int ret = machineExec(mod,machineIval(mptr->tie[0].val),ptr);
         if (ret < 0) return -1;}
-    break; case (Demo): break; {struct Extend *ptr; // TODO
+    break; case (Demo): break; {struct Extend *ptr; // TODO test
         int src = machineIval(mptr->nop[0].sup);
         PULL(ptr,src,"demo");
         int sub = machineIval(mptr->nop[0].sub);
@@ -1351,10 +1393,13 @@ int machineSwitch(struct Machine *mptr, struct Given mod)
 // thread callbacks
 void planeMachine(enum Thread tag, int idx)
 {
+    // replace or execute as indicated by the reboot that forked this thread
     struct Given mod = {Transfers,tag,idx};
+    waitSafe(safeSem);
     struct Reboot *boot = reboot[idx]; reboot[idx] = 0;
     struct Extend **cent = recent[idx]; recent[idx] = 0;
     int size = resize[idx];
+    postSafe(safeSem);
     if (!size) ERROR();
     for (int i = 0; i < size; i++) {
     centerSmarter(boot[i],cent[i],"mach");
@@ -1362,25 +1407,7 @@ void planeMachine(enum Thread tag, int idx)
     if (boot[i].asr != BootAsr) {cent[i]->loc = boot[i];
     // {char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showMemory(cent[i]->ptr->mem,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %s\n",idx,i,size,boot[i].sub,st0,st1); free(st0); free(st1);}
     centerReplace(cent[i],mod); continue;}
-    struct Center *cptr = cent[i]->ptr;
-    struct Machine *mach = 0;
-    if (cptr->mem == Machinez) mach = cptr->mch;
-    else if (cptr->mem == Transferz) mach = cptr->exe;
-    else ERROR(); int next = 0;
-    waitSafe(machSem);
-    while (next >= 0 && next < cptr->siz) {
-    struct Machine *mptr = &mach[next];
-    //{char *st0 = 0; char *st1 = 0; showAssert(boot[i].asr,&st0); showTransfer(mptr->xfr,&st1); fprintf(stderr,"planeMachine%d %d/%d %d/%s %d/%s\n",idx,i,size,boot[i].sub,st0,next,st1); free(st0); free(st1);}
-    int save = next;
-    switch (mptr->xfr) {default: if (machineSwitch(mptr,mod) < 0) next = -1; else next += 1; break;
-    case (Goto): next += machineIval(mptr->jie[0].val); break;
-    case (Jump): next = machineEscape(mach,cptr->siz,machineIval(mptr->jie[0].val),next); break;
-    case (Nest): next += 1; break;}
-    if (next == save) {
-    postSafe(machSem);
-    if (waitSafe(safeSafe(tag,idx)) < 0) next = -1; else next += 1;
-    waitSafe(machSem);}}
-    postSafe(machSem);
+    machineExec(mod,boot[i].sub,cent[i]);
     deleteSmart(cent[i]->log); freeExtend(cent[i]); allocExtend(&cent[i],0);}
     free(boot); free(cent);
     waitSafe(safeSem);
@@ -1412,6 +1439,8 @@ void planeCenter(enum Thread tag, int idx)
 }
 void planeExternal(enum Thread tag, int idx)
 {
+    // push from external pipe to internal queue
+    // treat Rebootz as sideband control
     struct Given mod = {Transfers,tag,idx};
     while (1) {
     struct Return ret = centerExtern();
@@ -1604,14 +1633,16 @@ void planeTest(enum Thread tag, int idx)
 }
 
 // phase callbacks
-void planeMain(enum Configure cfg, enum Thread tag, int idx)
+void planeMain(enum Configure cfg, int idx)
 {
-    // TODO what would logging on the main Machinez mean
-    struct Given mod = {Transfers,tag,idx};
-    struct Extend *ext = centerPull(planeGnfo(cfg,0,planeRcfg),mod,0).ptr;
-    struct Extend *cent[1]; struct Reboot boot[1]; cent[0] = ext;
-    struct Reboot init = {0,BootAsr}; boot[0] = init;
-    safeMach(idx,boot,cent,1);
+    // spoof a Rebootz to machineExec
+    struct Given mod = {Transfers,MainThd,0};
+    struct Extend *ext = 0; allocExtend(&ext,1);
+    ext->ptr->mem = Rebootz; ext->ptr->siz = 1;
+    allocReboot(&ext->ptr->loc,1);
+    ext->ptr->loc[0].sub = planeGnfo(cfg,0,planeRcfg);
+    ext->ptr->loc[0].asr = BootAsr;
+    if (machineExec(mod,idx,ext) < 0) ERROR();
 }
 void planeCons()
 {
@@ -1713,8 +1744,8 @@ void planeOpen(enum Thread tag, int idx)
     break; case (0): safeInit(StdioThd,1); planeFork(tag,idx,planeString);
     break; case (1): planeCons(); planeFork(tag,idx,planeConsole);}
     break; case (MachThd): switch (idx) {default: ERROR();
-    break; case (0): planeMain(RegisterMain,tag,idx); planeFork(tag,idx,planeMachine);
-    break; case (1): planeMain(RegisterSide,tag,idx); planeFork(tag,idx,planeMachine);}
+    break; case (0): planeMain(RegisterMain,idx);
+    break; case (1): planeMain(RegisterSide,idx);}
     break; case (TimeThd): switch (idx) {default: ERROR();
     break; case (0): safeInit(TimeThd,1); planeFork(tag,idx,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
@@ -2031,6 +2062,9 @@ void initSafe()
 }
 void initBoot()
 {
+    // Bootstrap takes a hint in RegisterShow from what is on the commandline.
+    // Commandline arguments are processed after Bootstrap is processed.
+    // After Boostrap and commandline arguments are processed, process RegisterPlan.
     int size = 0; int cmnd = 0;
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
     for (int i = 0; callCmnd(i); i++) {size++; cmnd++;}
@@ -2058,6 +2092,8 @@ void initBoot()
     else if (hideExpress(&expr, boot[i], &esiz)) {planeInfo(RegisterShow,8,planeWots); freeExpress(&expr);}
     else if (hideStr(&str,boot[i],&ssiz)) {planeInfo(RegisterShow,16,planeWots); freeStr(&str,1);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,boot[i]); exit(-1);}}
+    planeJnfo(ScratchMthrds,threads,planeWcfg);
+    planeJnfo(ScratchLocals,locals,planeWcfg);
     planeArgv(size,boot);
     switch (planeInfo(RegisterPlan,0,planeRcfg)) {default: ERROR();
     break; case (Bringup): case (Builtin):
@@ -2066,9 +2102,6 @@ void initBoot()
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
     planeJnfo(RegisterExec,planeThread(MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
-    // no wake enable on LoopPro
-    // planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
-    // planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
     planeJnfo(RegisterMask,((1<<SlctMsk)|(1<<TimeMsk)|0),planeWcfg);
     planeJnfo(RegisterOpen,(1<<FenceThd),planeWots);
@@ -2077,16 +2110,11 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
     planeJnfo(RegisterOpen,(1<<TimeThd),planeWots);
     planeJnfo(RegisterTime,1000<<8,planeWcfg);
-    planeJnfo(ScratchMthrds,threads,planeWcfg);
-    planeJnfo(ScratchLocals,locals,planeWcfg);
-    break; case (Regress): case (Release):
+    break; case (Regress): case (Release): case (Record): case (Replay):
     planeJnfo(RegisterMain,planeSugval("@main"),planeWcfg);
     planeJnfo(RegisterSide,planeSugval("@side"),planeWcfg);
     planeJnfo(RegisterExec,planeThread(MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<SlctMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk)|0)<<8)|(0<<4)|MachThd),planeWcfg);
-    // no wake enable on LoopPro
-    // planeJnfo(RegisterAble,((((1<<DoneMsk)|0)<<8)|(1<<4)|MachThd),planeWcfg);
-    // planeJnfo(RegisterAble,((((1<<MachMsk)|0)<<8)|(2<<4)|MachThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<PutsMsk)|0)<<8)|(0<<4)|StdioThd),planeWcfg);
     planeJnfo(RegisterAble,((((1<<RespMsk)|0)<<8)|(0<<4)|PipeThd),planeWcfg);
     planeJnfo(RegisterMask,((1<<SlctMsk)|(1<<PrssMsk)|(1<<ClckMsk)|(1<<MoveMsk)|(1<<RollMsk)|(1<<TimeMsk)|0),planeWcfg);
@@ -2094,8 +2122,9 @@ void initBoot()
     planeJnfo(RegisterOpen,(1<<MachThd),planeWots);
     planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);
     planeJnfo(RegisterOpen,(1<<StdioThd),planeWots);
-    planeJnfo(ScratchMthrds,threads,planeWcfg);
-    planeJnfo(ScratchLocals,locals,planeWcfg);}
+    break; case (Minimal):
+    planeJnfo(RegisterAble,((((1<<RespMsk)|0)<<8)|(0<<4)|PipeThd),planeWcfg);
+    planeJnfo(RegisterOpen,(1<<PipeThd),planeWots);}
     for (int i = 0; i < size; i++) free(boot[i]);
     free(boot);
 }
