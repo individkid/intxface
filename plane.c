@@ -1479,6 +1479,7 @@ void planeString(enum Thread tag, int idx)
     free(str);
     if (!prot) break;}}
 }
+void planeStrin(char *str);
 void planeConsole(enum Thread tag, int idx)
 {
     while (1) {
@@ -1489,12 +1490,7 @@ void planeConsole(enum Thread tag, int idx)
     pushChrq(chr,tempq);
     if (chr == '\n') {char *str = malloc(sizeChrq(tempq)+1); char *ptr = str;
     while (sizeChrq(tempq)) {*(ptr++) = frontChrq(tempq); popChrq(tempq);} *(ptr++) = 0;
-    if (waitSafe(stdioSem) != 0) ERROR();
-    pushStrq(str,strin);
-    int size = sizeStrq(strin);
-    if (postSafe(stdioSem) != 1) ERROR();
-    planeJnfo(RegisterStrq,size,planeWcfg);
-    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);}}
+    planeStrin(str);}}
     else ERROR();}
 }
 void planeTime(enum Thread tag, int idx)
@@ -1949,6 +1945,7 @@ const char *planeGetstr()
     if (waitSafe(stdioSem) != 0) ERROR();
     if (sizeStrq(strin) == 0) ERROR();
     char *str = frontStrq(strin); popStrq(strin);
+    planeJnfo(RegisterStrq,sizeStrq(strin),planeWcfg);
     if (postSafe(stdioSem) != 1) ERROR();
     return str;
 }
@@ -2005,6 +2002,14 @@ int planeSugval(const char *str)
     free(exp);
     return ret;
 }
+void planeStrin(char *str)
+{
+    if (waitSafe(stdioSem) != 0) ERROR();
+    pushStrq(str,strin);
+    planeJnfo(RegisterStrq,sizeStrq(strin),planeWcfg);
+    if (postSafe(stdioSem) != 1) ERROR();
+    planeJnfo(RegisterWake,(1<<CnslMsk),planeWots);
+}
 void planeArgv(int argc, char **argv)
 {
     int debug = 0;
@@ -2028,7 +2033,7 @@ void planeArgv(int argc, char **argv)
     else if (hideExpress(&expr, argv[i], &esiz)) {
     machineVoid(&expr); freeExpress(&expr);}
     else if (hideStr(&str,argv[i],&ssiz)) {
-    planePutstr(str); freeStr(&str,1);}
+    planeStrin(str); freeStr(&str,1);}
     else {fprintf(stderr,"Argument:%d Center:%d Machine:%d Express:%d Str:%d unmatched:%s\n",asiz,csiz,msiz,esiz,ssiz,argv[i]); exit(-1);}}
 }
 
