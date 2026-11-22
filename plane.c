@@ -1642,12 +1642,6 @@ void planeMain(enum Configure cfg, int idx)
     ext->ptr->loc[0].asr = BootAsr;
     if (machineExec(mod,idx,ext) < 0) ERROR();
 }
-void planeCons()
-{
-    condone = openPipe();
-    console = rdwrInit(STDIN_FILENO,STDOUT_FILENO);
-    if (console < 0) ERROR();
-}
 void planeClose(enum Thread tag, int idx)
 {
     switch (tag) {default: ERROR();
@@ -1734,22 +1728,22 @@ void planeFork(enum Thread tag, int idx, mftype fnc)
 }
 void planeOpen(enum Thread tag, int idx)
 {
-    switch (tag) {default: ERROR();
+    safeInit(tag,idx); switch (tag) {default: ERROR();
     break; case (PipeThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeCenter);
-    break; case (1): safeInit(tag,idx); planeFork(tag,idx,planeExternal);}
+    break; case (0): planeFork(tag,idx,planeCenter);
+    break; case (1): planeFork(tag,idx,planeExternal);}
     break; case (StdioThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeString);
-    break; case (1): planeCons(); planeFork(tag,idx,planeConsole);}
+    break; case (0): planeFork(tag,idx,planeString);
+    break; case (1): planeFork(tag,idx,planeConsole);}
     break; case (MachThd): switch (idx) {default: ERROR();
     break; case (0): planeMain(RegisterMain,idx);
     break; case (1): planeMain(RegisterSide,idx);}
     break; case (TimeThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeTime);}
+    break; case (0): planeFork(tag,idx,planeTime);}
     break; case (TestThd): switch (idx) {default: ERROR();
-    break; case (0): safeInit(tag,idx); planeFork(tag,idx,planeTest);
-    break; case (1): safeInit(tag,idx); planeFork(tag,idx,planeTest);
-    break; case (2): safeInit(tag,idx); planeFork(tag,idx,planeTest);}}
+    break; case (0): planeFork(tag,idx,planeTest);
+    break; case (1): planeFork(tag,idx,planeTest);
+    break; case (2): planeFork(tag,idx,planeTest);}}
 }
 int planeThread(enum Thread tag)
 {
@@ -2043,12 +2037,15 @@ void initSafe()
 {
     if (!(copySem = allocSafe(1))) ERROR(); // protect array of Center
     if (!(pipeSem = allocSafe(1))) ERROR(); // protect internal and response queues
-    if (!(callSem = allocSafe(-1))) ERROR(); extdone = openPipe();  // protect external
+    if (!(callSem = allocSafe(-1))) ERROR(); // protect external
     if (!(machSem = allocSafe(1))) ERROR(); // variables shared by threads
     if (!(stdioSem = allocSafe(1))) ERROR(); // protect planeConsole queues
     if (!(pressSem = allocSafe(1))) ERROR(); // protect glfw queues
     if (!(timeSem = allocSafe(1))) ERROR(); // protect planeTime queue
     if (!(safeSem = allocSafe(1))) ERROR(); // protect thread semaphores
+    extdone = openPipe();
+    condone = openPipe();
+    console = rdwrInit(STDIN_FILENO,STDOUT_FILENO);
     internal = allocCenterq(); response = allocCenterq(); replace = allocCenterq();
     strout = allocStrq(); strin = allocStrq(); tempq = allocChrq();
     charq = allocIntq(); leftq = allocIntq(); baseq = allocIntq(); angleq = allocIntq();
