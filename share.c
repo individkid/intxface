@@ -76,8 +76,8 @@ void shareVals(int sub, const char *str)
 		ptr->str = arg.str; arg.str = 0;
 		break;}
 	case (Combine): // index variables; allocate link; take expression
-		if (!nxt) {fprintf(stderr,"%s",err1); exit(-1);} else {
-		for (int i = 0; i < arg.num; i++) {
+		if (!nxt) {fprintf(stderr,"%s",err1); exit(-1);} // writes to pipe in next wrap
+		else {for (int i = 0; i < arg.num; i++) {
 		void *dat = 0; int typ = datxFinds(&dat,"R",arg.dep[i]); if (typ < 0) {
 		datxInt(dat,vals++); datxInserts("R",arg.dep[i],dat,TYPEInt);}
 		else if (typ != TYPEInt) ERROR(); free(dat);}
@@ -90,8 +90,8 @@ void shareVals(int sub, const char *str)
 		ptr->str = arg.str; arg.str = 0;
 		break;}
 	case (Execute): // filter to next
-		if (!nxt) {fprintf(stderr,"%s",err2); exit(-1);} else {
-		nxt->idx = shareExec(arg.url,arg.arg);
+		if (!nxt) {fprintf(stderr,"%s",err2); exit(-1);} // writes to pipe in next wrap
+		else {nxt->idx = shareExec(arg.url,arg.arg);
 		*userIdent(nxt->idx) = (void*)(intptr_t)(sub+1);
 		nxt->vld |= 6; nxt->out = identType(arg.typ);
 		break;}
@@ -116,8 +116,8 @@ void shareRefs(int sub, const char *str)
 	case (Combine): // link next; count references
 		if (ptr->vld != 0) {fprintf(stderr,"%s",err2); exit(-1);}
 		else if (!nxt) {fprintf(stderr,"%s",err1); exit(-1);}
-		else if (nxt->vld == 0) {fprintf(stderr,"%s",err1); exit(-1);} else {
-		ptr->dst[0] = nxt;
+		else if (nxt->vld == 0) {fprintf(stderr,"%s",err1); exit(-1);}
+		else {ptr->dst[0] = nxt;
 		for (int i = 0; i < arg.num; i++) {
 		void *dat = 0; int typ = datxFinds(&dat,"R",arg.dep[i]);
 		if (typ != TYPEInt) ERROR();
@@ -195,6 +195,7 @@ int sharePeek(const char *str, int *len)
 		if (note == 0) return typ;}
 	return -1;
 }
+// call err if invalid tag, arg if not Valve, stg if Valve
 void shareParse(int argc, char **argv, hktype err, hktype arg, hktype stg)
 {
 	for (int i = 1, sub = 0; i < argc; i++) {
@@ -210,6 +211,7 @@ void shareCallback(void *key)
 	if (dat == 0) return;
 	if (typ != TYPEInt) ERROR();
 	ref = *datxIntz(0,dat); free(dat);
+	// set up linked list of wrap dependent upon key
 	for (int i = 0; i < refs[ref]; i++) {
 	int sub = back[ref][i];
 	struct Wrap *ptr = &wrap[sub];
@@ -305,11 +307,13 @@ int main(int argc, char **argv)
 	datxPrefix("V"); datxChanged(shareCallback);
 	wake = args; for (int i = 0; i < args; i++) wrap[i].nxt = args;
 	while (1) {int sub = 0; int idx = 0;
-	if (wake < args) {sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;} else {
-	idx = waitRead(0,-1);
-	if (idx == wrap[args].idx) {
+	if (wake < args) { // walk through linked list
+	sub = wake; wake = wrap[sub].nxt; wrap[sub].nxt = args;}
+	else {idx = waitRead(0,-1); // wait for pipe readable
+	if (idx == wrap[args].idx) { // special case for standard output
 	char *str = 0; readStr(&str,wrap[args].idx); printf("%s\n",str); break;}
 	sub = (int)(intptr_t)*userIdent(idx);}
+	// process from linked list or from readable pipe
 	shareWrap(&wrap[sub]);}
 	return 0;
 }
