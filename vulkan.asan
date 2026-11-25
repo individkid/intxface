@@ -1,0 +1,2 @@
+leak:libfontconfig
+leak:pthread_once

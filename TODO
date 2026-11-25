@@ -1,6 +1,6 @@
-System: Drive vulkanCpp from vulkan.-- file share. Fill in initial Drawz with Draw for display, normal, depth, identity. Add manipulations to record through share file vulkan.--. 
+System: Drive vulkanCpp from vulkan.-- file share. Fill in initial Drawz with Draw for display, normal, depth, identity. Add manipulations to record through share file vulkan.--.
 
-Regress: Add change of Drawz args upon UnifMsk and Buffer write. Couple Focal* registers with projection matrix. Finish Demo and use it in planer.lua. Write random triangles. Do following spoofs with appropriate delays. Spoof change to inactive/polytope/rotate mode. Spoof click on one of the triangles to get pierce point and change to active/polytope/rotate mode. Spoof move cursor and roller several times to transform. Spoof timer event to send.  Send as if from other. Send loopback. Send more from other. Do same for other modes.
+Regress: Add change of Drawz args upon UnifMsk and Buffer write. Couple Focal* registers with projection matrix. Finish Demo and use it in planer.lua. Write random triangles. Do following spoofs with appropriate delays. Spoof change to inactive/polytope/rotate mode. Spoof click on one of the triangles to get pierce point and change to active/polytope/rotate mode. Spoof move cursor and roller several times to transform. Spoof timer event to send. Send as if from other. Send loopback. Send more from other. Do same for other modes.
 
 Release: Use actual user actions to interact with actual file. Finish spaceHs to keep track of boundaries and regions. Add maintenate of cospace boundaries, with all internal regions. Removing a cospace boundary removes three space boundaries, which in turn removes other cospace boundaries.
 

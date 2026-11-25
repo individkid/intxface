@@ -2,13 +2,16 @@ dofile("show.lua")
 
 --HERE Enums
 Goal = { -- file process
+	-- following handled by main thread
 	"NewHub", -- open file
-	"ThdHub",
-	"CfgHub", -- set pid and forward
-	"AppHub", -- set pid and forward
+	"ThdHub", -- forward out
+	"CfgHub", -- forward field in
+	"AppHub", -- forward append in
+	-- following handled by per file thread
 	"HubThd", -- lock write forwarded
 	"AppThd", -- lock append forwarded
 	"ThdThd", -- file change notify
+	-- following handled outside
 	"HubCfg", -- identify file change
 	"ThdErr", -- close and report
 	"HubErr", -- report and exit
@@ -2189,9 +2192,8 @@ Execname = {
 Persist = { -- for file hole side
 	{"act","Goal",{},{}},
 	{"idx","Int",{["act"]={
-		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
-		["HubCfg"]=true,
-		["ThdErr"]=true
+		["NewHub"]=true,["ThdHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdErr"]=true,
+		["HubCfg"]=true,["HubErr"]=true
 	}},{}}, -- identifier for file
 	{"loc","New",{["act"]={
 		["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
@@ -2203,6 +2205,8 @@ Persist = { -- for file hole side
 		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true
 	}},{}}, -- process id for fifo
 	{"slf","Int",{["act"]={
+		["ThdHub"]=true,
+		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true,
 		["HubCfg"]=true
 	}},{}}, -- whether process id is self
 	{"str","Str",{["act"]={
@@ -2211,6 +2215,12 @@ Persist = { -- for file hole side
 		["HubCfg"]=true,
 		["ThdErr"]=true,["HubErr"]=true
 	}},{}}, -- file or field
+	{"siz","Int",{["act"]={
+		["NewHub"]=true
+	}},{}}, -- whether read modify write
+	{"exp","Express",{["act"]={
+		["NewHub"]=true
+	}},"siz"}, -- read modify write
 }
 Term0 = { -- for line process
 	{"cff","Num",{},{}},

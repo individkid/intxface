@@ -207,7 +207,8 @@ void shareParse(int argc, char **argv, hktype err, hktype arg, hktype stg)
 void shareCallback(void *key)
 {
 	void *dat = 0; int ref = 0; int typ = 0;
-	typ = datxFinds(&dat,"R",datxChrz(0,key));
+	if (*datxChrz(0,key) != 'R') return;
+	typ = datxFind(&dat,datxChrz(0,key));
 	if (dat == 0) return;
 	if (typ != TYPEInt) ERROR();
 	ref = *datxIntz(0,dat); free(dat);

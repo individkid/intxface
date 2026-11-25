@@ -45,6 +45,8 @@ planra.log:
 	/bin/sh -e ./planra.sh > planra.log
 vulkan.log:
 	./vulkanCpp > vulkan.log
+vulkanAsan.log:
+	LSAN_OPTIONS=suppressions=vulkan.asan ./vulkanAsanCpp > vulkanAsan.log
 planer.log:
 	/bin/sh -e ./planer.sh > planer.log
 spacra.log:

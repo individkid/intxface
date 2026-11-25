@@ -13,12 +13,14 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
+file["siz"] = 0
 writePersist(file,ident1)
 print("writePersist")
 file = {}
 file["act"] = "AppHub"
 file["idx"] = 0
 file["loc"] = 0
+file["slf"] = 0
 file["str"] = field1
 writePersist(file,ident1)
 file["str"] = field2a
@@ -29,19 +31,19 @@ file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
-assert(file["slf"] == 1)
+assert(file["slf"] == 0)
 assert(file["str"] == field1)
 file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
-assert(file["slf"] == 1)
+assert(file["slf"] == 0)
 assert(file["str"] == field2a)
 file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1)+string.len(field2a))
-assert(file["slf"] == 1)
+assert(file["slf"] == 0)
 assert(file["str"] == field3)
 
 ident2 = typeWrap("Filez","filerLua","fileC")
@@ -49,24 +51,25 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
+file["siz"] = 0
 writePersist(file,ident2)
 file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field1)
 file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field2a)
 file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1)+string.len(field2a))
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field3)
 file = {}
 file["act"] = "CfgHub"
@@ -78,13 +81,13 @@ file = readPersist(ident2)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
-assert(file["slf"] == 1)
+assert(file["slf"] == 0)
 assert(file["str"] == field2b)
 file = readPersist(ident1)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field2b)
 
 ident3 = typeWrap("Filez","filerLua","fileC")
@@ -92,24 +95,25 @@ file = {}
 file["act"] = "NewHub"
 file["idx"] = 0
 file["str"] = name
+file["siz"] = 0
 writePersist(file,ident3)
 file = readPersist(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == 0)
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field1)
 file = readPersist(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1))
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field2b)
 file = readPersist(ident3)
 assert(file["act"] == "HubCfg")
 assert(file["idx"] == 0)
 assert(file["loc"] == string.len(field1)+string.len(field2a))
-assert(file["slf"] == 0)
+assert(file["slf"] == -1)
 assert(file["str"] == field3)
 
 closeIdent(ident1)

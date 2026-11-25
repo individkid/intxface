@@ -17,6 +17,7 @@ int give[NUMFILE] = {0};
 off_t tail[NUMFILE] = {0};
 pthread_t thread[NUMFILE] = {0};
 jmp_buf jmpbuf[NUMFILE] = {0};
+struct Express *express[NUMFILE] = {0};
 int number[NUMOPEN] = {0};
 jmp_buf errbuf = {0};
 long long identifier = 0;
@@ -69,6 +70,7 @@ void spokeSig(void *arg)
 
 int fileTerm(const char *str, int len, int idx)
 {
+	// >0 valid, 0 not enough, -1 too much, -2 invalid
 	int num = 0;
 	if (*userIdent(idx) == 0) {
 	if (strnlen(str,len) == len) return 0;
@@ -144,9 +146,12 @@ void appendGive(long long pid, const char *str, int idx)
 	struct Persist command = {0};
 	int siz = strlen(str);
 	long long loc = -1;
-	while (checkFile(give[idx]) != loc) {
+	double backoff = 0.0;
+	while (1) {
 		loc = checkFile(give[idx]);
-		wrlkwFile(loc,siz+1,give[idx]);}
+		wrlkwFile(loc,siz+1,give[idx]);
+		if (checkFile(give[idx]) == loc) break;
+		sleepSec(backoff += amount);}
 	pwriteStr(str,loc,give[idx]);
 	unlkFile(loc,siz+1,give[idx]);
 	command.act = ThdHub;
@@ -156,6 +161,13 @@ void appendGive(long long pid, const char *str, int idx)
 	assignStr(&command.str,str);
 	writePersist(&command,anon[idx]);
 	freePersist(&command);
+}
+
+void exprGive(struct Persist *ptr, int idx)
+{
+	// TODO set @_ to ptr, evaluate ptr->exp, write result to anon[idx]
+	// TODO temporarily must use semaphore, since datx is not thread safe yet
+	// TODO must register read/write string datx extensions that read/write give[idx]
 }
 
 void writeHelp(long long loc, long long pid, int tail, int idx)
@@ -197,6 +209,8 @@ void clearHelp(int loc, int idx)
 #define PID ptr->pid
 #define SLF ptr->slf
 #define STR ptr->str
+#define SIZ ptr->siz
+#define EXP ptr->exp
 #define TAIL tail[IDX]
 #define NEXT (tail[IDX]+fieldsiz)%filesiz
 #define HELP help[IDX]
@@ -205,6 +219,7 @@ void clearHelp(int loc, int idx)
 #define ANON anon[IDX]
 #define THRD thread[IDX]
 #define JBUF jmpbuf[IDX]
+#define EXPR express[IDX]
 
 void *func(void *arg)
 {
@@ -267,7 +282,8 @@ void *func(void *arg)
 	// previous and next are write locked
 	clearHelp(NEXT,IDX);
 	readPersist(&temp,FIFO);
-	if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
+	if (temp.exp) exprGive(&temp,IDX);
+	else if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
 	else appendGive(temp.pid,temp.str,IDX);
 	writeHelp(temp.loc,temp.pid,TAIL,IDX);
 	unlkFile(TAIL,fieldsiz,HELP);
@@ -283,6 +299,16 @@ void *func(void *arg)
 
 int main(int argc, char **argv)
 {
+	// only one Argument, so every outside process needs its own file process
+	// but file process can open multiple files with NewHub, so the system is many to many
+	// each openened file is handled by a separate thread
+	// the files persist, are updated atomically, and each update is reported to the outside process
+	// coordination between multiple file processes on the same persistent file is on a first lock basis
+	// helper file and fifo are to choose coordinator and generate notifications when the given file changes
+	// changes go into the fifo, multiple writers, with the coordinator as the only reader
+	// the helper file is to wait upon a lock as a notification that given file changed
+	// if the coordinator terminates, its locks on the helper file are lost
+	// the new coordinator is the one to get a certain lock
 	struct sigaction act;
 #ifdef __linux__
 	act.sa_handler = hubSig;
@@ -322,6 +348,7 @@ int main(int argc, char **argv)
 		else number[HELP] = IDX;
 		if ((ANON = openPipe()) == -1) hubErr(__FILE__,__LINE__);
 		else number[ANON] = IDX;
+		EXPR = (SIZ ? EXP : 0);
 		if (pthread_create(&THRD,0,func,ptr) != 0) hubErr(__FILE__,__LINE__);
 		allocPersist(&ptr,1);
 		break;}
@@ -335,7 +362,7 @@ int main(int argc, char **argv)
 		case (ThdHub): {
 		if (sub != ANON) hubErr(__FILE__,__LINE__);
 		ACT = HubCfg;
-		SLF = (PID == identifier);
+		if (PID != identifier) SLF = -1;
 		writePersist(ptr,face);
 		break;}
 		case (ThdErr): {
