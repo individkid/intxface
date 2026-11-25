@@ -1,5 +1,5 @@
-datxAsanC.o: datx.c datx.h metx.h proto.h type.h
-datxC.o: datx.c datx.h metx.h proto.h type.h
+datxAsanC.o: datx.c datx.h face.h metx.h proto.h type.h
+datxC.o: datx.c datx.h face.h metx.h proto.h type.h
 faceAsanC.o: face.c face.h proto.h
 faceC.o: face.c face.h proto.h
 faceCpp.o: face.cpp face.h proto.h wrap.h
@@ -8,8 +8,8 @@ facerC: faceC.o facerC.o protoC.o
 facerC.o: face.h facer.c proto.h
 facerHs: face.hs faceC.o facer.hs protoC.o
 facerLua: facer.lua
-fileC: faceC.o fileC.o protoC.o typeC.o
-fileC.o: face.h file.c proto.h type.h
+fileC: datxC.o faceC.o fileC.o metxC.o protoC.o stlxCpp.o typeC.o
+fileC.o: datx.h face.h file.c proto.h stlx.h type.h
 filer.log: fileC filer.lua filerLua luax.so type.lua
 filerLua: filer.lua
 fmtxAsanC.o: fmtx.c
@@ -35,7 +35,7 @@ planeAsanC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h sugx.h 
 planeC.o: datx.h face.h fmtx.h metx.h plane.c plane.h proto.h stlx.h sugx.h type.h
 planer.log: fmty.so fragmentColorG fragmentPierceG fragmentRelateG luax.so planer.lua planer.sh planerC planerLua sugy.so texture.jpg type.lua vertexConstG vertexCoplaneG vertexFetchG vertexFillG vertexVertexG vulkanCpp
 planerC: faceC.o planerC.o protoC.o typeC.o
-planerC.o: planer.c proto.h type.h
+planerC.o: face.h planer.c proto.h type.h
 planerLua: planer.lua
 planra.log: fragmentColorG fragmentPierceG fragmentRelateG planra.sh planraC texture.jpg vertexConstG vertexCoplaneG vertexFetchG vertexFillG vertexVertexG vulkanCpp
 planraC: datxC.o faceC.o fmtxC.o metxC.o planeC.o planraC.o protoC.o stlxCpp.o sugxC.o typeC.o
@@ -58,21 +58,16 @@ sugxC.o: proto.h stlx.h sugx.c sugx.h type.h
 sugy.so: faceC.o protoC.o stlxCpp.o sugxC.o sugyC.o sugyCpp.o typeC.o wrapC.o wrapCpp.o
 sugyC.o: sugy.c
 sugyCpp.o: proto.h sugy.cpp wrap.h
-type.c: luax.so show.lua type.gen
-type.h: luax.so show.lua type.gen
+type.h: show.lua
 type.hs: luax.so show.lua type.gen
 type.lua: luax.so show.lua type.gen
-typeAsanC.o: face.h type.c type.h
-typeC.o: face.h type.c type.h
-typer.c: luax.so show.lua test.lua typer.gen
-typer.h: luax.so show.lua test.lua typer.gen
-typer.hs: luax.so show.lua test.lua
-typer.log: typer.lua typerC typerHs typerLua
-typer.lua: luax.so show.lua test.lua typer.gen
+typeAsanC.o: face.h proto.h type.c type.h
+typeC.o: face.h proto.h type.c type.h
+typer.log: luax.so typer.lua typerC typerHs typerLua
 typerC: faceC.o protoC.o typerC.o
-typerC.o: face.h typer.c typer.h
-typerHs: face.hs faceC.o protoC.o typer.gen
-typerLua: typer.gen
+typerC.o: face.h proto.h typer.c typer.h
+typerHs: face.hs faceC.o protoC.o typer.hs
+typerLua: typer.lua
 typra.log: luax.so show.lua test.lua typra.lua typraLua
 typraLua: typra.lua
 vertexConstG: vulkan.g

@@ -1,5 +1,7 @@
 #include "face.h"
 #include "type.h"
+#include "datx.h"
+#include "stlx.h"
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
@@ -18,6 +20,10 @@ off_t tail[NUMFILE] = {0};
 pthread_t thread[NUMFILE] = {0};
 jmp_buf jmpbuf[NUMFILE] = {0};
 struct Express *express[NUMFILE] = {0};
+int expridx = 0;
+long long exprloc = 0;
+char *exprstr = 0;
+void *semaphore = 0; // TODO remove when datx is thread safe
 int number[NUMOPEN] = {0};
 jmp_buf errbuf = {0};
 long long identifier = 0;
@@ -100,26 +106,33 @@ void writeHub()
 	writePersist(&command,face);
 }
 
-int readGive(long long loc, long long pid, int idx)
+int preadGive(char **ptr, long long loc, int idx)
 {
-	struct Persist command = {0};
 	int siz = maxsiz;
 	int val = 0;
 	char *str = 0;
-	command.act = ThdHub;
-	command.idx = idx;
-	command.loc = loc;
-	command.pid = pid;
 	while (1) {
 		rdlkwFile(loc,siz,give[idx]);
 		preadStr(&str,loc,give[idx]);
 		unlkFile(loc,siz,give[idx]);
-		if (*str == 0) {freePersist(&command); return -1;}
+		if (*str == 0) return -1;
 		val = strlen(str);
 		if (val <= siz) break;
 		siz = val;}
-	assignStr(&command.str,str);
+	assignStr(ptr,str);
 	free(str);
+	return val;
+}
+int readGive(long long loc, long long pid, int idx)
+{
+	struct Persist command = {0};
+	int val = 0;
+	command.act = ThdHub;
+	command.idx = idx;
+	command.loc = loc;
+	command.pid = pid;
+	val = preadGive(&command.str,loc,idx);
+	if (val < 0) {freePersist(&command); return val;}
 	writePersist(&command,anon[idx]);
 	freePersist(&command);
 	return val;
@@ -163,11 +176,38 @@ void appendGive(long long pid, const char *str, int idx)
 	freePersist(&command);
 }
 
-void exprGive(struct Persist *ptr, int idx)
+void fileField(void **dst, void *src, void *fld, int num, int sub, int stp, int ftp)
 {
-	// TODO set @_ to ptr, evaluate ptr->exp, write result to anon[idx]
-	// TODO temporarily must use semaphore, since datx is not thread safe yet
-	// TODO must register read/write string datx extensions that read/write give[idx]
+    readField(stp,num,sub,datxPut(0,src),datxPut(1,fld),datxClr(2));
+    datxGet(2,dst);
+}
+const char *fileGetstr()
+{
+	preadGive(&exprstr,exprloc,give[expridx]);
+    return exprstr;
+}
+void filePutstr(const char *str)
+{
+	int siz = strlen(str);
+	wrlkwFile(exprloc,siz+1,give[expridx]);
+	pwriteStr(str,exprloc,give[expridx]);
+	unlkFile(exprloc,siz+1,give[expridx]);
+}
+void exprGive(long long loc, long long pid, const char *str, struct Express *exp, int idx)
+{
+	struct Persist command = {0};
+	waitSafe(semaphore);
+	expridx = idx;
+	exprloc = loc;
+	// TODO set @_ to str, evaluate exp, write result to anon[idx]
+	postSafe(semaphore);
+	command.act = ThdHub;
+	command.idx = idx;
+	command.loc = loc;
+	command.pid = pid;
+	assignStr(&command.str,str);
+	writePersist(&command,anon[idx]);
+	freePersist(&command);
 }
 
 void writeHelp(long long loc, long long pid, int tail, int idx)
@@ -282,7 +322,8 @@ void *func(void *arg)
 	// previous and next are write locked
 	clearHelp(NEXT,IDX);
 	readPersist(&temp,FIFO);
-	if (temp.exp) exprGive(&temp,IDX);
+	if (temp.act == HubThd && temp.siz > 0) exprGive(temp.loc,temp.pid,temp.str,temp.exp,IDX);
+	else if (temp.siz > 1) exprGive(temp.loc,temp.pid,temp.str,temp.exp+1,IDX);
 	else if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
 	else appendGive(temp.pid,temp.str,IDX);
 	writeHelp(temp.loc,temp.pid,TAIL,IDX);
@@ -319,6 +360,8 @@ int main(int argc, char **argv)
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = identWrap(Filez,argv[1])) < 0) exitErr(__FILE__,__LINE__);
 	termFunc(fileTerm); noteFunc(errNote); errFunc(errErr);
+	semaphore = allocSafe(1);
+	datxFnptr(0,0,0,0,0,fileGetstr,filePutstr,fileField);
 	struct Persist *ptr = 0; allocPersist(&ptr,1);
 	ptr->act = ThdThd; fieldsiz = sizePersist(ptr);
 	for (IDX = 0; IDX < NUMFILE; IDX++) GIVE = -1;
