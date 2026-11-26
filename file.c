@@ -20,6 +20,7 @@ off_t tail[NUMFILE] = {0};
 pthread_t thread[NUMFILE] = {0};
 jmp_buf jmpbuf[NUMFILE] = {0};
 struct Express *express[NUMFILE] = {0};
+int exprsiz[NUMFILE] = {0};
 int expridx = 0;
 long long exprloc = 0;
 char *exprstr = 0;
@@ -260,6 +261,7 @@ void clearHelp(int loc, int idx)
 #define THRD thread[IDX]
 #define JBUF jmpbuf[IDX]
 #define EXPR express[IDX]
+#define SIZE exprsiz[IDX]
 
 void *func(void *arg)
 {
@@ -322,8 +324,8 @@ void *func(void *arg)
 	// previous and next are write locked
 	clearHelp(NEXT,IDX);
 	readPersist(&temp,FIFO);
-	if (temp.act == HubThd && temp.siz > 0) exprGive(temp.loc,temp.pid,temp.str,temp.exp,IDX);
-	else if (temp.siz > 1) exprGive(temp.loc,temp.pid,temp.str,temp.exp+1,IDX);
+	if (temp.act == HubThd && SIZE > 0) exprGive(temp.loc,temp.pid,temp.str,EXPR,IDX);
+	else if (SIZE > 1) exprGive(temp.loc,temp.pid,temp.str,EXPR+1,IDX);
 	else if (temp.act == HubThd) writeGive(temp.loc,temp.pid,temp.str,IDX);
 	else appendGive(temp.pid,temp.str,IDX);
 	writeHelp(temp.loc,temp.pid,TAIL,IDX);
@@ -392,6 +394,7 @@ int main(int argc, char **argv)
 		if ((ANON = openPipe()) == -1) hubErr(__FILE__,__LINE__);
 		else number[ANON] = IDX;
 		EXPR = (SIZ ? EXP : 0);
+		SIZE = SIZ;
 		if (pthread_create(&THRD,0,func,ptr) != 0) hubErr(__FILE__,__LINE__);
 		allocPersist(&ptr,1);
 		break;}
