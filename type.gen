@@ -3,18 +3,18 @@ dofile("show.lua")
 --HERE Enums
 Goal = { -- file process
 	-- following handled by main thread
-	"NewHub", -- open file
-	"ThdHub", -- forward out
-	"CfgHub", -- forward field in
-	"AppHub", -- forward append in
+	"NewHub", -- idx str siz exp -- open file
+	"ThdHub", -- idx loc pid slf str -- forward out
+	"CfgHub", -- idx loc slf str -- forward field in
+	"AppHub", -- idx loc slf str -- forward append in
 	-- following handled by per file thread
-	"HubThd", -- lock write forwarded
-	"AppThd", -- lock append forwarded
-	"ThdThd", -- file change notify
+	"HubThd", -- loc pid slf str -- lock write forwarded
+	"AppThd", -- loc pid slf str -- lock append forwarded
+	"ThdThd", -- loc pid slf -- file change notify
 	-- following handled outside
-	"HubCfg", -- identify file change
-	"ThdErr", -- close and report
-	"HubErr", -- report and exit
+	"HubCfg", -- idx loc slf str -- identify file change
+	"HubErr", -- str -- report and exit
+	"ThdErr", -- idx str -- close and report
 }
 Level = { -- type of line stock
 	"Stock",
@@ -2192,11 +2192,11 @@ Execname = {
 Persist = { -- for file hole side
 	{"act","Goal",{},{}},
 	{"idx","Int",{["act"]={
-		["NewHub"]=true,["ThdHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdErr"]=true,
-		["HubCfg"]=true,["HubErr"]=true
+		["NewHub"]=true,["ThdHub"]=true,["CfgHub"]=true,["AppHub"]=true,
+		["HubCfg"]=true,["ThdErr"]=true
 	}},{}}, -- identifier for file
 	{"loc","New",{["act"]={
-		["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
+		["ThdHub"]=true,["CfgHub"]=true,["AppHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true,
 		["HubCfg"]=true
 	}},{}}, -- location in file
@@ -2205,15 +2205,14 @@ Persist = { -- for file hole side
 		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true
 	}},{}}, -- process id for fifo
 	{"slf","Int",{["act"]={
-		["ThdHub"]=true,
+		["ThdHub"]=true,["CfgHub"]=true,["AppHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,["ThdThd"]=true,
 		["HubCfg"]=true
 	}},{}}, -- whether process id is self
 	{"str","Str",{["act"]={
-		["NewHub"]=true,["CfgHub"]=true,["AppHub"]=true,["ThdHub"]=true,
+		["NewHub"]=true,["ThdHub"]=true,["CfgHub"]=true,["AppHub"]=true,
 		["HubThd"]=true,["AppThd"]=true,
-		["HubCfg"]=true,
-		["ThdErr"]=true,["HubErr"]=true
+		["HubCfg"]=true,["HubErr"]=true,["ThdErr"]=true
 	}},{}}, -- file or field
 	{"siz","Int",{["act"]={
 		["NewHub"]=true
