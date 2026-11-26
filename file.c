@@ -200,13 +200,18 @@ void exprGive(long long loc, long long pid, const char *str, struct Express *exp
 	waitSafe(semaphore);
 	expridx = idx;
 	exprloc = loc;
-	// TODO set @_ to str, evaluate exp, write result to anon[idx]
+	void *dat0 = 0; datxStr(&dat0,"_");
+	void *dat1 = 0; datxStr(&dat1,str);
+	datxInsert(dat0,dat1,TYPEStr);
+	free(dat0); free(dat1);
+	void *dat = 0; int typ = datxEval(&dat,exp,TYPEStr);
+	if (typ != TYPEStr) ERROR();
 	postSafe(semaphore);
 	command.act = ThdHub;
 	command.idx = idx;
 	command.loc = loc;
 	command.pid = pid;
-	assignStr(&command.str,str);
+	assignStr(&command.str,datxChrz(0,dat)); free(dat);
 	writePersist(&command,anon[idx]);
 	freePersist(&command);
 }
