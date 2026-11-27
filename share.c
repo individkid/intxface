@@ -8,9 +8,7 @@
 #include <sys/stat.h>
 #include <stdint.h>
 #include <signal.h>
-#ifdef __linux__
-#include "sys/wait.h"
-#endif
+#include <sys/wait.h>
 
 int note = 0;
 struct Wrap {

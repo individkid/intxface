@@ -7,9 +7,7 @@ int wrapUnwrap(lua_State *L);
 void wrapWrap(lua_State *L, const char *str, const struct Close *arg);
 }
 #include <functional>
-#ifdef __linux__
 #include <cstring>
-#endif
 #include <stdlib.h>
 
 struct WrapClose; typedef void wrapFunc(const struct WrapClose *arg);

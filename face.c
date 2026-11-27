@@ -16,9 +16,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#ifdef __linux__
-#include "sys/wait.h"
-#endif
+#include <sys/wait.h>
 
 // per identifier state
 int inp[NUMOPEN] = {0};
@@ -670,12 +668,14 @@ void readStr(char **str, int idx)
 		if (termfn) num = termfn(buf,tot,idx);
 		else if (strnlen(buf,tot) == tot) num = 0;
 		else num = strlen(buf)+1;
+		// num == 0 means more needed
+		// num == tot means tot from buf is complete
 		if (num != 0 && num != tot) ERRFNC(idx);
 		if (tot == siz) {
 		buf = realloc(buf,siz+bufsize);
+		if (buf == 0) ERRFNC(idx);
 		memset(buf+siz,0,bufsize);
-		siz += bufsize;
-		if (buf == 0) ERRFNC(idx);}}
+		siz += bufsize;}}
 	buf[num] = 0;
 	assignStr(str,buf);
 	free(buf);

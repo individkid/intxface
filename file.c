@@ -80,13 +80,16 @@ int fileTerm(const char *str, int len, int idx)
 	// >0 valid, 0 not enough, -1 too much, -2 invalid
 	int num = 0;
 	if (*userIdent(idx) == 0) {
+	// idx is not GIVE; strings zero terminated
 	if (strnlen(str,len) == len) return 0;
 	return strlen(str) + 1;}
+	// idx is GIVE; return after nesting
 	for (int i = 0; i < len; i++) {
 		if (str[i] == '(') num++;
 		if (str[i] == ')' && num == 0) return -1;
 		if (str[i] == ')' && num == 1) return i+1;
 		if (str[i] == ')' && num > 1) num--;}
+	// indicate more needed
 	return 0;
 }
 
@@ -347,8 +350,9 @@ void *func(void *arg)
 
 int main(int argc, char **argv)
 {
-	// only one Argument, so every outside process needs its own file process
-	// but file process can open multiple files with NewHub, so the system is many to many
+	// only one Argument, so outside process must broadcast based on slf field
+	// slf field is unchanged for write responses, but negative for notifications from other file processes
+	// file process can open multiple files with NewHub, so the system is many to many
 	// each openened file is handled by a separate thread
 	// the files persist, are updated atomically, and each update is reported to the outside process
 	// coordination between multiple file processes on the same persistent file is on a first lock basis
@@ -358,11 +362,7 @@ int main(int argc, char **argv)
 	// if the coordinator terminates, its locks on the helper file are lost
 	// the new coordinator is the one to get a certain lock
 	struct sigaction act;
-#ifdef __linux__
 	act.sa_handler = hubSig;
-#else
-	act.__sigaction_u.__sa_handler = hubSig;
-#endif
 	if (sigaction(SIGINT,&act,0) < 0) ERROR();
 	while (!identifier) identifier = ((long long)getpid()<<(sizeof(long long)/2))+(long long)time(0);
 	if ((face = identWrap(Filez,argv[1])) < 0) exitErr(__FILE__,__LINE__);
