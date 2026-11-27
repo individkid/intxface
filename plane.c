@@ -2068,7 +2068,16 @@ void initBoot()
 {
     // Bootstrap takes a hint in RegisterShow from what is on the commandline.
     // Commandline arguments are processed after Bootstrap is processed.
-    // After Boostrap and commandline arguments are processed, process RegisterPlan.
+    // After Boostrap and commandline arguments are processed.
+    // Processing arguments evaluates expressions transfers, and such.
+    // After processing arguments, RegisterPlan is processed by writing registers.
+    // Writes to registers start threads, sensitize threads to register writes.
+    // Threads communicate with Center array, queues, gpu calls, and register writes.
+    // External threads maintain external pipe opened by Argument* registers.
+    // Standard input output threads maintain the filter.
+    // Machine threads perform initial transfers and execute transfer machines.
+    // Time thread sends event upon timer and waits according to queue of delays.
+    // Test threads run in the background.
     int size = 0; int cmnd = 0;
     for (int i = 0; Bootstrap__Int__Str(i); i++) size++;
     for (int i = 0; callCmnd(i); i++) {size++; cmnd++;}
